@@ -11,7 +11,15 @@ export const getUserPermissions = async (roleId: string): Promise<string[]> => {
       .populate('permissionId', 'name')
       .lean();
 
-    return rolePermissions.map(rp => (rp.permissionId as any).name);
+    if (!rolePermissions || rolePermissions.length === 0) {
+      return [];
+    }
+
+    const permissions = rolePermissions
+      .map(rp => (rp.permissionId as any)?.name)
+      .filter(Boolean) as string[];
+
+    return permissions;
   } catch (error) {
     console.error('Error fetching permissions:', error);
     return [];

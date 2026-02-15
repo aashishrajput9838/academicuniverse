@@ -59,19 +59,24 @@ export const loginWithEmail = async (email: string, password: string): Promise<{
       throw new AuthenticationError('Invalid email or password');
     }
 
+    // Normalize roleId (handle populated roleId or raw ObjectId)
+    const normalizedRoleId = (user.roleId && (user.roleId as any)._id)
+      ? (user.roleId as any)._id.toString()
+      : user.roleId.toString();
+
     // Fetch user permissions
-    const permissions = await getUserPermissions(user.roleId.toString());
+    const permissions = await getUserPermissions(normalizedRoleId);
 
     // Check if role is super admin
-    const role = await Role.findById(user.roleId);
+    const role = await Role.findById(normalizedRoleId);
     const isSuperAdmin = role?.isSuperAdmin || false;
 
     // Create JWT payload
     const payload: JWTPayload = {
       userId: user._id.toString(),
       email: user.email,
-      organizationId: user.organizationId._id.toString(),
-      roleId: user.roleId._id.toString(),
+      organizationId: (user.organizationId as any)._id.toString(),
+      roleId: normalizedRoleId,
       permissions,
       isSuperAdmin,
     };

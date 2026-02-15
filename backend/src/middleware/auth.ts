@@ -129,7 +129,7 @@ export const enforceOrgIsolation = (
 /**
  * Extract Bearer token from Authorization header
  */
-const extractToken = (req: AuthenticatedRequest): string | null => {
+const extractToken = (req: any): string | null => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {

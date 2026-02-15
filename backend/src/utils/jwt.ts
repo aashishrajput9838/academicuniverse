@@ -1,4 +1,4 @@
-import jwt, { SignOptions } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
 export interface JWTPayload {
   userId: string;
@@ -15,16 +15,13 @@ export interface AuthenticatedRequest {
 }
 
 const JWT_SECRET = (process.env.JWT_SECRET || 'your-secret-key-change-in-production') as string;
-const JWT_EXPIRY = process.env.JWT_EXPIRY || '7d';
+const JWT_EXPIRY = (process.env.JWT_EXPIRY || '7d') as string;
 
 /**
  * Generate JWT token with user data and permissions
  */
 export const generateToken = (payload: JWTPayload): string => {
-  const options: SignOptions = {
-    expiresIn: JWT_EXPIRY,
-  };
-  return jwt.sign(payload, JWT_SECRET, options);
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY } as any);
 };
 
 /**

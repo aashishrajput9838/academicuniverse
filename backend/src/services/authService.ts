@@ -12,7 +12,6 @@ export const getUserPermissions = async (roleId: string): Promise<string[]> => {
       .lean();
 
     if (!rolePermissions || rolePermissions.length === 0) {
-      console.log(`[authService] No rolePermissions found for roleId=${roleId}`);
       return [];
     }
 
@@ -20,7 +19,6 @@ export const getUserPermissions = async (roleId: string): Promise<string[]> => {
       .map(rp => (rp.permissionId as any)?.name)
       .filter(Boolean) as string[];
 
-    console.log(`[authService] Fetched permissions for roleId=${roleId}:`, permissions);
     return permissions;
   } catch (error) {
     console.error('Error fetching permissions:', error);
@@ -59,10 +57,10 @@ export const loginWithEmail = async (email: string, password: string): Promise<{
       throw new AuthenticationError('Invalid email or password');
     }
 
-    // Normalize roleId (handle populated roleId or raw ObjectId)
-    const normalizedRoleId = (user.roleId && (user.roleId as any)._id)
-      ? (user.roleId as any)._id.toString()
-      : user.roleId.toString();
+      // Normalize roleId (handle populated roleId or raw ObjectId)
+      const normalizedRoleId = (user.roleId && (user.roleId as any)._id)
+        ? (user.roleId as any)._id.toString()
+        : user.roleId.toString();
 
     // Fetch user permissions
     const permissions = await getUserPermissions(normalizedRoleId);
@@ -162,12 +160,10 @@ export const loginWithFirebase = async (firebaseUid: string): Promise<{ token: s
     throw error;
   }
 };
-
-/**
- * Register new user (typically by organization admin or platform)
- */
-export const registerUser = async (
-  name: string,
+    // Normalize roleId (handle populated roleId or raw ObjectId)
+    const normalizedRoleId = (user.roleId && (user.roleId as any)._id)
+      ? (user.roleId as any)._id.toString()
+      : user.roleId.toString();
   email: string,
   password: string,
   organizationId: string,

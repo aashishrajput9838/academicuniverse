@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/authContext'
 import { Navbar } from '@/components/Navbar'
 import { HeroSection } from '@/components/HeroSection'
 import { FeatureSections } from '@/components/FeatureSections'
@@ -8,6 +10,29 @@ import { Footer } from '@/components/Footer'
 
 export default function AcademicUniverseHome() {
   const scrollerRef = useRef<HTMLDivElement>(null)
+  const { user, loading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    // Redirect to login if not authenticated
+    if (!loading && !user) {
+      router.push('/login')
+    }
+  }, [user, loading, router])
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-400 border-opacity-50" />
+      </div>
+    )
+  }
+
+  // Don't render until user is authenticated
+  if (!user) {
+    return null
+  }
 
   useEffect(() => {
     const scroller = scrollerRef.current

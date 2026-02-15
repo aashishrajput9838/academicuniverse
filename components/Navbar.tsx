@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/lib/authContext'
+import { useRouter } from 'next/navigation'
 
 interface DropdownItem {
   label: string
@@ -53,6 +55,13 @@ const navItems: NavItem[] = [
 export function Navbar() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const { user, logout } = useAuth()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await logout()
+    router.push('/login')
+  }
 
   return (
     <nav className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-6 py-4 sticky top-0 z-50 shadow-lg">
@@ -134,18 +143,39 @@ export function Navbar() {
           </div>
 
           {/* Auth Buttons */}
-          <Link 
-            href="/login/faculty"
-            className="text-slate-300 font-medium px-4 py-2 rounded-lg border border-slate-600 hover:bg-slate-700 hover:border-slate-500 transition"
-          >
-            Faculty Login
-          </Link>
-          <Link 
-            href="/login/student"
-            className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold px-5 py-2 rounded-lg hover:from-emerald-600 hover:to-teal-700 transition shadow-lg shadow-emerald-500/25"
-          >
-            Student Login / Get Started
-          </Link>
+          {user ? (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-2 bg-slate-700/30 rounded-lg border border-slate-600">
+                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-sm font-bold">
+                  {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                </div>
+                <span className="text-slate-300 text-sm hidden sm:inline max-w-xs truncate">
+                  {user.displayName || user.email}
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="text-slate-300 font-medium px-4 py-2 rounded-lg border border-slate-600 hover:bg-red-500/10 hover:border-red-600 hover:text-red-400 transition"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <>
+              <Link 
+                href="/login"
+                className="text-slate-300 font-medium px-4 py-2 rounded-lg border border-slate-600 hover:bg-slate-700 hover:border-slate-500 transition"
+              >
+                Faculty Login
+              </Link>
+              <Link 
+                href="/login"
+                className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold px-5 py-2 rounded-lg hover:from-emerald-600 hover:to-teal-700 transition shadow-lg shadow-emerald-500/25"
+              >
+                Student Login / Get Started
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>

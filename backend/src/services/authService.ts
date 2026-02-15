@@ -160,10 +160,11 @@ export const loginWithFirebase = async (firebaseUid: string): Promise<{ token: s
     throw error;
   }
 };
-    // Normalize roleId (handle populated roleId or raw ObjectId)
-    const normalizedRoleId = (user.roleId && (user.roleId as any)._id)
-      ? (user.roleId as any)._id.toString()
-      : user.roleId.toString();
+/**
+ * Register new user (typically by organization admin or platform)
+ */
+export const registerUser = async (
+  name: string,
   email: string,
   password: string,
   organizationId: string,

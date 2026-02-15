@@ -62,11 +62,13 @@ const startServer = async () => {
     // Connect to MongoDB
     await connectDB();
 
-    // Start Express server
-    app.listen(PORT, () => {
-      console.log(`✓ Server running on port ${PORT}`);
-      console.log(`✓ Environment: ${process.env.NODE_ENV}`);
-    });
+        // Start Express server unless running tests (tests will use the app directly)
+        if (process.env.NODE_ENV !== 'test') {
+          app.listen(PORT, () => {
+            console.log(`✓ Server running on port ${PORT}`);
+            console.log(`✓ Environment: ${process.env.NODE_ENV}`);
+          });
+        }
   } catch (error) {
     console.error('✗ Server startup failed:', error);
     process.exit(1);

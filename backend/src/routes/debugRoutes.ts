@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getRolePermissions, getUserByEmail } from '../controllers/debugController';
+import { getRolePermissions, getUserByEmail, getRoleByName } from '../controllers/debugController';
 
 const router = Router();
 

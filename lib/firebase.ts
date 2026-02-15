@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB-3AiaySXOhTEaC0NWKr67-LntmXDK45Y",
@@ -15,6 +16,10 @@ export const firebaseApp = !getApps().length
   : getApp();
 
 export const isBrowser = typeof window !== "undefined";
+
+export function getFirebaseAuth() {
+  return getAuth(firebaseApp);
+}
 
 export async function safeGetAnalytics() {
   if (!isBrowser) return null;

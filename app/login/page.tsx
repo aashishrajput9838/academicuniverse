@@ -13,7 +13,7 @@ export default function LoginPage() {
 
   // Redirect if already logged in
   if (user && !authLoading) {
-    router.push('/dashboard/student');
+    router.push('/');
   }
 
   const handleGoogleSignIn = async () => {
@@ -21,7 +21,7 @@ export default function LoginPage() {
       setLoading(true);
       setError('');
       await signInWithGoogle();
-      router.push('/dashboard/student');
+      router.push('/');
     } catch (err) {
       setError('Failed to sign in with Google. Please try again.');
       console.error(err);
@@ -148,7 +148,7 @@ export default function LoginPage() {
               <p className="text-slate-400">
                 Don't have an account?{' '}
                 <Link
-                  href="/signup"
+                  href="/login"
                   className="text-emerald-400 hover:text-emerald-300 font-semibold transition"
                 >
                   Sign up

@@ -13,26 +13,13 @@ export default function AcademicUniverseHome() {
   const { user, loading } = useAuth()
   const router = useRouter()
 
+  // All hooks must be called unconditionally at the top level
   useEffect(() => {
     // Redirect to login if not authenticated
     if (!loading && !user) {
       router.push('/login')
     }
   }, [user, loading, router])
-
-  // Show loading state while checking authentication
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-400 border-opacity-50" />
-      </div>
-    )
-  }
-
-  // Don't render until user is authenticated
-  if (!user) {
-    return null
-  }
 
   useEffect(() => {
     const scroller = scrollerRef.current
@@ -48,6 +35,20 @@ export default function AcademicUniverseHome() {
       scrollerContent.appendChild(clone)
     })
   }, [])
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-400 border-opacity-50" />
+      </div>
+    )
+  }
+
+  // Don't render content until user is authenticated
+  if (!user) {
+    return null
+  }
 
   return (
     <div className="min-h-screen bg-slate-900">

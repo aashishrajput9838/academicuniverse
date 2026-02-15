@@ -12,6 +12,7 @@ export const getUserPermissions = async (roleId: string): Promise<string[]> => {
       .lean();
 
     if (!rolePermissions || rolePermissions.length === 0) {
+      console.log(`[authService] No rolePermissions found for roleId=${roleId}`);
       return [];
     }
 
@@ -19,6 +20,7 @@ export const getUserPermissions = async (roleId: string): Promise<string[]> => {
       .map(rp => (rp.permissionId as any)?.name)
       .filter(Boolean) as string[];
 
+    console.log(`[authService] Fetched permissions for roleId=${roleId}:`, permissions);
     return permissions;
   } catch (error) {
     console.error('Error fetching permissions:', error);

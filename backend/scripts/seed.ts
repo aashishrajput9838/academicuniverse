@@ -196,26 +196,27 @@ async function seed() {
           isSystem: roleConfig.isSystem,
         }))!;
         console.log(`✓ Created role: ${roleConfig.name}`);
-
-        // Assign permissions to role
-        const rolePermissions = roleConfig.permissions.map(permissionId => ({
-          roleId: role!._id,
-          permissionId,
-        }));
-
-        await RolePermission.insertMany(rolePermissions, {
-          ordered: false,
-        }).catch((error: any) => {
-          if (error.code === 11000) {
-            return null;
-          }
-          throw error;
-        });
-
-        console.log(`  ✓ Assigned ${roleConfig.permissions.length} permissions`);
       } else {
         console.log(`✓ Role already exists: ${roleConfig.name}`);
       }
+
+      // Always ensure permissions are assigned (whether role is new or existing)
+      const rolePermissions = roleConfig.permissions.map(permissionId => ({
+        roleId: role!._id,
+        permissionId,
+      }));
+
+      await RolePermission.insertMany(rolePermissions, {
+        ordered: false,
+      }).catch((error: any) => {
+        if (error.code === 11000) {
+          // Duplicate key error - permissions already exist
+          return null;
+        }
+        throw error;
+      });
+
+      console.log(`  ✓ Assigned ${roleConfig.permissions.length} permissions`);
     }
 
     // 4. Create Demo Users

@@ -29,3 +29,18 @@ export const getUserByEmail = async (req: Request, res: Response) => {
     return sendError(res, 500, 'Internal server error');
   }
 };
+
+export const getRoleByName = async (req: Request, res: Response) => {
+  try {
+    const { name } = req.params;
+    if (!name) return sendError(res, 400, 'name is required');
+
+    const role = await (await import('../models')).Role.findOne({ name }).lean();
+    if (!role) return sendError(res, 404, 'Role not found');
+
+    return sendResponse(res, 200, { role }, 'OK');
+  } catch (error: any) {
+    console.error('debugController.getRoleByName error:', error);
+    return sendError(res, 500, 'Internal server error');
+  }
+};

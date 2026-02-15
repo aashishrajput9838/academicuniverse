@@ -8,5 +8,7 @@ router.get('/role-permissions/:roleId', getRolePermissions);
 
 // GET /api/debug/user/:email
 router.get('/user/:email', getUserByEmail);
+// GET /api/debug/role/:name
+router.get('/role/:name', getRoleByName);
 
 export default router;

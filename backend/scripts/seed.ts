@@ -188,18 +188,18 @@ async function seed() {
       });
 
       if (!role) {
-        role = await Role.create({
+        role = (await Role.create({
           name: roleConfig.name,
           organizationId: organization._id,
           description: roleConfig.description,
           isSuperAdmin: roleConfig.isSuperAdmin,
           isSystem: roleConfig.isSystem,
-        });
+        }))!;
         console.log(`✓ Created role: ${roleConfig.name}`);
 
         // Assign permissions to role
         const rolePermissions = roleConfig.permissions.map(permissionId => ({
-          roleId: role._id,
+          roleId: role!._id,
           permissionId,
         }));
 

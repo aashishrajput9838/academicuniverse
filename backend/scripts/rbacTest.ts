@@ -24,7 +24,7 @@ const addMarks = async (token: string) => {
   const res = await fetch(`${BASE}/api/marks`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ studentId: 'student1', marks: 95 }),
+    body: JSON.stringify({ studentId: 'student1', subjectId: 'math101', term: '2025-fall', marks: 95 }),
   });
   const text = await res.text();
   return { status: res.status, body: text };

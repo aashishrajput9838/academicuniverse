@@ -1,6 +1,4 @@
-import jwt from 'jsonwebtoken';
-import { IUser } from '../models/User';
-import { Document } from 'mongoose';
+import jwt, { SignOptions } from 'jsonwebtoken';
 
 export interface JWTPayload {
   userId: string;
@@ -16,16 +14,17 @@ export interface AuthenticatedRequest {
   organizationId?: string;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET = (process.env.JWT_SECRET || 'your-secret-key-change-in-production') as string;
 const JWT_EXPIRY = process.env.JWT_EXPIRY || '7d';
 
 /**
  * Generate JWT token with user data and permissions
  */
 export const generateToken = (payload: JWTPayload): string => {
-  return jwt.sign(payload, JWT_SECRET, {
+  const options: SignOptions = {
     expiresIn: JWT_EXPIRY,
-  });
+  };
+  return jwt.sign(payload, JWT_SECRET, options);
 };
 
 /**

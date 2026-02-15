@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { sendResponse, sendError } from '../utils/response';
-import { AuthenticatedRequest } from '../utils/jwt';
 
 // In-memory marks storage (replace with MongoDB model in production)
 interface Mark {
@@ -22,7 +21,7 @@ let markIdCounter = 1;
  * POST /api/marks
  * Requires: ADD_MARKS permission
  */
-export const addMarksController = async (req: AuthenticatedRequest, res: Response) => {
+export const addMarksController = async (req: any, res: Response) => {
   try {
     const { studentId, subjectId, marks } = req.body;
 
@@ -62,7 +61,7 @@ export const addMarksController = async (req: AuthenticatedRequest, res: Respons
  * GET /api/marks/:studentId
  * Requires: VIEW_MARKS permission
  */
-export const getStudentMarksController = async (req: AuthenticatedRequest, res: Response) => {
+export const getStudentMarksController = async (req: any, res: Response) => {
   try {
     const { studentId } = req.params;
 
@@ -83,7 +82,7 @@ export const getStudentMarksController = async (req: AuthenticatedRequest, res: 
  * PUT /api/marks/:markId
  * Requires: EDIT_MARKS permission
  */
-export const updateMarksController = async (req: AuthenticatedRequest, res: Response) => {
+export const updateMarksController = async (req: any, res: Response) => {
   try {
     const { markId } = req.params;
     const { marks } = req.body;
@@ -113,7 +112,7 @@ export const updateMarksController = async (req: AuthenticatedRequest, res: Resp
  * DELETE /api/marks/:markId
  * Requires: DELETE_MARKS permission
  */
-export const deleteMarksController = async (req: AuthenticatedRequest, res: Response) => {
+export const deleteMarksController = async (req: any, res: Response) => {
   try {
     const { markId } = req.params;
 
@@ -137,7 +136,7 @@ export const deleteMarksController = async (req: AuthenticatedRequest, res: Resp
  * GET /api/marks
  * Requires: VIEW_ALL_MARKS permission
  */
-export const getAllMarksController = async (req: AuthenticatedRequest, res: Response) => {
+export const getAllMarksController = async (req: any, res: Response) => {
   try {
     // Fetch all marks for this organization
     const allMarks = marksDB.filter(m => m.organizationId === req.organizationId);

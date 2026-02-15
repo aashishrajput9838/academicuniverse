@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { loginController, firebaseLoginController, registerController, getMeController } from '../controllers/authController';
 import { authenticateUser } from '../middleware/auth';
 
@@ -26,6 +26,6 @@ router.post('/register', registerController);
 
 // GET /api/auth/me
 // Returns: Current user information from JWT
-router.get('/me', authenticateUser, getMeController);
+router.get('/me', (req: Request, res: Response, next: NextFunction) => authenticateUser(req as any, res, next), getMeController);
 
 export default router;

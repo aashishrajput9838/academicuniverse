@@ -242,28 +242,28 @@ async function seed() {
         email: 'superadmin@academicuniverse.com',
         password: 'SuperAdmin123',
         organizationId: organization._id,
-        roleId: superAdminRole?._id,
+        roleId: superAdminRole!._id,
       },
       {
         name: 'Admin User',
         email: 'admin@sharda.com',
         password: 'Admin123456',
         organizationId: organization._id,
-        roleId: adminRole?._id,
+        roleId: adminRole!._id,
       },
       {
         name: 'Dr. Jane Smith',
         email: 'jane.smith@sharda.com',
         password: 'Faculty123',
         organizationId: organization._id,
-        roleId: facultyRole?._id,
+        roleId: facultyRole!._id,
       },
       {
         name: 'John Doe',
         email: 'john.doe@sharda.com',
         password: 'Student123',
         organizationId: organization._id,
-        roleId: studentRole?._id,
+        roleId: studentRole!._id,
       },
     ];
 

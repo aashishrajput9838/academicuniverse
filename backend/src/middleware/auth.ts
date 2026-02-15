@@ -7,7 +7,7 @@ import { AuthenticationError, AuthorizationError } from '../utils/errors';
  * This must be called on all protected routes
  */
 export const authenticateUser = (
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ) => {
@@ -46,7 +46,7 @@ export const authenticateUser = (
  * Usage: router.post('/marks', authorize('ADD_MARKS'), controller)
  */
 export const authorize = (...requiredPermissions: string[]) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return (req: any, res: Response, next: NextFunction) => {
     try {
       if (!req.user) {
         throw new AuthenticationError('User not authenticated');
@@ -91,7 +91,7 @@ export const authorize = (...requiredPermissions: string[]) => {
  * Automatically filters queries by organizationId
  */
 export const enforceOrgIsolation = (
-  req: AuthenticatedRequest,
+  req: any,
   res: Response,
   next: NextFunction
 ) => {

@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      setLoading(true); // Set loading to true when auth state changes
       
       // If user is authenticated and we haven't exchanged the token yet,
       // try to exchange the Firebase token for a backend JWT token
@@ -47,13 +48,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const idToken = await currentUser.getIdToken();
           
           // Send the Firebase ID token to our backend to exchange for a JWT token
-          const response = await fetch('/api/auth/firebase-login', {
+          const response = await fetch('http://localhost:5000/api/auth/firebase-login', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ idToken }),
           });
+          
+          // Check if response is actually HTML (error page)
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('text/html')) {
+            console.error('Backend server is not running or route not found');
+            setLoading(false);
+            return;
+          }
           
           if (response.ok) {
             const data = await response.json();
@@ -64,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Update the backend user state
             setBackendUser(data.data.user);
           } else {
-            const errorData = await response.json();
+            const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
             console.error('Failed to authenticate with backend:', errorData.message);
             // If the backend rejected the token (e.g., unauthorized email), clear the Firebase auth
             if (response.status === 401) {
@@ -74,27 +83,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } catch (error) {
           console.error('Error exchanging Firebase token for backend token:', error);
+        } finally {
+          setLoading(false); // Always set loading to false after attempt
         }
       } else if (currentUser && localStorage.getItem('authToken')) {
-        // If user is authenticated and we already have a stored token, try to get user info from backend
+        // If user is authenticated and we already have a stored token
         try {
-          // We can get user info from the stored token
-          const token = localStorage.getItem('authToken');
-          if (token) {
-            // For now, we'll just decode the token to get user info, but ideally we'd call an API
-            // Let's just set a temporary user based on Firebase user until we get backend user info
-            // This will be updated when the page refreshes or when we make an API call
-          }
+          // For now, we'll just set a basic backend user object
+          // In a real app, you'd make an API call to get the full user info
+          setBackendUser({
+            id: currentUser.uid,
+            name: currentUser.displayName || 'User',
+            email: currentUser.email || '',
+            role: 'STUDENT', // Default role, would be fetched from backend
+            organization: 'default',
+            permissions: []
+          });
         } catch (error) {
-          console.error('Error getting user info from stored token:', error);
+          console.error('Error setting backend user:', error);
+        } finally {
+          setLoading(false);
         }
       } else if (!currentUser) {
         // If user is not authenticated, clear the stored token
         localStorage.removeItem('authToken');
         setBackendUser(null);
+        setLoading(false);
+      } else {
+        setLoading(false); // Fallback to ensure loading is false
       }
-      
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -113,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const idToken = await result.user.getIdToken();
       
       // Send the Firebase ID token to our backend to exchange for a JWT token
-      const response = await fetch('/api/auth/firebase-login', {
+      const response = await fetch('http://localhost:5000/api/auth/firebase-login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -121,8 +138,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ idToken }),
       });
       
+      // Check if response is actually HTML (error page)
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('text/html')) {
+        throw new Error('Backend server is not running or route not found. Please start the backend server.');
+      }
+      
       if (!response.ok) {
-        const errorData = await response.json();
+        // Try to parse error response as JSON
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          // If we can't parse as JSON, get text content
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
         throw new Error(errorData.message || 'Failed to authenticate with backend');
       }
       

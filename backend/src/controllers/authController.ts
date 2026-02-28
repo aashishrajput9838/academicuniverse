@@ -28,13 +28,13 @@ export const loginController = async (req: Request, res: Response) => {
  */
 export const firebaseLoginController = async (req: Request, res: Response) => {
   try {
-    const { firebaseUid } = req.body;
+    const { idToken } = req.body;
 
-    if (!firebaseUid) {
-      return sendError(res, 400, 'Firebase UID is required');
+    if (!idToken) {
+      return sendError(res, 400, 'Firebase ID token is required');
     }
 
-    const result = await loginWithFirebase(firebaseUid);
+    const result = await loginWithFirebase(idToken);
     return sendResponse(res, 200, result, 'Firebase login successful');
   } catch (error: any) {
     console.error('Firebase login error:', error);

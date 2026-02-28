@@ -166,11 +166,19 @@ curl -X POST http://localhost:5000/api/auth/login \
 
 **Endpoint:** `POST /api/auth/firebase-login`
 
+The system now features automatic role detection based on institutional email domains:
+- `@ug.sharda.ac.in` → **STUDENT** role
+- `@fa.sharda.ac.in` → **FACULTY** role  
+- `@pg.sharda.ac.in` → **STUDENT** role
+- Other domains → **Access Denied**
+
+Roles are permanently assigned based on email domain and cannot be manually edited.
+
 ```bash
 curl -X POST http://localhost:5000/api/auth/firebase-login \
   -H "Content-Type: application/json" \
   -d '{
-    "firebaseUid": "firebase_uid_from_google_sign_in"
+    "idToken": "firebase_id_token_from_client"
   }'
 ```
 

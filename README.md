@@ -14,6 +14,17 @@
 
 </div>
 
+## 🌟 New: Automatic Role Detection
+
+Academic Universe now features **automatic role detection** based on institutional email domains:
+
+- `@ug.sharda.ac.in` → **STUDENT** role (permissions: `VIEW_DASHBOARD`, `VIEW_OWN_MARKS`)
+- `@fa.sharda.ac.in` → **FACULTY** role (permissions: `VIEW_DASHBOARD`, `ADD_MARKS`, `VIEW_ALL_MARKS`, `EDIT_MARKS`)
+- `@pg.sharda.ac.in` → **STUDENT** role (permissions: `VIEW_DASHBOARD`, `VIEW_OWN_MARKS`)
+- Other domains → **Access Denied**
+
+Roles are permanently assigned based on email domain and cannot be manually edited. The system uses Firebase Admin SDK to verify tokens and assign roles based on email domains server-side.
+
 ## 🌟 Overview
 
 Academic Universe is a revolutionary educational platform that transforms traditional academic evaluation by incorporating holistic student development tracking. Our AI-powered ecosystem goes beyond conventional metrics like grades and attendance, focusing on comprehensive growth through IQ/EQ assessments, verified credentials, and personalized AI support systems.
@@ -118,6 +129,11 @@ npm install
 yarn install
 # or
 pnpm install
+```
+
+4. **Install Firebase Admin SDK for role detection**
+```bash
+npm install firebase-admin
 ```
 
 4. **Setup environment variables**

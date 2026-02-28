@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/authContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -10,18 +10,17 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const hasRedirected = useRef(false);
 
-  // Redirect if already logged in
-  if (user && !authLoading) {
-    router.push('/');
-  }
-
+  const [postLoginRedirect, setPostLoginRedirect] = useState(false);
+  
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
       setError('');
       await signInWithGoogle();
-      router.push('/');
+      // Set a flag to trigger redirect after successful login
+      setPostLoginRedirect(true);
     } catch (err) {
       setError('Failed to sign in with Google. Please try again.');
       console.error(err);
@@ -29,6 +28,30 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  // Handle redirect after successful login or if already logged in
+  useEffect(() => {
+    if ((user && !authLoading) || postLoginRedirect) {
+      // Wait a brief moment to ensure auth state is settled before redirecting
+      const timer = setTimeout(() => {
+        router.push('/');
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [user, authLoading, postLoginRedirect, router]);
+  
+  // Show redirecting message when redirect is triggered
+  if ((user && !authLoading) || postLoginRedirect) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-400 border-opacity-50 mx-auto mb-4" />
+          <p className="text-white">Redirecting to dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (authLoading) {
     return (

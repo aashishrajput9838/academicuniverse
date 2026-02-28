@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JWTPayload, AuthenticatedRequest } from '../utils/jwt';
 import { AuthenticationError, AuthorizationError } from '../utils/errors';
+import { firebaseAuth } from '../config/firebaseAdmin';
 
 /**
  * Middleware: Verify JWT token and attach user to request
@@ -143,4 +144,56 @@ const extractToken = (req: any): string | null => {
   }
 
   return parts[1];
+};
+
+/**
+ * Middleware: Verify Firebase ID token and attach user to request
+ * This is specifically for Firebase-authenticated users
+ */
+export const authenticateFirebaseUser = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const token = extractToken(req);
+
+    if (!token) {
+      throw new AuthenticationError('No Firebase token provided. Please log in.');
+    }
+
+    // Verify Firebase ID token
+    const decoded = await firebaseAuth.verifyIdToken(token);
+    
+    // Extract user information from Firebase token
+    const { uid, email } = decoded;
+    
+    // Attach user data to request object
+    req.firebaseUser = {
+      firebaseUid: uid,
+      email,
+      // Additional Firebase claims if any
+      ...decoded
+    };
+    
+    // We still need to verify if this user exists in our database
+    // This would typically involve looking up the user by firebaseUid
+    // For now, we'll just attach the Firebase user info
+    // In a real implementation, you'd probably want to check if the user exists in your MongoDB
+    
+    next();
+  } catch (error: any) {
+    if (error instanceof AuthenticationError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid Firebase token or authentication failed',
+      error: error.message,
+    });
+  }
 };

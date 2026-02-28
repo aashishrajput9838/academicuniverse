@@ -32,6 +32,7 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        working-directory: backend
 
       - name: Wait for MongoDB
         run: |
@@ -43,6 +44,7 @@ jobs:
 
       - name: Run DB seed
         run: npm run seed
+        working-directory: backend
 
       - name: Start backend (dev)
         run: |
@@ -51,6 +53,8 @@ jobs:
             curl -sS http://localhost:5000/health && break || echo "waiting...";
             sleep 1
           done
+        working-directory: backend
 
-      - name: Run RBAC integration test
-        run: npx ts-node -r tsconfig-paths/register scripts/rbacTest.ts
+      - name: Run RBAC integration tests (Jest)
+        run: npm test --silent
+        working-directory: backend

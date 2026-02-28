@@ -16,52 +16,109 @@ interface NavItem {
   dropdown?: DropdownItem[]
 }
 
-const navItems: NavItem[] = [
-  {
-    label: 'Dashboard',
-    dropdown: [
-      { label: 'Student View', href: '/dashboard/student' },
-      { label: 'Faculty View', href: '/dashboard/faculty' },
-    ]
-  },
-  {
-    label: 'Growth Hub',
-    dropdown: [
-      { label: 'IQ/EQ Trends', href: '/growth/trends' },
-      { label: 'Growth Degradation Analysis', href: '/growth/analysis' },
-    ]
-  },
-  {
-    label: 'Career & Verified Profile',
-    dropdown: [
-      { label: 'Centralized Presence', href: '/career/profile' },
-      { label: 'Certifications', href: '/career/certifications' },
-    ]
-  },
-  {
-    label: 'AI Chatbot',
-    href: '/chatbot',
-  },
-  {
-    label: 'Research Wing',
-    href: '/research',
-  },
-  {
-    label: 'Code Arena',
-    href: '/code-arena',
-  },
-]
-
 export function Navbar() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const { user, logout } = useAuth()
+  const { user, backendUser, logout } = useAuth()
   const router = useRouter()
 
   const handleLogout = async () => {
     await logout()
     router.push('/login')
   }
+
+  // Dynamically create nav items based on user role
+  const getNavItems = (): NavItem[] => {
+    const baseItems: NavItem[] = [
+      {
+        label: 'Growth Hub',
+        dropdown: [
+          { label: 'IQ/EQ Trends', href: '/growth/trends' },
+          { label: 'Growth Degradation Analysis', href: '/growth/analysis' },
+        ]
+      },
+      {
+        label: 'Career & Verified Profile',
+        dropdown: [
+          { label: 'Centralized Presence', href: '/career/profile' },
+          { label: 'Certifications', href: '/career/certifications' },
+        ]
+      },
+      {
+        label: 'AI Chatbot',
+        href: '/chatbot',
+      },
+      {
+        label: 'Research Wing',
+        href: '/research',
+      },
+      {
+        label: 'Code Arena',
+        href: '/code-arena',
+      },
+    ];
+
+    // Add dashboard item based on user role
+    if (backendUser && backendUser.role) {
+      if (backendUser.role === 'FACULTY') {
+        baseItems.unshift({
+          label: 'Dashboard',
+          dropdown: [
+            { label: 'Faculty View', href: '/dashboard/faculty' },
+          ]
+        });
+      } else {
+        // For STUDENT or other roles
+        baseItems.unshift({
+          label: 'Dashboard',
+          dropdown: [
+            { label: 'Student View', href: '/dashboard/student' },
+          ]
+        });
+      }
+    } else if (user) {
+      // If Firebase user exists but backend user is not yet loaded, show a loading state or a single option based on email
+      // For now, we'll try to infer from the Firebase user's email
+      const userEmail = user.email;
+      if (userEmail && (userEmail.includes('@ug.sharda.ac.in') || userEmail.includes('@pg.sharda.ac.in'))) {
+        baseItems.unshift({
+          label: 'Dashboard',
+          dropdown: [
+            { label: 'Student View', href: '/dashboard/student' },
+          ]
+        });
+      } else if (userEmail && userEmail.includes('@fa.sharda.ac.in')) {
+        baseItems.unshift({
+          label: 'Dashboard',
+          dropdown: [
+            { label: 'Faculty View', href: '/dashboard/faculty' },
+          ]
+        });
+      } else {
+        // If user exists but doesn't match known patterns, show both as fallback
+        baseItems.unshift({
+          label: 'Dashboard',
+          dropdown: [
+            { label: 'Student View', href: '/dashboard/student' },
+            { label: 'Faculty View', href: '/dashboard/faculty' },
+          ]
+        });
+      }
+    } else {
+      // If user is not authenticated, show both (fallback)
+      baseItems.unshift({
+        label: 'Dashboard',
+        dropdown: [
+          { label: 'Student View', href: '/dashboard/student' },
+          { label: 'Faculty View', href: '/dashboard/faculty' },
+        ]
+      });
+    }
+
+    return baseItems;
+  };
+
+  const navItems = getNavItems();
 
   return (
     <nav className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-6 py-4 sticky top-0 z-50 shadow-lg">

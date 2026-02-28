@@ -139,7 +139,6 @@ export function Navbar() {
               key={item.label}
               className="relative"
               onMouseEnter={() => item.dropdown && setActiveDropdown(item.label)}
-              onMouseLeave={() => setActiveDropdown(null)}
             >
               {item.dropdown ? (
                 <button className="text-slate-200 font-medium px-4 py-2 rounded-lg hover:bg-slate-700/50 transition flex items-center gap-1">
@@ -164,7 +163,11 @@ export function Navbar() {
 
               {/* Dropdown Menu */}
               {item.dropdown && activeDropdown === item.label && (
-                <div className="absolute top-full left-0 mt-1 w-56 bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden">
+                <div 
+                  className="absolute top-full left-0 mt-1 w-56 bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden"
+                  onMouseEnter={() => setActiveDropdown(item.label)}
+                  onMouseLeave={() => setActiveDropdown(null)}
+                >
                   {item.dropdown.map((subItem) => (
                     <Link
                       key={subItem.label}

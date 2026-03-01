@@ -46,3 +46,17 @@ export class ConflictError extends AppError {
     Object.setPrototypeOf(this, ConflictError.prototype);
   }
 }
+
+export class ConfigurationError extends AppError {
+  constructor(message: string) {
+    super(message, 500);
+    Object.setPrototypeOf(this, ConfigurationError.prototype);
+  }
+}
+
+export class ExternalAPIError extends AppError {
+  constructor(message: string) {
+    super(message, 502);
+    Object.setPrototypeOf(this, ExternalAPIError.prototype);
+  }
+}

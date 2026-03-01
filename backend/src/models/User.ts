@@ -9,6 +9,7 @@ export interface IUser extends Document {
   firebaseUid?: string;
   organizationId: mongoose.Types.ObjectId;
   roleId: mongoose.Types.ObjectId;
+  githubUsername?: string;
   isActive: boolean;
   lastLogin?: Date;
   createdAt: Date;
@@ -53,6 +54,12 @@ const userSchema = new Schema<IUser>(
       ref: 'Role',
       required: [true, 'Role ID is required'],
       index: true,
+    },
+    githubUsername: {
+      type: String,
+      trim: true,
+      sparse: true,
+      match: [/^[a-zA-Z0-9_-]+$/, 'Please provide a valid GitHub username'],
     },
     isActive: {
       type: Boolean,

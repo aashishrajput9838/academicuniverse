@@ -2,11 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDB } from './config';
-import routes from './routes';
 import { errorHandler, notFoundHandler } from './middleware';
 
-// Load environment variables
+// Load environment variables FIRST, before any other imports that might depend on them
 dotenv.config();
+
+// Import routes after environment is loaded
+import routes from './routes';
 
 const app = express();
 

@@ -1,8 +1,10 @@
 import express from 'express';
 import cors from 'cors';
+import session from 'express-session';
 import dotenv from 'dotenv';
 import { connectDB } from './config';
 import { errorHandler, notFoundHandler } from './middleware';
+import schedulerService from './services/schedulerService';
 
 // Load environment variables FIRST, before any other imports that might depend on them
 dotenv.config();
@@ -24,6 +26,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   credentials: true,
+}));
+
+// Session middleware
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'fallback_session_secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
 }));
 
 // Request logging (basic)
@@ -69,6 +82,10 @@ const startServer = async () => {
           app.listen(PORT, () => {
             console.log(`✓ Server running on port ${PORT}`);
             console.log(`✓ Environment: ${process.env.NODE_ENV}`);
+            
+            // Start the scheduler service after server is running
+            schedulerService.start();
+            console.log('✓ Scheduler service started');
           });
         }
   } catch (error) {

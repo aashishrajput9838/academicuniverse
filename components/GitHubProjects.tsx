@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
 import { apiRequest } from '@/utils/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProjectStats {
   totalProjects: number;
@@ -10,15 +11,57 @@ interface ProjectStats {
   lastUpdated: string;
 }
 
+interface DeveloperStats {
+  totalRepos: number;
+  totalPrivateRepos: number;
+  totalPublicRepos: number;
+  topLanguage: string | null;
+  languageDistribution: Record<string, number>;
+  totalCommits: number;
+  lastActiveDate: string | null;
+  repoGrowthTrend: number;
+  avgRepoSize: number;
+  totalStars: number;
+  totalForks: number;
+  totalWatchers: number;
+  primaryLanguageRepos: number;
+  updated_at: string;
+}
+
 interface GitHubProjectsProps {
   className?: string;
 }
 
 const GitHubProjects: React.FC<GitHubProjectsProps> = ({ className = '' }) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [stats, setStats] = useState<ProjectStats | null>(null);
+  const [developerStats, setDeveloperStats] = useState<DeveloperStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [showConfig, setShowConfig] = useState<boolean>(false);
+
+  // Listen for GitHub OAuth messages
+  useEffect(() => {
+    const handleOAuthMessage = (event: MessageEvent) => {
+      if (event.data.type === 'GITHUB_CONNECTED') {
+        toast({
+          title: "Success",
+          description: event.data.message || "GitHub account connected successfully!",
+        });
+        fetchProjectStats();
+      } else if (event.data.type === 'GITHUB_CONNECT_ERROR') {
+        toast({
+          title: "Error",
+          description: event.data.error || "Failed to connect GitHub account",
+          variant: "destructive",
+        });
+      }
+    };
+
+    window.addEventListener('message', handleOAuthMessage);
+    return () => window.removeEventListener('message', handleOAuthMessage);
+  }, [toast]);
 
   useEffect(() => {
     if (user) {
@@ -38,6 +81,20 @@ const GitHubProjects: React.FC<GitHubProjectsProps> = ({ className = '' }) => {
         throw new Error('Authentication required');
       }
 
+      // Try to fetch the new analytics first
+      try {
+        const devData = await apiRequest('/api/github/stats', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        setDeveloperStats(devData.data);
+      } catch (analyticsErr) {
+        console.warn('Failed to fetch developer stats:', analyticsErr);
+      }
+
+      // Also fetch the legacy project stats
       const data = await apiRequest('/api/github/projects', {
         method: 'GET',
         headers: {
@@ -78,6 +135,88 @@ const GitHubProjects: React.FC<GitHubProjectsProps> = ({ className = '' }) => {
       setError(err.message || 'Failed to refresh project statistics');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConnectGitHubOAuth = async () => {
+    try {
+      // Get Firebase ID token
+      const token = await user?.getIdToken();
+      
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      // Open GitHub OAuth in a popup
+      const popup = window.open(
+        '/api/github/connect',
+        'github-oauth',
+        'width=600,height=700,scrollbars=yes,resizable=yes'
+      );
+
+      if (!popup) {
+        throw new Error('Popup blocked. Please allow popups for this site.');
+      }
+
+      // Monitor the popup for messages
+      const handleMessage = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        
+        if (event.data.type === 'GITHUB_CONNECTED') {
+          toast({
+            title: "Success",
+            description: event.data.message || "GitHub account connected successfully!",
+          });
+          fetchProjectStats();
+          window.removeEventListener('message', handleMessage);
+        } else if (event.data.type === 'GITHUB_CONNECT_ERROR') {
+          toast({
+            title: "Error",
+            description: event.data.error || "Failed to connect GitHub account",
+            variant: "destructive",
+          });
+          window.removeEventListener('message', handleMessage);
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to initiate GitHub OAuth",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDisconnectGitHub = async () => {
+    try {
+      const token = await user?.getIdToken();
+      
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      await apiRequest('/api/github/disconnect', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      setDeveloperStats(null);
+      setStats(null);
+      
+      toast({
+        title: "Success",
+        description: "GitHub account disconnected successfully",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to disconnect GitHub account",
+        variant: "destructive",
+      });
     }
   };
 
@@ -163,31 +302,54 @@ const GitHubProjects: React.FC<GitHubProjectsProps> = ({ className = '' }) => {
         <div className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700 ${className}`}>
           <div className="text-center">
             <div className="text-amber-400 text-xl mb-2">⚠️</div>
-            <h3 className="text-lg font-semibold text-white mb-2">GitHub Username Not Configured</h3>
-            <p className="text-slate-300 mb-4">Please enter your GitHub username to connect your projects.</p>
+            <h3 className="text-lg font-semibold text-white mb-2">GitHub Connection Required</h3>
+            <p className="text-slate-300 mb-4">Connect your GitHub account to view your project statistics.</p>
             
             <div className="flex flex-col items-center space-y-4">
-              <input
-                type="text"
-                placeholder="Enter your GitHub username"
-                className="px-4 py-2 bg-slate-700 text-white rounded-lg w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSetGitHubUsername((e.target as HTMLInputElement).value);
-                  }
-                }}
-              />
-              <button
-                onClick={() => {
-                  const input = document.querySelector<HTMLInputElement>('input[type="text"]');
-                  if (input && input.value.trim()) {
-                    handleSetGitHubUsername(input.value.trim());
-                  }
-                }}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition"
-              >
-                Connect GitHub
-              </button>
+              <div className="w-full max-w-md">
+                <h4 className="font-medium text-white mb-2">Option 1: Enter GitHub Username</h4>
+                <input
+                  type="text"
+                  placeholder="Enter your GitHub username"
+                  className="px-4 py-2 bg-slate-700 text-white rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSetGitHubUsername((e.target as HTMLInputElement).value);
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    const input = document.querySelector<HTMLInputElement>('input[type="text"]');
+                    if (input && input.value.trim()) {
+                      handleSetGitHubUsername(input.value.trim());
+                    }
+                  }}
+                  className="mt-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition w-full"
+                >
+                  Save Username
+                </button>
+                
+                <div className="my-4 flex items-center">
+                  <div className="flex-grow border-t border-slate-600"></div>
+                  <span className="mx-4 text-slate-400">OR</span>
+                  <div className="flex-grow border-t border-slate-600"></div>
+                </div>
+                
+                <h4 className="font-medium text-white mb-2">Option 2: Connect with GitHub OAuth</h4>
+                <p className="text-sm text-slate-400 mb-3">
+                  Connect securely with OAuth to access detailed analytics
+                </p>
+                <button
+                  onClick={handleConnectGitHubOAuth}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition w-full"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                  </svg>
+                  Connect with GitHub
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -199,19 +361,30 @@ const GitHubProjects: React.FC<GitHubProjectsProps> = ({ className = '' }) => {
             <div className="text-red-400 text-xl mb-2">⚠️</div>
             <h3 className="text-lg font-semibold text-white mb-2">Unable to Load Projects</h3>
             <p className="text-slate-300 mb-4">{error}</p>
-            <button
-              onClick={fetchProjectStats}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition"
-            >
-              Try Again
-            </button>
+            <div className="flex justify-center gap-2">
+              <button
+                onClick={fetchProjectStats}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition"
+              >
+                Try Again
+              </button>
+              <button
+                onClick={handleConnectGitHubOAuth}
+                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                Connect GitHub
+              </button>
+            </div>
           </div>
         </div>
       );
     }
   }
 
-  if (!stats) {
+  if (!stats && !developerStats) {
     return (
       <div className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700 ${className}`}>
         <div className="text-center text-slate-400">
@@ -226,6 +399,14 @@ const GitHubProjects: React.FC<GitHubProjectsProps> = ({ className = '' }) => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-white">GitHub Projects</h2>
         <div className="flex gap-2">
+          {developerStats && (
+            <button
+              onClick={handleDisconnectGitHub}
+              className="px-3 py-1 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition"
+            >
+              Disconnect
+            </button>
+          )}
           <button
             onClick={refreshStats}
             disabled={loading}
@@ -236,47 +417,101 @@ const GitHubProjects: React.FC<GitHubProjectsProps> = ({ className = '' }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        {/* Total Projects */}
-        <div className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 rounded-xl p-4 border border-slate-600">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-blue-400">📁</span>
-            <h3 className="font-medium text-slate-300">Total Projects</h3>
+      {/* Enhanced developer stats if available */}
+      {developerStats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          {/* Total Repos */}
+          <div className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 rounded-xl p-4 border border-slate-600">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-blue-400">📁</span>
+              <h3 className="font-medium text-slate-300">Total Repos</h3>
+            </div>
+            <div className="text-3xl font-bold text-blue-400">
+              {developerStats.totalRepos}
+            </div>
           </div>
-          <div className="text-3xl font-bold text-blue-400">
-            {stats.totalProjects}
-          </div>
-        </div>
 
-        {/* Projects Completed */}
-        <div className="bg-gradient-to-br from-emerald-700/30 to-emerald-800/30 rounded-xl p-4 border border-emerald-600/50">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-emerald-400">✅</span>
-            <h3 className="font-medium text-slate-300">Completed</h3>
+          {/* Private Repos */}
+          <div className="bg-gradient-to-br from-purple-700/30 to-purple-800/30 rounded-xl p-4 border border-purple-600/50">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-purple-400">🔒</span>
+              <h3 className="font-medium text-slate-300">Private</h3>
+            </div>
+            <div className="text-3xl font-bold text-purple-400">
+              {developerStats.totalPrivateRepos}
+            </div>
           </div>
-          <div className="text-3xl font-bold text-emerald-400">
-            {stats.projectsCompleted}
-          </div>
-        </div>
 
-        {/* Projects Ongoing */}
-        <div className="bg-gradient-to-br from-amber-700/30 to-amber-800/30 rounded-xl p-4 border border-amber-600/50">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-amber-400">⚡</span>
-            <h3 className="font-medium text-slate-300">Ongoing</h3>
+          {/* Top Language */}
+          <div className="bg-gradient-to-br from-emerald-700/30 to-emerald-800/30 rounded-xl p-4 border border-emerald-600/50">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-emerald-400">💻</span>
+              <h3 className="font-medium text-slate-300">Top Language</h3>
+            </div>
+            <div className="text-3xl font-bold text-emerald-400">
+              {developerStats.topLanguage || 'N/A'}
+            </div>
           </div>
-          <div className="text-3xl font-bold text-amber-400">
-            {stats.projectsOngoing}
+
+          {/* Total Stars */}
+          <div className="bg-gradient-to-br from-yellow-700/30 to-yellow-800/30 rounded-xl p-4 border border-yellow-600/50">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-yellow-400">⭐</span>
+              <h3 className="font-medium text-slate-300">Stars</h3>
+            </div>
+            <div className="text-3xl font-bold text-yellow-400">
+              {developerStats.totalStars}
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Legacy stats if available */}
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          {/* Total Projects */}
+          <div className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 rounded-xl p-4 border border-slate-600">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-blue-400">📁</span>
+              <h3 className="font-medium text-slate-300">Total Projects</h3>
+            </div>
+            <div className="text-3xl font-bold text-blue-400">
+              {stats.totalProjects}
+            </div>
+          </div>
+
+          {/* Projects Completed */}
+          <div className="bg-gradient-to-br from-emerald-700/30 to-emerald-800/30 rounded-xl p-4 border border-emerald-600/50">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-emerald-400">✅</span>
+              <h3 className="font-medium text-slate-300">Completed</h3>
+            </div>
+            <div className="text-3xl font-bold text-emerald-400">
+              {stats.projectsCompleted}
+            </div>
+          </div>
+
+          {/* Projects Ongoing */}
+          <div className="bg-gradient-to-br from-amber-700/30 to-amber-800/30 rounded-xl p-4 border border-amber-600/50">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-amber-400">⚡</span>
+              <h3 className="font-medium text-slate-300">Ongoing</h3>
+            </div>
+            <div className="text-3xl font-bold text-amber-400">
+              {stats.projectsOngoing}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="text-sm text-slate-400 flex justify-between items-center">
         <div>
-          GitHub: <span className="text-emerald-400 font-medium">@{stats.githubUsername}</span>
+          GitHub: <span className="text-emerald-400 font-medium">@{stats?.githubUsername || 'N/A'}</span>
         </div>
         <div>
-          Last updated: {new Date(stats.lastUpdated).toLocaleTimeString()}
+          {stats && `Last updated: ${new Date(stats.lastUpdated).toLocaleTimeString()}`}
+          {developerStats && stats && ' | '}
+          {developerStats && `Analytics updated: ${new Date(developerStats.updated_at).toLocaleTimeString()}`}
         </div>
       </div>
     </div>

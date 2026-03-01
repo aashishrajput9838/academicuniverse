@@ -1,6 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+export interface IGithubAccessToken {
+  encryptedToken: string;
+  iv: string;
+  updatedAt: Date;
+}
+
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   name: string;
@@ -10,6 +16,7 @@ export interface IUser extends Document {
   organizationId: mongoose.Types.ObjectId;
   roleId: mongoose.Types.ObjectId;
   githubUsername?: string;
+  githubAccessToken?: IGithubAccessToken;
   isActive: boolean;
   lastLogin?: Date;
   createdAt: Date;
@@ -60,6 +67,11 @@ const userSchema = new Schema<IUser>(
       trim: true,
       sparse: true,
       match: [/^[a-zA-Z0-9_-]+$/, 'Please provide a valid GitHub username'],
+    },
+    githubAccessToken: {
+      encryptedToken: String,
+      iv: String,
+      updatedAt: Date,
     },
     isActive: {
       type: Boolean,

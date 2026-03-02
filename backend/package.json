@@ -8,6 +8,8 @@
     "build": "tsc",
     "start": "node dist/src/index.js",
     "seed": "ts-node -r tsconfig-paths/register scripts/seed.ts",
+    "populate-overlap": "ts-node -r tsconfig-paths/register scripts/populateOverlapData.ts",
+    "test-firestore": "ts-node -r tsconfig-paths/register scripts/testFirestoreConnection.ts",
     "test": "jest --runInBand",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts"

@@ -68,7 +68,33 @@ export const getMeController = async (req: any, res: Response) => {
       return sendError(res, 401, 'Not authenticated');
     }
 
-    return sendResponse(res, 200, req.user, 'User data retrieved');
+    // Import models inside the function to avoid circular dependencies
+    const { default: User } = await import('../models/User');
+    const { default: Role } = await import('../models/Role');
+    const { default: Organization } = await import('../models/Organization');
+
+    // Get the user from the database to get full details
+    const user = await User.findById(req.user.userId)
+      .populate('roleId')
+      .populate('organizationId')
+      .select('-password'); // Don't return password
+
+    if (!user) {
+      return sendError(res, 404, 'User not found');
+    }
+
+    // Format the response to match frontend expectations
+    const userData = {
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      organization: (user.organizationId as any).name,
+      role: (user.roleId as any).name,
+      permissions: req.user.permissions,
+      isSuperAdmin: req.user.isSuperAdmin
+    };
+
+    return sendResponse(res, 200, userData, 'User data retrieved');
   } catch (error: any) {
     console.error('Get user error:', error);
     return sendError(res, 500, 'Failed to fetch user data');

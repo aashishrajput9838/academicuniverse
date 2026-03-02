@@ -1,32 +1,21 @@
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
+import path from 'path';
+import fs from 'fs';
 
 let firebaseAuthInstance: any = null;
 let firebaseFirestoreInstance: any = null;
 
 // Initialize Firebase Admin SDK safely
 try {
-  // Check if we have service account credentials in environment variables
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.FIREBASE_SERVICE_ACCOUNT) {
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}')),
-      });
-    }
-  } else if (process.env.FIREBASE_PROJECT_ID) {
-    // Initialize with just the project ID if available
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-      });
-    }
-  } else {
-    // For development, we can initialize with just a project ID
-    // This avoids the need for service account credentials in development
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        projectId: 'academicuniverse', // Use the project ID from the frontend config
-      });
-    }
+  // Read the service account key directly for real data implementation
+  const serviceAccountPath = path.join(__dirname, '../../../serviceAccountKey.json.json');
+  const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      projectId: process.env.FIREBASE_PROJECT_ID,
+    });
   }
   
   firebaseAuthInstance = admin.auth();
@@ -57,6 +46,7 @@ try {
           name: process.env.DEMO_USER_NAME || 'Demo User',
           exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
           iat: Math.floor(Date.now() / 1000),
+          organizationId: process.env.DEMO_ORGANIZATION_ID || 'demo-org-123',
         };
       } catch (err) {
         console.error('Token verification error:', err);
@@ -67,9 +57,19 @@ try {
   
   // Mock Firestore instance
   firebaseFirestoreInstance = {
-    collection: () => ({
-      doc: () => ({
-        get: () => Promise.resolve({ exists: false, data: () => ({}) }),
+    collection: (collectionName: string) => ({
+      where: (field: string, operator: string, value: any) => ({
+        get: async () => {
+          return {
+            empty: false,
+            size: 0,
+            docs: [],
+            forEach: (callback: (doc: any) => void) => {},
+          };
+        },
+      }),
+      doc: (docId: string) => ({
+        get: async () => ({ exists: false, data: () => ({}) }),
         set: () => Promise.resolve(),
       }),
     }),

@@ -1,0 +1,267 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/lib/authContext'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Plus, Edit, Trash2, Users } from 'lucide-react'
+
+export default function AdminSectionsPage() {
+  const { backendUser, loading } = useAuth()
+  const router = useRouter()
+  const [sections, setSections] = useState<any[]>([])
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [editingSection, setEditingSection] = useState<any>(null)
+  const [formData, setFormData] = useState({
+    sectionName: '',
+    courseId: '',
+    capacity: '',
+    instructor: ''
+  })
+
+  // Check if user is admin
+  useEffect(() => {
+    if (!loading && backendUser) {
+      const isAdmin = (
+        backendUser.role === 'ADMIN' || 
+        backendUser.role === 'SUPER_ADMIN' || 
+        (backendUser as any).permissions?.includes('MANAGE_USERS')
+      );
+      
+      if (!isAdmin) {
+        router.push('/dashboard/student') // Redirect to student dashboard if not admin
+      }
+    }
+  }, [backendUser, loading, router])
+
+  // Mock data for sections
+  useEffect(() => {
+    // In a real app, this would come from an API call
+    setSections([
+      { id: '1', sectionName: 'CS-101-A', courseId: 'CS101', capacity: 30, instructor: 'Dr. Smith', students: 28 },
+      { id: '2', sectionName: 'MATH-201-B', courseId: 'MATH201', capacity: 25, instructor: 'Prof. Johnson', students: 22 },
+      { id: '3', sectionName: 'PHYS-102-C', courseId: 'PHYS102', capacity: 35, instructor: 'Dr. Williams', students: 30 },
+      { id: '4', sectionName: 'ENG-101-D', courseId: 'ENG101', capacity: 40, instructor: 'Prof. Brown', students: 35 }
+    ])
+  }, [])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (editingSection) {
+      // Update existing section
+      setSections(sections.map(s => 
+        s.id === editingSection.id 
+          ? { ...s, ...formData, id: editingSection.id } 
+          : s
+      ))
+    } else {
+      // Add new section
+      const newSection = {
+        id: `${sections.length + 1}`,
+        ...formData,
+        capacity: parseInt(formData.capacity),
+        students: 0
+      }
+      setSections([...sections, newSection])
+    }
+    
+    // Reset form and close dialog
+    setFormData({ sectionName: '', courseId: '', capacity: '', instructor: '' })
+    setIsDialogOpen(false)
+    setEditingSection(null)
+  }
+
+  const handleEdit = (section: any) => {
+    setEditingSection(section)
+    setFormData({
+      sectionName: section.sectionName,
+      courseId: section.courseId,
+      capacity: section.capacity.toString(),
+      instructor: section.instructor
+    })
+    setIsDialogOpen(true)
+  }
+
+  const handleDelete = (id: string) => {
+    setSections(sections.filter(s => s.id !== id))
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-400 border-opacity-50" />
+      </div>
+    )
+  }
+
+  const isAdmin = backendUser && (
+    backendUser.role === 'ADMIN' || 
+    backendUser.role === 'SUPER_ADMIN' || 
+    (backendUser as any).permissions?.includes('MANAGE_USERS')
+  )
+
+  if (!isAdmin) {
+    return null // Redirect will happen via useEffect
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-900 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">Section Management</h1>
+              <p className="text-slate-400">Create, update, and delete academic sections</p>
+            </div>
+            <div className="inline-flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-full text-sm font-semibold">
+              <span>ADMIN</span>
+            </div>
+          </div>
+        </div>
+
+        <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-white flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Sections
+            </CardTitle>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  onClick={() => {
+                    setEditingSection(null)
+                    setFormData({ sectionName: '', courseId: '', capacity: '', instructor: '' })
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Section
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md bg-slate-800 border-slate-700">
+                <DialogHeader>
+                  <DialogTitle className="text-white">
+                    {editingSection ? 'Edit Section' : 'Create New Section'}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="sectionName" className="text-slate-300">Section Name</Label>
+                    <Input
+                      id="sectionName"
+                      value={formData.sectionName}
+                      onChange={(e) => setFormData({...formData, sectionName: e.target.value})}
+                      className="bg-slate-700 border-slate-600 text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="courseId" className="text-slate-300">Course ID</Label>
+                    <Input
+                      id="courseId"
+                      value={formData.courseId}
+                      onChange={(e) => setFormData({...formData, courseId: e.target.value})}
+                      className="bg-slate-700 border-slate-600 text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="capacity" className="text-slate-300">Capacity</Label>
+                    <Input
+                      id="capacity"
+                      type="number"
+                      value={formData.capacity}
+                      onChange={(e) => setFormData({...formData, capacity: e.target.value})}
+                      className="bg-slate-700 border-slate-600 text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="instructor" className="text-slate-300">Instructor</Label>
+                    <Input
+                      id="instructor"
+                      value={formData.instructor}
+                      onChange={(e) => setFormData({...formData, instructor: e.target.value})}
+                      className="bg-slate-700 border-slate-600 text-white"
+                      required
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsDialogOpen(false)}
+                      className="border-slate-600 text-slate-300"
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                      {editingSection ? 'Update' : 'Create'} Section
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-slate-700">
+                  <TableHead className="text-slate-300">Section</TableHead>
+                  <TableHead className="text-slate-300">Course ID</TableHead>
+                  <TableHead className="text-slate-300">Capacity</TableHead>
+                  <TableHead className="text-slate-300">Enrolled</TableHead>
+                  <TableHead className="text-slate-300">Instructor</TableHead>
+                  <TableHead className="text-slate-300">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sections.map((section) => (
+                  <TableRow key={section.id} className="border-slate-700">
+                    <TableCell className="text-white font-medium">{section.sectionName}</TableCell>
+                    <TableCell className="text-slate-300">{section.courseId}</TableCell>
+                    <TableCell className="text-slate-300">{section.capacity}</TableCell>
+                    <TableCell className="text-slate-300">{section.students}</TableCell>
+                    <TableCell className="text-slate-300">{section.instructor}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleEdit(section)}
+                          className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleDelete(section.id)}
+                          className="border-red-600 text-red-400 hover:bg-red-900/20"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}

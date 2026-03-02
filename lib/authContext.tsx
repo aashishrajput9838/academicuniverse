@@ -25,6 +25,7 @@ interface AuthContextType {
   backendUser: BackendUser | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmailAndPassword: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -88,19 +89,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } else if (currentUser && localStorage.getItem('authToken')) {
         // If user is authenticated and we already have a stored token
+        // Fetch the backend user data to restore the session
         try {
-          // For now, we'll just set a basic backend user object
-          // In a real app, you'd make an API call to get the full user info
-          setBackendUser({
-            id: currentUser.uid,
-            name: currentUser.displayName || 'User',
-            email: currentUser.email || '',
-            role: 'STUDENT', // Default role, would be fetched from backend
-            organization: 'default',
-            permissions: []
+          const response = await fetch('http://localhost:5000/api/auth/me', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+            },
           });
+          
+          if (response.ok) {
+            const data = await response.json();
+            setBackendUser(data.data);
+          } else {
+            // If token is invalid, clear it and log out the user
+            console.error('Invalid token, logging out user');
+            await signOut(auth);
+            localStorage.removeItem('authToken');
+            setBackendUser(null);
+          }
         } catch (error) {
-          console.error('Error setting backend user:', error);
+          console.error('Error fetching backend user data:', error);
+          // Check if it's a network error vs a token error
+          if (error instanceof TypeError && error.message.includes('fetch')) {
+            // Network error - don't clear token, just set backend user to null temporarily
+            console.warn('Network error, keeping token but showing as not fully authenticated');
+          } else {
+            // Other error (likely token invalid) - clear the token
+            localStorage.removeItem('authToken');
+            setBackendUser(null);
+          }
         } finally {
           setLoading(false);
         }
@@ -137,13 +156,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         body: JSON.stringify({ idToken }),
       });
-      
+              
       // Check if response is actually HTML (error page)
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('text/html')) {
         throw new Error('Backend server is not running or route not found. Please start the backend server.');
       }
-      
+              
       if (!response.ok) {
         // Try to parse error response as JSON
         let errorData;
@@ -156,13 +175,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         throw new Error(errorData.message || 'Failed to authenticate with backend');
       }
-      
+              
       const data = await response.json();
-      
+              
       // Store the backend JWT token in localStorage/sessionStorage for API calls
       if (typeof window !== 'undefined') {
         localStorage.setItem('authToken', data.data.token);
       }
+            
+      // Update the backend user state
+      setBackendUser(data.data.user);
     } catch (error) {
       console.error('Error signing in with Google:', error);
       // Handle specific Firebase auth errors
@@ -185,18 +207,99 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       await signOut(auth);
-      // Clear the stored JWT token
+      // Clear the stored JWT token and reset state
       if (typeof window !== 'undefined') {
         localStorage.removeItem('authToken');
       }
+      setBackendUser(null);
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;
     }
   };
 
+  const signInWithEmailAndPassword = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      
+      // Send email and password to backend for authentication
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      
+      // Check if response is actually HTML (error page)
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('text/html')) {
+        throw new Error('Backend server is not running or route not found. Please start the backend server.');
+      }
+      
+      if (!response.ok) {
+        // Try to parse error response as JSON
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          // If we can't parse as JSON, get text content
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        throw new Error(errorData.message || 'Failed to authenticate with backend');
+      }
+      
+      const data = await response.json();
+      
+      // Store the backend JWT token in localStorage for API calls
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('authToken', data.data.token);
+      }
+      
+      // Update the backend user state
+      setBackendUser(data.data.user);
+      
+      // Since we're using email/password login, we won't have a Firebase user
+      // So we'll create a mock user object for the frontend
+      const mockUser: User = {
+        uid: data.data.id,
+        email: data.data.email,
+        displayName: data.data.name,
+        photoURL: null,
+        emailVerified: true,
+        isAnonymous: false,
+        metadata: {} as any,
+        providerData: [],
+        refreshToken: '',
+        tenantId: null,
+        phoneNumber: null,
+        providerId: 'password',
+        delete: async () => {},
+        getIdToken: async () => data.data.token,
+        getIdTokenResult: async () => ({
+          token: data.data.token,
+          expirationTime: new Date(Date.now() + 3600 * 1000).toISOString(),
+          authTime: new Date().toISOString(),
+          issuedAtTime: new Date().toISOString(),
+          signInProvider: 'password',
+          signInSecondFactor: null,
+          claims: {}
+        }),
+        reload: async () => {},
+        toJSON: () => ({}),
+      };
+      setUser(mockUser);
+    } catch (error) {
+      console.error('Error signing in with email and password:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, backendUser, loading, signInWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, backendUser, loading, signInWithGoogle, signInWithEmailAndPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

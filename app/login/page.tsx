@@ -6,13 +6,18 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function LoginPage() {
-  const { user, signInWithGoogle, loading: authLoading } = useAuth();
+  const { user, signInWithGoogle, signInWithEmailAndPassword, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
   const hasRedirected = useRef(false);
 
   const [postLoginRedirect, setPostLoginRedirect] = useState(false);
+  
+  // Email/password login state
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showEmailPasswordForm, setShowEmailPasswordForm] = useState(false);
   
   const handleGoogleSignIn = async () => {
     try {
@@ -23,6 +28,27 @@ export default function LoginPage() {
       setPostLoginRedirect(true);
     } catch (err) {
       setError('Failed to sign in with Google. Please try again.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmailPasswordSignIn = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      if (!email.trim() || !password.trim()) {
+        setError('Please enter both email and password.');
+        return;
+      }
+      
+      await signInWithEmailAndPassword(email.trim(), password.trim());
+      // Set a flag to trigger redirect after successful login
+      setPostLoginRedirect(true);
+    } catch (err) {
+      setError('Failed to sign in. Please check your email and password.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -134,37 +160,54 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Email/Password Form (Optional Placeholder) */}
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-slate-300 font-medium text-sm mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  placeholder="your@email.com"
-                  disabled
-                  className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-4 py-2 text-slate-300 placeholder-slate-500 disabled:opacity-50"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-300 font-medium text-sm mb-2">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  placeholder="Enter your password"
-                  disabled
-                  className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-4 py-2 text-slate-300 placeholder-slate-500 disabled:opacity-50"
-                />
-              </div>
+            {/* Email/Password Form Toggle */}
+            <div className="mb-4">
               <button
-                disabled
-                className="w-full bg-slate-700/50 text-slate-400 font-semibold py-2 px-6 rounded-lg cursor-not-allowed opacity-50"
+                type="button"
+                onClick={() => setShowEmailPasswordForm(!showEmailPasswordForm)}
+                className="w-full text-emerald-400 hover:text-emerald-300 font-medium py-2 px-4 rounded-lg transition text-center"
               >
-                Sign in (Coming Soon)
+                {showEmailPasswordForm ? 'Cancel' : 'Sign in with email and password'}
               </button>
             </div>
+
+            {/* Email/Password Form */}
+            {showEmailPasswordForm && (
+              <div className="space-y-4 mb-6 border border-slate-600 rounded-lg p-4">
+                <div>
+                  <label className="block text-slate-300 font-medium text-sm mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-4 py-2 text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium text-sm mb-2">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-4 py-2 text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleEmailPasswordSignIn}
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition shadow-lg shadow-emerald-500/30"
+                >
+                  {loading ? 'Signing in...' : 'Sign in with Email & Password'}
+                </button>
+              </div>
+            )}
 
             {/* Footer Links */}
             <div className="space-y-3 text-center text-sm">

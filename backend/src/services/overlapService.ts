@@ -311,7 +311,27 @@ export class OverlapService {
       try {
         // Try a simple Firestore operation to test if credentials are available
         if (firebaseFirestore.collection) {
-          await firebaseFirestore.collection('test').limit(1).get();
+          // Test if we have real Firestore by attempting to access it
+          const testCollection = firebaseFirestore.collection('test');
+          if (typeof testCollection.limit === 'function') {
+            // We have real Firestore, proceed with the query
+            const sectionsSnapshot = await firebaseFirestore
+              .collection('sections')
+              .where('organizationId', '==', organizationId)
+              .get();
+
+            const sections: SectionData[] = [];
+            sectionsSnapshot.forEach((doc: any) => {
+              const data = doc.data() as SectionData;
+              sections.push({
+                ...data,
+                _id: doc.id
+              } as SectionData);
+            });
+
+            logger.info(`Found ${sections.length} sections for organization ${organizationId}`);
+            return sections;
+          }
         }
       } catch (firestoreError: any) {
         // If we get a credentials error, use mock data
@@ -347,22 +367,33 @@ export class OverlapService {
         throw firestoreError;
       }
 
-      const sectionsSnapshot = await firebaseFirestore
-        .collection('sections')
-        .where('organizationId', '==', organizationId)
-        .get();
-
-      const sections: SectionData[] = [];
-      sectionsSnapshot.forEach((doc: any) => {
-        const data = doc.data() as SectionData;
-        sections.push({
-          ...data,
-          _id: doc.id
-        } as SectionData);
-      });
-
-      logger.info(`Found ${sections.length} sections for organization ${organizationId}`);
-      return sections;
+      // If we reach here, we're using mock Firestore
+      logger.warn('Using mock Firestore - returning sample sections for development');
+      
+      // Return mock data for development
+      const mockSections: any[] = [
+        {
+          _id: 'section_I',
+          sectionName: 'Section I',
+          representativeUid: 'mock-user-1',
+          organizationId: organizationId
+        },
+        {
+          _id: 'section_C',
+          sectionName: 'Section C',
+          representativeUid: 'mock-user-2',
+          organizationId: organizationId
+        },
+        {
+          _id: 'section_E',
+          sectionName: 'Section E',
+          representativeUid: 'mock-user-3',
+          organizationId: organizationId
+        }
+      ];
+      
+      logger.info(`Returning ${mockSections.length} mock sections for organization ${organizationId}`);
+      return mockSections;
     } catch (error) {
       logger.error('Error fetching available sections:', error);
       throw new Error('Failed to fetch available sections');

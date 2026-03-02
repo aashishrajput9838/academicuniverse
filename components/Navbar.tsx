@@ -60,7 +60,25 @@ export function Navbar() {
 
     // Add dashboard item based on user role
     if (backendUser && backendUser.role) {
-      if (backendUser.role === 'FACULTY') {
+      const isAdmin = (
+        backendUser.role === 'ADMIN' || 
+        backendUser.role === 'SUPER_ADMIN' || 
+        (backendUser as any).permissions?.includes('MANAGE_USERS')
+      );
+      
+      if (isAdmin) {
+        // Add admin dashboard item for admin users
+        baseItems.unshift({
+          label: 'Admin Dashboard',
+          dropdown: [
+            { label: 'Control Panel', href: '/' },
+            { label: 'Sections', href: '/admin/sections' },
+            { label: 'Assign Representatives', href: '/admin/assign-representative' },
+            { label: 'Timetable Status', href: '/admin/timetable-status' },
+            { label: 'User Management', href: '/admin/users' },
+          ]
+        });
+      } else if (backendUser.role === 'FACULTY') {
         baseItems.unshift({
           label: 'Dashboard',
           dropdown: [

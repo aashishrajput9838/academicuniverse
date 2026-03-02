@@ -81,7 +81,7 @@ const GitHubProjects: React.FC<GitHubProjectsProps> = ({ className = '' }) => {
         throw new Error('Authentication required');
       }
 
-      // Try to fetch the new analytics first
+      // Try to fetch the new analytics first (only if user has connected GitHub OAuth)
       try {
         const devData = await apiRequest('/api/github/stats', {
           method: 'GET',
@@ -89,9 +89,20 @@ const GitHubProjects: React.FC<GitHubProjectsProps> = ({ className = '' }) => {
             'Authorization': `Bearer ${token}`,
           },
         });
-        setDeveloperStats(devData.data);
-      } catch (analyticsErr) {
-        console.warn('Failed to fetch developer stats:', analyticsErr);
+        // Only set developer stats if we actually got data back
+        if (devData.data !== null) {
+          setDeveloperStats(devData.data);
+        }
+      } catch (analyticsErr: any) {
+        // Handle the specific "GitHub access token" error gracefully
+        if (analyticsErr.message && analyticsErr.message.includes('Failed to retrieve developer statistics')) {
+          // This is expected when user hasn't connected OAuth - don't show as error
+          console.info('Developer analytics not available - user may not have connected GitHub OAuth');
+        } else {
+          // Log other errors as warnings
+          console.warn('Failed to fetch developer stats:', analyticsErr);
+        }
+        // Don't set error state for this - it's optional functionality
       }
 
       // Also fetch the legacy project stats
@@ -306,48 +317,26 @@ const GitHubProjects: React.FC<GitHubProjectsProps> = ({ className = '' }) => {
             <p className="text-slate-300 mb-4">Connect your GitHub account to view your project statistics.</p>
             
             <div className="flex flex-col items-center space-y-4">
-              <div className="w-full max-w-md">
-                <h4 className="font-medium text-white mb-2">Option 1: Enter GitHub Username</h4>
-                <input
-                  type="text"
-                  placeholder="Enter your GitHub username"
-                  className="px-4 py-2 bg-slate-700 text-white rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSetGitHubUsername((e.target as HTMLInputElement).value);
-                    }
-                  }}
-                />
-                <button
-                  onClick={() => {
-                    const input = document.querySelector<HTMLInputElement>('input[type="text"]');
-                    if (input && input.value.trim()) {
-                      handleSetGitHubUsername(input.value.trim());
-                    }
-                  }}
-                  className="mt-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition w-full"
-                >
-                  Save Username
-                </button>
-                
-                <div className="my-4 flex items-center">
-                  <div className="flex-grow border-t border-slate-600"></div>
-                  <span className="mx-4 text-slate-400">OR</span>
-                  <div className="flex-grow border-t border-slate-600"></div>
-                </div>
-                
-                <h4 className="font-medium text-white mb-2">Option 2: Connect with GitHub OAuth</h4>
-                <p className="text-sm text-slate-400 mb-3">
-                  Connect securely with OAuth to access detailed analytics
+              <div className="text-center">
+                <div className="text-amber-400 text-xl mb-2">⚠️</div>
+                <h3 className="text-lg font-semibold text-white mb-2">Connect GitHub for Advanced Analytics</h3>
+                <p className="text-slate-300 mb-4">
+                  Connect your GitHub account to unlock detailed developer statistics including:
                 </p>
+                <ul className="text-slate-400 text-sm mb-4 text-left max-w-md mx-auto">
+                  <li className="mb-1">• Total repositories and private/public breakdown</li>
+                  <li className="mb-1">• Top programming languages</li>
+                  <li className="mb-1">• Star and fork counts</li>
+                  <li className="mb-1">• Repository growth trends</li>
+                </ul>
                 <button
                   onClick={handleConnectGitHubOAuth}
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition w-full"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                   </svg>
-                  Connect with GitHub
+                  Connect with GitHub OAuth
                 </button>
               </div>
             </div>

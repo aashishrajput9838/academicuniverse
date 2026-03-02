@@ -191,6 +191,13 @@ export const getDeveloperStats = async (req: AuthenticatedRequest, res: Response
     return sendResponse(res, 200, stats, 'Developer statistics retrieved successfully');
   } catch (error: any) {
     logger.error('Error retrieving developer stats:', error);
+    
+    // Handle specific error cases
+    if (error.message.includes('GitHub access token')) {
+      // User hasn't connected GitHub OAuth - this is not an error, just not available
+      return sendResponse(res, 200, null, 'GitHub OAuth not connected');
+    }
+    
     return sendError(res, 500, 'Failed to retrieve developer statistics');
   }
 };

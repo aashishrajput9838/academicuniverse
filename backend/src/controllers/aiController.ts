@@ -1,0 +1,127 @@
+import { Response } from 'express';
+import { sendResponse, sendError } from '../utils/response';
+import { firebaseFirestore } from '../config/firebaseAdmin';
+import aiService from '../services/aiService';
+import { Logger } from '../utils/logger';
+import Section from '../models/Section';
+import Timetable from '../models/Timetable';
+
+const logger = new Logger('aiController');
+
+export const processAIChat = async (req: any, res: Response) => {
+    try {
+        const { message, mood } = req.body;
+        const userId = req.user.userId;
+        const organizationId = req.organizationId;
+        const firebaseUid = req.user.firebaseUid;
+
+        if (!message || !mood) {
+            return sendError(res, 400, 'Message and mood are required');
+        }
+
+        // 1. Fetch Academic Context
+        let academicContext: any = {
+            todayClasses: 0,
+            freeSlots: [],
+            day: new Date().toLocaleDateString('en-US', { weekday: 'long' }),
+            totalWeeklyClasses: 0
+        };
+
+        try {
+            // Find section for the student
+            const section = await Section.findOne({
+                $or: [
+                    { representativeId: userId },
+                    // Potential student role linking here
+                ]
+            });
+
+            if (section) {
+                const timetable = await Timetable.findOne({ sectionId: section._id });
+                if (timetable && timetable.parsedData) {
+                    const today = academicContext.day;
+                    const todaySchedule = timetable.parsedData.filter(slot => slot.dayOfWeek === today);
+
+                    academicContext.todayClasses = todaySchedule.filter(s => !s.isFreeSlot).length;
+                    academicContext.totalWeeklyClasses = timetable.parsedData.filter(s => !s.isFreeSlot).length;
+
+                    academicContext.freeSlots = todaySchedule
+                        .filter(s => s.isFreeSlot)
+                        .map(s => `${s.startTime}-${s.endTime}`);
+
+                    // Weekend Handling: If today is empty, fetch Monday's preview for verification
+                    if (academicContext.todayClasses === 0 && (today === 'Saturday' || today === 'Sunday')) {
+                        const mondaySchedule = timetable.parsedData.filter(slot => slot.dayOfWeek === 'Monday');
+                        academicContext.mondayPreview = {
+                            classes: mondaySchedule.filter(s => !s.isFreeSlot).length,
+                            subjects: Array.from(new Set(mondaySchedule.filter(s => !s.isFreeSlot).map(s => s.subject)))
+                        };
+                    }
+                }
+            }
+            logger.info('Fetched Academic Context:', JSON.stringify(academicContext));
+        } catch (err) {
+            logger.error('Error fetching academic context for AI:', err);
+        }
+
+        // 2. Log Mood in Firestore
+        if (firebaseUid) {
+            try {
+                await firebaseFirestore.collection('moodLogs').add({
+                    uid: firebaseUid,
+                    mood: mood,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (err) {
+                logger.error('Error logging mood to Firestore:', err);
+            }
+        }
+
+        // 3. Generate AI Response
+        // We fetch a bit of history from Firestore if available
+        let history: any[] = [];
+        try {
+            const chatDoc = await firebaseFirestore.collection('aiChats').doc(firebaseUid).get();
+            if (chatDoc.exists) {
+                history = chatDoc.data()?.messages || [];
+            }
+        } catch (err) {
+            logger.error('Error fetching chat history:', err);
+        }
+
+        const aiReply = await aiService.generateSupportResponse(message, mood, academicContext, history);
+
+        // 4. Save Conversation in Firestore
+        if (firebaseUid) {
+            try {
+                const chatRef = firebaseFirestore.collection('aiChats').doc(firebaseUid);
+                const newMessagePair = [
+                    { role: 'user', content: message, timestamp: new Date().toISOString() },
+                    { role: 'assistant', content: aiReply, timestamp: new Date().toISOString() }
+                ];
+
+                if (history.length === 0) {
+                    await chatRef.set({
+                        uid: firebaseUid,
+                        messages: newMessagePair,
+                        lastUpdated: new Date().toISOString()
+                    });
+                } else {
+                    // In a real app we might want to use arrayUnion, but for demo we limit size
+                    const updatedMessages = [...history, ...newMessagePair].slice(-20); // Keep last 20
+                    await chatRef.update({
+                        messages: updatedMessages,
+                        lastUpdated: new Date().toISOString()
+                    });
+                }
+            } catch (err) {
+                logger.error('Error saving chat to Firestore:', err);
+            }
+        }
+
+        return sendResponse(res, 200, { reply: aiReply }, 'AI response generated successfully');
+    } catch (error: any) {
+        logger.error('AI Chat Error:', error);
+        return sendError(res, 500, 'Failed to process AI chat');
+    }
+};

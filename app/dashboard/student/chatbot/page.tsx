@@ -1,136 +1,175 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/authContext';
+import { MoodSelector } from '@/components/chat/MoodSelector';
+import { ChatWindow } from '@/components/chat/ChatWindow';
+import { ChatInput } from '@/components/chat/ChatInput';
+import { AlertTriangle, Info, MessageSquare, History } from 'lucide-react';
+
+interface Message {
+  id: string | number;
+  text: string;
+  sender: 'user' | 'ai';
+  timestamp?: string;
+}
 
 export default function StudentChatbot() {
   const { user, backendUser, loading } = useAuth();
   const router = useRouter();
-  const [messages, setMessages] = useState([
-    { id: 1, text: "Hello! I'm your AI assistant. How can I help you today?", sender: 'ai' },
-    { id: 2, text: "I can assist with academic queries, stress management, and personal growth advice.", sender: 'ai' }
-  ]);
-  const [inputValue, setInputValue] = useState('');
+
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [mood, setMood] = useState<string>('neutral');
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!loading && (!user || !backendUser)) {
       router.push('/login');
-    } else if (!loading && backendUser && backendUser.role !== 'STUDENT' && backendUser.role !== 'FACULTY') {
-      // For unauthorized role, redirect to home
-      router.push('/');
+    } else if (!loading && backendUser && backendUser.role !== 'STUDENT') {
+      // Access restricted to students
+      router.push('/dashboard');
     }
   }, [user, backendUser, loading, router]);
 
-  // Show loading state while checking authentication
+  // Handle message sending
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim() || isSending) return;
+
+    const userMessage: Message = {
+      id: Date.now(),
+      text,
+      sender: 'user',
+      timestamp: new Date().toISOString()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setIsSending(true);
+    setError(null);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/ai/ai-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: JSON.stringify({ message: text, mood })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get response from AI assistant');
+      }
+
+      const data = await response.json();
+
+      const aiMessage: Message = {
+        id: Date.now() + 1,
+        text: data.data.reply,
+        sender: 'ai',
+        timestamp: new Date().toISOString()
+      };
+
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (err: any) {
+      console.error('Chat error:', err);
+      setError('I lost connection for a moment. Please try again.');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const quickPrompts = [
+    "I'm feeling a bit overwhelmed with my current timetable.",
+    "Can you suggest some study tips for my next class?",
+    "I need help managing my stress today.",
+    "What's a good way to use my upcoming free slot?"
+  ];
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-400 border-opacity-50" />
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-400" />
       </div>
     );
   }
 
-  // Don't render content until user is authenticated and is a student
-  if (!user || !backendUser || backendUser.role !== 'STUDENT') {
-    return null;
-  }
-
-  const handleSendMessage = () => {
-    if (inputValue.trim() === '') return;
-    
-    // Add user message
-    const newUserMessage = {
-      id: messages.length + 1,
-      text: inputValue,
-      sender: 'user'
-    };
-    
-    setMessages(prev => [...prev, newUserMessage]);
-    setInputValue('');
-    
-    // Simulate AI response after a delay
-    setTimeout(() => {
-      const aiResponses = [
-        "I understand your concern. Based on your academic record, I recommend focusing on time management techniques.",
-        "That's an interesting question. According to your growth metrics, you're doing well in technical skills.",
-        "I can help with that. Have you considered joining one of our study groups?",
-        "Great question! Your emotional intelligence score suggests you're well-equipped to handle this challenge.",
-        "Based on your profile, I recommend connecting with a mentor in this area."
-      ];
-      
-      const randomResponse = aiResponses[Math.floor(Math.random() * aiResponses.length)];
-      const newAiMessage = {
-        id: messages.length + 2,
-        text: randomResponse,
-        sender: 'ai'
-      };
-      
-      setMessages(prev => [...prev, newAiMessage]);
-    }, 1000);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
+  if (!user || !backendUser || backendUser.role !== 'STUDENT') return null;
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700 h-[calc(100vh-200px)] flex flex-col">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-white mb-2">AI Chatbot</h1>
-        <p className="text-slate-400">Get 24/7 emotional support and academic guidance</p>
-      </div>
-
-      <div className="flex-1 flex flex-col bg-slate-900/50 rounded-xl border border-slate-600 overflow-hidden">
-        {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-3 rounded-2xl ${
-                  message.sender === 'user'
-                    ? 'bg-emerald-600 text-white rounded-tr-none'
-                    : 'bg-slate-700 text-slate-200 rounded-tl-none'
-                }`}
-              >
-                {message.text}
-              </div>
-            </div>
-          ))}
+    <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+      {/* Header Area */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <MessageSquare className="text-emerald-500" />
+            AI Emotional Support
+          </h1>
+          <p className="text-slate-400 mt-1">Your dedicated companion for academic well-being and stress management.</p>
         </div>
 
-        {/* Input Area */}
-        <div className="border-t border-slate-700 p-4">
-          <div className="flex gap-2">
-            <textarea
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type your message here..."
-              className="flex-1 bg-slate-800 text-white rounded-lg px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[60px] max-h-32"
-              rows={1}
-            />
-            <button
-              onClick={handleSendMessage}
-              disabled={!inputValue.trim()}
-              className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-600 text-white rounded-lg px-6 py-3 transition flex items-center justify-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
+        <div className="flex items-center gap-2 bg-slate-800/40 px-4 py-2 rounded-full border border-slate-700 text-xs text-slate-300">
+          <History size={14} className="text-emerald-500" />
+          Chat history is saved automatically
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-250px)]">
+        {/* Left Panel: Mood & Tips */}
+        <div className="space-y-6 flex flex-col overflow-y-auto pr-1">
+          <MoodSelector selectedMood={mood} onSelect={setMood} />
+
+          <div className="bg-slate-800/80 backdrop-blur-md p-6 rounded-2xl border border-slate-700 flex-1">
+            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+              <span className="w-2 h-6 bg-indigo-500 rounded-full"></span>
+              Quick Prompts
+            </h3>
+            <div className="space-y-3">
+              {quickPrompts.map((prompt, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSendMessage(prompt)}
+                  className="w-full text-left p-3 rounded-xl bg-slate-700/30 border border-slate-600/50 text-slate-300 text-sm hover:bg-emerald-500/10 hover:border-emerald-500/50 hover:text-emerald-400 transition-all duration-300 group"
+                >
+                  <span className="opacity-70 group-hover:opacity-100 transition-opacity">“{prompt}”</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-8 p-4 bg-red-500/10 rounded-xl border border-red-500/20">
+              <div className="flex gap-3 text-red-400">
+                <AlertTriangle size={24} className="flex-shrink-0" />
+                <div className="text-[10px] leading-relaxed uppercase font-bold tracking-wider">
+                  <p className="mb-1">Safety Disclaimer</p>
+                  <p className="text-slate-400 font-normal normal-case italic">
+                    This AI assistant provides supportive suggestions but does not replace professional counseling or medical advice.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="mt-2 text-xs text-slate-400 flex items-center gap-2">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-            <span>Emotional Intelligence Support Available</span>
+        </div>
+
+        {/* Right Panel: Main Chat Window */}
+        <div className="lg:col-span-2 flex flex-col bg-slate-800/40 backdrop-blur-md rounded-2xl border border-slate-700 shadow-2xl overflow-hidden relative">
+          <div className="absolute top-4 right-4 z-10">
+            <div className="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-full border border-slate-700">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">Live AI Node</span>
+            </div>
           </div>
+
+          {error && (
+            <div className="bg-red-500/20 border-b border-red-500/30 p-3 flex items-center justify-center gap-2 text-red-400 text-sm animate-in fade-in slide-in-from-top duration-300">
+              <Info size={16} />
+              {error}
+            </div>
+          )}
+
+          <ChatWindow messages={messages} loading={isSending} />
+          <ChatInput onSendMessage={handleSendMessage} disabled={isSending} />
         </div>
       </div>
     </div>

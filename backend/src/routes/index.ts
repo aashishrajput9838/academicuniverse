@@ -8,6 +8,7 @@ import timetableRoutes from './timetableRoutes';
 import sectionRoutes from './sectionRoutes';
 import usersRoutes from './usersRoutes';
 import dashboardRoutes from './dashboardRoutes';
+import aiRoutes from './aiRoutes';
 
 const router = express.Router();
 
@@ -20,5 +21,6 @@ router.use('/timetable', timetableRoutes);
 router.use('/sections', sectionRoutes);
 router.use('/users', usersRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/ai', aiRoutes);
 
 export default router;

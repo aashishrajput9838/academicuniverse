@@ -284,22 +284,29 @@ export class OverlapService {
   }
 
   /**
-   * Get available sections for an organization
+   * Get available sections for an organization and check if they have timetables
    */
-  async getAvailableSections(organizationId: string): Promise<SectionData[]> {
+  async getAvailableSections(organizationId: string): Promise<any[]> {
     try {
       const Section = (await import('../models/Section')).default;
+      const Timetable = (await import('../models/Timetable')).default;
 
+      // Fetch all sections for the organization
       const dbSections = await Section.find({ organizationId });
 
-      const sections: SectionData[] = dbSections.map(s => ({
+      // Fetch all timetables for the organization to check availability
+      const dbTimetables = await Timetable.find({ organizationId });
+      const sectionIdsWithTimetable = new Set(dbTimetables.map(t => t.sectionId.toString()));
+
+      const sections = dbSections.map(s => ({
         _id: s._id.toString(),
         sectionName: s.name,
         representativeUid: s.representativeId ? s.representativeId.toString() : '',
-        organizationId: s.organizationId.toString()
-      } as unknown as SectionData));
+        organizationId: s.organizationId.toString(),
+        hasTimetable: sectionIdsWithTimetable.has(s._id.toString())
+      }));
 
-      logger.info(`Found ${sections.length} sections for organization ${organizationId} from MongoDB`);
+      logger.info(`Found ${sections.length} sections for organization ${organizationId} (${dbTimetables.length} with timetables)`);
       return sections;
     } catch (error) {
       logger.error('Error fetching available sections:', error);

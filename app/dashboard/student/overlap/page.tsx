@@ -26,6 +26,7 @@ interface Section {
   sectionName: string;
   representativeUid: string;
   organizationId: string;
+  hasTimetable?: boolean;
 }
 
 interface TimeRange {
@@ -61,11 +62,10 @@ const OverlapEnginePage = () => {
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [currentSectionId, setCurrentSectionId] = useState<string | null>(null);
 
-  // Check if user is admin or section rep - support multiple role formats
-  const isAuthorizedToUpload = backendUser && (
+  // Check if user is global admin - support multiple role formats
+  const isGlobalAdmin = backendUser && (
     backendUser.role === 'ADMIN' ||
     backendUser.role === 'SUPER_ADMIN' ||
-    (backendUser as any).isSectionRep === true ||
     (backendUser as any).permissions?.includes('MANAGE_USERS')
   );
 
@@ -194,13 +194,13 @@ const OverlapEnginePage = () => {
                 {selectedSections.includes(section._id) && (
                   <CheckCircle className="h-5 w-5 text-blue-500" />
                 )}
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedSections.includes(section._id)
-                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200'
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${section.hasTimetable
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
                   : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
                   }`}>
-                  {selectedSections.includes(section._id) ? 'Selected' : 'Available'}
+                  {section.hasTimetable ? 'Available' : 'Missing Timetable'}
                 </span>
-                {(isAuthorizedToUpload || (backendUser && (
+                {(isGlobalAdmin || (backendUser && (
                   section.representativeUid === backendUser.id ||
                   (section as any).representativeId === backendUser.id ||
                   (section as any).representativeId?._id === backendUser.id

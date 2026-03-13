@@ -1,0 +1,24 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const authRoutes_1 = __importDefault(require("./authRoutes"));
+const marksRoutes_1 = __importDefault(require("./marksRoutes"));
+const githubRoutes_1 = __importDefault(require("./githubRoutes"));
+const profileRoutes_1 = __importDefault(require("./profileRoutes"));
+const overlapRoutes_1 = __importDefault(require("./overlapRoutes"));
+const timetableRoutes_1 = __importDefault(require("./timetableRoutes"));
+const sectionRoutes_1 = __importDefault(require("./sectionRoutes"));
+const usersRoutes_1 = __importDefault(require("./usersRoutes"));
+const router = express_1.default.Router();
+router.use('/auth', authRoutes_1.default);
+router.use('/marks', marksRoutes_1.default);
+router.use('/github', githubRoutes_1.default);
+router.use('/profile', profileRoutes_1.default);
+router.use('/overlap-engine', overlapRoutes_1.default);
+router.use('/timetable', timetableRoutes_1.default);
+router.use('/sections', sectionRoutes_1.default);
+router.use('/users', usersRoutes_1.default);
+exports.default = router;

@@ -89,6 +89,7 @@ export const getMeController = async (req: any, res: Response) => {
       name: user.name,
       email: user.email,
       organization: (user.organizationId as any).name,
+      organizationId: (user.organizationId as any)._id.toString(),
       role: (user.roleId as any).name,
       permissions: req.user.permissions,
       isSuperAdmin: req.user.isSuperAdmin

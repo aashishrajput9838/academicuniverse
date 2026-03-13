@@ -105,74 +105,31 @@ export class OverlapService {
   private async fetchFreeSlots(sectionIds: string[], organizationId: string): Promise<FreeSlotsData[]> {
     const freeSlotsData: FreeSlotsData[] = [];
 
-    // Check if we're in development mode by checking Firestore credentials
-    try {
-      if (firebaseFirestore.collection) {
-        await firebaseFirestore.collection('test').limit(1).get();
-      }
-    } catch (firestoreError: any) {
-      if (firestoreError.message && firestoreError.message.includes('credentials')) {
-        logger.warn('Using mock Firestore - returning sample free slots for development');
-        
-        // Return mock free slots data for development
-        sectionIds.forEach(sectionId => {
-          const mockFreeSlots: FreeSlotsData = {
-            organizationId: organizationId,
-            weeklyFreeSlots: {
-              'Monday': [3, 4, 5],      // 11:35-12:25, 12:25-13:15, 13:15-14:05
-              'Tuesday': [0, 1, 2],     // 09:00-09:50, 09:50-10:40, 10:40-11:30
-              'Wednesday': [6, 7, 8],   // 14:10-15:00, 15:00-15:50, 15:50-16:40
-              'Thursday': [2, 3, 4],     // 10:40-11:30, 11:35-12:25, 12:25-13:15
-              'Friday': [1, 5, 7]       // 09:50-10:40, 13:15-14:05, 15:00-15:50
-            }
-          };
-          freeSlotsData.push(mockFreeSlots);
-        });
-        
-        logger.info(`Returning mock free slots for ${sectionIds.length} sections`);
-        return freeSlotsData;
-      }
-      throw firestoreError;
-    }
+    logger.warn('Timetable parsing to free slots not yet implemented - returning mock free slots');
 
     for (const sectionId of sectionIds) {
       try {
         // Validate section exists and belongs to organization
         await this.validateSection(sectionId, organizationId);
 
-        // Fetch precomputed free slots
-        const freeSlotsDoc = await firebaseFirestore
-          .collection('freeSlots')
-          .doc(sectionId)
-          .get();
+        // Return mock free slots data for development
+        const mockFreeSlots: FreeSlotsData = {
+          organizationId: organizationId,
+          weeklyFreeSlots: {
+            'Monday': [3, 4, 5],      // 11:35-12:25, 12:25-13:15, 13:15-14:05
+            'Tuesday': [0, 1, 2],     // 09:00-09:50, 09:50-10:40, 10:40-11:30
+            'Wednesday': [6, 7, 8],   // 14:10-15:00, 15:00-15:50, 15:50-16:40
+            'Thursday': [2, 3, 4],     // 10:40-11:30, 11:35-12:25, 12:25-13:15
+            'Friday': [1, 5, 7]       // 09:50-10:40, 13:15-14:05, 15:00-15:50
+          }
+        };
 
-        if (!freeSlotsDoc.exists) {
-          throw new NotFoundError(`Free slots data not found for section: ${sectionId}`);
-        }
+        freeSlotsData.push(mockFreeSlots);
 
-        const freeSlots = freeSlotsDoc.data() as FreeSlotsData;
-
-        // Validate organization ownership
-        if (freeSlots.organizationId !== organizationId) {
-          throw new ValidationError(`Section ${sectionId} does not belong to your organization`);
-        }
-
-        freeSlotsData.push({
-          organizationId: freeSlots.organizationId,
-          weeklyFreeSlots: freeSlots.weeklyFreeSlots || {}
-        });
-
-        logger.info(`Fetched free slots for section ${sectionId}`, {
-          organizationId,
-          days: Object.keys(freeSlots.weeklyFreeSlots || {}).length
-        });
-
+        logger.info(`Fetched mock free slots for section ${sectionId}`);
       } catch (error: any) {
         logger.error(`Error fetching free slots for section ${sectionId}:`, error);
-        if (error instanceof NotFoundError || error instanceof ValidationError) {
-          throw error;
-        }
-        throw new Error(`Failed to fetch data for section ${sectionId}: ${error.message || error}`);
+        throw error;
       }
     }
 
@@ -183,31 +140,15 @@ export class OverlapService {
    * Validate that section exists and belongs to organization
    */
   private async validateSection(sectionId: string, organizationId: string): Promise<void> {
-    // Check if we're in development mode by checking Firestore credentials
-    try {
-      if (firebaseFirestore.collection) {
-        await firebaseFirestore.collection('test').limit(1).get();
-      }
-    } catch (firestoreError: any) {
-      if (firestoreError.message && firestoreError.message.includes('credentials')) {
-        logger.warn(`Using mock Firestore - skipping section validation for ${sectionId}`);
-        return; // Skip validation in development mode
-      }
-      throw firestoreError;
-    }
+    const Section = (await import('../models/Section')).default;
 
-    const sectionDoc = await firebaseFirestore
-      .collection('sections')
-      .doc(sectionId)
-      .get();
+    const section = await Section.findById(sectionId);
 
-    if (!sectionDoc.exists) {
+    if (!section) {
       throw new NotFoundError(`Section not found: ${sectionId}`);
     }
 
-    const sectionData = sectionDoc.data() as SectionData;
-    
-    if (sectionData.organizationId !== organizationId) {
+    if (section.organizationId.toString() !== organizationId.toString()) {
       throw new ValidationError(`Section ${sectionId} does not belong to your organization`);
     }
   }
@@ -218,7 +159,7 @@ export class OverlapService {
   private calculateSlotIntersection(freeSlotsData: FreeSlotsData[]): WeeklySlots {
     // Initialize result with first section's free slots
     const result: WeeklySlots = {};
-    
+
     if (freeSlotsData.length === 0) {
       return result;
     }
@@ -236,7 +177,7 @@ export class OverlapService {
     // For each day, calculate intersection
     for (const day of allDays) {
       const daySlots: number[][] = [];
-      
+
       // Collect slots for this day from all sections
       freeSlotsData.forEach(data => {
         const slots = data.weeklyFreeSlots[day] || [];
@@ -260,10 +201,10 @@ export class OverlapService {
    */
   private intersectSlotArrays(slotArrays: number[][]): number[] {
     if (slotArrays.length === 0) return [];
-    
+
     // Start with first array
     let intersection = new Set(slotArrays[0]);
-    
+
     // Intersect with remaining arrays
     for (let i = 1; i < slotArrays.length; i++) {
       const currentSet = new Set(slotArrays[i]);
@@ -275,7 +216,7 @@ export class OverlapService {
       });
       intersection = new Set(filteredArray);
     }
-    
+
     return Array.from(intersection).sort((a, b) => a - b);
   }
 
@@ -307,93 +248,19 @@ export class OverlapService {
    */
   async getAvailableSections(organizationId: string): Promise<SectionData[]> {
     try {
-      // Check if we're in development mode by checking if we can access Firestore properly
-      try {
-        // Try a simple Firestore operation to test if credentials are available
-        if (firebaseFirestore.collection) {
-          // Test if we have real Firestore by attempting to access it
-          const testCollection = firebaseFirestore.collection('test');
-          if (typeof testCollection.limit === 'function') {
-            // We have real Firestore, proceed with the query
-            const sectionsSnapshot = await firebaseFirestore
-              .collection('sections')
-              .where('organizationId', '==', organizationId)
-              .get();
+      const Section = (await import('../models/Section')).default;
 
-            const sections: SectionData[] = [];
-            sectionsSnapshot.forEach((doc: any) => {
-              const data = doc.data() as SectionData;
-              sections.push({
-                ...data,
-                _id: doc.id
-              } as SectionData);
-            });
+      const dbSections = await Section.find({ organizationId });
 
-            logger.info(`Found ${sections.length} sections for organization ${organizationId}`);
-            return sections;
-          }
-        }
-      } catch (firestoreError: any) {
-        // If we get a credentials error, use mock data
-        if (firestoreError.message && firestoreError.message.includes('credentials')) {
-          logger.warn('Firestore credentials not available - using mock data for development');
-          
-          // Return mock data for development
-          const mockSections: any[] = [
-            {
-              _id: 'section_I',
-              sectionName: 'Section I',
-              representativeUid: 'mock-user-1',
-              organizationId: organizationId
-            },
-            {
-              _id: 'section_C',
-              sectionName: 'Section C',
-              representativeUid: 'mock-user-2',
-              organizationId: organizationId
-            },
-            {
-              _id: 'section_E',
-              sectionName: 'Section E',
-              representativeUid: 'mock-user-3',
-              organizationId: organizationId
-            }
-          ];
-          
-          logger.info(`Returning ${mockSections.length} mock sections for organization ${organizationId}`);
-          return mockSections;
-        }
-        // If it's a different error, re-throw it
-        throw firestoreError;
-      }
+      const sections: SectionData[] = dbSections.map(s => ({
+        _id: s._id.toString(),
+        sectionName: s.name,
+        representativeUid: s.representativeId ? s.representativeId.toString() : '',
+        organizationId: s.organizationId.toString()
+      } as unknown as SectionData));
 
-      // If we reach here, we're using mock Firestore
-      logger.warn('Using mock Firestore - returning sample sections for development');
-      
-      // Return mock data for development
-      const mockSections: any[] = [
-        {
-          _id: 'section_I',
-          sectionName: 'Section I',
-          representativeUid: 'mock-user-1',
-          organizationId: organizationId
-        },
-        {
-          _id: 'section_C',
-          sectionName: 'Section C',
-          representativeUid: 'mock-user-2',
-          organizationId: organizationId
-        },
-        {
-          _id: 'section_E',
-          sectionName: 'Section E',
-          representativeUid: 'mock-user-3',
-          organizationId: organizationId
-        }
-      ];
-      
-      logger.info(`Returning ${mockSections.length} mock sections for organization ${organizationId}`);
-      return mockSections;
+      logger.info(`Found ${sections.length} sections for organization ${organizationId} from MongoDB`);
+      return sections;
     } catch (error) {
       logger.error('Error fetching available sections:', error);
       throw new Error('Failed to fetch available sections');

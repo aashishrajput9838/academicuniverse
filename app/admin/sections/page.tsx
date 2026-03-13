@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Plus, Edit, Trash2, Users } from 'lucide-react'
@@ -35,36 +35,57 @@ export default function AdminSectionsPage() {
   useEffect(() => {
     if (!loading && backendUser) {
       const isAdmin = (
-        backendUser.role === 'ADMIN' || 
-        backendUser.role === 'SUPER_ADMIN' || 
+        backendUser.role === 'ADMIN' ||
+        backendUser.role === 'SUPER_ADMIN' ||
         (backendUser as any).permissions?.includes('MANAGE_USERS')
       );
-      
+
       if (!isAdmin) {
         router.push('/dashboard/student') // Redirect to student dashboard if not admin
       }
     }
   }, [backendUser, loading, router])
 
-  // Mock data for sections
+  // Fetch sections from backend
   useEffect(() => {
-    // In a real app, this would come from an API call
-    setSections([
-      { id: '1', sectionName: 'CS-101-A', courseId: 'CS101', capacity: 30, instructor: 'Dr. Smith', students: 28 },
-      { id: '2', sectionName: 'MATH-201-B', courseId: 'MATH201', capacity: 25, instructor: 'Prof. Johnson', students: 22 },
-      { id: '3', sectionName: 'PHYS-102-C', courseId: 'PHYS102', capacity: 35, instructor: 'Dr. Williams', students: 30 },
-      { id: '4', sectionName: 'ENG-101-D', courseId: 'ENG101', capacity: 40, instructor: 'Prof. Brown', students: 35 }
-    ])
-  }, [])
+    const fetchSections = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        const res = await fetch('http://localhost:5000/api/sections', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          // Map backend fields to frontend table fields
+          const mappedSections = data.data.map((s: any) => ({
+            id: s._id,
+            sectionName: s.name,
+            courseId: s.courseId,
+            capacity: 50, // This isn't strictly in the schema yet, default to 50
+            instructor: 'TBD', // This isn't strictly in the schema yet, default to TBD
+            students: 0
+          }));
+          setSections(mappedSections);
+        }
+      } catch (err) {
+        console.error('Error fetching sections:', err);
+      }
+    };
+
+    if (backendUser) {
+      fetchSections();
+    }
+  }, [backendUser]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (editingSection) {
       // Update existing section
-      setSections(sections.map(s => 
-        s.id === editingSection.id 
-          ? { ...s, ...formData, id: editingSection.id } 
+      setSections(sections.map(s =>
+        s.id === editingSection.id
+          ? { ...s, ...formData, id: editingSection.id }
           : s
       ))
     } else {
@@ -77,7 +98,7 @@ export default function AdminSectionsPage() {
       }
       setSections([...sections, newSection])
     }
-    
+
     // Reset form and close dialog
     setFormData({ sectionName: '', courseId: '', capacity: '', instructor: '' })
     setIsDialogOpen(false)
@@ -108,8 +129,8 @@ export default function AdminSectionsPage() {
   }
 
   const isAdmin = backendUser && (
-    backendUser.role === 'ADMIN' || 
-    backendUser.role === 'SUPER_ADMIN' || 
+    backendUser.role === 'ADMIN' ||
+    backendUser.role === 'SUPER_ADMIN' ||
     (backendUser as any).permissions?.includes('MANAGE_USERS')
   )
 
@@ -140,7 +161,7 @@ export default function AdminSectionsPage() {
             </CardTitle>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button 
+                <Button
                   onClick={() => {
                     setEditingSection(null)
                     setFormData({ sectionName: '', courseId: '', capacity: '', instructor: '' })
@@ -162,7 +183,7 @@ export default function AdminSectionsPage() {
                     <Input
                       id="sectionName"
                       value={formData.sectionName}
-                      onChange={(e) => setFormData({...formData, sectionName: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, sectionName: e.target.value })}
                       className="bg-slate-700 border-slate-600 text-white"
                       required
                     />
@@ -172,7 +193,7 @@ export default function AdminSectionsPage() {
                     <Input
                       id="courseId"
                       value={formData.courseId}
-                      onChange={(e) => setFormData({...formData, courseId: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
                       className="bg-slate-700 border-slate-600 text-white"
                       required
                     />
@@ -183,7 +204,7 @@ export default function AdminSectionsPage() {
                       id="capacity"
                       type="number"
                       value={formData.capacity}
-                      onChange={(e) => setFormData({...formData, capacity: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
                       className="bg-slate-700 border-slate-600 text-white"
                       required
                     />
@@ -193,15 +214,15 @@ export default function AdminSectionsPage() {
                     <Input
                       id="instructor"
                       value={formData.instructor}
-                      onChange={(e) => setFormData({...formData, instructor: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, instructor: e.target.value })}
                       className="bg-slate-700 border-slate-600 text-white"
                       required
                     />
                   </div>
                   <div className="flex justify-end gap-2 pt-4">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       onClick={() => setIsDialogOpen(false)}
                       className="border-slate-600 text-slate-300"
                     >
@@ -237,17 +258,17 @@ export default function AdminSectionsPage() {
                     <TableCell className="text-slate-300">{section.instructor}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleEdit(section)}
                           className="border-slate-600 text-slate-300 hover:bg-slate-700"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleDelete(section.id)}
                           className="border-red-600 text-red-400 hover:bg-red-900/20"
                         >

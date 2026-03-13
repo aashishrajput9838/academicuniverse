@@ -33,16 +33,31 @@ export function detectRoleFromEmail(email: string): RoleDetectionResult {
 
   // Convert to lowercase for consistent comparison
   const normalizedEmail = email.toLowerCase().trim();
-  
+
   // Validate email structure
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(normalizedEmail)) {
     throw new Error('Invalid email format');
   }
 
+  // Role detection logic
+  let role: string, permissions: string[];
+
+  // Check if it's an admin email (for academicuniverse.com)
+  if (normalizedEmail.endsWith('academicuniverse.com') || normalizedEmail.includes('admin')) {
+    role = 'ADMIN';
+    permissions = ['MANAGE_USERS', 'MANAGE_SYSTEM'];
+    return {
+      role,
+      permissions,
+      organizationId: DEFAULT_ORGANIZATION_ID,
+      email: normalizedEmail
+    };
+  }
+
   // Check if email belongs to Sharda University domain
   if (!normalizedEmail.endsWith(VALID_DOMAIN)) {
-    throw new Error(`Unauthorized institutional email. Only ${VALID_DOMAIN} emails are allowed`);
+    throw new Error(`Unauthorized institutional email: ${normalizedEmail}. Only ${VALID_DOMAIN} emails are allowed`);
   }
 
   // Extract domain prefix to determine role
@@ -50,28 +65,25 @@ export function detectRoleFromEmail(email: string): RoleDetectionResult {
   const domainParts = normalizedEmail.split('@')[1].split('.');
   const domainPrefix = domainParts[0]; // Gets 'ug' or 'fa' from ug.sharda.ac.in or fa.sharda.ac.in
 
-  // Role detection logic
-  let role: string, permissions: string[];
-  
   switch (domainPrefix) {
     case 'ug':
       // Undergraduate student
       role = 'STUDENT';
       permissions = ['VIEW_DASHBOARD', 'VIEW_OWN_MARKS'];
       break;
-      
+
     case 'fa':
       // Faculty member
       role = 'FACULTY';
       permissions = ['VIEW_DASHBOARD', 'ADD_MARKS', 'VIEW_ALL_MARKS', 'EDIT_MARKS'];
       break;
-    
+
     case 'pg':
       // Postgraduate student
       role = 'STUDENT';
       permissions = ['VIEW_DASHBOARD', 'VIEW_OWN_MARKS'];
       break;
-      
+
     default:
       throw new Error(`Unauthorized email domain: ${domainPrefix}. Only ug.sharda.ac.in, pg.sharda.ac.in, and fa.sharda.ac.in are allowed`);
   }

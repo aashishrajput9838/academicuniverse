@@ -7,15 +7,15 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table'
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -25,51 +25,69 @@ import {
 import { UserCheck, Search, CheckCircle, XCircle } from 'lucide-react'
 
 export default function AdminAssignRepresentativePage() {
-  const { backendUser, loading } = useAuth()
+  const { backendUser, loading: authLoading } = useAuth()
   const router = useRouter()
+
   const [sections, setSections] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [filteredUsers, setFilteredUsers] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
   // Check if user is admin
   useEffect(() => {
-    if (!loading && backendUser) {
+    if (!authLoading && backendUser) {
       const isAdmin = (
-        backendUser.role === 'ADMIN' || 
-        backendUser.role === 'SUPER_ADMIN' || 
+        backendUser.role === 'ADMIN' ||
+        backendUser.role === 'SUPER_ADMIN' ||
         (backendUser as any).permissions?.includes('MANAGE_USERS')
       );
-      
+
       if (!isAdmin) {
         router.push('/dashboard/student') // Redirect to student dashboard if not admin
+      } else {
+        fetchData();
       }
     }
-  }, [backendUser, loading, router])
+  }, [backendUser, authLoading, router])
 
-  // Mock data for sections and users
-  useEffect(() => {
-    // In a real app, this would come from API calls
-    setSections([
-      { id: '1', sectionName: 'CS-101-A', courseId: 'CS101', representative: 'user-3' },
-      { id: '2', sectionName: 'MATH-201-B', courseId: 'MATH201', representative: 'user-1' },
-      { id: '3', sectionName: 'PHYS-102-C', courseId: 'PHYS102', representative: null },
-      { id: '4', sectionName: 'ENG-101-D', courseId: 'ENG101', representative: null }
-    ])
-    
-    setUsers([
-      { id: '1', name: 'Alice Johnson', email: 'alice.johnson@university.edu', role: 'STUDENT' },
-      { id: '2', name: 'Bob Smith', email: 'bob.smith@university.edu', role: 'STUDENT' },
-      { id: '3', name: 'Carol Davis', email: 'carol.davis@university.edu', role: 'STUDENT' },
-      { id: '4', name: 'David Wilson', email: 'david.wilson@university.edu', role: 'STUDENT' },
-      { id: '5', name: 'Emma Brown', email: 'emma.brown@university.edu', role: 'STUDENT' }
-    ])
-  }, [])
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('authToken');
+
+      // Fetch sections
+      const sectionsRes = await fetch('http://localhost:5000/api/sections', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const sectionsData = await sectionsRes.json();
+      if (sectionsData.success) {
+        setSections(sectionsData.data);
+      }
+
+      // Fetch users
+      const usersRes = await fetch('http://localhost:5000/api/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const usersData = await usersRes.json();
+      if (usersData.success) {
+        // Filter only students to be representatives
+        const studentsOnly = usersData.data.filter((u: any) => u.roleId?.name === 'STUDENT' || u.roleId?.name === undefined);
+        const allUsers = usersData.data; // Keep all users to display their names in the list properly
+        setUsers(allUsers);
+        setFilteredUsers(allUsers);
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter users based on search term
   useEffect(() => {
     if (searchTerm) {
-      const filtered = users.filter(user => 
+      const filtered = users.filter(user =>
         user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase())
       )
@@ -79,23 +97,59 @@ export default function AdminAssignRepresentativePage() {
     }
   }, [searchTerm, users])
 
-  const handleAssignRepresentative = (sectionId: string, userId: string) => {
-    setSections(sections.map(section => 
-      section.id === sectionId 
-        ? { ...section, representative: userId } 
-        : section
-    ))
+  const handleAssignRepresentative = async (sectionId: string, userId: string) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`http://localhost:5000/api/sections/${sectionId}/representative`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ representativeId: userId })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        // Update local state
+        setSections(sections.map(section =>
+          section._id === sectionId
+            ? { ...section, representativeId: data.data.representativeId }
+            : section
+        ));
+      }
+    } catch (err) {
+      console.error('Failed to assign representative', err);
+    }
   }
 
-  const handleRemoveRepresentative = (sectionId: string) => {
-    setSections(sections.map(section => 
-      section.id === sectionId 
-        ? { ...section, representative: null } 
-        : section
-    ))
+  const handleRemoveRepresentative = async (sectionId: string) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const res = await fetch(`http://localhost:5000/api/sections/${sectionId}/representative`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ representativeId: null })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        // Update local state
+        setSections(sections.map(section =>
+          section._id === sectionId
+            ? { ...section, representativeId: null }
+            : section
+        ));
+      }
+    } catch (err) {
+      console.error('Failed to remove representative', err);
+    }
   }
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-400 border-opacity-50" />
@@ -104,8 +158,8 @@ export default function AdminAssignRepresentativePage() {
   }
 
   const isAdmin = backendUser && (
-    backendUser.role === 'ADMIN' || 
-    backendUser.role === 'SUPER_ADMIN' || 
+    backendUser.role === 'ADMIN' ||
+    backendUser.role === 'SUPER_ADMIN' ||
     (backendUser as any).permissions?.includes('MANAGE_USERS')
   )
 
@@ -149,17 +203,24 @@ export default function AdminAssignRepresentativePage() {
                 </TableHeader>
                 <TableBody>
                   {sections.map((section) => {
-                    const representative = users.find(u => u.id === section.representative)
-                    
+                    // Check if representativeId is populated or just an ID
+                    const repId = section.representativeId?._id || section.representativeId;
+                    const representative = users.find(u => u._id === repId);
+
                     return (
-                      <TableRow key={section.id} className="border-slate-700">
-                        <TableCell className="text-white font-medium">{section.sectionName}</TableCell>
+                      <TableRow key={section._id} className="border-slate-700">
+                        <TableCell className="text-white font-medium">{section.name}</TableCell>
                         <TableCell className="text-slate-300">{section.courseId}</TableCell>
                         <TableCell className="text-slate-300">
                           {representative ? (
                             <div className="flex items-center gap-2">
                               <CheckCircle className="h-4 w-4 text-green-500" />
                               {representative.name}
+                            </div>
+                          ) : section.representativeId?.name ? (
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                              {section.representativeId.name}
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
@@ -170,26 +231,26 @@ export default function AdminAssignRepresentativePage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Select 
-                              onValueChange={(value) => handleAssignRepresentative(section.id, value)}
-                              value={section.representative || undefined}
+                            <Select
+                              onValueChange={(value) => handleAssignRepresentative(section._id, value)}
+                              value={repId || undefined}
                             >
                               <SelectTrigger className="w-[180px] bg-slate-700 border-slate-600 text-white">
                                 <SelectValue placeholder="Assign Rep" />
                               </SelectTrigger>
                               <SelectContent className="bg-slate-700 border-slate-600 text-white">
-                                {users.map(user => (
-                                  <SelectItem key={user.id} value={user.id} className="text-white">
+                                {users.filter(u => u.roleId?.name === 'STUDENT' || !u.roleId || u.roleId?.name === undefined).map(user => (
+                                  <SelectItem key={user._id} value={user._id} className="text-white">
                                     {user.name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
-                            {section.representative && (
-                              <Button 
-                                variant="outline" 
+                            {repId && (
+                              <Button
+                                variant="outline"
                                 size="sm"
-                                onClick={() => handleRemoveRepresentative(section.id)}
+                                onClick={() => handleRemoveRepresentative(section._id)}
                                 className="border-red-600 text-red-400 hover:bg-red-900/20"
                               >
                                 Remove
@@ -223,11 +284,11 @@ export default function AdminAssignRepresentativePage() {
                   className="pl-8 bg-slate-700 border-slate-600 text-white"
                 />
               </div>
-              
+
               <div className="space-y-3">
                 {filteredUsers.map(user => (
-                  <div 
-                    key={user.id} 
+                  <div
+                    key={user._id}
                     className="p-3 bg-slate-700/50 rounded-lg border border-slate-600 flex justify-between items-center"
                   >
                     <div>
@@ -235,7 +296,7 @@ export default function AdminAssignRepresentativePage() {
                       <p className="text-sm text-slate-400">{user.email}</p>
                     </div>
                     <span className="px-2 py-1 bg-slate-600 text-slate-300 rounded-full text-xs">
-                      {user.role}
+                      {user.roleId?.name || 'STUDENT'}
                     </span>
                   </div>
                 ))}

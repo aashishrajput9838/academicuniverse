@@ -1,0 +1,10 @@
+I've found the admin credentials for your project:
+
+Super Admin:
+
+Email: superadmin@academicuniverse.com
+Password: SuperAdmin123
+Organization Admin (Sharda University):
+
+Email: admin@sharda.com
+Password: Admin123456

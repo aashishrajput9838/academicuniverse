@@ -1,12 +1,41 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/authContext';
 
 export default function FacultyDashboardOverview() {
   const { user, backendUser, loading } = useAuth();
   const router = useRouter();
+  const [metrics, setMetrics] = useState({
+    coursesManaged: 0,
+    studentsSupervised: 0,
+    researchProjects: 0,
+    courseSatisfaction: '...'
+  });
+
+  useEffect(() => {
+    if (backendUser && backendUser.role === 'FACULTY') {
+      const fetchMetrics = async () => {
+        try {
+          const res = await fetch('http://localhost:5000/api/dashboard/faculty', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.data) {
+              setMetrics(data.data);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch metrics', err);
+        }
+      };
+      fetchMetrics();
+    }
+  }, [backendUser]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -42,19 +71,19 @@ export default function FacultyDashboardOverview() {
       {/* Quick Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <div className="text-3xl font-bold text-emerald-400">24</div>
+          <div className="text-3xl font-bold text-emerald-400">{metrics.coursesManaged}</div>
           <div className="text-slate-400 mt-2">Courses Managed</div>
         </div>
         <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <div className="text-3xl font-bold text-emerald-400">186</div>
+          <div className="text-3xl font-bold text-emerald-400">{metrics.studentsSupervised}</div>
           <div className="text-slate-400 mt-2">Students Supervised</div>
         </div>
         <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <div className="text-3xl font-bold text-emerald-400">12</div>
+          <div className="text-3xl font-bold text-emerald-400">{metrics.researchProjects}</div>
           <div className="text-slate-400 mt-2">Research Projects</div>
         </div>
         <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <div className="text-3xl font-bold text-emerald-400">94%</div>
+          <div className="text-3xl font-bold text-emerald-400">{metrics.courseSatisfaction}</div>
           <div className="text-slate-400 mt-2">Course Satisfaction</div>
         </div>
       </div>

@@ -16,6 +16,7 @@ interface BackendUser {
   name: string;
   email: string;
   organization: string;
+  organizationId?: string;
   role: string;
   permissions: string[];
 }
@@ -41,13 +42,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setLoading(true); // Set loading to true when auth state changes
-      
+
       // If user is authenticated and we haven't exchanged the token yet,
       // try to exchange the Firebase token for a backend JWT token
       if (currentUser && !localStorage.getItem('authToken')) {
         try {
           const idToken = await currentUser.getIdToken();
-          
+
           // Send the Firebase ID token to our backend to exchange for a JWT token
           const response = await fetch('http://localhost:5000/api/auth/firebase-login', {
             method: 'POST',
@@ -56,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             },
             body: JSON.stringify({ idToken }),
           });
-          
+
           // Check if response is actually HTML (error page)
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('text/html')) {
@@ -64,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoading(false);
             return;
           }
-          
+
           if (response.ok) {
             const data = await response.json();
             // Store the backend JWT token in localStorage for API calls
@@ -98,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               'Authorization': `Bearer ${localStorage.getItem('authToken')}`
             },
           });
-          
+
           if (response.ok) {
             const data = await response.json();
             setBackendUser(data.data);
@@ -140,14 +141,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      
+
       // For redirect, we need to handle the callback separately
       // So we'll just use popup for now to keep it simple
       const result = await signInWithPopup(auth, provider);
-      
+
       // Get the Firebase ID token to send to our backend
       const idToken = await result.user.getIdToken();
-      
+
       // Send the Firebase ID token to our backend to exchange for a JWT token
       const response = await fetch('http://localhost:5000/api/auth/firebase-login', {
         method: 'POST',
@@ -156,13 +157,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         body: JSON.stringify({ idToken }),
       });
-              
+
       // Check if response is actually HTML (error page)
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('text/html')) {
         throw new Error('Backend server is not running or route not found. Please start the backend server.');
       }
-              
+
       if (!response.ok) {
         // Try to parse error response as JSON
         let errorData;
@@ -175,14 +176,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         throw new Error(errorData.message || 'Failed to authenticate with backend');
       }
-              
+
       const data = await response.json();
-              
+
       // Store the backend JWT token in localStorage/sessionStorage for API calls
       if (typeof window !== 'undefined') {
         localStorage.setItem('authToken', data.data.token);
       }
-            
+
       // Update the backend user state
       setBackendUser(data.data.user);
     } catch (error) {
@@ -221,7 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithEmailAndPassword = async (email: string, password: string) => {
     try {
       setLoading(true);
-      
+
       // Send email and password to backend for authentication
       const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
@@ -230,13 +231,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         body: JSON.stringify({ email, password }),
       });
-      
+
       // Check if response is actually HTML (error page)
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('text/html')) {
         throw new Error('Backend server is not running or route not found. Please start the backend server.');
       }
-      
+
       if (!response.ok) {
         // Try to parse error response as JSON
         let errorData;
@@ -249,17 +250,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         throw new Error(errorData.message || 'Failed to authenticate with backend');
       }
-      
+
       const data = await response.json();
-      
+
       // Store the backend JWT token in localStorage for API calls
       if (typeof window !== 'undefined') {
         localStorage.setItem('authToken', data.data.token);
       }
-      
+
       // Update the backend user state
       setBackendUser(data.data.user);
-      
+
       // Since we're using email/password login, we won't have a Firebase user
       // So we'll create a mock user object for the frontend
       const mockUser: User = {
@@ -275,7 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tenantId: null,
         phoneNumber: null,
         providerId: 'password',
-        delete: async () => {},
+        delete: async () => { },
         getIdToken: async () => data.data.token,
         getIdTokenResult: async () => ({
           token: data.data.token,
@@ -286,7 +287,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           signInSecondFactor: null,
           claims: {}
         }),
-        reload: async () => {},
+        reload: async () => { },
         toJSON: () => ({}),
       };
       setUser(mockUser);

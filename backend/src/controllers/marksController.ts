@@ -1,20 +1,6 @@
 import { Request, Response } from 'express';
 import { sendResponse, sendError } from '../utils/response';
-
-// In-memory marks storage (replace with MongoDB model in production)
-interface Mark {
-  id: string;
-  studentId: string;
-  subjectId: string;
-  marks: number;
-  organizationId: string;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-let marksDB: Mark[] = [];
-let markIdCounter = 1;
+import Mark from '../models/Mark';
 
 /**
  * Add marks for a student
@@ -36,18 +22,13 @@ export const addMarksController = async (req: any, res: Response) => {
     }
 
     // Create mark record
-    const mark: Mark = {
-      id: `mark_${markIdCounter++}`,
+    const mark = await Mark.create({
       studentId,
       subjectId,
       marks,
       organizationId: req.organizationId!,
       createdBy: req.user!.userId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    marksDB.push(mark);
+    });
 
     return sendResponse(res, 201, mark, 'Marks added successfully');
   } catch (error: any) {
@@ -66,9 +47,9 @@ export const getStudentMarksController = async (req: any, res: Response) => {
     const { studentId } = req.params;
 
     // Fetch marks for this student in this organization
-    const studentMarks = marksDB.filter(
-      m => m.studentId === studentId && m.organizationId === req.organizationId
-    );
+    const studentMarks = await Mark.find({ studentId, organizationId: req.organizationId })
+      .populate('createdBy', 'name')
+      .sort({ createdAt: -1 });
 
     return sendResponse(res, 200, studentMarks, 'Marks retrieved successfully');
   } catch (error: any) {
@@ -91,14 +72,15 @@ export const updateMarksController = async (req: any, res: Response) => {
       return sendError(res, 400, 'Marks must be a number between 0 and 100');
     }
 
-    const mark = marksDB.find(m => m.id === markId && m.organizationId === req.organizationId);
+    const mark = await Mark.findOneAndUpdate(
+      { _id: markId, organizationId: req.organizationId },
+      { marks },
+      { new: true }
+    );
 
     if (!mark) {
       return sendError(res, 404, 'Mark record not found');
     }
-
-    mark.marks = marks;
-    mark.updatedAt = new Date();
 
     return sendResponse(res, 200, mark, 'Marks updated successfully');
   } catch (error: any) {
@@ -116,13 +98,11 @@ export const deleteMarksController = async (req: any, res: Response) => {
   try {
     const { markId } = req.params;
 
-    const index = marksDB.findIndex(m => m.id === markId && m.organizationId === req.organizationId);
+    const deletedMark = await Mark.findOneAndDelete({ _id: markId, organizationId: req.organizationId });
 
-    if (index === -1) {
+    if (!deletedMark) {
       return sendError(res, 404, 'Mark record not found');
     }
-
-    const deletedMark = marksDB.splice(index, 1)[0];
 
     return sendResponse(res, 200, deletedMark, 'Marks deleted successfully');
   } catch (error: any) {
@@ -139,7 +119,10 @@ export const deleteMarksController = async (req: any, res: Response) => {
 export const getAllMarksController = async (req: any, res: Response) => {
   try {
     // Fetch all marks for this organization
-    const allMarks = marksDB.filter(m => m.organizationId === req.organizationId);
+    const allMarks = await Mark.find({ organizationId: req.organizationId })
+      .populate('studentId', 'name email')
+      .populate('createdBy', 'name')
+      .sort({ createdAt: -1 });
 
     return sendResponse(res, 200, allMarks, 'All marks retrieved successfully');
   } catch (error: any) {

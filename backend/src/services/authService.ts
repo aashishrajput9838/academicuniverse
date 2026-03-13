@@ -60,10 +60,10 @@ export const loginWithEmail = async (email: string, password: string): Promise<{
       throw new AuthenticationError('Invalid email or password');
     }
 
-      // Normalize roleId (handle populated roleId or raw ObjectId)
-      const normalizedRoleId = (user.roleId && (user.roleId as any)._id)
-        ? (user.roleId as any)._id.toString()
-        : user.roleId.toString();
+    // Normalize roleId (handle populated roleId or raw ObjectId)
+    const normalizedRoleId = (user.roleId && (user.roleId as any)._id)
+      ? (user.roleId as any)._id.toString()
+      : user.roleId.toString();
 
     // Fetch user permissions
     const permissions = await getUserPermissions(normalizedRoleId);
@@ -95,6 +95,7 @@ export const loginWithEmail = async (email: string, password: string): Promise<{
         name: user.name,
         email: user.email,
         organization: (user.organizationId as any).name,
+        organizationId: (user.organizationId as any)._id.toString(),
         role: (user.roleId as any).name,
         permissions,
       },
@@ -124,7 +125,7 @@ export const loginWithFirebase = async (idToken: string): Promise<{ token: strin
         // In development, we can simulate a valid token for testing
         // In a real scenario, you'd want to properly configure Firebase Admin
         console.warn('Firebase Admin not initialized, using mock token validation for development');
-        
+
         // For development purposes, we'll create a mock decoded token
         // In a real app, this should never happen in production
         decodedToken = {
@@ -135,7 +136,7 @@ export const loginWithFirebase = async (idToken: string): Promise<{ token: strin
         throw new AuthenticationError(`Failed to verify Firebase token: ${error.message}`);
       }
     }
-    
+
     const { uid: firebaseUid, email } = decodedToken;
 
     if (!email) {
@@ -153,7 +154,7 @@ export const loginWithFirebase = async (idToken: string): Promise<{ token: strin
 
     // Find or create user in our database
     let user = await User.findOne({ firebaseUid }).populate(['organizationId', 'roleId']);
-    
+
     if (user) {
       // User exists with this firebaseUid, update if necessary
       if (user.email !== email) {
@@ -163,7 +164,7 @@ export const loginWithFirebase = async (idToken: string): Promise<{ token: strin
     } else {
       // User doesn't exist with this firebaseUid, check if user exists with this email but no firebaseUid
       user = await User.findOne({ email }).populate(['organizationId', 'roleId']);
-      
+
       if (user) {
         // User exists with this email but no firebaseUid, so link the firebaseUid
         user.firebaseUid = firebaseUid;
@@ -171,9 +172,9 @@ export const loginWithFirebase = async (idToken: string): Promise<{ token: strin
       } else {
         // User doesn't exist at all, create new user based on role detection
         // Find or create the appropriate role based on detected role
-        let role = await Role.findOne({ 
+        let role = await Role.findOne({
           name: roleInfo.role,
-          organizationId: organization._id 
+          organizationId: organization._id
         });
 
         if (!role) {
@@ -183,13 +184,13 @@ export const loginWithFirebase = async (idToken: string): Promise<{ token: strin
             'STUDENT': 'STUDENT',
             'FACULTY': 'FACULTY'
           };
-          
+
           const mappedRoleName = roleNameMap[roleInfo.role] || 'STUDENT';
-          role = await Role.findOne({ 
+          role = await Role.findOne({
             name: mappedRoleName,
-            organizationId: organization._id 
+            organizationId: organization._id
           });
-          
+
           if (!role) {
             // Fallback: use the first role that matches the type
             role = await Role.findOne({ name: mappedRoleName });
@@ -249,6 +250,7 @@ export const loginWithFirebase = async (idToken: string): Promise<{ token: strin
         name: user.name,
         email: user.email,
         organization: organization._id.toString(), // Use actual ObjectId from database
+        organizationId: organization._id.toString(),
         role: roleInfo.role, // Use detected role
         permissions,
       },

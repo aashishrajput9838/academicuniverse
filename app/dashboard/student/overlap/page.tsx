@@ -4,15 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
 import { overlapAPI } from '@/utils/api/overlapAPI';
 import UploadTimetableModal from '@/components/UploadTimetableModal';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
+import {
   Calendar,
   Clock,
   Users,
@@ -63,8 +63,8 @@ const OverlapEnginePage = () => {
 
   // Check if user is admin or section rep - support multiple role formats
   const isAuthorizedToUpload = backendUser && (
-    backendUser.role === 'ADMIN' || 
-    backendUser.role === 'SUPER_ADMIN' || 
+    backendUser.role === 'ADMIN' ||
+    backendUser.role === 'SUPER_ADMIN' ||
     (backendUser as any).isSectionRep === true ||
     (backendUser as any).permissions?.includes('MANAGE_USERS')
   );
@@ -80,10 +80,11 @@ const OverlapEnginePage = () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // For demo purposes, we'll use a default organization ID
-      // In a real implementation, this would come from user's organization
-      const orgId = 'demo-org-123';
+
+      const orgId = backendUser?.organizationId || backendUser?.organization || '';
+      if (!orgId) {
+        throw new Error('User organization not found');
+      }
       setOrganizationId(orgId);
 
       // Test backend connection first
@@ -95,7 +96,7 @@ const OverlapEnginePage = () => {
       // Fetch available sections
       const response = await overlapAPI.getAvailableSections(orgId);
       setSections(response.data.sections || []);
-      
+
     } catch (err: any) {
       console.error('Error fetching sections:', err);
       setError(err.message || 'Failed to load available sections');
@@ -132,7 +133,7 @@ const OverlapEnginePage = () => {
       setProcessing(true);
       setError(null);
       setOverlapResult(null);
-      
+
       if (selectedSections.length === 0) {
         throw new Error('Please select at least one section');
       }
@@ -140,7 +141,7 @@ const OverlapEnginePage = () => {
       // Calculate overlap using the API service
       const response = await overlapAPI.calculateOverlapSlots(selectedSections, organizationId);
       setOverlapResult(response.data.overlapSlots);
-      
+
     } catch (err: any) {
       console.error('Error calculating overlap:', err);
       setError(err.message || 'Failed to calculate overlap slots');
@@ -174,11 +175,10 @@ const OverlapEnginePage = () => {
         {sections.map((section) => (
           <div
             key={section._id}
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              selectedSections.includes(section._id)
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
-            }`}
+            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedSections.includes(section._id)
+              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+              : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
+              }`}
             onClick={() => handleSectionToggle(section._id)}
           >
             <div className="flex items-center justify-between">
@@ -194,11 +194,10 @@ const OverlapEnginePage = () => {
                 {selectedSections.includes(section._id) && (
                   <CheckCircle className="h-5 w-5 text-blue-500" />
                 )}
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  selectedSections.includes(section._id) 
-                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200' 
-                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                }`}>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedSections.includes(section._id)
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200'
+                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                  }`}>
                   {selectedSections.includes(section._id) ? 'Selected' : 'Available'}
                 </span>
                 {isAuthorizedToUpload && (
@@ -216,7 +215,7 @@ const OverlapEnginePage = () => {
             </div>
           </div>
         ))}
-        
+
         {selectedSections.length > 0 && (
           <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <p className="text-sm text-blue-700 dark:text-blue-300">
@@ -249,8 +248,8 @@ const OverlapEnginePage = () => {
           <p className="text-gray-600 dark:text-gray-400 max-w-md">
             {error}
           </p>
-          <Button 
-            onClick={calculateOverlap} 
+          <Button
+            onClick={calculateOverlap}
             className="mt-4"
             variant="outline"
           >
@@ -275,7 +274,7 @@ const OverlapEnginePage = () => {
     }
 
     const days = Object.keys(overlapResult);
-    
+
     if (days.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -300,7 +299,7 @@ const OverlapEnginePage = () => {
             {days.length} day{days.length !== 1 ? 's' : ''} with overlap
           </span>
         </div>
-        
+
         <div className="grid gap-4">
           {days.map((day) => (
             <div key={day} className="border rounded-lg p-4">
@@ -308,14 +307,14 @@ const OverlapEnginePage = () => {
                 <Calendar className="h-4 w-4" />
                 {day}
               </h4>
-              
+
               {overlapResult[day].length === 0 ? (
                 <p className="text-gray-500 text-sm">No free slots available</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                   {overlapResult[day].map((slot, index) => (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3"
                     >
                       <div className="flex items-center gap-2">
@@ -342,8 +341,8 @@ const OverlapEnginePage = () => {
 
   // Check if user is admin for admin-specific features
   const isAdmin = backendUser && (
-    backendUser.role === 'ADMIN' || 
-    backendUser.role === 'SUPER_ADMIN' || 
+    backendUser.role === 'ADMIN' ||
+    backendUser.role === 'SUPER_ADMIN' ||
     (backendUser as any).permissions?.includes('MANAGE_USERS')
   );
 
@@ -360,7 +359,7 @@ const OverlapEnginePage = () => {
                 Find common free time slots across multiple sections
               </p>
             </div>
-            
+
             {/* Admin Badge */}
             {isAdmin && (
               <div className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200 px-4 py-2 rounded-lg border border-red-200 dark:border-red-800 flex items-center gap-2">
@@ -386,7 +385,7 @@ const OverlapEnginePage = () => {
               <div className="mb-6">
                 {renderSectionSelector()}
               </div>
-              
+
               <Button
                 onClick={calculateOverlap}
                 disabled={selectedSections.length === 0 || processing}
@@ -424,7 +423,7 @@ const OverlapEnginePage = () => {
             </CardContent>
           </Card>
         </div>
-        
+
         {/* Admin Section - Only visible to admins */}
         {isAdmin && (
           <div className="mt-8">
@@ -451,7 +450,7 @@ const OverlapEnginePage = () => {
                       <li>• Manage section representatives</li>
                     </ul>
                   </div>
-                  
+
                   <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">System Overview</h4>
                     <p className="text-sm text-blue-700 dark:text-blue-300">
@@ -464,7 +463,7 @@ const OverlapEnginePage = () => {
           </div>
         )}
       </div>
-      
+
       <UploadTimetableModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}

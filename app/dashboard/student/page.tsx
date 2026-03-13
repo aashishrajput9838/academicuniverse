@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/authContext';
 import GitHubProjects from '@/components/GitHubProjects';
@@ -8,6 +8,35 @@ import GitHubProjects from '@/components/GitHubProjects';
 export default function StudentDashboardOverview() {
   const { user, backendUser, loading } = useAuth();
   const router = useRouter();
+  const [metrics, setMetrics] = useState({
+    growthRate: '...',
+    gpa: '...',
+    skillsAcquired: 0,
+    projectsCompleted: 0
+  });
+
+  useEffect(() => {
+    if (backendUser && backendUser.role === 'STUDENT') {
+      const fetchMetrics = async () => {
+        try {
+          const res = await fetch('http://localhost:5000/api/dashboard/student', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.data) {
+              setMetrics(data.data);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch metrics', err);
+        }
+      };
+      fetchMetrics();
+    }
+  }, [backendUser]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -37,7 +66,7 @@ export default function StudentDashboardOverview() {
     <div className="space-y-8">
       {/* GitHub Projects Section */}
       <GitHubProjects />
-      
+
       <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Student Dashboard Overview</h1>
@@ -47,19 +76,19 @@ export default function StudentDashboardOverview() {
         {/* Quick Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-            <div className="text-3xl font-bold text-emerald-400">85%</div>
+            <div className="text-3xl font-bold text-emerald-400">{metrics.growthRate}</div>
             <div className="text-slate-400 mt-2">Growth Rate</div>
           </div>
           <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-            <div className="text-3xl font-bold text-emerald-400">A+</div>
+            <div className="text-3xl font-bold text-emerald-400">{metrics.gpa}</div>
             <div className="text-slate-400 mt-2">Current GPA</div>
           </div>
           <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-            <div className="text-3xl font-bold text-emerald-400">42</div>
+            <div className="text-3xl font-bold text-emerald-400">{metrics.skillsAcquired}</div>
             <div className="text-slate-400 mt-2">Skills Acquired</div>
           </div>
           <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-            <div className="text-3xl font-bold text-emerald-400">27</div>
+            <div className="text-3xl font-bold text-emerald-400">{metrics.projectsCompleted}</div>
             <div className="text-slate-400 mt-2">Projects Completed</div>
           </div>
         </div>

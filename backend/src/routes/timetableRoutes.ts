@@ -2,12 +2,10 @@ import { Router } from 'express';
 import { Request, Response } from 'express';
 import { authenticateFirebaseUser } from '../middleware/auth';
 import { Logger } from '../utils/logger';
+import Timetable from '../models/Timetable';
 
 const timetableRouter = Router();
 const logger = new Logger('timetableRoutes');
-
-// Mock storage for timetable uploads (in production, this would be stored in Firebase Storage or similar)
-const timetableStorage: Map<string, { fileName: string; uploadTime: string; data: Buffer }> = new Map();
 
 /**
  * Upload timetable for a section
@@ -16,10 +14,10 @@ const timetableStorage: Map<string, { fileName: string; uploadTime: string; data
 timetableRouter.post(
   '/upload',
   authenticateFirebaseUser,
-  async (req: Request, res: Response) => {
+  async (req: any, res: Response) => {
     try {
       const { sectionId } = req.body;
-      const file = (req as any).file;
+      const file = req.file;
 
       if (!file) {
         return res.status(400).json({
@@ -44,24 +42,28 @@ timetableRouter.post(
         });
       }
 
-      // In a real implementation, you would:
-      // 1. Verify user has permission to upload for this section
-      // 2. Store the file in Firebase Storage or similar
-      // 3. Save metadata to Firestore
-      // 4. Process the timetable to extract time slots
+      // Find existing timetable or create new
+      let timetableInfo = await Timetable.findOne({ sectionId, organizationId: req.organizationId });
 
-      // For this demo, we'll just store basic info
-      const uploadTime = new Date().toISOString();
-      timetableStorage.set(sectionId, {
-        fileName: file.originalname,
-        uploadTime,
-        data: file.buffer
-      });
+      if (timetableInfo) {
+        // Update existing
+        timetableInfo.fileName = file.originalname;
+        timetableInfo.uploadTime = new Date();
+        timetableInfo.uploadedBy = req.user?.userId;
+        await timetableInfo.save();
+      } else {
+        timetableInfo = await Timetable.create({
+          sectionId,
+          fileName: file.originalname,
+          organizationId: req.organizationId,
+          uploadedBy: req.user?.userId
+        });
+      }
 
       logger.info(`Timetable uploaded for section ${sectionId}`, {
         fileName: file.originalname,
         fileSize: file.size,
-        userId: (req as any).user.uid
+        userId: req.user?.userId
       });
 
       return res.status(200).json({
@@ -69,8 +71,8 @@ timetableRouter.post(
         message: 'Timetable uploaded successfully',
         data: {
           sectionId,
-          fileName: file.originalname,
-          uploadTime
+          fileName: timetableInfo.fileName,
+          uploadTime: timetableInfo.uploadTime
         }
       });
 
@@ -92,12 +94,12 @@ timetableRouter.post(
 timetableRouter.get(
   '/status/:sectionId',
   authenticateFirebaseUser,
-  async (req: Request, res: Response) => {
+  async (req: any, res: Response) => {
     try {
       const { sectionId } = req.params;
-      
-      const timetableInfo = timetableStorage.get(sectionId);
-      
+
+      const timetableInfo = await Timetable.findOne({ sectionId, organizationId: req.organizationId });
+
       if (!timetableInfo) {
         return res.status(404).json({
           success: false,

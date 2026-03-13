@@ -6,13 +6,13 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table'
 import { Calendar, Clock, FileText, Eye, Download, AlertTriangle, CheckCircle } from 'lucide-react'
 
@@ -26,61 +26,75 @@ export default function AdminTimetableStatusPage() {
   useEffect(() => {
     if (!loading && backendUser) {
       const isAdmin = (
-        backendUser.role === 'ADMIN' || 
-        backendUser.role === 'SUPER_ADMIN' || 
+        backendUser.role === 'ADMIN' ||
+        backendUser.role === 'SUPER_ADMIN' ||
         (backendUser as any).permissions?.includes('MANAGE_USERS')
       );
-      
+
       if (!isAdmin) {
         router.push('/dashboard/student') // Redirect to student dashboard if not admin
       }
     }
   }, [backendUser, loading, router])
 
-  // Mock data for timetables and sections
+  // Fetch timetables and sections from backend
   useEffect(() => {
-    // In a real app, this would come from API calls
-    setSections([
-      { id: '1', sectionName: 'CS-101-A', courseId: 'CS101', representative: 'user-3' },
-      { id: '2', sectionName: 'MATH-201-B', courseId: 'MATH201', representative: 'user-1' },
-      { id: '3', sectionName: 'PHYS-102-C', courseId: 'PHYS102', representative: null },
-      { id: '4', sectionName: 'ENG-101-D', courseId: 'ENG101', representative: null }
-    ])
-    
-    setTimetables([
-      { 
-        id: '1', 
-        sectionId: '1', 
-        fileName: 'CS-101-A_Timetable.pdf', 
-        uploadedBy: 'user-3', 
-        uploadDate: '2023-10-15T09:30:00Z', 
-        status: 'approved',
-        fileSize: '2.4 MB'
-      },
-      { 
-        id: '2', 
-        sectionId: '2', 
-        fileName: 'MATH-201-B_Schedule.pdf', 
-        uploadedBy: 'user-1', 
-        uploadDate: '2023-10-16T14:22:00Z', 
-        status: 'pending',
-        fileSize: '1.8 MB'
-      },
-      { 
-        id: '3', 
-        sectionId: '3', 
-        fileName: 'PHYS-102-C_Schedule.pdf', 
-        uploadedBy: 'admin', 
-        uploadDate: '2023-10-14T11:15:00Z', 
-        status: 'rejected',
-        fileSize: '3.1 MB',
-        rejectionReason: 'Format does not match required template'
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+
+        // 1. Fetch available sections
+        const sectionsRes = await fetch('http://localhost:5000/api/sections', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const sectionsData = await sectionsRes.json();
+        let loadedSections: any[] = [];
+
+        if (sectionsData.success) {
+          loadedSections = sectionsData.data.map((s: any) => ({
+            id: s._id,
+            sectionName: s.name,
+            courseId: s.courseId
+          }));
+          setSections(loadedSections);
+        }
+
+        // 2. Fetch timetable status for each section
+        // Note: In an ideal scenario, the backend would have a combined `/api/timetables` route 
+        // to return all timetables at once. Given current routes, we fetch per section.
+        const timetableList: any[] = [];
+        for (const section of loadedSections) {
+          const tsRes = await fetch(`http://localhost:5000/api/timetable/status/${section.id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const tsData = await tsRes.json();
+
+          if (tsData.success && tsData.data.hasTimetable) {
+            timetableList.push({
+              id: section.id, // using section ID as key
+              sectionId: section.id,
+              fileName: tsData.data.fileName,
+              uploadedBy: 'N/A', // Needs a populated uploadedBy field in backend
+              uploadDate: tsData.data.uploadTime,
+              status: 'pending', // Simulated status (needs schema extension for approval workflow)
+              fileSize: 'Unknown' // Not tracked in current schema
+            });
+          }
+        }
+        setTimetables(timetableList);
+
+      } catch (err) {
+        console.error('Error fetching timetable status:', err);
       }
-    ])
-  }, [])
+    };
+
+    if (backendUser) {
+      fetchData();
+    }
+  }, [backendUser]);
 
   const getStatusVariant = (status: string) => {
-    switch(status) {
+    switch (status) {
       case 'approved': return 'default'
       case 'pending': return 'secondary'
       case 'rejected': return 'destructive'
@@ -89,7 +103,7 @@ export default function AdminTimetableStatusPage() {
   }
 
   const getStatusIcon = (status: string) => {
-    switch(status) {
+    switch (status) {
       case 'approved': return <CheckCircle className="h-4 w-4 text-green-500" />
       case 'pending': return <Clock className="h-4 w-4 text-yellow-500" />
       case 'rejected': return <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -116,8 +130,8 @@ export default function AdminTimetableStatusPage() {
   }
 
   const isAdmin = backendUser && (
-    backendUser.role === 'ADMIN' || 
-    backendUser.role === 'SUPER_ADMIN' || 
+    backendUser.role === 'ADMIN' ||
+    backendUser.role === 'SUPER_ADMIN' ||
     (backendUser as any).permissions?.includes('MANAGE_USERS')
   )
 
@@ -164,7 +178,7 @@ export default function AdminTimetableStatusPage() {
                 {timetables.map((timetable) => {
                   const section = sections.find(s => s.id === timetable.sectionId)
                   const uploadedByUser = { name: 'Unknown' } // In a real app, this would come from user data
-                  
+
                   return (
                     <TableRow key={timetable.id} className="border-slate-700">
                       <TableCell className="text-white font-medium">
@@ -195,16 +209,16 @@ export default function AdminTimetableStatusPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             className="border-slate-600 text-slate-300 hover:bg-slate-700"
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             View
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             className="border-emerald-600 text-emerald-400 hover:bg-emerald-900/20"
                           >
@@ -234,7 +248,7 @@ export default function AdminTimetableStatusPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -248,7 +262,7 @@ export default function AdminTimetableStatusPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -262,7 +276,7 @@ export default function AdminTimetableStatusPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">

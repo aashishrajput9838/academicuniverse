@@ -6,15 +6,15 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table'
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -35,76 +35,58 @@ export default function AdminUsersPage() {
   useEffect(() => {
     if (!loading && backendUser) {
       const isAdmin = (
-        backendUser.role === 'ADMIN' || 
-        backendUser.role === 'SUPER_ADMIN' || 
+        backendUser.role === 'ADMIN' ||
+        backendUser.role === 'SUPER_ADMIN' ||
         (backendUser as any).permissions?.includes('MANAGE_USERS')
       );
-      
+
       if (!isAdmin) {
         router.push('/dashboard/student') // Redirect to student dashboard if not admin
       }
     }
   }, [backendUser, loading, router])
 
-  // Mock data for users
+  // Fetch users from backend
   useEffect(() => {
-    // In a real app, this would come from an API call
-    setUsers([
-      { 
-        id: '1', 
-        name: 'Alice Johnson', 
-        email: 'alice.johnson@university.edu', 
-        role: 'STUDENT', 
-        organization: 'Sharda University',
-        status: 'active',
-        lastLogin: '2023-10-15T09:30:00Z'
-      },
-      { 
-        id: '2', 
-        name: 'Bob Smith', 
-        email: 'bob.smith@university.edu', 
-        role: 'FACULTY', 
-        organization: 'Sharda University',
-        status: 'active',
-        lastLogin: '2023-10-16T14:22:00Z'
-      },
-      { 
-        id: '3', 
-        name: 'Carol Davis', 
-        email: 'carol.davis@university.edu', 
-        role: 'ADMIN', 
-        organization: 'Sharda University',
-        status: 'active',
-        lastLogin: '2023-10-14T11:15:00Z'
-      },
-      { 
-        id: '4', 
-        name: 'David Wilson', 
-        email: 'david.wilson@university.edu', 
-        role: 'STUDENT', 
-        organization: 'Sharda University',
-        status: 'inactive',
-        lastLogin: '2023-09-10T08:45:00Z'
-      },
-      { 
-        id: '5', 
-        name: 'Emma Brown', 
-        email: 'emma.brown@university.edu', 
-        role: 'STUDENT', 
-        organization: 'Sharda University',
-        status: 'active',
-        lastLogin: '2023-10-16T16:30:00Z'
+    const fetchUsers = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        const res = await fetch('http://localhost:5000/api/users', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          // Transform backend user data slightly if needed to match the frontend shape
+          const transformedUsers = data.data.map((u: any) => ({
+            id: u._id,
+            name: u.name,
+            email: u.email,
+            role: u.roleId?.name || 'STUDENT',
+            organization: 'Sharda University', // We can get this from orgId later if needed
+            status: u.isActive ? 'active' : 'inactive',
+            lastLogin: null // Or whatever field tracks login in the future
+          }));
+          setUsers(transformedUsers);
+          setFilteredUsers(transformedUsers);
+        }
+      } catch (err) {
+        console.error('Error fetching users:', err);
       }
-    ])
-  }, [])
+    };
+
+    if (backendUser) {
+      fetchUsers();
+    }
+  }, [backendUser]);
 
   // Filter users based on search term
   useEffect(() => {
     if (searchTerm) {
-      const filtered = users.filter(user => 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.role.toLowerCase().includes(searchTerm.toLowerCase())
+      const filtered = users.filter(user =>
+        user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.role?.toLowerCase().includes(searchTerm.toLowerCase())
       )
       setFilteredUsers(filtered)
     } else {
@@ -113,13 +95,13 @@ export default function AdminUsersPage() {
   }, [searchTerm, users])
 
   const handleRoleChange = (userId: string, newRole: string) => {
-    setUsers(users.map(user => 
+    setUsers(users.map(user =>
       user.id === userId ? { ...user, role: newRole } : user
     ))
   }
 
   const handleStatusChange = (userId: string, newStatus: string) => {
-    setUsers(users.map(user => 
+    setUsers(users.map(user =>
       user.id === userId ? { ...user, status: newStatus } : user
     ))
   }
@@ -135,7 +117,7 @@ export default function AdminUsersPage() {
   }
 
   const getStatusColor = (status: string) => {
-    switch(status) {
+    switch (status) {
       case 'active': return 'bg-green-500'
       case 'inactive': return 'bg-red-500'
       case 'pending': return 'bg-yellow-500'
@@ -152,8 +134,8 @@ export default function AdminUsersPage() {
   }
 
   const isAdmin = backendUser && (
-    backendUser.role === 'ADMIN' || 
-    backendUser.role === 'SUPER_ADMIN' || 
+    backendUser.role === 'ADMIN' ||
+    backendUser.role === 'SUPER_ADMIN' ||
     (backendUser as any).permissions?.includes('MANAGE_USERS')
   )
 
@@ -228,7 +210,7 @@ export default function AdminUsersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Select 
+                      <Select
                         value={user.role}
                         onValueChange={(value) => handleRoleChange(user.id, value)}
                       >
@@ -268,22 +250,22 @@ export default function AdminUsersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           className="border-slate-600 text-slate-300 hover:bg-slate-700"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           className="border-slate-600 text-slate-300 hover:bg-slate-700"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           className="border-red-600 text-red-400 hover:bg-red-900/20"
                         >
@@ -311,7 +293,7 @@ export default function AdminUsersPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -325,7 +307,7 @@ export default function AdminUsersPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -339,7 +321,7 @@ export default function AdminUsersPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">

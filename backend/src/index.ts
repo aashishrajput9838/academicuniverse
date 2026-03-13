@@ -23,8 +23,20 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // CORS
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  ...(process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : [])
+];
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 
@@ -77,17 +89,17 @@ const startServer = async () => {
     // Connect to MongoDB
     await connectDB();
 
-        // Start Express server unless running tests (tests will use the app directly)
-        if (process.env.NODE_ENV !== 'test') {
-          app.listen(PORT, () => {
-            console.log(`✓ Server running on port ${PORT}`);
-            console.log(`✓ Environment: ${process.env.NODE_ENV}`);
-            
-            // Start the scheduler service after server is running
-            schedulerService.start();
-            console.log('✓ Scheduler service started');
-          });
-        }
+    // Start Express server unless running tests (tests will use the app directly)
+    if (process.env.NODE_ENV !== 'test') {
+      app.listen(PORT, () => {
+        console.log(`✓ Server running on port ${PORT}`);
+        console.log(`✓ Environment: ${process.env.NODE_ENV}`);
+
+        // Start the scheduler service after server is running
+        schedulerService.start();
+        console.log('✓ Scheduler service started');
+      });
+    }
   } catch (error) {
     console.error('✗ Server startup failed:', error);
     process.exit(1);

@@ -56,8 +56,14 @@ const UploadTimetableModal: React.FC<UploadTimetableModalProps> = ({
     setError(null);
 
     try {
-      // Get Firebase ID token
-      const token = await (window as any).firebase?.auth().currentUser?.getIdToken();
+      // Get JWT token from localStorage
+      const token = localStorage.getItem('authToken');
+
+      if (!token) {
+        setError('Authentication token not found. Please log in again.');
+        setUploading(false);
+        return;
+      }
 
       const formData = new FormData();
       formData.append('timetable', file);
@@ -65,7 +71,7 @@ const UploadTimetableModal: React.FC<UploadTimetableModalProps> = ({
         formData.append('sectionId', sectionId);
       }
 
-      const response = await fetch('/api/timetable/upload', {
+      const response = await fetch('http://localhost:5000/api/timetable/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

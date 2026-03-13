@@ -1,10 +1,16 @@
-I've found the admin credentials for your project:
+### Academic Universe Admin Credentials
 
-Super Admin:
+#### Organization Admin (Sharda University)
+- Email: admin@sharda.com
+- Password: Admin123456
 
-Email: superadmin@academicuniverse.com
-Password: SuperAdmin123
-Organization Admin (Sharda University):
+#### System Admin
+- Email: admin@academicuniverse.com
+- Password: Admin123!
 
-Email: admin@sharda.com
-Password: Admin123456
+#### Super Admin
+- Email: superadmin@academicuniverse.com
+- Password: SuperAdmin123
+
+---
+Note: Demo passwords for other roles (jane.smith@sharda.com, john.doe@sharda.com) follow the pattern: Faculty123 / Student123

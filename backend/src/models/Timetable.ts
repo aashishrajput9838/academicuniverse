@@ -1,8 +1,18 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IParsedSlot {
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+    subject: string;
+    isFreeSlot?: boolean;
+}
+
 export interface ITimetable extends Document {
     sectionId: mongoose.Types.ObjectId;
     fileName: string;
+    fileUrl?: string;
+    parsedData?: IParsedSlot[];
     uploadTime: Date;
     organizationId: mongoose.Types.ObjectId;
     uploadedBy: mongoose.Types.ObjectId;
@@ -21,6 +31,19 @@ const timetableSchema = new Schema<ITimetable>(
             required: true,
             trim: true,
         },
+        fileUrl: {
+            type: String,
+        },
+        parsedData: [{
+            dayOfWeek: String,
+            startTime: String,
+            endTime: String,
+            subject: String,
+            isFreeSlot: {
+                type: Boolean,
+                default: false
+            }
+        }],
         uploadTime: {
             type: Date,
             default: Date.now,

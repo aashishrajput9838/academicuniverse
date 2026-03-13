@@ -25,8 +25,13 @@ export async function safeGetAnalytics() {
   if (!isBrowser) return null;
   try {
     const analyticsModule = await import("firebase/analytics");
-    return analyticsModule.getAnalytics(firebaseApp);
+    // Only attempt to initialize if we have a measurementId and are not in a limited network
+    if (firebaseConfig.measurementId) {
+      return analyticsModule.getAnalytics(firebaseApp);
+    }
+    return null;
   } catch (e) {
+    // Silence analytics errors as they are non-blocking
     return null;
   }
 }

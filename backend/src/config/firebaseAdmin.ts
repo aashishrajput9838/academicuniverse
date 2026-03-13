@@ -1,9 +1,13 @@
 import admin from 'firebase-admin';
 import path from 'path';
 import fs from 'fs';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 let firebaseAuthInstance: any = null;
 let firebaseFirestoreInstance: any = null;
+let firebaseStorageInstance: any = null;
 
 // Initialize Firebase Admin SDK safely
 try {
@@ -11,25 +15,29 @@ try {
   const serviceAccountPath = path.join(__dirname, '../../../serviceAccountKey.json.json');
   const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
 
+  const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'academicuniverse.firebasestorage.app';
+
   if (!admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       projectId: process.env.FIREBASE_PROJECT_ID,
+      storageBucket: bucketName,
     });
   }
-  
   firebaseAuthInstance = admin.auth();
   firebaseFirestoreInstance = admin.firestore();
+  firebaseStorageInstance = admin.storage();
+  console.log('✓ Firebase Storage initialized with bucket:', bucketName);
 } catch (error) {
   console.warn('Firebase Admin SDK initialization failed:', error);
   console.info('Running in limited mode - using mock authentication for development');
-  
+
   // Create mock Firebase Auth that simulates token verification
   firebaseAuthInstance = {
     verifyIdToken: async (token: string) => {
       // In development, we'll simulate a valid token verification
       // This is a simplified simulation for development purposes
-      
+
       // For demo purposes, we'll return a mock decoded token
       // In a real app, this should never be used in production
       // But we'll make it more robust to handle various token formats
@@ -38,7 +46,7 @@ try {
         if (typeof token !== 'string' || token.length < 10) {
           throw new Error('Invalid token format');
         }
-        
+
         // Extract basic info from token or use defaults
         return {
           uid: 'demo-user-' + Date.now().toString(),
@@ -54,7 +62,7 @@ try {
       }
     }
   };
-  
+
   // Mock Firestore instance
   firebaseFirestoreInstance = {
     collection: (collectionName: string) => ({
@@ -64,7 +72,7 @@ try {
             empty: false,
             size: 0,
             docs: [],
-            forEach: (callback: (doc: any) => void) => {},
+            forEach: (callback: (doc: any) => void) => { },
           };
         },
       }),
@@ -74,10 +82,25 @@ try {
       }),
     }),
   };
+
+  // Mock Storage instance for development
+  firebaseStorageInstance = {
+    bucket: () => ({
+      file: (filename: string) => ({
+        save: async (buffer: Buffer, options: any) => {
+          console.log(`[Mock Storage] Saved file ${filename}`);
+          return Promise.resolve();
+        },
+        makePublic: async () => Promise.resolve(),
+        publicUrl: () => `https://mock-storage.local/${filename}`
+      })
+    })
+  };
 }
 
 // Export initialized services (or mock if initialization failed)
 export const firebaseAuth = firebaseAuthInstance;
 export const firebaseFirestore = firebaseFirestoreInstance;
+export const firebaseStorage = firebaseStorageInstance;
 
 export default admin;

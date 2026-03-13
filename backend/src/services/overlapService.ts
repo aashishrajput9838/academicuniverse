@@ -100,33 +100,38 @@ export class OverlapService {
   }
 
   /**
-   * Fetch precomputed free slots for all sections
+   * Fetch real free slots for all sections from the database
    */
   private async fetchFreeSlots(sectionIds: string[], organizationId: string): Promise<FreeSlotsData[]> {
+    const Timetable = (await import('../models/Timetable')).default;
     const freeSlotsData: FreeSlotsData[] = [];
-
-    logger.warn('Timetable parsing to free slots not yet implemented - returning mock free slots');
 
     for (const sectionId of sectionIds) {
       try {
-        // Validate section exists and belongs to organization
+        // Validate section exists
         await this.validateSection(sectionId, organizationId);
 
-        // Return mock free slots data for development
-        const mockFreeSlots: FreeSlotsData = {
-          organizationId: organizationId,
-          weeklyFreeSlots: {
-            'Monday': [3, 4, 5],      // 11:35-12:25, 12:25-13:15, 13:15-14:05
-            'Tuesday': [0, 1, 2],     // 09:00-09:50, 09:50-10:40, 10:40-11:30
-            'Wednesday': [6, 7, 8],   // 14:10-15:00, 15:00-15:50, 15:50-16:40
-            'Thursday': [2, 3, 4],     // 10:40-11:30, 11:35-12:25, 12:25-13:15
-            'Friday': [1, 5, 7]       // 09:50-10:40, 13:15-14:05, 15:00-15:50
-          }
-        };
+        // Fetch timetable for this section
+        const timetable = await Timetable.findOne({ sectionId, organizationId });
 
-        freeSlotsData.push(mockFreeSlots);
+        if (!timetable || !timetable.parsedData || timetable.parsedData.length === 0) {
+          logger.info(`No timetable found for section ${sectionId}, assuming no free slots available (busy by default for overlap)`);
+          freeSlotsData.push({
+            organizationId,
+            weeklyFreeSlots: {} // Empty means no overlap will be found with this section
+          });
+          continue;
+        }
 
-        logger.info(`Fetched mock free slots for section ${sectionId}`);
+        // Calculate free slots from the parsed busy slots
+        const computedFreeSlots = this.calculateFreeSlotsFromTimetable(timetable.parsedData);
+
+        freeSlotsData.push({
+          organizationId,
+          weeklyFreeSlots: computedFreeSlots
+        });
+
+        logger.info(`Fetched real free slots for section ${sectionId} (${timetable.fileName})`);
       } catch (error: any) {
         logger.error(`Error fetching free slots for section ${sectionId}:`, error);
         throw error;
@@ -134,6 +139,41 @@ export class OverlapService {
     }
 
     return freeSlotsData;
+  }
+
+  /**
+   * Helper to determine which of the standard TIME_SLOTS are free
+   * based on the parsed busy slots from the timetable.
+   */
+  private calculateFreeSlotsFromTimetable(parsedData: any[]): WeeklySlots {
+    const weeklyFreeSlots: WeeklySlots = {};
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    days.forEach(day => {
+      const busySlotsForDay = parsedData.filter(slot =>
+        slot.dayOfWeek === day && !slot.isFreeSlot
+      );
+
+      const freeIndices: number[] = [];
+
+      TIME_SLOTS.forEach(stdSlot => {
+        // A standard slot is "Free" if NO busy slot in the timetable overlaps with its start time
+        // We use a simple 09:00 exact match for this institutional template
+        const isBusy = busySlotsForDay.some(busy =>
+          busy.startTime.substring(0, 5) === stdSlot.start
+        );
+
+        if (!isBusy) {
+          freeIndices.push(stdSlot.index);
+        }
+      });
+
+      if (freeIndices.length > 0) {
+        weeklyFreeSlots[day] = freeIndices;
+      }
+    });
+
+    return weeklyFreeSlots;
   }
 
   /**

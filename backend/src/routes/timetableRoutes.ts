@@ -1,11 +1,22 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import { authenticateFirebaseUser } from '../middleware/auth';
+import { authenticateUser } from '../middleware/auth';
 import { Logger } from '../utils/logger';
-import Timetable from '../models/Timetable';
+import Timetable, { IParsedSlot } from '../models/Timetable';
+import multer from 'multer';
+import storageService from '../services/storageService';
+import { TimetableParser } from '../utils/timetableParser';
 
 const timetableRouter = Router();
 const logger = new Logger('timetableRoutes');
+
+// Configure multer
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10 MB
+  }
+});
 
 /**
  * Upload timetable for a section
@@ -13,7 +24,8 @@ const logger = new Logger('timetableRoutes');
  */
 timetableRouter.post(
   '/upload',
-  authenticateFirebaseUser,
+  authenticateUser,
+  upload.single('timetable'),
   async (req: any, res: Response) => {
     try {
       const { sectionId } = req.body;
@@ -53,12 +65,41 @@ timetableRouter.post(
         });
       }
 
+      // Parse timetable based on file type
+      let parsedData: IParsedSlot[] = [];
+      try {
+        if (file.originalname.endsWith('.pdf') || file.mimetype === 'application/pdf') {
+          parsedData = await TimetableParser.parsePdf(file.buffer);
+        } else if (file.originalname.endsWith('.xls') || file.originalname.endsWith('.xlsx') || file.mimetype.includes('excel') || file.mimetype.includes('spreadsheetml')) {
+          parsedData = TimetableParser.parseExcel(file.buffer);
+        }
+      } catch (parseError) {
+        logger.warn('Failed to parse timetable data:', parseError);
+        // Continue proceeding, we will just have empty parsedData
+      }
+
+      // Upload file to Firebase Cloud Storage
+      let fileUrl = '';
+      try {
+        fileUrl = await storageService.uploadTimetable(
+          file.buffer,
+          file.originalname,
+          req.organizationId,
+          sectionId
+        );
+      } catch (storageError) {
+        logger.error('Resilient upload: Storage failed, continuing with metadata saving', storageError);
+        // We continue even if storage fails so the parsed data is still saved
+      }
+
       // Find existing timetable or create new
       let timetableInfo = await Timetable.findOne({ sectionId, organizationId: req.organizationId });
 
       if (timetableInfo) {
         // Update existing
         timetableInfo.fileName = file.originalname;
+        timetableInfo.fileUrl = fileUrl;
+        timetableInfo.parsedData = parsedData;
         timetableInfo.uploadTime = new Date();
         timetableInfo.uploadedBy = req.user?.userId;
         await timetableInfo.save();
@@ -66,6 +107,8 @@ timetableRouter.post(
         timetableInfo = await Timetable.create({
           sectionId,
           fileName: file.originalname,
+          fileUrl,
+          parsedData,
           organizationId: req.organizationId,
           uploadedBy: req.user?.userId
         });
@@ -74,15 +117,18 @@ timetableRouter.post(
       logger.info(`Timetable uploaded for section ${sectionId}`, {
         fileName: file.originalname,
         fileSize: file.size,
+        parsedSlotsCount: parsedData.length,
         userId: req.user?.userId
       });
 
       return res.status(200).json({
         success: true,
-        message: 'Timetable uploaded successfully',
+        message: 'Timetable uploaded and processed successfully',
         data: {
           sectionId,
           fileName: timetableInfo.fileName,
+          fileUrl: timetableInfo.fileUrl,
+          parsedData: timetableInfo.parsedData,
           uploadTime: timetableInfo.uploadTime
         }
       });
@@ -104,7 +150,7 @@ timetableRouter.post(
  */
 timetableRouter.get(
   '/status/:sectionId',
-  authenticateFirebaseUser,
+  authenticateUser,
   async (req: any, res: Response) => {
     try {
       const { sectionId } = req.params;

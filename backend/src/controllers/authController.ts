@@ -83,6 +83,9 @@ export const getMeController = async (req: any, res: Response) => {
       return sendError(res, 404, 'User not found');
     }
 
+    const { default: Section } = await import('../models/Section');
+    const assignedSection = await Section.findOne({ representativeId: user._id });
+
     // Format the response to match frontend expectations
     const userData = {
       id: user._id.toString(),
@@ -92,7 +95,8 @@ export const getMeController = async (req: any, res: Response) => {
       organizationId: (user.organizationId as any)._id.toString(),
       role: (user.roleId as any).name,
       permissions: req.user.permissions,
-      isSuperAdmin: req.user.isSuperAdmin
+      isSuperAdmin: req.user.isSuperAdmin,
+      isSectionRep: !!assignedSection
     };
 
     return sendResponse(res, 200, userData, 'User data retrieved');

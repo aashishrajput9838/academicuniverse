@@ -88,6 +88,10 @@ export const loginWithEmail = async (email: string, password: string): Promise<{
     user.lastLogin = new Date();
     await user.save();
 
+    // Check if user is a section representative
+    const { default: Section } = await import('../models/Section');
+    const isSectionRep = !!(await Section.findOne({ representativeId: user._id }));
+
     return {
       token,
       user: {
@@ -98,6 +102,7 @@ export const loginWithEmail = async (email: string, password: string): Promise<{
         organizationId: (user.organizationId as any)._id.toString(),
         role: (user.roleId as any).name,
         permissions,
+        isSectionRep // Add this flag
       },
     };
   } catch (error) {
@@ -243,6 +248,10 @@ export const loginWithFirebase = async (idToken: string): Promise<{ token: strin
     user.lastLogin = new Date();
     await user.save();
 
+    // Check if user is a section representative
+    const { default: Section } = await import('../models/Section');
+    const isSectionRep = !!(await Section.findOne({ representativeId: user._id }));
+
     return {
       token,
       user: {
@@ -253,6 +262,7 @@ export const loginWithFirebase = async (idToken: string): Promise<{ token: strin
         organizationId: organization._id.toString(),
         role: roleInfo.role, // Use detected role
         permissions,
+        isSectionRep // Add this flag
       },
     };
   } catch (error) {

@@ -200,17 +200,21 @@ const OverlapEnginePage = () => {
                   }`}>
                   {selectedSections.includes(section._id) ? 'Selected' : 'Available'}
                 </span>
-                {isAuthorizedToUpload && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleUploadClick(section._id);
-                    }}
-                    className="px-2 py-1 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
-                  >
-                    Upload
-                  </button>
-                )}
+                {(isAuthorizedToUpload || (backendUser && (
+                  section.representativeUid === backendUser.id ||
+                  (section as any).representativeId === backendUser.id ||
+                  (section as any).representativeId?._id === backendUser.id
+                ))) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUploadClick(section._id);
+                      }}
+                      className="px-2 py-1 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+                    >
+                      Upload
+                    </button>
+                  )}
               </div>
             </div>
           </div>

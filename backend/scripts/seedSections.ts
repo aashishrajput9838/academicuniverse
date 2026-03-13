@@ -20,12 +20,17 @@ async function seedSections() {
             process.exit(1);
         }
 
-        const sectionsData = [
-            { name: 'Section A', courseId: 'B.Tech CSE', organizationId: organization._id, capacity: 60 },
-            { name: 'Section B', courseId: 'B.Tech CSE', organizationId: organization._id, capacity: 60 },
-            { name: 'Section C', courseId: 'B.Tech CSE', organizationId: organization._id, capacity: 60 },
-            { name: 'Section D', courseId: 'B.Tech ECE', organizationId: organization._id, capacity: 60 }
-        ];
+        const sectionsData = [];
+        const alphabet = 'ABCDEFGHIJKLMNOPQ'.split('');
+
+        for (const letter of alphabet) {
+            sectionsData.push({
+                name: `Section ${letter}`,
+                courseId: 'B.Tech CSE', // Defaulting them all to B.Tech CSE
+                organizationId: organization._id,
+                capacity: 60
+            });
+        };
 
         for (const data of sectionsData) {
             const existing = await Section.findOne({ name: data.name, organizationId: data.organizationId });

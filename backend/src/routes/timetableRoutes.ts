@@ -27,10 +27,21 @@ timetableRouter.post(
       }
 
       // Validate file type
-      if (file.mimetype !== 'application/pdf') {
+      const allowedMimeTypes = [
+        'application/pdf',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ];
+
+      // Also check filename as a fallback in case mimetype is octet-stream
+      const isAllowedExt = file.originalname.endsWith('.pdf') ||
+        file.originalname.endsWith('.xls') ||
+        file.originalname.endsWith('.xlsx');
+
+      if (!allowedMimeTypes.includes(file.mimetype) && !isAllowedExt) {
         return res.status(400).json({
           success: false,
-          message: 'Only PDF files are allowed'
+          message: 'Only PDF and Excel files are allowed'
         });
       }
 

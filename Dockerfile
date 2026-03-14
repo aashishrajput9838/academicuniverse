@@ -1,6 +1,6 @@
-FROM node:18-slim
+FROM node:20-slim
 
-# Install essential build tools if needed
+# Install essential build tools
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
@@ -21,8 +21,8 @@ COPY backend/ .
 # Build
 RUN npm run build
 
-# Prune
-RUN npm prune --production
+# Prune dev dependencies
+RUN npm prune --omit=dev
 
 ENV PORT=8080
 ENV NODE_ENV=production

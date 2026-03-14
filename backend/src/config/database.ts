@@ -4,11 +4,17 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/academ
 
 export const connectDB = async () => {
   try {
-    console.log('Connecting to MongoDB...');
-    await mongoose.connect(MONGODB_URI);
+    const maskedUri = MONGODB_URI.replace(/\/\/.*:.*@/, '//****:****@');
+    console.log(`Connecting to MongoDB at: ${maskedUri}`);
+
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds instead of 30
+    });
     console.log('✓ MongoDB connected successfully');
-  } catch (error) {
-    console.error('✗ MongoDB connection failed:', error);
+  } catch (error: any) {
+    console.error('✗ MongoDB connection failed!');
+    console.error('Error Name:', error.name);
+    console.error('Error Message:', error.message);
     process.exit(1);
   }
 };

@@ -1,14 +1,18 @@
-FROM node:18-alpine
+FROM node:18-slim
 
-# Install build dependencies (sometimes needed for npm installs)
-RUN apk add --no-cache python3 make g++
+# Install essential build tools if needed
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Copy package files
 COPY backend/package*.json ./
 
-# Install dependencies with flags to save memory
+# Install dependencies
 RUN npm install --no-audit --no-fund
 
 # Copy source
@@ -17,10 +21,11 @@ COPY backend/ .
 # Build
 RUN npm run build
 
-# Final cleanup of dev dependencies to save space
+# Prune
 RUN npm prune --production
 
 ENV PORT=8080
+ENV NODE_ENV=production
 EXPOSE 8080
 
 CMD [ "npm", "start" ]

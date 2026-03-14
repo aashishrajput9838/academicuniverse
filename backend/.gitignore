@@ -26,3 +26,5 @@ logs/
 
 # Misc
 .turbo/
+*.exe
+install.ps1

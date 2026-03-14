@@ -26,6 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
+  'https://academicuniverse.vercel.app',
   ...(process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : [])
 ];
 

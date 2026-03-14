@@ -18,21 +18,27 @@ try {
     credential = admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON));
   }
   // Option 2: Individual environment variables
-  else if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
-    credential = admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-    });
-  }
-  // Option 3: Local file (for development)
   else {
-    const serviceAccountPath = path.join(__dirname, '../../../serviceAccountKey.json');
-    if (fs.existsSync(serviceAccountPath)) {
-      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-      credential = admin.credential.cert(serviceAccount);
-    } else {
-      throw new Error('No Firebase credentials found in environment or local file');
+    const pId = process.env.FIREBASE_PROJECT_ID || process.env.project_id;
+    const pKey = process.env.FIREBASE_PRIVATE_KEY || process.env.private_key;
+    const cEmail = process.env.FIREBASE_CLIENT_EMAIL || process.env.client_email;
+
+    if (pKey && cEmail) {
+      credential = admin.credential.cert({
+        projectId: pId,
+        clientEmail: cEmail,
+        privateKey: pKey.replace(/\\n/g, '\n'),
+      });
+    }
+    // Option 3: Local file (for development)
+    else {
+      const serviceAccountPath = path.join(__dirname, '../../../serviceAccountKey.json');
+      if (fs.existsSync(serviceAccountPath)) {
+        const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+        credential = admin.credential.cert(serviceAccount);
+      } else {
+        throw new Error('No Firebase credentials found in environment (tried FIREBASE_PRIVATE_KEY/private_key etc.) or local file');
+      }
     }
   }
 

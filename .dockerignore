@@ -1,0 +1,10 @@
+node_modules
+.next
+dist
+.git
+backend/node_modules
+backend/dist
+*.exe
+install.ps1
+serviceAccountKey.json*
+.env*

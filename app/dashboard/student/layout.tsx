@@ -41,6 +41,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: 'Academic Records', href: '/dashboard/student/records', icon: '📚' },
     { label: 'Skills Tracker', href: '/dashboard/student/skills', icon: '🎯' },
     { label: 'Overlap Engine', href: '/dashboard/student/overlap', icon: '📅' },
+    { label: 'Find Faculty Cabin', href: '/dashboard/student/faculty-cabin', icon: '🚪' },
   ];
 
   // Show loading state while checking authentication
@@ -60,11 +61,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-slate-900">
       {/* Scrolling Announcement Banner */}
-      <div 
+      <div
         ref={scrollerRef}
         className="w-full bg-emerald-600 overflow-hidden py-2"
       >
-        <div 
+        <div
           data-scroller-content
           className="flex whitespace-nowrap animate-scroll gap-12"
         >
@@ -95,7 +96,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar */}
           <Sidebar items={sidebarItems} />
-          
+
           {/* Main Content Area */}
           <main className="flex-1">
             {children}

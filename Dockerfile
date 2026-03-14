@@ -1,4 +1,4 @@
-FROM node:18-slim
+FROM node:18
 
 # Create app directory
 WORKDIR /app
@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files from the backend folder
 COPY backend/package*.json ./
 
-# Install dependencies (using --network-timeout to prevent unexpected errors)
-RUN npm install --network-timeout=100000
+# Install dependencies (use --frozen-lockfile if you had one, but this is safer for now)
+RUN npm install
 
 # Copy all files from the backend folder
 COPY backend/ .
@@ -19,5 +19,5 @@ RUN npm run build
 ENV PORT=8080
 EXPOSE 8080
 
-# Start it from the compiled dist folder
+# Start it
 CMD [ "npm", "start" ]

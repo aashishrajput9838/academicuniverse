@@ -6,7 +6,7 @@ import Section from '../models/Section';
 
 export const getStudentDashboard = async (req: any, res: Response) => {
     try {
-        const studentId = req.user._id;
+        const studentId = req.user.userId || req.user._id;
 
         // Fetch marks to calculate GPA
         const marks = await Mark.find({ studentId });
@@ -38,7 +38,7 @@ export const getStudentDashboard = async (req: any, res: Response) => {
 
 export const getFacultyDashboard = async (req: any, res: Response) => {
     try {
-        const facultyId = req.user._id;
+        const facultyId = req.user.userId || req.user._id;
         const organizationId = req.organizationId;
 
         // Find sections supervised by faculty

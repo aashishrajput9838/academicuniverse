@@ -9,7 +9,7 @@ const firebaseConfig = {
   storageBucket: "academicuniverse.firebasestorage.app",
   messagingSenderId: "851768640115",
   appId: "1:851768640115:web:463edefc819a483f7aa006",
-  measurementId: "G-BGFLH3LMTT",
+  // measurementId: "G-BGFLH3LMTT", // Disabled to prevent adblocker timeout errors
 };
 
 export const firebaseApp = !getApps().length
@@ -29,7 +29,7 @@ export async function safeGetAnalytics() {
   try {
     const analyticsModule = await import("firebase/analytics");
     // Only attempt to initialize if we have a measurementId and are not in a limited network
-    if (firebaseConfig.measurementId) {
+    if ((firebaseConfig as any).measurementId) {
       return analyticsModule.getAnalytics(firebaseApp);
     }
     return null;

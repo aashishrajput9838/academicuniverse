@@ -28,10 +28,11 @@ export const syncGmailEvents = async (userId: string) => {
 
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-    // Fetch latest 20 emails
+    // Fetch latest 50 emails that might be related to events
     const response = await gmail.users.messages.list({
         userId: 'me',
-        maxResults: 20,
+        maxResults: 50,
+        q: 'hackathon OR "coding competition" OR "tech event" OR workshop OR bootcamp OR seminar OR "developer meetup" OR "tech fest"',
     });
 
     const messages = response.data.messages || [];

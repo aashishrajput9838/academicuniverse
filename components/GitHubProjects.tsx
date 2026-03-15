@@ -122,7 +122,9 @@ const GitHubProjects: React.FC<GitHubProjectsProps> = ({ className = '' }) => {
         }
       }
     } catch (err: any) {
-      console.error('Error fetching GitHub projects:', err);
+      if (!err.message?.includes('GitHub username not configured')) {
+        console.error('Error fetching GitHub projects:', err);
+      }
       setError(err.message || 'Failed to load project statistics');
     } finally {
       setLoading(false);

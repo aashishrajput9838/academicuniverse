@@ -36,7 +36,11 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('API request failed:', error);
+    if (error instanceof Error && !error.message.includes('GitHub username not configured')) {
+      console.error('API request failed:', error);
+    } else if (!(error instanceof Error)) {
+      console.error('API request failed:', error);
+    }
     if (error instanceof Error) {
       throw error;
     }

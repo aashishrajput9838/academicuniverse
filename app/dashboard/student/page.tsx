@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/authContext';
 import GitHubProjects from '@/components/GitHubProjects';
-import { GmailEvents } from '@/components/GmailEvents';
 
 export default function StudentDashboardOverview() {
   const { user, backendUser, loading } = useAuth();
@@ -65,9 +64,6 @@ export default function StudentDashboardOverview() {
 
   return (
     <div className="space-y-8">
-      {/* Gmail Events Section */}
-      <GmailEvents />
-
       {/* GitHub Projects Section */}
       <GitHubProjects />
 

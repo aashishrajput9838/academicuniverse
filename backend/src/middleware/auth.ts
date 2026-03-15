@@ -20,7 +20,7 @@ export const authenticateUser = (
     }
 
     const decoded = verifyToken(token);
-    
+
     // Attach user data to request object
     req.user = decoded;
     req.organizationId = decoded.organizationId;
@@ -106,7 +106,7 @@ export const enforceOrgIsolation = (
 
     // If request contains orgId in body/params, validate it matches user's org
     const incomingOrgId = req.body?.organizationId || req.params?.organizationId;
-    
+
     if (incomingOrgId && incomingOrgId !== req.user.organizationId) {
       throw new AuthorizationError('Cannot access data from other organizations');
     }
@@ -164,10 +164,10 @@ export const authenticateFirebaseUser = async (
 
     // Verify Firebase ID token
     const decoded = await firebaseAuth.verifyIdToken(token);
-    
+
     // Extract user information from Firebase token
     const { uid, email } = decoded;
-    
+
     // Attach user data to request object
     req.firebaseUser = {
       firebaseUid: uid,
@@ -175,12 +175,44 @@ export const authenticateFirebaseUser = async (
       // Additional Firebase claims if any
       ...decoded
     };
-    
+
     // We still need to verify if this user exists in our database
-    // This would typically involve looking up the user by firebaseUid
-    // For now, we'll just attach the Firebase user info
-    // In a real implementation, you'd probably want to check if the user exists in your MongoDB
-    
+    const { default: User } = await import('../models/User');
+    const user = await User.findOne({
+      $or: [
+        { firebaseUid: uid },
+        { email: email }
+      ]
+    }).populate('roleId');
+
+    if (user) {
+      req.user = {
+        userId: user._id.toString(),
+        email: user.email,
+        organizationId: user.organizationId.toString(),
+        role: (user.roleId as any).name,
+        permissions: (user.roleId as any).permissions || [],
+        isSuperAdmin: (user.roleId as any).name === 'SUPER_ADMIN'
+      };
+      req.organizationId = user.organizationId.toString();
+
+      // Auto-link firebase uid if missing
+      if (!user.firebaseUid) {
+        user.firebaseUid = uid;
+        await user.save();
+      }
+    } else if (process.env.NODE_ENV === 'development') {
+      // Mock user fallback for development
+      req.user = {
+        userId: 'mock-user-id',
+        email: email || 'demo@example.com',
+        organizationId: 'mock-org-id',
+        role: email?.includes('fa.') ? 'FACULTY' : 'STUDENT',
+        permissions: [],
+        isSuperAdmin: false
+      };
+    }
+
     next();
   } catch (error: any) {
     if (error instanceof AuthenticationError) {

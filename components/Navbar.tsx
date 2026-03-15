@@ -33,39 +33,39 @@ export function Navbar() {
       {
         label: 'Growth Hub',
         dropdown: [
-          { label: 'IQ/EQ Trends', href: '/growth/trends' },
-          { label: 'Growth Degradation Analysis', href: '/growth/analysis' },
+          { label: 'IQ/EQ Trends', href: '/dashboard/student/growth/trends' },
+          { label: 'Growth Degradation Analysis', href: '/dashboard/student/growth/analysis' },
         ]
       },
       {
         label: 'Career & Verified Profile',
         dropdown: [
-          { label: 'Centralized Presence', href: '/career/profile' },
-          { label: 'Certifications', href: '/career/certifications' },
+          { label: 'Centralized Presence', href: '/dashboard/student/records' },
+          { label: 'Certifications', href: '/dashboard/student/career/certifications' },
         ]
       },
       {
         label: 'AI Chatbot',
-        href: '/chatbot',
+        href: '/dashboard/student/chatbot',
       },
       {
         label: 'Research Wing',
-        href: '/research',
+        href: '/dashboard/student/research',
       },
       {
         label: 'Code Arena',
-        href: '/code-arena',
+        href: '/dashboard/student/code',
       },
     ];
 
     // Add dashboard item based on user role
     if (backendUser && backendUser.role) {
       const isAdmin = (
-        backendUser.role === 'ADMIN' || 
-        backendUser.role === 'SUPER_ADMIN' || 
+        backendUser.role === 'ADMIN' ||
+        backendUser.role === 'SUPER_ADMIN' ||
         (backendUser as any).permissions?.includes('MANAGE_USERS')
       );
-      
+
       if (isAdmin) {
         // Add admin dashboard item for admin users
         baseItems.unshift({
@@ -143,9 +143,9 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex-shrink-0">
-          <img 
+          <img
             src="/new_logo_2.png"
-            alt="Sharda University - Beyond Boundaries" 
+            alt="Sharda University - Beyond Boundaries"
             className="h-14 w-auto"
           />
         </Link>
@@ -166,7 +166,7 @@ export function Navbar() {
                   </svg>
                 </button>
               ) : (
-                <Link 
+                <Link
                   href={item.href || '#'}
                   className="text-slate-200 font-medium px-4 py-2 rounded-lg hover:bg-slate-700/50 transition flex items-center gap-1"
                 >
@@ -181,7 +181,7 @@ export function Navbar() {
 
               {/* Dropdown Menu */}
               {item.dropdown && activeDropdown === item.label && (
-                <div 
+                <div
                   className="absolute top-full left-0 mt-1 w-56 bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden"
                   onMouseEnter={() => setActiveDropdown(item.label)}
                   onMouseLeave={() => setActiveDropdown(null)}
@@ -212,7 +212,7 @@ export function Navbar() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-48 px-4 py-2 pl-10 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
             />
-            <svg 
+            <svg
               className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
               fill="none" stroke="currentColor" viewBox="0 0 24 24"
             >
@@ -240,13 +240,13 @@ export function Navbar() {
             </div>
           ) : (
             <>
-              <Link 
+              <Link
                 href="/login"
                 className="text-slate-300 font-medium px-4 py-2 rounded-lg border border-slate-600 hover:bg-slate-700 hover:border-slate-500 transition"
               >
                 Faculty Login
               </Link>
-              <Link 
+              <Link
                 href="/login"
                 className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold px-5 py-2 rounded-lg hover:from-emerald-600 hover:to-teal-700 transition shadow-lg shadow-emerald-500/25"
               >

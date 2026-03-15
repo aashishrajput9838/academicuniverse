@@ -5,7 +5,8 @@ import { firebaseFirestore } from '../config/firebaseAdmin';
 
 const TARGET_KEYWORDS = [
     'hackathon', 'coding competition', 'tech event', 'workshop',
-    'bootcamp', 'seminar', 'developer meetup', 'tech fest'
+    'bootcamp', 'seminar', 'developer meetup', 'tech fest',
+    'exam', 'examination', 'mid-semester', 'end-semester', 'quiz', 'assessment'
 ];
 
 const SPAM_KEYWORDS = [
@@ -28,11 +29,11 @@ export const syncGmailEvents = async (userId: string) => {
 
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-    // Fetch latest 50 emails that might be related to events
+    // Fetch latest 50 emails that might be related to events or exams
     const response = await gmail.users.messages.list({
         userId: 'me',
         maxResults: 50,
-        q: 'hackathon OR "coding competition" OR "tech event" OR workshop OR bootcamp OR seminar OR "developer meetup" OR "tech fest"',
+        q: 'hackathon OR "coding competition" OR "tech event" OR workshop OR bootcamp OR seminar OR "developer meetup" OR "tech fest" OR exam OR examination OR "mid-semester" OR "end-semester" OR quiz',
     });
 
     const messages = response.data.messages || [];

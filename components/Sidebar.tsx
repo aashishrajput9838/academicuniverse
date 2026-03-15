@@ -7,6 +7,7 @@ interface SidebarItem {
   label: string;
   href: string;
   icon?: string;
+  badge?: number;
 }
 
 interface SidebarProps {
@@ -25,15 +26,19 @@ export default function Sidebar({ items }: SidebarProps) {
             <li key={item.href}>
               <Link
                 href={item.href}
-                className={`block px-4 py-3 rounded-lg transition ${
-                  pathname === item.href
+                className={`block px-4 py-3 rounded-lg transition ${pathname === item.href
                     ? 'bg-emerald-600 text-white'
                     : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
-                }`}
+                  }`}
               >
-                <span className="flex items-center gap-3">
+                <span className="flex items-center gap-3 w-full">
                   {item.icon && <span>{item.icon}</span>}
-                  {item.label}
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {item.badge !== undefined && item.badge > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                      {item.badge}
+                    </span>
+                  )}
                 </span>
               </Link>
             </li>

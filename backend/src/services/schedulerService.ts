@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { User } from '../models';
 import analyticsService from './analyticsService';
+import { syncGmailEvents } from './gmailSyncService';
 import { Logger } from '../utils/logger';
 
 const logger = new Logger('schedulerService');
@@ -9,7 +10,7 @@ export class SchedulerService {
   private static instance: SchedulerService;
   private isRunning = false;
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): SchedulerService {
     if (!SchedulerService.instance) {
@@ -39,7 +40,14 @@ export class SchedulerService {
     // Also run once when the service starts
     setTimeout(async () => {
       await this.updateAllUsersGitHubAnalytics();
+      await this.syncAllUsersGmailEvents();
     }, 5000); // Run first update after 5 seconds
+
+    // Schedule Gmail events updates every 6 hours
+    cron.schedule('0 */6 * * *', async () => {
+      logger.info('Running scheduled Gmail events sync...');
+      await this.syncAllUsersGmailEvents();
+    });
 
     this.isRunning = true;
     logger.info('Scheduler started successfully');
@@ -61,15 +69,15 @@ export class SchedulerService {
         try {
           const userEmail = user.email ? user.email : user._id.toString();
           logger.info(`Updating GitHub analytics for user: ${userEmail}`);
-          
+
           if (user.firebaseUid) {
             const stats = await analyticsService.processDeveloperAnalytics(user.firebaseUid);
           }
-          
+
           // Update the user's developer stats in the database
           // For now, we'll store them in the user record or in a separate collection
           // In a real implementation, you'd likely have a dedicated analytics collection
-          
+
           logger.info(`Successfully updated GitHub analytics for user: ${userEmail}`);
         } catch (error: any) {
           const userEmail = user.email ? user.email : user._id.toString();
@@ -79,6 +87,35 @@ export class SchedulerService {
       }
     } catch (error: any) {
       logger.error('Error updating all users GitHub analytics:', error.message);
+    }
+  }
+
+  /**
+   * Syncs Gmail events for all users who have connected their Gmail accounts
+   */
+  private async syncAllUsersGmailEvents(): Promise<void> {
+    try {
+      // Find all users who have Gmail access tokens
+      const users = await User.find({
+        'gmailTokens.accessToken': { $exists: true, $ne: '' }
+      });
+
+      logger.info(`Found ${users.length} users with connected Gmail accounts`);
+
+      for (const user of users) {
+        try {
+          const userIdStr = user._id.toString();
+          logger.info(`Syncing Gmail events for user: ${userIdStr}`);
+
+          await syncGmailEvents(userIdStr);
+
+          logger.info(`Successfully synced Gmail events for user: ${userIdStr}`);
+        } catch (error: any) {
+          logger.error(`Failed to sync Gmail events for user ${user._id}:`, error.message);
+        }
+      }
+    } catch (error: any) {
+      logger.error('Error syncing all users Gmail events:', error.message);
     }
   }
 

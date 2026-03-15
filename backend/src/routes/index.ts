@@ -9,6 +9,7 @@ import sectionRoutes from './sectionRoutes';
 import usersRoutes from './usersRoutes';
 import dashboardRoutes from './dashboardRoutes';
 import aiRoutes from './aiRoutes';
+import gmailRoutes from './gmailRoutes';
 
 const router = express.Router();
 
@@ -22,5 +23,6 @@ router.use('/sections', sectionRoutes);
 router.use('/users', usersRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/ai', aiRoutes);
+router.use('/gmail', gmailRoutes);
 
 export default router;

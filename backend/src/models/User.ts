@@ -7,6 +7,12 @@ export interface IGithubAccessToken {
   updatedAt: Date;
 }
 
+export interface IGmailTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiryDate: number;
+}
+
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   name: string;
@@ -17,6 +23,7 @@ export interface IUser extends Document {
   roleId: mongoose.Types.ObjectId;
   githubUsername?: string;
   githubAccessToken?: IGithubAccessToken;
+  gmailTokens?: IGmailTokens;
   isActive: boolean;
   lastLogin?: Date;
   createdAt: Date;
@@ -72,6 +79,11 @@ const userSchema = new Schema<IUser>(
       encryptedToken: String,
       iv: String,
       updatedAt: Date,
+    },
+    gmailTokens: {
+      accessToken: String,
+      refreshToken: String,
+      expiryDate: Number,
     },
     isActive: {
       type: Boolean,

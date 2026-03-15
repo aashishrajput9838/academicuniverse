@@ -5,6 +5,9 @@ import { useAuth } from '@/lib/authContext';
 import { Navbar } from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -14,6 +17,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const { user, backendUser, loading } = useAuth();
   const pathname = usePathname();
+  const [eventsCount, setEventsCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchEventCount = async () => {
+      try {
+        const eventsRef = collection(db, 'detected_events');
+        const q = query(eventsRef, where('userId', '==', user.uid));
+        const snap = await getDocs(q);
+        setEventsCount(snap.size);
+      } catch (err) {
+        console.error("Failed to fetch event count for badge", err);
+      }
+    };
+    fetchEventCount();
+  }, [user]);
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -33,6 +52,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Define sidebar navigation items
   const sidebarItems = [
     { label: 'Overview', href: '/dashboard/student', icon: '🏠' },
+    { label: 'Events from Gmail', href: '/dashboard/student#gmail-events', icon: '📧', badge: eventsCount },
     { label: 'Growth Hub', href: '/dashboard/student/growth', icon: '📈' },
     { label: 'Career Profile', href: '/dashboard/student/career', icon: '💼' },
     { label: 'AI Chatbot', href: '/dashboard/student/chatbot', icon: '🤖' },

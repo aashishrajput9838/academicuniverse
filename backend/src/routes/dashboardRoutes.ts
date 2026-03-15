@@ -8,14 +8,12 @@ const dashboardRouter = Router();
 dashboardRouter.get(
     '/student',
     authenticateUser,
-    authorize('STUDENT'),
     getStudentDashboard
 );
 
 dashboardRouter.get(
     '/faculty',
     authenticateUser,
-    authorize('FACULTY', 'ADMIN'), // Admin can also view faculty specific data if needed, or just FACULTY
     getFacultyDashboard
 );
 

@@ -19,7 +19,7 @@ export const gmailCallback = async (req: Request, res: Response) => {
         const { code, state, error } = req.query;
 
         const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:3000';
-        const redirectUrl = `${frontendUrl}/dashboard/student`;
+        const redirectUrl = `${frontendUrl}/dashboard/student/events`;
 
         if (error) {
             console.error('Gmail OAuth error:', error);
@@ -44,7 +44,7 @@ export const gmailCallback = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error('Error handling Gmail callback:', error);
         const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:3000';
-        return res.redirect(`${frontendUrl}/dashboard/student?gmail_error=server_error`);
+        return res.redirect(`${frontendUrl}/dashboard/student/events?gmail_error=server_error`);
     }
 };
 

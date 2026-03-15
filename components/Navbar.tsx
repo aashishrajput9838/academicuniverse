@@ -41,7 +41,7 @@ export function Navbar() {
         label: 'Career & Verified Profile',
         dropdown: [
           { label: 'Centralized Presence', href: '/dashboard/student/records' },
-          { label: 'Certifications', href: '/dashboard/student/career/certifications' },
+          { label: 'Certifications', href: '/dashboard/student/career' },
         ]
       },
       {

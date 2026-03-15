@@ -71,7 +71,7 @@ const UploadTimetableModal: React.FC<UploadTimetableModalProps> = ({
         formData.append('sectionId', sectionId);
       }
 
-      const response = await fetch('http://localhost:5000/api/timetable/upload', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/timetable/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

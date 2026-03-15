@@ -18,7 +18,7 @@ export default function FacultyDashboardOverview() {
     if (backendUser && backendUser.role === 'FACULTY') {
       const fetchMetrics = async () => {
         try {
-          const res = await fetch('http://localhost:5000/api/dashboard/faculty', {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/dashboard/faculty`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('authToken')}`
             }

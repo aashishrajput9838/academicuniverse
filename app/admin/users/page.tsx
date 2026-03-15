@@ -51,7 +51,7 @@ export default function AdminUsersPage() {
     const fetchUsers = async () => {
       try {
         const token = localStorage.getItem('authToken');
-        const res = await fetch('http://localhost:5000/api/users', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/users`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();

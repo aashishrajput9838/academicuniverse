@@ -51,7 +51,7 @@ export default function AdminSectionsPage() {
     const fetchSections = async () => {
       try {
         const token = localStorage.getItem('authToken');
-        const res = await fetch('http://localhost:5000/api/sections', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/sections`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();

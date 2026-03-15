@@ -19,7 +19,7 @@ export default function StudentDashboardOverview() {
     if (backendUser && backendUser.role === 'STUDENT') {
       const fetchMetrics = async () => {
         try {
-          const res = await fetch('http://localhost:5000/api/dashboard/student', {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/dashboard/student`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('authToken')}`
             }

@@ -44,7 +44,7 @@ export default function AdminTimetableStatusPage() {
         const token = localStorage.getItem('authToken');
 
         // 1. Fetch available sections
-        const sectionsRes = await fetch('http://localhost:5000/api/sections', {
+        const sectionsRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/sections`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const sectionsData = await sectionsRes.json();
@@ -64,7 +64,7 @@ export default function AdminTimetableStatusPage() {
         // to return all timetables at once. Given current routes, we fetch per section.
         const timetableList: any[] = [];
         for (const section of loadedSections) {
-          const tsRes = await fetch(`http://localhost:5000/api/timetable/status/${section.id}`, {
+          const tsRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/timetable/status/${section.id}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           const tsData = await tsRes.json();

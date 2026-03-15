@@ -57,7 +57,7 @@ export default function AdminAssignRepresentativePage() {
       const token = localStorage.getItem('authToken');
 
       // Fetch sections
-      const sectionsRes = await fetch('http://localhost:5000/api/sections', {
+      const sectionsRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/sections`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const sectionsData = await sectionsRes.json();
@@ -66,7 +66,7 @@ export default function AdminAssignRepresentativePage() {
       }
 
       // Fetch users
-      const usersRes = await fetch('http://localhost:5000/api/users', {
+      const usersRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const usersData = await usersRes.json();
@@ -100,7 +100,7 @@ export default function AdminAssignRepresentativePage() {
   const handleAssignRepresentative = async (sectionId: string, userId: string) => {
     try {
       const token = localStorage.getItem('authToken');
-      const res = await fetch(`http://localhost:5000/api/sections/${sectionId}/representative`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/sections/${sectionId}/representative`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -126,7 +126,7 @@ export default function AdminAssignRepresentativePage() {
   const handleRemoveRepresentative = async (sectionId: string) => {
     try {
       const token = localStorage.getItem('authToken');
-      const res = await fetch(`http://localhost:5000/api/sections/${sectionId}/representative`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/sections/${sectionId}/representative`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

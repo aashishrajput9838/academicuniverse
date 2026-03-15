@@ -32,6 +32,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [backendUser, setBackendUser] = useState<any | null>(null);
@@ -50,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const idToken = await currentUser.getIdToken();
 
           // Send the Firebase ID token to our backend to exchange for a JWT token
-          const response = await fetch('http://localhost:5000/api/auth/firebase-login', {
+          const response = await fetch(`${API_BASE_URL}/api/auth/firebase-login`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -92,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // If user is authenticated and we already have a stored token
         // Fetch the backend user data to restore the session
         try {
-          const response = await fetch('http://localhost:5000/api/auth/me', {
+          const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -150,7 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const idToken = await result.user.getIdToken();
 
       // Send the Firebase ID token to our backend to exchange for a JWT token
-      const response = await fetch('http://localhost:5000/api/auth/firebase-login', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/firebase-login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -224,7 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
 
       // Send email and password to backend for authentication
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

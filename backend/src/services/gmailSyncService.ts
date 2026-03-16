@@ -58,13 +58,28 @@ export const syncGmailEvents = async (userId: string) => {
         const emailDate = dateHeader?.value ? new Date(dateHeader.value) : new Date();
 
         const snippet = msgData.data.snippet || '';
-        const searchText = `${subject} ${snippet}`.toLowerCase();
+        
+        let bodyText = '';
+        const payload = msgData.data.payload;
+        if (payload) {
+            if (payload.body && payload.body.data) {
+                bodyText = Buffer.from(payload.body.data, 'base64').toString('utf-8');
+            } else if (payload.parts) {
+                const textPart = payload.parts.find(p => p.mimeType === 'text/plain');
+                if (textPart && textPart.body && textPart.body.data) {
+                    bodyText = Buffer.from(textPart.body.data, 'base64').toString('utf-8');
+                }
+            }
+        }
+
+        const searchText = `${subject} ${snippet} ${bodyText}`.toLowerCase();
 
         // Check spam first
         const isSpam = SPAM_KEYWORDS.some(keyword => searchText.includes(keyword.toLowerCase()));
         if (isSpam) continue;
 
         // Check target keywords
+        // We do this despite the 'q' parameter in case the 'q' matched a non-target keyword or just to be safe
         const isEvent = TARGET_KEYWORDS.some(keyword => searchText.includes(keyword.toLowerCase()));
 
         if (isEvent) {

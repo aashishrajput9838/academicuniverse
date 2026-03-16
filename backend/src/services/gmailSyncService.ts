@@ -59,18 +59,22 @@ export const syncGmailEvents = async (userId: string) => {
 
         const snippet = msgData.data.snippet || '';
         
-        let bodyText = '';
         const payload = msgData.data.payload;
-        if (payload) {
-            if (payload.body && payload.body.data) {
-                bodyText = Buffer.from(payload.body.data, 'base64').toString('utf-8');
-            } else if (payload.parts) {
-                const textPart = payload.parts.find(p => p.mimeType === 'text/plain');
-                if (textPart && textPart.body && textPart.body.data) {
-                    bodyText = Buffer.from(textPart.body.data, 'base64').toString('utf-8');
+        const getEmailBody = (p: any): string => {
+            let body = '';
+            if (!p) return body;
+            if (p.body && p.body.data) {
+                const base64 = p.body.data.replace(/-/g, '+').replace(/_/g, '/');
+                body += Buffer.from(base64, 'base64').toString('utf-8') + ' ';
+            }
+            if (p.parts && p.parts.length > 0) {
+                for (const part of p.parts) {
+                    body += getEmailBody(part);
                 }
             }
-        }
+            return body;
+        };
+        const bodyText = getEmailBody(payload);
 
         const searchText = `${subject} ${snippet} ${bodyText}`.toLowerCase();
 

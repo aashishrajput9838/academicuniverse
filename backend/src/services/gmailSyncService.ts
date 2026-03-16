@@ -91,13 +91,14 @@ export const syncGmailEvents = async (userId: string) => {
             const existingRef = await firebaseFirestore
                 .collection('detected_events')
                 .where('emailId', '==', message.id)
-                .where('userId', '==', userId)
+                .where('userId', '==', user.firebaseUid) // Query by firebaseUid
                 .get();
 
             if (existingRef && !existingRef.empty) continue;
 
             const eventData = {
-                userId,
+                userId: user.firebaseUid, // Frontend queries using Firebase uid
+                mongoUserId: userId,      // Keep mongo DB id for safety
                 emailId: message.id,
                 title: subject,
                 date: emailDate.toISOString(),

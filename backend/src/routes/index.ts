@@ -4,6 +4,7 @@ import marksRoutes from './marksRoutes';
 import githubRoutes from './githubRoutes';
 import profileRoutes from './profileRoutes';
 import overlapRoutes from './overlapRoutes';
+
 import timetableRoutes from './timetableRoutes';
 import sectionRoutes from './sectionRoutes';
 import usersRoutes from './usersRoutes';
@@ -12,6 +13,7 @@ import aiRoutes from './aiRoutes';
 import gmailRoutes from './gmailRoutes';
 import softSkillsRoutes from './softSkillsRoutes';
 import researchRoutes from './researchRoutes';
+import messRoutes from './messRoutes';
 
 const router = express.Router();
 
@@ -28,5 +30,6 @@ router.use('/ai', aiRoutes);
 router.use('/gmail', gmailRoutes);
 router.use('/softskills', softSkillsRoutes);
 router.use('/research', researchRoutes);
+router.use('/mess', messRoutes);
 
 export default router;

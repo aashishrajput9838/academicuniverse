@@ -10,7 +10,7 @@ export const improveSentence = async (req: Request, res: Response): Promise<void
         const user = (req as any).user;
 
         if (!originalSentence) {
-            res.status(400).json({ error: 'Sentence is required' });
+            res.status(400).json({ message: 'Sentence is required' });
             return;
         }
 
@@ -45,7 +45,7 @@ Sentence: ${originalSentence}`;
             analysisData = JSON.parse(cleanJson);
         } catch (parseError) {
             console.error('Failed to parse Gemini output:', rawText);
-            res.status(500).json({ error: 'AI failed to construct a valid response. Try again.' });
+            res.status(500).json({ message: 'AI failed to construct a valid response. Try again.' });
             return;
         }
 
@@ -73,7 +73,7 @@ Sentence: ${originalSentence}`;
 
     } catch (error: any) {
         console.error('Error analyzing sentence:', error);
-        res.status(500).json({ error: 'Failed to analyze sentence', details: error.message });
+        res.status(500).json({ message: error.message || 'Failed to analyze sentence' });
     }
 };
 
@@ -95,6 +95,6 @@ export const getHistory = async (req: Request, res: Response): Promise<void> => 
         res.status(200).json({ history });
     } catch (error: any) {
         console.error('Error fetching soft skills history:', error);
-        res.status(500).json({ error: 'Failed to fetch history', details: error.message });
+        res.status(500).json({ message: error.message || 'Failed to fetch history' });
     }
 };

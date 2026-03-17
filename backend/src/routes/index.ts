@@ -10,6 +10,7 @@ import usersRoutes from './usersRoutes';
 import dashboardRoutes from './dashboardRoutes';
 import aiRoutes from './aiRoutes';
 import gmailRoutes from './gmailRoutes';
+import softSkillsRoutes from './softSkillsRoutes';
 
 const router = express.Router();
 
@@ -24,5 +25,6 @@ router.use('/users', usersRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/ai', aiRoutes);
 router.use('/gmail', gmailRoutes);
+router.use('/softskills', softSkillsRoutes);
 
 export default router;

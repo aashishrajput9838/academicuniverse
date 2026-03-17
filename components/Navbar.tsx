@@ -56,6 +56,10 @@ export function Navbar() {
         label: 'Code Arena',
         href: '/dashboard/student/code',
       },
+      {
+        label: 'Soft Skills Lab',
+        href: '/dashboard/student/soft-skills',
+      },
     ];
 
     // Add dashboard item based on user role

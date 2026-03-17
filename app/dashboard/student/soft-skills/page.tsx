@@ -33,11 +33,11 @@ export default function SoftSkillsLabPage() {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setHistory(res.data?.history || res.history || []);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching history:', error);
             toast({
                 title: "History Error",
-                description: "Failed to load past practice sessions.",
+                description: error.message || "Failed to load past practice sessions.",
                 variant: "destructive"
             });
         } finally {
@@ -75,7 +75,7 @@ export default function SoftSkillsLabPage() {
             console.error('Error analyzing sentence:', error);
             toast({
                 title: "Analysis Failed",
-                description: error.response?.data?.error || "Failed to analyze your sentence. Please try again.",
+                description: error.message || "Failed to analyze your sentence. Please try again.",
                 variant: "destructive"
             });
         } finally {

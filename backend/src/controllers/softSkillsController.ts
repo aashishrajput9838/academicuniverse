@@ -71,9 +71,9 @@ Sentence: ${originalSentence}`;
             }
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error analyzing sentence:', error);
-        res.status(500).json({ error: 'Failed to analyze sentence' });
+        res.status(500).json({ error: 'Failed to analyze sentence', details: error.message });
     }
 };
 
@@ -93,8 +93,8 @@ export const getHistory = async (req: Request, res: Response): Promise<void> => 
         })).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
         res.status(200).json({ history });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching soft skills history:', error);
-        res.status(500).json({ error: 'Failed to fetch history.' });
+        res.status(500).json({ error: 'Failed to fetch history', details: error.message });
     }
 };

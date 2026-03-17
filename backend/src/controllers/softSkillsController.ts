@@ -51,7 +51,7 @@ Sentence: ${originalSentence}`;
 
         // Fill out standard object
         const resultCard = {
-            userId: user.uid,
+            userId: user.userId,
             originalSentence,
             correctedSentence: analysisData.correctedSentence,
             improvedSentence: analysisData.improvedSentence,
@@ -83,7 +83,7 @@ export const getHistory = async (req: Request, res: Response): Promise<void> => 
         
         const snapshot = await firebaseFirestore
             .collection('softskills')
-            .where('userId', '==', user.uid)
+            .where('userId', '==', user.userId)
             .orderBy('createdAt', 'desc')
             .limit(50)
             .get();

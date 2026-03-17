@@ -27,11 +27,12 @@ export default function SoftSkillsLabPage() {
     const fetchHistory = async () => {
         try {
             setHistoryLoading(true);
-            const token = await user?.getIdToken();
+            const token = localStorage.getItem('authToken');
+            if (!token) throw new Error("No token found");
             const res = await apiRequest('/api/softskills/history', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setHistory(res.data.history || []);
+            setHistory(res.data?.history || res.history || []);
         } catch (error) {
             console.error('Error fetching history:', error);
             toast({
@@ -47,7 +48,8 @@ export default function SoftSkillsLabPage() {
     const handleSentenceSubmit = async (text: string) => {
         try {
             setLoading(true);
-            const token = await user?.getIdToken();
+            const token = localStorage.getItem('authToken');
+            if (!token) throw new Error("No token found");
             
             const res = await apiRequest('/api/softskills/improve', {
                 method: 'POST',

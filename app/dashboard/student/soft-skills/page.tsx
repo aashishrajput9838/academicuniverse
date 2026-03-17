@@ -60,7 +60,7 @@ export default function SoftSkillsLabPage() {
                 body: JSON.stringify({ originalSentence: text })
             });
             
-            const analysisData = res.data.analysis;
+            const analysisData = res.analysis;
             setResult(analysisData);
             
             // Instantly prepend to history for UX

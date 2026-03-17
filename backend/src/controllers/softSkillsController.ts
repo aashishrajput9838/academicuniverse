@@ -84,14 +84,13 @@ export const getHistory = async (req: Request, res: Response): Promise<void> => 
         const snapshot = await firebaseFirestore
             .collection('softskills')
             .where('userId', '==', user.userId)
-            .orderBy('createdAt', 'desc')
             .limit(50)
             .get();
 
         const history = snapshot.docs.map((doc: any) => ({
             id: doc.id,
             ...doc.data()
-        }));
+        })).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
         res.status(200).json({ history });
     } catch (error) {

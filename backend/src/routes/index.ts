@@ -11,6 +11,7 @@ import dashboardRoutes from './dashboardRoutes';
 import aiRoutes from './aiRoutes';
 import gmailRoutes from './gmailRoutes';
 import softSkillsRoutes from './softSkillsRoutes';
+import researchRoutes from './researchRoutes';
 
 const router = express.Router();
 
@@ -26,5 +27,6 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/ai', aiRoutes);
 router.use('/gmail', gmailRoutes);
 router.use('/softskills', softSkillsRoutes);
+router.use('/research', researchRoutes);
 
 export default router;

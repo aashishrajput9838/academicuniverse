@@ -42,9 +42,18 @@ export class StorageService {
                 }
             });
 
+            // Detect if bucket is a mock bucket (no name)
+            const realBucketName = bucket.name || process.env.FIREBASE_STORAGE_BUCKET;
+            
+            if (!realBucketName || realBucketName.includes('mock')) {
+                 // We are in Mock Storage mode (backend running without Firebase credentials)
+                 logger.warn('MOCK STORAGE DETECTED: Returning dummy PDF link for UI testing.');
+                 return 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+            }
+
             // Instead of .makePublic() which fails due to GCP IAM policies on Firebase buckets,
             // we construct the standard Google API media download URL.
-            const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(destinationPath)}?alt=media`;
+            const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${realBucketName}/o/${encodeURIComponent(destinationPath)}?alt=media`;
             return downloadUrl;
         } catch (error) {
             logger.error('Failed to upload timetable to Storage', error);

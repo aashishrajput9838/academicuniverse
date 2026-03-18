@@ -78,31 +78,75 @@ export default function AdminSectionsPage() {
     }
   }, [backendUser]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-    if (editingSection) {
-      // Update existing section
-      setSections(sections.map(s =>
-        s.id === editingSection.id
-          ? { ...s, ...formData, id: editingSection.id }
-          : s
-      ))
-    } else {
-      // Add new section
-      const newSection = {
-        id: `${sections.length + 1}`,
-        ...formData,
-        capacity: parseInt(formData.capacity),
-        students: 0
+    try {
+      const token = localStorage.getItem('authToken');
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+      
+      if (editingSection) {
+        // Update existing section API call
+        const res = await fetch(`${baseUrl}/api/sections/${editingSection.id}`, {
+          method: 'PUT',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: formData.sectionName,
+            courseId: formData.courseId
+          })
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          setSections(sections.map(s =>
+            s.id === editingSection.id
+              ? { ...s, sectionName: formData.sectionName, courseId: formData.courseId }
+              : s
+          ));
+        }
+      } else {
+        // Create new section API call
+        const res = await fetch(`${baseUrl}/api/sections`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: formData.sectionName,
+            courseId: formData.courseId
+          })
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          const s = data.data;
+          const newSection = {
+            id: s._id,
+            sectionName: s.name,
+            courseId: s.courseId,
+            capacity: 50,
+            instructor: 'TBD',
+            students: 0
+          };
+          setSections([...sections, newSection]);
+        } else {
+          alert('Failed to create: ' + (data.message || 'Error'));
+          return;
+        }
       }
-      setSections([...sections, newSection])
-    }
 
-    // Reset form and close dialog
-    setFormData({ sectionName: '', courseId: '', capacity: '', instructor: '' })
-    setIsDialogOpen(false)
-    setEditingSection(null)
+      // Reset form and close dialog
+      setFormData({ sectionName: '', courseId: '', capacity: '', instructor: '' });
+      setIsDialogOpen(false);
+      setEditingSection(null);
+    } catch (err) {
+      console.error('Failed to submit section', err);
+      alert('An error occurred submitting the section.');
+    }
   }
 
   const handleEdit = (section: any) => {
@@ -110,14 +154,34 @@ export default function AdminSectionsPage() {
     setFormData({
       sectionName: section.sectionName,
       courseId: section.courseId,
-      capacity: section.capacity.toString(),
-      instructor: section.instructor
+      capacity: section.capacity?.toString() || '50',
+      instructor: section.instructor || 'TBD'
     })
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (id: string) => {
-    setSections(sections.filter(s => s.id !== id))
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this section?')) return;
+    
+    try {
+      const token = localStorage.getItem('authToken');
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+      
+      const res = await fetch(`${baseUrl}/api/sections/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        setSections(sections.filter(s => s.id !== id));
+      } else {
+        alert('Failed to delete section: ' + (data.message || 'Error'));
+      }
+    } catch (err) {
+      console.error('Delete section error:', err);
+      alert('Failed to delete section');
+    }
   }
 
   if (loading) {

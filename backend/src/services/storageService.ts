@@ -42,10 +42,10 @@ export class StorageService {
                 }
             });
 
-            // Make the file public so the frontend can display/download it
-            await file.makePublic();
-
-            return file.publicUrl();
+            // Instead of .makePublic() which fails due to GCP IAM policies on Firebase buckets,
+            // we construct the standard Google API media download URL.
+            const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(destinationPath)}?alt=media`;
+            return downloadUrl;
         } catch (error) {
             logger.error('Failed to upload timetable to Storage', error);
             throw new Error('Failed to upload file to Cloud Storage');

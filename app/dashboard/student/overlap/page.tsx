@@ -27,6 +27,7 @@ interface Section {
   representativeUid: string;
   organizationId: string;
   hasTimetable?: boolean;
+  timetableUrl?: string;
 }
 
 interface TimeRange {
@@ -198,8 +199,21 @@ const OverlapEnginePage = () => {
                   ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
                   : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
                   }`}>
-                  {section.hasTimetable ? 'Available' : 'Missing Timetable'}
+                  {section.hasTimetable ? 'Available' : 'Missing '}
                 </span>
+                
+                {section.hasTimetable && section.timetableUrl && (
+                    <a
+                      href={section.timetableUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2 py-1 text-xs font-medium text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors border border-emerald-200"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Show
+                    </a>
+                )}
+                
                 {(isGlobalAdmin || (backendUser && (
                   section.representativeUid === backendUser.id ||
                   (section as any).representativeId === backendUser.id ||

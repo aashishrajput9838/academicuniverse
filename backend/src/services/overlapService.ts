@@ -296,15 +296,19 @@ export class OverlapService {
 
       // Fetch all timetables for the organization to check availability
       const dbTimetables = await Timetable.find({ organizationId });
-      const sectionIdsWithTimetable = new Set(dbTimetables.map(t => t.sectionId.toString()));
+      const timetableMap = new Map(dbTimetables.map(t => [t.sectionId.toString(), t]));
 
-      const sections = dbSections.map(s => ({
-        _id: s._id.toString(),
-        sectionName: s.name,
-        representativeUid: s.representativeId ? s.representativeId.toString() : '',
-        organizationId: s.organizationId.toString(),
-        hasTimetable: sectionIdsWithTimetable.has(s._id.toString())
-      }));
+      const sections = dbSections.map(s => {
+        const t = timetableMap.get(s._id.toString());
+        return {
+          _id: s._id.toString(),
+          sectionName: s.name,
+          representativeUid: s.representativeId ? s.representativeId.toString() : '',
+          organizationId: s.organizationId.toString(),
+          hasTimetable: !!t,
+          timetableUrl: t?.fileUrl || null
+        };
+      });
 
       logger.info(`Found ${sections.length} sections for organization ${organizationId} (${dbTimetables.length} with timetables)`);
       return sections;

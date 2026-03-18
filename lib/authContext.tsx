@@ -126,13 +126,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } finally {
           setLoading(false);
         }
-      } else if (!currentUser) {
-        // If user is not authenticated, clear the stored token
+      } else if (!currentUser && localStorage.getItem('authToken')) {
+        // Custom email/password login is being used, so there is no Firebase user,
+        // but we have a JWT token. Fetch the backend user data to restore the session.
+        try {
+          const storedToken = localStorage.getItem('authToken');
+          const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${storedToken}`
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setBackendUser(data.data);
+            
+            // Generate a persistent mock user so the UI features continue to work seamlessly
+            const mockUser: any = {
+              uid: data.data.id,
+              email: data.data.email,
+              displayName: data.data.name,
+              photoURL: null,
+              emailVerified: true,
+              getIdToken: async () => storedToken,
+            };
+            setUser(mockUser);
+          } else {
+            console.error('Invalid custom token, logging out user');
+            localStorage.removeItem('authToken');
+            setBackendUser(null);
+            setUser(null);
+          }
+        } catch (error) {
+          console.error('Error fetching backend user custom data:', error);
+          if (error instanceof TypeError && error.message.includes('fetch')) {
+            console.warn('Network error during session restore');
+          } else {
+            localStorage.removeItem('authToken');
+            setBackendUser(null);
+            setUser(null);
+          }
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // No Firebase user and no custom JWT token. Truly logged out.
         localStorage.removeItem('authToken');
         setBackendUser(null);
+        setUser(null);
         setLoading(false);
-      } else {
-        setLoading(false); // Fallback to ensure loading is false
       }
     });
 

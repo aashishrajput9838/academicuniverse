@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/authContext';
 import { overlapAPI } from '@/utils/api/overlapAPI';
 import UploadTimetableModal from '@/components/UploadTimetableModal';
+import FilePreviewModal from '@/components/FilePreviewModal';
 import {
   Card,
   CardContent,
@@ -62,6 +63,7 @@ const OverlapEnginePage = () => {
   const [organizationId, setOrganizationId] = useState<string>('');
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [currentSectionId, setCurrentSectionId] = useState<string | null>(null);
+  const [previewSection, setPreviewSection] = useState<{ isOpen: boolean, url: string | null, name: string }>({ isOpen: false, url: null, name: '' });
 
   // Check if user is global admin - support multiple role formats
   const isGlobalAdmin = backendUser && (
@@ -195,24 +197,26 @@ const OverlapEnginePage = () => {
                 {selectedSections.includes(section._id) && (
                   <CheckCircle className="h-5 w-5 text-blue-500" />
                 )}
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${section.hasTimetable
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
-                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                
+                {/* Preview Button (Left of Available) */}
+                {section.hasTimetable && section.timetableUrl && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPreviewSection({ isOpen: true, url: section.timetableUrl || null, name: `Timetable: Section ${section.sectionName}` });
+                      }}
+                      className="px-3 py-1 text-xs font-medium text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors border border-emerald-200 shadow-sm"
+                    >
+                      Preview
+                    </button>
+                )}
+
+                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${section.hasTimetable
+                  ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-800'
+                  : 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'
                   }`}>
                   {section.hasTimetable ? 'Available' : 'Missing '}
                 </span>
-                
-                {section.hasTimetable && section.timetableUrl && (
-                    <a
-                      href={section.timetableUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-2 py-1 text-xs font-medium text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors border border-emerald-200"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Show
-                    </a>
-                )}
                 
                 {(isGlobalAdmin || (backendUser && (
                   section.representativeUid === backendUser.id ||
@@ -487,6 +491,13 @@ const OverlapEnginePage = () => {
         onClose={() => setShowUploadModal(false)}
         sectionId={currentSectionId || undefined}
         onSuccess={handleUploadSuccess}
+      />
+      
+      <FilePreviewModal
+        isOpen={previewSection.isOpen}
+        onClose={() => setPreviewSection(prev => ({ ...prev, isOpen: false }))}
+        fileUrl={previewSection.url}
+        title={previewSection.name}
       />
     </div>
   );

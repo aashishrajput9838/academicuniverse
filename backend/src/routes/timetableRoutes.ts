@@ -78,19 +78,9 @@ timetableRouter.post(
         // Continue proceeding, we will just have empty parsedData
       }
 
-      // Upload file to Firebase Cloud Storage
-      let fileUrl = '';
-      try {
-        fileUrl = await storageService.uploadTimetable(
-          file.buffer,
-          file.originalname,
-          req.organizationId,
-          sectionId
-        );
-      } catch (storageError) {
-        logger.error('Resilient upload: Storage failed, continuing with metadata saving', storageError);
-        // We continue even if storage fails so the parsed data is still saved
-      }
+      // Upload file directly into MongoDB as a Buffer to bypass Firebase Storage constraints
+      const baseUrl = process.env.RENDER_EXTERNAL_URL || 'https://academicuniverse.onrender.com';
+      const fileUrl = `${baseUrl}/api/timetable/download/${sectionId}`;
 
       // Find existing timetable or create new
       let timetableInfo = await Timetable.findOne({ sectionId, organizationId: req.organizationId });
@@ -99,6 +89,8 @@ timetableRouter.post(
         // Update existing
         timetableInfo.fileName = file.originalname;
         timetableInfo.fileUrl = fileUrl;
+        timetableInfo.fileData = file.buffer;
+        timetableInfo.mimeType = file.mimetype;
         timetableInfo.parsedData = parsedData;
         timetableInfo.uploadTime = new Date();
         timetableInfo.uploadedBy = req.user?.userId;
@@ -108,6 +100,8 @@ timetableRouter.post(
           sectionId,
           fileName: file.originalname,
           fileUrl,
+          fileData: file.buffer,
+          mimeType: file.mimetype,
           parsedData,
           organizationId: req.organizationId,
           uploadedBy: req.user?.userId
@@ -140,6 +134,34 @@ timetableRouter.post(
         message: 'Failed to upload timetable',
         error: error.message
       });
+    }
+  }
+);
+
+/**
+ * Download timetable file
+ * GET /api/timetable/download/:sectionId
+ * Public endpoint optimized for iframe and Google Docs Viewer rendering
+ */
+timetableRouter.get(
+  '/download/:sectionId',
+  async (req: Request, res: Response) => {
+    try {
+      const { sectionId } = req.params;
+      
+      // Explicitly select fileData as it's excluded by default in schema
+      const timetableInfo = await Timetable.findOne({ sectionId }).select('+fileData');
+
+      if (!timetableInfo || !timetableInfo.fileData) {
+        return res.status(404).send('File not found or no file uploaded');
+      }
+
+      res.setHeader('Content-Type', timetableInfo.mimeType || 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${timetableInfo.fileName}"`);
+      return res.send(timetableInfo.fileData);
+    } catch (error) {
+      logger.error('Error downloading timetable file:', error);
+      return res.status(500).send('Internal Server Error while retrieving file');
     }
   }
 );

@@ -12,6 +12,8 @@ export interface ITimetable extends Document {
     sectionId: mongoose.Types.ObjectId;
     fileName: string;
     fileUrl?: string;
+    fileData?: Buffer;
+    mimeType?: string;
     parsedData?: IParsedSlot[];
     uploadTime: Date;
     organizationId: mongoose.Types.ObjectId;
@@ -32,6 +34,13 @@ const timetableSchema = new Schema<ITimetable>(
             trim: true,
         },
         fileUrl: {
+            type: String,
+        },
+        fileData: {
+            type: Buffer,
+            select: false // Exclude by default to save bandwidth, unless explicitly requested
+        },
+        mimeType: {
             type: String,
         },
         parsedData: [{

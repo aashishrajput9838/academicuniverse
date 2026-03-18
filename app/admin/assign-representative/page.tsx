@@ -22,6 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { UserCheck, Search, CheckCircle, XCircle } from 'lucide-react'
 
 export default function AdminAssignRepresentativePage() {
@@ -202,7 +210,13 @@ export default function AdminAssignRepresentativePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sections.map((section) => {
+                  {sections.length === 0 ? (
+                    <TableRow className="border-slate-700">
+                      <TableCell colSpan={4} className="h-32 text-center text-slate-400">
+                        No sections available. Go to <a href="/admin/sections" className="text-emerald-400 hover:underline">Manage Sections</a> to create one first.
+                      </TableCell>
+                    </TableRow>
+                  ) : sections.map((section) => {
                     // Check if representativeId is populated or just an ID
                     const repId = section.representativeId?._id || section.representativeId;
                     const representative = users.find(u => u._id === repId);
@@ -295,9 +309,44 @@ export default function AdminAssignRepresentativePage() {
                       <h4 className="font-medium text-white">{user.name}</h4>
                       <p className="text-sm text-slate-400">{user.email}</p>
                     </div>
-                    <span className="px-2 py-1 bg-slate-600 text-slate-300 rounded-full text-xs">
-                      {user.roleId?.name || 'STUDENT'}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="px-2 py-1 bg-slate-600 text-slate-300 rounded-full text-xs">
+                        {user.roleId?.name || 'STUDENT'}
+                      </span>
+                      {(!user.roleId || user.roleId?.name === 'STUDENT') && sections.length > 0 && (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white h-7 text-xs px-3">
+                              Make Rep
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="bg-slate-800 border-slate-700 text-white sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>Assign Representative</DialogTitle>
+                              <DialogDescription className="text-slate-400">
+                                Select a section to assign {user.name} as a class representative.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                              <Select
+                                onValueChange={(value) => handleAssignRepresentative(value, user._id)}
+                              >
+                                <SelectTrigger className="w-full bg-slate-700 border-slate-600 text-white">
+                                  <SelectValue placeholder="Select a section" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-slate-700 border-slate-600 text-white">
+                                  {sections.map(section => (
+                                    <SelectItem key={section._id} value={section._id} className="text-white">
+                                      {section.name} {section.courseId ? `(${section.courseId})` : ''}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

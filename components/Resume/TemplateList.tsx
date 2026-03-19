@@ -68,12 +68,18 @@ export default function TemplateList() {
       <h2 className="text-xl font-bold text-white mb-4">Your Uploaded Templates</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {templates.map(template => (
-          <div key={template._id} className="bg-slate-800/80 border border-slate-700 rounded-xl p-5 hover:border-emerald-500/50 transition relative group">
+          <a
+            key={template._id}
+            href={template.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block bg-slate-800/80 border border-slate-700 rounded-xl p-5 hover:border-emerald-500/50 hover:bg-slate-800 transition relative group cursor-pointer"
+          >
             <div className="flex items-start justify-between mb-4">
-              <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400">
+              <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500 group-hover:text-slate-900 transition-colors">
                 <FileText className="w-5 h-5" />
               </div>
-              <span className="text-xs font-medium px-2 py-1 bg-slate-900 rounded-md text-slate-300 capitalize">
+              <span className="text-xs font-medium px-2 py-1 bg-slate-900 rounded-md text-slate-300 capitalize group-hover:bg-slate-700 transition-colors">
                 {template.type}
               </span>
             </div>
@@ -91,8 +97,9 @@ export default function TemplateList() {
                 <Calendar className="w-3.5 h-3.5" />
                 {new Date(template.createdAt).toLocaleDateString()}
               </div>
+              <span className="text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity font-medium">Download / View</span>
             </div>
-          </div>
+          </a>
         ))}
       </div>
     </div>

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Upload, FileType, Check, Loader2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-export default function TemplateUploadForm() {
+export default function TemplateUploadForm({ onUploadSuccess }: { onUploadSuccess?: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [templateName, setTemplateName] = useState('');
   const [type, setType] = useState('global');
@@ -81,6 +81,8 @@ export default function TemplateUploadForm() {
 
       toast({ title: 'Upload Success', description: 'Template has been successfully published.' });
       
+      if (onUploadSuccess) onUploadSuccess();
+
       // Reset form
       setFile(null);
       setTemplateName('');

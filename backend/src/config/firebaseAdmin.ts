@@ -42,7 +42,7 @@ try {
     }
   }
 
-  const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'academicuniverse.firebasestorage.app';
+  const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'academicuniverse.appspot.com';
 
   if (!admin.apps.length) {
     admin.initializeApp({

@@ -23,6 +23,16 @@ export const authenticateUser = (
 
     // Attach user data to request object
     req.user = decoded;
+    
+    // Failsafe for corrupted tokens from previous bug:
+    // If roleId is a stringified JSON object, extract the first 24-char hex ObjectId
+    if (typeof req.user.roleId === 'string' && req.user.roleId.includes('_id')) {
+      const match = req.user.roleId.match(/[0-9a-fA-F]{24}/);
+      if (match) {
+        req.user.roleId = match[0];
+      }
+    }
+
     req.organizationId = decoded.organizationId;
 
     next();

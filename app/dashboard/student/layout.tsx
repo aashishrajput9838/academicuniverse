@@ -60,6 +60,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: 'Code Arena', href: '/dashboard/student/code', icon: '💻' },
     { label: 'Academic Records', href: '/dashboard/student/records', icon: '📚' },
     { label: 'Skills Tracker', href: '/dashboard/student/skills', icon: '🎯' },
+    { label: 'Resume Builder', href: '/dashboard/student/resume-builder', icon: '📄' },
     { label: 'Overlap Engine', href: '/dashboard/student/overlap', icon: '📅' },
     { label: 'Find Faculty Cabin', href: '/dashboard/student/faculty-cabin', icon: '🚪' },
   ];

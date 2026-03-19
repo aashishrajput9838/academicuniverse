@@ -36,6 +36,7 @@ export default function FacultyDashboardLayout({ children }: DashboardLayoutProp
     { label: 'Student Management', href: '/dashboard/faculty/students', icon: '👥' },
     { label: 'Course Management', href: '/dashboard/faculty/courses', icon: '📚' },
     { label: 'Grades & Assessments', href: '/dashboard/faculty/grades', icon: '📝' },
+    { label: 'Resume Templates', href: '/dashboard/faculty/resume-templates', icon: '📄' },
     { label: 'AI Assistant', href: '/dashboard/faculty/ai', icon: '🤖' },
     { label: 'Research Wing', href: '/dashboard/faculty/research', icon: '🔬' },
     { label: 'Faculty Resources', href: '/dashboard/faculty/resources', icon: '🎓' },

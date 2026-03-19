@@ -253,9 +253,9 @@ async function seed() {
         roleId: adminRole!._id,
       },
       {
-        name: 'Dr. Jane Smith',
-        email: 'jane.smith@sharda.com',
-        password: 'Faculty123',
+        name: 'Dr. Vamsi',
+        email: '2023329421.vamsi@fa.sharda.ac.in',
+        password: '123456',
         organizationId: organization._id,
         roleId: facultyRole!._id,
       },

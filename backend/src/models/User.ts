@@ -50,7 +50,7 @@ const userSchema = new Schema<IUser>(
     password: {
       type: String,
       select: false,
-      minlength: [8, 'Password must be at least 8 characters'],
+      minlength: [6, 'Password must be at least 6 characters'],
     },
     firebaseUid: {
       type: String,

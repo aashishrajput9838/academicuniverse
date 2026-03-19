@@ -232,12 +232,17 @@ export const loginWithFirebase = async (idToken: string): Promise<{ token: strin
     const dbRole = await Role.findById(user.roleId);
     const isSuperAdmin = dbRole?.isSuperAdmin || false;
 
+    // Normalize roleId (handle populated roleId or raw ObjectId)
+    const normalizedRoleId = (user.roleId && (user.roleId as any)._id)
+      ? (user.roleId as any)._id.toString()
+      : user.roleId.toString();
+
     // Create JWT payload with detected role information
     const payload: JWTPayload = {
       userId: user._id.toString(),
       email: user.email,
       organizationId: organization._id.toString(), // Use actual ObjectId from database
-      roleId: user.roleId.toString(), // Keep the DB role for compatibility
+      roleId: normalizedRoleId, // Keep the DB role for compatibility
       permissions, // Use permissions from role detection
       isSuperAdmin,
     };

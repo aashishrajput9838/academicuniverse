@@ -101,12 +101,12 @@ Safety Disclaimer: Remind them you are an AI assistant and not a professional co
     }
 
     /**
-     * Enhances resume fields (experience, projects, skills, education) using AI
+     * Enhances dynamically identified resume fields using AI
      * Preserves raw layout tags to avoid breaking docxtemplater injection
      */
-    async enhanceResumeFields(data: any, tone: string): Promise<any> {
-        if (!this.ai) {
-            logger.warn('Gemini API not configured. Bypassing resume enhancement.');
+    async enhanceResumeFields(data: any, tone: string, enhanceableTags: string[]): Promise<any> {
+        if (!this.ai || !enhanceableTags || enhanceableTags.length === 0) {
+            logger.warn('Gemini API not configured or no enhanceable tags provided. Bypassing enhancement.');
             return data;
         }
 
@@ -118,12 +118,12 @@ Apply the specific tone requested: ${tone.toUpperCase()}.
 If the tone is PROFESSIONAL, use strong action verbs and metric-driven points. If CREATIVE, make the phrasing stand out. If CONCISE, keep it brief and direct.
 
 CRITICAL RULES:
-1. ONLY modify 'experience', 'projects', 'skills', and 'education'. Make them sound much better.
-2. DO NOT change 'name', 'email', or 'phone'.
+1. ONLY modify the following fields: ${enhanceableTags.join(', ')}. Make them sound much better.
+2. DO NOT change ANY other fields.
 3. Maintain any bullet points or newlines if the user included them, but fix grammar and phrasing.
 4. Output MUST be valid JSON matching the exact keys provided.`;
 
-            const prompt = `Here is the user's raw resume data. Enhance education, skills, projects, and experience.
+            const prompt = `Here is the user's raw resume data. Enhance ONLY these fields: ${enhanceableTags.join(', ')}.
 Return the complete JSON object:
 ${JSON.stringify(data, null, 2)}`;
 
@@ -142,18 +142,73 @@ ${JSON.stringify(data, null, 2)}`;
             
             const enhancedData = JSON.parse(responseText);
             
-            // Merge safely: protect original core fields (name, email, phone) from AI hallucinations
-            return {
-                ...data,
-                education: enhancedData.education || data.education,
-                skills: enhancedData.skills || data.skills,
-                projects: enhancedData.projects || data.projects,
-                experience: enhancedData.experience || data.experience,
-            };
+            // Merge safely: protect original core fields from AI hallucinations
+            const safeData = { ...data };
+            for (const tag of enhanceableTags) {
+                if (enhancedData[tag]) {
+                    safeData[tag] = enhancedData[tag];
+                }
+            }
+            return safeData;
         } catch (error: any) {
             logger.error('Error enhancing resume fields with Gemini API:', error);
             // Fallback to original data if AI fails
             return data;
+        }
+    }
+
+    /**
+     * Analyzes raw docxtemplater tags and generates a structured questionnaire
+     */
+    async generateTemplateQuestions(tags: string[]): Promise<any[]> {
+        if (!this.ai) {
+            logger.warn('Gemini API not configured. Falling back to basic tag mapping.');
+            return tags.map(tag => ({
+                tag,
+                question: `Please enter details for ${tag.replace(/_/g, ' ')}`,
+                type: tag.toLowerCase().includes('desc') || tag.toLowerCase().includes('experience') ? 'textarea' : 'text',
+                aiEnhanceable: false
+            }));
+        }
+
+        try {
+            logger.info(`Generating AI questions for ${tags.length} template tags`);
+            const systemPrompt = `You are an intelligent form builder for a Resume Generation system.
+I will give you an array of raw {{tags}} found extracted from a Microsoft Word resume template.
+Your job is to generate a user-friendly questionnaire to collect this data from a student.
+For each tag, return:
+- "tag": The exact original tag name.
+- "question": A human-readable, professional question asking the student for this information (e.g., "project1_desc" -> "Describe your first major project").
+- "type": "text" for short inputs (names, phones, emails, job titles, dates, degrees) OR "textarea" for paragraph answers (descriptions, summaries, bullet points, skills list).
+- "aiEnhanceable": true ONLY IF the field is a "textarea" where the student explains their experience, projects, or summary, so our AI can rewrite it later. Set false for names, dates, emails, links, short inputs, etc.
+
+CRITICAL RULES:
+1. Return ONLY a valid JSON array of objects.
+2. Ensure every single tag from the input array is included in the output.`;
+
+            const prompt = `Tags to process: ${JSON.stringify(tags)}`;
+
+            const response = await this.ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+                config: {
+                    systemInstruction: systemPrompt,
+                    temperature: 0.2, // Low temperature for deterministic schema generation
+                    responseMimeType: 'application/json',
+                }
+            });
+
+            if (!response.text) throw new Error("Empty response from AI");
+            return JSON.parse(response.text);
+        } catch (error: any) {
+            logger.error('Error generating template questions:', error);
+            // Fallback
+            return tags.map(tag => ({
+                tag,
+                question: `Please provide: ${tag}`,
+                type: 'text',
+                aiEnhanceable: false
+            }));
         }
     }
 }

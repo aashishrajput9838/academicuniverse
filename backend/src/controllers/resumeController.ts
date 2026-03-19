@@ -47,6 +47,36 @@ export const uploadTemplateController = async (req: any, res: Response) => {
       organizationId
     );
 
+    // Extract tags from DOCX and generate AI questions
+    let questions: any[] = [];
+    try {
+      const PizZip = (await import('pizzip')).default;
+      const zip = new PizZip(file.buffer);
+      const docXml = zip.file('word/document.xml')?.asText() || '';
+      
+      // Strip XML formatting tags to reconstruct raw text. 
+      // This solves the issue of Word splitting `{{` and `}}` across multiple `<w:t>` tags.
+      const cleanText = docXml.replace(/<[^>]+>/g, '');
+      const matches = cleanText.match(/\{\{([^}]+)\}\}/g);
+      
+      if (matches) {
+        // Extract raw tag names and remove duplicates
+        const rawTags = matches.map((m: string) => m.replace(/\{\{|\}\}/g, '').trim());
+        const uniqueTags = [...new Set(rawTags)];
+        
+        if (uniqueTags.length > 0) {
+           logger.info(`Found ${uniqueTags.length} unique tags in uploaded template: ${uniqueTags.join(', ')}`);
+           const { default: aiService } = await import('../services/aiService');
+           questions = await aiService.generateTemplateQuestions(uniqueTags);
+        }
+      } else {
+        logger.warn('No {{tags}} found in the uploaded document.');
+      }
+    } catch (tagError: any) {
+      logger.error('Failed to extract tags or generate AI questions:', tagError);
+      // We don't fail the upload, just proceed with an empty questions array
+    }
+
     // Save metadata to DB
     const template = new ResumeTemplate({
       templateName,
@@ -55,6 +85,7 @@ export const uploadTemplateController = async (req: any, res: Response) => {
       fileUrl,
       organizationId,
       uploadedBy,
+      questions,
     });
 
     await template.save();
@@ -133,8 +164,13 @@ export const processResumeController = async (req: any, res: Response) => {
       return sendError(res, 404, 'Resume template not found.');
     }
 
+    // Extract tags that AI is allowed to rewrite
+    const enhanceableTags = template.questions
+      ? template.questions.filter((q: any) => q.aiEnhanceable).map((q: any) => q.tag)
+      : [];
+
     // Process using ResumeService
-    const { docxBuffer, htmlPreview } = await resumeService.processResumeTemplate(template.fileUrl, data, tone);
+    const { docxBuffer, htmlPreview } = await resumeService.processResumeTemplate(template.fileUrl, data, tone, enhanceableTags);
 
     // Save draft in DB
     const studentResume = await StudentResume.findOneAndUpdate(

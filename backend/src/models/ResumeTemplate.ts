@@ -7,6 +7,12 @@ export interface IResumeTemplate extends Document {
   fileUrl: string;
   organizationId: mongoose.Types.ObjectId;
   uploadedBy: mongoose.Types.ObjectId;
+  questions: {
+    tag: string;
+    question: string;
+    type: 'text' | 'textarea';
+    aiEnhanceable: boolean;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -43,6 +49,12 @@ const ResumeTemplateSchema = new Schema<IResumeTemplate>(
       ref: 'User',
       required: true,
     },
+    questions: [{
+      tag: { type: String, required: true },
+      question: { type: String, required: true },
+      type: { type: String, enum: ['text', 'textarea'], default: 'text' },
+      aiEnhanceable: { type: Boolean, default: false }
+    }],
   },
   { timestamps: true }
 );

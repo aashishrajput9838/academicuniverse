@@ -11,7 +11,7 @@ export class ResumeService {
   /**
    * Generates a filled DOCX and its HTML preview from a template URL and data.
    */
-  async processResumeTemplate(templateUrl: string, data: any, tone?: string): Promise<{ docxBuffer: Buffer; htmlPreview: string }> {
+  async processResumeTemplate(templateUrl: string, data: any, tone?: string, enhanceableTags?: string[]): Promise<{ docxBuffer: Buffer; htmlPreview: string }> {
     try {
       logger.info(`Fetching template from ${templateUrl}`);
       // 1. Fetch the DOCX template from Firebase Storage (or any public URL)
@@ -29,9 +29,9 @@ export class ResumeService {
 
       // AI Enhancement Phase
       let finalData = data;
-      if (tone && tone !== 'none') {
+      if (tone && tone !== 'none' && enhanceableTags && enhanceableTags.length > 0) {
           logger.info(`Applying AI enhancement before generation. Tone: ${tone}`);
-          finalData = await aiService.enhanceResumeFields(data, tone);
+          finalData = await aiService.enhanceResumeFields(data, tone, enhanceableTags);
       }
 
       doc.setData(finalData);

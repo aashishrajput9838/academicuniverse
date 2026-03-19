@@ -11,6 +11,12 @@ interface Template {
   type: string;
   target: string;
   uploadedBy: { name: string; email: string };
+  questions?: {
+    tag: string;
+    question: string;
+    type: string;
+    aiEnhanceable: boolean;
+  }[];
   createdAt: string;
 }
 
@@ -21,15 +27,7 @@ export default function ResumeBuilder() {
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   
   // Form State
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    education: '',
-    projects: '',
-    skills: '',
-    experience: ''
-  });
+  const [formData, setFormData] = useState<Record<string, string>>({});
 
   const [aiTone, setAiTone] = useState('none');
 
@@ -129,16 +127,18 @@ export default function ResumeBuilder() {
     if (!docxBase64) return;
     const link = document.createElement('a');
     link.href = `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${docxBase64}`;
-    link.download = `Resume_${formData.name.replace(/\s+/g, '_')}.docx`;
+    const safeName = (formData.name || formData.full_name || 'Generated').replace(/\s+/g, '_');
+    link.download = `Resume_${safeName}.docx`;
     link.click();
   };
 
   const handleDownloadPdf = () => {
     if (!previewRef.current) return;
     const element = previewRef.current;
-    const opt = {
+    const safeName = (formData.name || formData.full_name || 'Generated').replace(/\s+/g, '_');
+    const opt: any = {
       margin: 10,
-      filename: `Resume_${formData.name.replace(/\s+/g, '_')}.pdf`,
+      filename: `Resume_${safeName}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -202,37 +202,35 @@ export default function ResumeBuilder() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Full Name</label>
-              <input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="John Doe" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Email Address</label>
-              <input type="email" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="john@example.com" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Phone</label>
-              <input type="text" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="+1 234 567 890" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Skills (Comma separated)</label>
-              <input type="text" value={formData.skills} onChange={(e) => setFormData({...formData, skills: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="React, Node.js, Python..." />
-            </div>
-            
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium text-slate-300">Education Details</label>
-              <textarea rows={3} value={formData.education} onChange={(e) => setFormData({...formData, education: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="B.Tech in Computer Science, 2020-2024..." />
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium text-slate-300">Key Projects</label>
-              <textarea rows={3} value={formData.projects} onChange={(e) => setFormData({...formData, projects: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="- E-Commerce App built with React and Firebase..." />
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium text-slate-300">Experience / Internships</label>
-              <textarea rows={3} value={formData.experience} onChange={(e) => setFormData({...formData, experience: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="- Software Engineering Intern at XYZ Corp..." />
-            </div>
+            {selectedTemplate?.questions?.length ? (
+              selectedTemplate.questions.map((q) => (
+                <div key={q.tag} className={`space-y-2 ${q.type === 'textarea' ? 'md:col-span-2' : ''}`}>
+                  <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                    {q.question}
+                    {q.aiEnhanceable && <span className="bg-emerald-900/50 text-emerald-400 text-[10px] px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider">AI Supported</span>}
+                  </label>
+                  {q.type === 'textarea' ? (
+                    <textarea 
+                      rows={3} 
+                      value={formData[q.tag] || ''} 
+                      onChange={(e) => setFormData({...formData, [q.tag]: e.target.value})} 
+                      className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+                    />
+                  ) : (
+                    <input 
+                      type={q.tag.toLowerCase().includes('email') ? 'email' : 'text'} 
+                      value={formData[q.tag] || ''} 
+                      onChange={(e) => setFormData({...formData, [q.tag]: e.target.value})} 
+                      className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+                    />
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="md:col-span-2 text-center py-8 bg-slate-800 rounded-xl border border-slate-700">
+                <p className="text-slate-400">This template does not have a mapped questionnaire.</p>
+              </div>
+            )}
           </div>
 
           <div className="bg-emerald-900/20 border border-emerald-500/20 rounded-xl p-6">

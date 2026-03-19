@@ -281,8 +281,8 @@ export const registerUser = async (
 ): Promise<any> => {
   try {
     // Validate inputs
-    if (!name || !email || !organizationId || !roleId) {
-      throw new ValidationError('Name, email, organization, and role are required');
+    if (!name || !email) {
+      throw new ValidationError('Name and email are required');
     }
 
     // Check if user already exists
@@ -291,13 +291,33 @@ export const registerUser = async (
       throw new ValidationError('Email already in use');
     }
 
+    // If org/role missing, try to auto-detect (like Firebase login does)
+    let finalOrgId = organizationId;
+    let finalRoleId = roleId;
+
+    if (!finalOrgId || !finalRoleId) {
+      const { detectRoleFromEmail } = await import('./roleDetectionService');
+      const roleInfo = detectRoleFromEmail(email);
+      const organization = await Organization.findOne({ slug: 'sharda-university' });
+      if (!organization) throw new NotFoundError('Default organization not found.');
+      finalOrgId = finalOrgId || organization._id.toString();
+
+      let role = await Role.findOne({ name: roleInfo.role, organizationId: finalOrgId });
+      if (!role) {
+        const mappedRoleName = roleInfo.role === 'FACULTY' ? 'FACULTY' : 'STUDENT';
+        role = await Role.findOne({ name: mappedRoleName });
+      }
+      if (!role) throw new NotFoundError('Role not found.');
+      finalRoleId = finalRoleId || role._id.toString();
+    }
+
     // Create user
     const user = new User({
       name,
       email,
       password,
-      organizationId,
-      roleId,
+      organizationId: finalOrgId,
+      roleId: finalRoleId,
     });
 
     await user.save();

@@ -17,7 +17,9 @@ export default function LoginPage() {
   // Email/password login state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [showEmailPasswordForm, setShowEmailPasswordForm] = useState(false);
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
   
   const handleGoogleSignIn = async () => {
     try {
@@ -49,6 +51,42 @@ export default function LoginPage() {
       setPostLoginRedirect(true);
     } catch (err) {
       setError('Failed to sign in. Please check your email and password.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmailPasswordSignUp = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      if (!email.trim() || !password.trim() || !name.trim()) {
+        setError('Please enter name, email, and password.');
+        return;
+      }
+      
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), password: password.trim() }),
+      });
+
+      if (!response.ok) {
+        let errorData;
+        try { errorData = await response.json(); } catch {
+           errorData = { message: await response.text() };
+        }
+        throw new Error(errorData.message || 'Registration failed');
+      }
+
+      // Automatically sign in after registering
+      await signInWithEmailAndPassword(email.trim(), password.trim());
+      setPostLoginRedirect(true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign up. Please try again.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -164,7 +202,7 @@ export default function LoginPage() {
             <div className="mb-4">
               <button
                 type="button"
-                onClick={() => setShowEmailPasswordForm(!showEmailPasswordForm)}
+                onClick={() => { setShowEmailPasswordForm(!showEmailPasswordForm); setIsRegisterMode(false); }}
                 className="w-full text-emerald-400 hover:text-emerald-300 font-medium py-2 px-4 rounded-lg transition text-center"
               >
                 {showEmailPasswordForm ? 'Cancel' : 'Sign in with email and password'}
@@ -174,6 +212,20 @@ export default function LoginPage() {
             {/* Email/Password Form */}
             {showEmailPasswordForm && (
               <div className="space-y-4 mb-6 border border-slate-600 rounded-lg p-4">
+                {isRegisterMode && (
+                  <div>
+                    <label className="block text-slate-300 font-medium text-sm mb-2">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Jane Doe"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-4 py-2 text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="block text-slate-300 font-medium text-sm mb-2">
                     Email
@@ -200,11 +252,11 @@ export default function LoginPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={handleEmailPasswordSignIn}
+                  onClick={isRegisterMode ? handleEmailPasswordSignUp : handleEmailPasswordSignIn}
                   disabled={loading}
                   className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition shadow-lg shadow-emerald-500/30"
                 >
-                  {loading ? 'Signing in...' : 'Sign in with Email & Password'}
+                  {loading ? 'Processing...' : (isRegisterMode ? 'Create Account' : 'Sign in with Email & Password')}
                 </button>
               </div>
             )}
@@ -212,13 +264,13 @@ export default function LoginPage() {
             {/* Footer Links */}
             <div className="space-y-3 text-center text-sm">
               <p className="text-slate-400">
-                Don't have an account?{' '}
-                <Link
-                  href="/login"
-                  className="text-emerald-400 hover:text-emerald-300 font-semibold transition"
+                {isRegisterMode ? 'Already have an account?' : "Don't have an account?"}{' '}
+                <button
+                  onClick={() => { setIsRegisterMode(!isRegisterMode); setShowEmailPasswordForm(true); }}
+                  className="text-emerald-400 hover:text-emerald-300 font-semibold transition bg-transparent border-none p-0 cursor-pointer"
                 >
-                  Sign up
-                </Link>
+                  {isRegisterMode ? 'Sign in' : 'Sign up'}
+                </button>
               </p>
               <p>
                 <Link

@@ -90,18 +90,11 @@ export class StorageService {
                 }
             });
 
-            const realBucketName = bucket.name || process.env.FIREBASE_STORAGE_BUCKET;
-            
-            if (!realBucketName || realBucketName.includes('mock')) {
-                 logger.warn('MOCK STORAGE DETECTED: Returning dummy docx link for UI testing.');
-                 return 'https://calibre-ebook.com/downloads/demos/demo.docx';
-            }
-
-            const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${realBucketName}/o/${encodeURIComponent(destinationPath)}?alt=media`;
+            const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(destinationPath)}?alt=media`;
             return downloadUrl;
-        } catch (error) {
+        } catch (error: any) {
             logger.error('Failed to upload resume template to Storage', error);
-            return 'https://calibre-ebook.com/downloads/demos/demo.docx';
+            throw new Error(`Storage upload failed: ${error.message}`);
         }
     }
 

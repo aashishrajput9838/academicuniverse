@@ -147,6 +147,20 @@ export default function TemplateUploadForm({ onUploadSuccess }: { onUploadSucces
         </div>
       )}
 
+      <div className="bg-emerald-900/30 border border-emerald-500/30 rounded-xl p-6 mb-6">
+        <h4 className="text-emerald-400 font-semibold mb-2 flex items-center gap-2">
+          <FileType className="w-4 h-4" /> How to format your DOCX template
+        </h4>
+        <p className="text-sm text-slate-300 mb-3">
+          To let students auto-fill their information, you must type these exact tags in your Microsoft Word file where you want the data to appear:
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {['{{name}}', '{{email}}', '{{phone}}', '{{education}}', '{{skills}}', '{{projects}}', '{{experience}}'].map(tag => (
+            <span key={tag} className="px-2 py-1 bg-slate-900 text-emerald-300 text-xs rounded font-mono border border-emerald-500/20">{tag}</span>
+          ))}
+        </div>
+      </div>
+
       <div 
         className={`border-2 border-dashed rounded-3xl p-8 text-center transition-all ${
           dragActive ? 'border-emerald-500 bg-emerald-500/10' : 'border-slate-600 bg-slate-800/50'

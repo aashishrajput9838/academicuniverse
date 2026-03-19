@@ -122,7 +122,7 @@ export const processResumeController = async (req: any, res: Response) => {
       return sendError(res, 401, 'Not authenticated');
     }
 
-    const { templateId, data } = req.body;
+    const { templateId, data, tone } = req.body;
     
     if (!templateId || !data) {
       return sendError(res, 400, 'Template ID and resume data are required.');
@@ -134,7 +134,7 @@ export const processResumeController = async (req: any, res: Response) => {
     }
 
     // Process using ResumeService
-    const { docxBuffer, htmlPreview } = await resumeService.processResumeTemplate(template.fileUrl, data);
+    const { docxBuffer, htmlPreview } = await resumeService.processResumeTemplate(template.fileUrl, data, tone);
 
     // Save draft in DB
     const studentResume = await StudentResume.findOneAndUpdate(

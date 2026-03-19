@@ -3,6 +3,7 @@ import Docxtemplater from 'docxtemplater';
 import mammoth from 'mammoth';
 import axios from 'axios';
 import { Logger } from '../utils/logger';
+import aiService from './aiService';
 
 const logger = new Logger('resumeService');
 
@@ -10,7 +11,7 @@ export class ResumeService {
   /**
    * Generates a filled DOCX and its HTML preview from a template URL and data.
    */
-  async processResumeTemplate(templateUrl: string, data: any): Promise<{ docxBuffer: Buffer; htmlPreview: string }> {
+  async processResumeTemplate(templateUrl: string, data: any, tone?: string): Promise<{ docxBuffer: Buffer; htmlPreview: string }> {
     try {
       logger.info(`Fetching template from ${templateUrl}`);
       // 1. Fetch the DOCX template from Firebase Storage (or any public URL)
@@ -26,7 +27,14 @@ export class ResumeService {
         linebreaks: true,
       });
 
-      doc.setData(data);
+      // AI Enhancement Phase
+      let finalData = data;
+      if (tone && tone !== 'none') {
+          logger.info(`Applying AI enhancement before generation. Tone: ${tone}`);
+          finalData = await aiService.enhanceResumeFields(data, tone);
+      }
+
+      doc.setData(finalData);
 
       try {
         doc.render();

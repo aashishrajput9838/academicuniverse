@@ -99,6 +99,63 @@ Safety Disclaimer: Remind them you are an AI assistant and not a professional co
 
         return `${contextTag}\n\n${selectedMessage}`;
     }
+
+    /**
+     * Enhances resume fields (experience, projects, skills, education) using AI
+     * Preserves raw layout tags to avoid breaking docxtemplater injection
+     */
+    async enhanceResumeFields(data: any, tone: string): Promise<any> {
+        if (!this.ai) {
+            logger.warn('Gemini API not configured. Bypassing resume enhancement.');
+            return data;
+        }
+
+        try {
+            logger.info(`Enhancing resume fields with tone: ${tone}`);
+            const systemPrompt = `You are a senior professional resume writer and career coach. 
+Your task is to rewrite a student's raw resume input to be highly professional, ATS-friendly, and impactful.
+Apply the specific tone requested: ${tone.toUpperCase()}.
+If the tone is PROFESSIONAL, use strong action verbs and metric-driven points. If CREATIVE, make the phrasing stand out. If CONCISE, keep it brief and direct.
+
+CRITICAL RULES:
+1. ONLY modify 'experience', 'projects', 'skills', and 'education'. Make them sound much better.
+2. DO NOT change 'name', 'email', or 'phone'.
+3. Maintain any bullet points or newlines if the user included them, but fix grammar and phrasing.
+4. Output MUST be valid JSON matching the exact keys provided.`;
+
+            const prompt = `Here is the user's raw resume data. Enhance education, skills, projects, and experience.
+Return the complete JSON object:
+${JSON.stringify(data, null, 2)}`;
+
+            const response = await this.ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+                config: {
+                    systemInstruction: systemPrompt,
+                    temperature: 0.7,
+                    responseMimeType: 'application/json',
+                }
+            });
+
+            const responseText = response.text;
+            if (!responseText) return data;
+            
+            const enhancedData = JSON.parse(responseText);
+            
+            // Merge safely: protect original core fields (name, email, phone) from AI hallucinations
+            return {
+                ...data,
+                education: enhancedData.education || data.education,
+                skills: enhancedData.skills || data.skills,
+                projects: enhancedData.projects || data.projects,
+                experience: enhancedData.experience || data.experience,
+            };
+        } catch (error: any) {
+            logger.error('Error enhancing resume fields with Gemini API:', error);
+            // Fallback to original data if AI fails
+            return data;
+        }
+    }
 }
 
 export default new AIService();

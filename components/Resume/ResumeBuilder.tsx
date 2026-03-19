@@ -31,6 +31,8 @@ export default function ResumeBuilder() {
     experience: ''
   });
 
+  const [aiTone, setAiTone] = useState('none');
+
   // Preview State
   const [isGenerating, setIsGenerating] = useState(false);
   const [htmlPreview, setHtmlPreview] = useState<string>('');
@@ -100,6 +102,7 @@ export default function ResumeBuilder() {
         },
         body: JSON.stringify({
           templateId: selectedTemplate._id,
+          tone: aiTone !== 'none' ? aiTone : undefined,
           data: formData
         })
       });
@@ -232,10 +235,29 @@ export default function ResumeBuilder() {
             </div>
           </div>
 
-          <div className="flex justify-between items-center pt-6">
+          <div className="bg-emerald-900/20 border border-emerald-500/20 rounded-xl p-6">
+            <h3 className="text-emerald-400 font-semibold mb-2 flex items-center gap-2">
+              ✨ AI Content Enhancement
+            </h3>
+            <p className="text-sm text-slate-300 mb-4">
+              Our AI can automatically rewrite and polish your Experience, Projects, Skills, and Education fields to be ATS-friendly. Select a tone below to enable.
+            </p>
+            <select 
+              value={aiTone} 
+              onChange={(e) => setAiTone(e.target.value)}
+              className="w-full md:w-1/2 px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="none">Disabled (Use My Original Text)</option>
+              <option value="professional">Professional & ATS-Friendly</option>
+              <option value="creative">Creative & Impactful</option>
+              <option value="concise">Concise & Direct</option>
+            </select>
+          </div>
+
+          <div className="flex justify-between items-center pt-2">
             <span className="text-sm text-slate-400 flex items-center gap-1"><Save className="w-4 h-4"/> Drafts automatically save on submit</span>
             <button type="submit" disabled={isGenerating} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-900 rounded-xl font-bold flex items-center gap-2 transition disabled:opacity-50 shadow-lg shadow-emerald-500/20">
-              {isGenerating ? <><Loader2 className="w-5 h-5 animate-spin" /> Generating...</> : 'Preview Resume'}
+              {isGenerating ? <><Loader2 className="w-5 h-5 animate-spin" /> {aiTone !== 'none' ? 'AI Enhancing...' : 'Generating...'}</> : 'Preview Resume'}
             </button>
           </div>
         </form>

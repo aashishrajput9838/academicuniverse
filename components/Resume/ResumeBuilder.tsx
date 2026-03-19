@@ -227,9 +227,36 @@ export default function ResumeBuilder() {
                 </div>
               ))
             ) : (
-              <div className="md:col-span-2 text-center py-8 bg-slate-800 rounded-xl border border-slate-700">
-                <p className="text-slate-400">This template does not have a mapped questionnaire.</p>
-              </div>
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300">Full Name</label>
+                  <input type="text" value={formData.name || ''} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="John Doe" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300">Email Address</label>
+                  <input type="email" value={formData.email || ''} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="john@example.com" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300">Phone</label>
+                  <input type="text" value={formData.phone || ''} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="+1 234 567 890" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300">Skills (Comma separated)</label>
+                  <input type="text" value={formData.skills || ''} onChange={(e) => setFormData({...formData, skills: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="React, Node.js, Python..." />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-medium text-slate-300">Education Details</label>
+                  <textarea rows={3} value={formData.education || ''} onChange={(e) => setFormData({...formData, education: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="B.Tech in Computer Science, 2020-2024..." />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-medium text-slate-300">Key Projects</label>
+                  <textarea rows={3} value={formData.projects || ''} onChange={(e) => setFormData({...formData, projects: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="- E-Commerce App built with React and Firebase..." />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-medium text-slate-300">Experience / Internships</label>
+                  <textarea rows={3} value={formData.experience || ''} onChange={(e) => setFormData({...formData, experience: e.target.value})} className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="- Software Engineering Intern at XYZ Corp..." />
+                </div>
+              </>
             )}
           </div>
 

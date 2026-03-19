@@ -32,7 +32,7 @@ export const uploadTemplateController = async (req: any, res: Response) => {
       return sendError(res, 400, 'No template file provided.');
     }
 
-    const { templateName, type, target } = req.body;
+    const { templateName, type, target, mappings } = req.body;
     if (!templateName || !type) {
       return sendError(res, 400, 'Template name and type are required.');
     }
@@ -40,9 +40,33 @@ export const uploadTemplateController = async (req: any, res: Response) => {
     const organizationId = req.user.organizationId;
     const uploadedBy = req.user.userId;
 
+    let finalBuffer = file.buffer;
+
+    // Apply interactive mappings if provided (from Interactive Editor)
+    if (mappings) {
+      try {
+        const parsedMappings = JSON.parse(mappings);
+        if (parsedMappings.length > 0) {
+          logger.info(`Applying ${parsedMappings.length} interactive mappings to DOCX XML`);
+          const PizZip = (await import('pizzip')).default;
+          const zip = new PizZip(finalBuffer);
+          let docXml = zip.file('word/document.xml')?.asText() || '';
+          
+          for (const m of parsedMappings) {
+             const escapedFind = m.originalText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+             docXml = docXml.replace(new RegExp(escapedFind, 'g'), `{{${m.tag}}}`);
+          }
+          zip.file('word/document.xml', docXml);
+          finalBuffer = zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+        }
+      } catch (err) {
+        logger.error('Error rewriting XML with mappings:', err);
+      }
+    }
+
     // Upload file to Firebase Storage
     const fileUrl = await storageService.uploadResumeTemplate(
-      file.buffer,
+      finalBuffer,
       file.originalname,
       organizationId
     );
@@ -51,11 +75,10 @@ export const uploadTemplateController = async (req: any, res: Response) => {
     let questions: any[] = [];
     try {
       const PizZip = (await import('pizzip')).default;
-      const zip = new PizZip(file.buffer);
+      const zip = new PizZip(finalBuffer);
       const docXml = zip.file('word/document.xml')?.asText() || '';
       
       // Strip XML formatting tags to reconstruct raw text. 
-      // This solves the issue of Word splitting `{{` and `}}` across multiple `<w:t>` tags.
       const cleanText = docXml.replace(/<[^>]+>/g, '');
       const matches = cleanText.match(/\{\{([^}]+)\}\}/g);
       

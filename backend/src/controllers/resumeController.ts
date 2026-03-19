@@ -88,14 +88,10 @@ export const getAvailableTemplatesController = async (req: any, res: Response) =
 
     if (!isAdminOrFaculty) {
       // Find the user's section to match section-level templates
-      const { default: Section } = await import('../models/Section');
-      const { default: User } = await import('../models/User');
-      
-      const user = await User.findById(req.user.userId);
-      const studentSection = await Section.findOne({ _id: (req.query.sectionId || '') }); // Frontend can pass sectionId or we find it. For MVP, we'll let frontend pass the user's section if known, or we return global templates.
-
-      const targets = [];
-      if (req.query.target) {
+      // We don't need to look up Section manually if frontend doesn't provide it, 
+      // because we solely rely on type 'global' or matching specific frontend inputs.
+      const targets: string[] = [];
+      if (req.query.target && typeof req.query.target === 'string') {
         targets.push(req.query.target); // Frontend passes specific department or section name like 'CSE' or 'CSE-A'
       }
 

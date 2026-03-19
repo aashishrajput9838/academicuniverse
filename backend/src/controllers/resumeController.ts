@@ -18,8 +18,12 @@ export const uploadTemplateController = async (req: any, res: Response) => {
     }
 
     // Role check - Only let faculty or admins upload templates
+    const { default: Role } = await import('../models/Role');
+    const role = await Role.findById(req.user.roleId);
+    const roleName = role?.name || '';
+
     const allowedRoles = ['FACULTY', 'ADMIN', 'SUPER_ADMIN'];
-    if (!allowedRoles.includes(req.user.roleName) && !req.user.isSuperAdmin) {
+    if (!allowedRoles.includes(roleName) && !req.user.isSuperAdmin) {
       return sendError(res, 403, 'You do not have permission to upload resume templates.');
     }
 
@@ -73,8 +77,12 @@ export const getAvailableTemplatesController = async (req: any, res: Response) =
 
     const organizationId = req.user.organizationId;
     
+    const { default: Role } = await import('../models/Role');
+    const role = await Role.findById(req.user.roleId);
+    const roleName = role?.name || '';
+    
     // Admin/Faculty can see all templates for the org
-    const isAdminOrFaculty = ['FACULTY', 'ADMIN', 'SUPER_ADMIN'].includes(req.user.roleName) || req.user.isSuperAdmin;
+    const isAdminOrFaculty = ['FACULTY', 'ADMIN', 'SUPER_ADMIN'].includes(roleName) || req.user.isSuperAdmin;
     
     let query: any = { organizationId };
 

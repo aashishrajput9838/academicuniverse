@@ -1,6 +1,7 @@
 import { firebaseStorage } from '../config/firebaseAdmin';
 import { Logger } from '../utils/logger';
 import path from 'path';
+import cloudinary from '../config/cloudinary';
 
 const logger = new Logger('storageService');
 
@@ -63,7 +64,7 @@ export class StorageService {
     }
 
     /**
-     * Uploads a resume template file to Firebase Cloud Storage.
+     * Uploads a resume template file to Cloudinary.
      */
     async uploadResumeTemplate(
         buffer: Buffer,
@@ -71,29 +72,30 @@ export class StorageService {
         organizationId: string
     ): Promise<string> {
         try {
-            const ext = path.extname(originalName);
-            const destinationPath = `organizations/${organizationId}/resume_templates/template_${Date.now()}${ext}`;
-
-            const bucket = firebaseStorage.bucket();
-            const file = bucket.file(destinationPath);
-
-            logger.info(`Uploading resume template to ${destinationPath}`);
-
-            await file.save(buffer, {
-                metadata: {
-                    contentType: this.getContentType(ext),
-                    metadata: {
-                        originalName,
-                        organizationId,
-                        uploadedAt: new Date().toISOString()
+            logger.info(`Uploading resume template to Cloudinary: ${originalName}`);
+            
+            return await new Promise((resolve, reject) => {
+                const uploadStream = cloudinary.uploader.upload_stream(
+                    {
+                        resource_type: 'raw',
+                        folder: `academicuniverse/templates/${organizationId}`,
+                        public_id: `template_${Date.now()}_${originalName.replace(/[^a-zA-Z0-9.-]/g, '_')}`,
+                    },
+                    (error, result) => {
+                        if (error) {
+                            logger.error('Cloudinary upload failed', error);
+                            return reject(new Error(error.message || 'Cloudinary upload failed'));
+                        }
+                        if (!result) {
+                            return reject(new Error('No result returned from Cloudinary'));
+                        }
+                        resolve(result.secure_url);
                     }
-                }
+                );
+                uploadStream.end(buffer);
             });
-
-            const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(destinationPath)}?alt=media`;
-            return downloadUrl;
         } catch (error: any) {
-            logger.error('Failed to upload resume template to Storage', error);
+            logger.error('Failed to upload resume template to Cloudinary', error);
             throw new Error(`Storage upload failed: ${error.message}`);
         }
     }

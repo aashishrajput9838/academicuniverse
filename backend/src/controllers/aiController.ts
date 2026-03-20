@@ -125,3 +125,64 @@ export const processAIChat = async (req: any, res: Response) => {
         return sendError(res, 500, 'Failed to process AI chat');
     }
 };
+
+export const processImageChat = async (req: any, res: Response) => {
+    try {
+        const { message } = req.body;
+        const file = req.file;
+        const firebaseUid = req.user?.firebaseUid;
+
+        if (!file) {
+            return sendError(res, 400, 'Image file is required');
+        }
+
+        const fileBase64 = file.buffer.toString('base64');
+        const mimeType = file.mimetype;
+
+        let history: any[] = [];
+        if (firebaseUid) {
+            try {
+                const chatDoc = await firebaseFirestore.collection('aiChats').doc(firebaseUid).get();
+                if (chatDoc.exists) {
+                    history = chatDoc.data()?.messages || [];
+                }
+            } catch (err) {
+                logger.error('Error fetching chat history:', err);
+            }
+        }
+
+        const aiReply = await aiService.analyzeImage(message || 'Analyze this image.', fileBase64, mimeType, null, history);
+
+        if (firebaseUid) {
+            try {
+                const chatRef = firebaseFirestore.collection('aiChats').doc(firebaseUid);
+                const userText = message ? `[Sent Image]: ${message}` : '[Sent Image]';
+                const newMessagePair = [
+                    { role: 'user', content: userText, timestamp: new Date().toISOString() },
+                    { role: 'assistant', content: aiReply, timestamp: new Date().toISOString() }
+                ];
+
+                if (history.length === 0) {
+                    await chatRef.set({
+                        uid: firebaseUid,
+                        messages: newMessagePair,
+                        lastUpdated: new Date().toISOString()
+                    });
+                } else {
+                    const updatedMessages = [...history, ...newMessagePair].slice(-20);
+                    await chatRef.update({
+                        messages: updatedMessages,
+                        lastUpdated: new Date().toISOString()
+                    });
+                }
+            } catch (err) {
+                logger.error('Error saving chat to Firestore:', err);
+            }
+        }
+
+        return sendResponse(res, 200, { reply: aiReply }, 'Image processed successfully');
+    } catch (error: any) {
+        logger.error('AI Image Chat Error:', error);
+        return sendError(res, 500, 'Failed to process image');
+    }
+};

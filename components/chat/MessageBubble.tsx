@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Bot } from 'lucide-react';
 
 interface MessageBubbleProps {
@@ -7,8 +7,37 @@ interface MessageBubbleProps {
         text: string;
         sender: 'user' | 'ai';
         timestamp?: string;
+        imageUrl?: string;
+        isNew?: boolean;
     };
 }
+
+const TypingText: React.FC<{ text: string, isNew?: boolean }> = ({ text, isNew }) => {
+    const [displayedText, setDisplayedText] = useState(isNew ? '' : text);
+    
+    useEffect(() => {
+        if (!isNew) return;
+        
+        let i = 0;
+        const interval = setInterval(() => {
+            setDisplayedText(text.slice(0, i));
+            i += 2; // Speed up typing slightly
+            if (i > text.length) {
+                setDisplayedText(text);
+                clearInterval(interval);
+            }
+        }, 10);
+
+        return () => clearInterval(interval);
+    }, [text, isNew]);
+
+    return (
+        <>
+            {displayedText}
+            {isNew && displayedText.length < text.length && <span className="animate-pulse">|</span>}
+        </>
+    );
+};
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
     const isUser = message.sender === 'user';
@@ -30,8 +59,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                             ? 'bg-emerald-600 text-white rounded-tr-none'
                             : 'bg-slate-700 text-slate-100 rounded-tl-none border border-slate-600'
                         }`}>
+                        
+                        {message.imageUrl && (
+                            <img 
+                                src={message.imageUrl} 
+                                alt="Attachment" 
+                                className="w-full max-w-sm rounded-lg mb-3 border border-slate-500/50 shadow-sm"
+                            />
+                        )}
+
                         <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap">
-                            {message.text}
+                            {isUser ? message.text : <TypingText text={message.text} isNew={message.isNew} />}
                         </p>
 
                         {/* Pointer Decorator (optional glassmorphic touch) */}

@@ -13,6 +13,8 @@ interface Message {
   text: string;
   sender: 'user' | 'ai';
   timestamp?: string;
+  imageUrl?: string;
+  isNew?: boolean;
 }
 
 export default function StudentChatbot() {
@@ -35,14 +37,20 @@ export default function StudentChatbot() {
   }, [user, backendUser, loading, router]);
 
   // Handle message sending
-  const handleSendMessage = async (text: string) => {
-    if (!text.trim() || isSending) return;
+  const handleSendMessage = async (text: string, file?: File) => {
+    if ((!text.trim() && !file) || isSending) return;
+
+    let imageUrl;
+    if (file) {
+      imageUrl = URL.createObjectURL(file);
+    }
 
     const userMessage: Message = {
       id: Date.now(),
       text,
       sender: 'user',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      imageUrl
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -50,14 +58,33 @@ export default function StudentChatbot() {
     setError(null);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/ai/ai-chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        },
-        body: JSON.stringify({ message: text, mood })
-      });
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('authToken');
+      let response;
+
+      if (file) {
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('message', text);
+        formData.append('mood', mood);
+
+        response = await fetch(`${baseUrl}/api/ai/image-chat`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+      } else {
+        response = await fetch(`${baseUrl}/api/ai/ai-chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ message: text, mood })
+        });
+      }
 
       if (!response.ok) {
         throw new Error('Failed to get response from AI assistant');
@@ -69,10 +96,15 @@ export default function StudentChatbot() {
         id: Date.now() + 1,
         text: data.data.reply,
         sender: 'ai',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        isNew: true
       };
 
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages(prev => {
+        // Mark older messages as not new so they don't re-animate
+        const updated = prev.map(m => ({ ...m, isNew: false }));
+        return [...updated, aiMessage];
+      });
     } catch (err: any) {
       console.error('Chat error:', err);
       setError('I lost connection for a moment. Please try again.');

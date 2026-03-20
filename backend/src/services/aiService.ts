@@ -211,6 +211,50 @@ CRITICAL RULES:
             }));
         }
     }
+
+    async analyzeImage(
+        message: string,
+        imageBase64: string,
+        mimeType: string,
+        context: any,
+        history: any[] = []
+    ): Promise<string> {
+        if (!this.ai) {
+            return "I run in mock mode because Gemini is not configured. I received your image but cannot see it. I assume it's wonderful!";
+        }
+
+        try {
+            logger.info('Analyzing image using Gemini Vision');
+            
+            const systemPrompt = `You are a helpful and intelligent AI assistant inside 'Academic Universe'. 
+Your task: Analyze the provided image and explain it clearly. If it contains a question, solve it step-by-step. If it contains notes, summarize them concisely.
+Respond intelligently based on the image context and the user's message. Use formatting to make it readable.`;
+
+            let conversationHistory = "";
+            if (history && history.length > 0) {
+                conversationHistory = "Previous Chat Context:\n" + history.slice(-5).map(msg => `${msg.role}: ${msg.content}`).join("\n") + "\n\n";
+            }
+
+            const promptText = `${conversationHistory}User's message: ${message || 'Please analyze this image.'}`;
+
+            const response = await this.ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: [
+                    { inlineData: { data: imageBase64, mimeType } },
+                    promptText
+                ],
+                config: {
+                    systemInstruction: systemPrompt,
+                    temperature: 0.7,
+                }
+            });
+
+            return response.text || "I processed the image but could not generate a response.";
+        } catch (error: any) {
+            logger.error('Error analyzing image with Gemini:', error);
+            return "I failed to analyze the image. The file might be too large or the image format is unsupported.";
+        }
+    }
 }
 
 export default new AIService();

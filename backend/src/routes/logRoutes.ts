@@ -44,18 +44,14 @@ router.post('/vercel-build', async (req, res) => {
             const errorMessage = `🚨 [Vercel Build Error] Project: ${projectName} - ${buildError}`;
             console.error(errorMessage);
 
-            // Catalog the build failure into our standard MongoDB collection directly
-            await AILogAnalysis.create({
-                route: 'VERCEL_CI/CD_PIPELINE',
-                method: 'BUILD_CRASH',
-                statusCode: 500,
-                errorMessage: errorMessage,
-                aiAnalysis: {
-                    cause: `The Vercel cloud CI runner crashed while compiling the ${projectName} application.`,
-                    fix: `Check the exact terminal logs in the Vercel dashboard: ${inspectUrl}`,
-                    severity: 'critical'
-                }
-            });
+            // Forward the crash telemetry to the Log Analyzer MCP for intelligent Gemini diagnosis
+            forwardErrorToAI(
+                'VERCEL_CI/CD_PIPELINE',
+                'BUILD_CRASH',
+                500,
+                errorMessage,
+                `Vercel URL: ${deploymentUrl}\nInspector URL: ${inspectUrl}\nError details: ${buildError}`
+            );
         }
 
         // Always return 200 OK so Vercel doesn't aggressively retry the webhook

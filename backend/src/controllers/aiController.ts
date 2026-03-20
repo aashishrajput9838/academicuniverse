@@ -8,6 +8,54 @@ import Timetable from '../models/Timetable';
 
 const logger = new Logger('aiController');
 
+export const getStudentContext = async (userId: string) => {
+    let context: any = {
+        todayClasses: 0,
+        freeSlots: [],
+        todaySchedule: [],
+        day: new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long' }),
+        currentTime: new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit' }),
+        totalWeeklyClasses: 0
+    };
+
+    try {
+        const section = await Section.findOne({
+            $or: [
+                { representativeId: userId },
+            ]
+        });
+
+        if (section) {
+            const timetable = await Timetable.findOne({ sectionId: section._id });
+            if (timetable && timetable.parsedData) {
+                const today = context.day;
+                const todaySchedule = timetable.parsedData.filter(slot => slot.dayOfWeek === today);
+
+                context.todayClasses = todaySchedule.filter(s => !s.isFreeSlot).length;
+                context.totalWeeklyClasses = timetable.parsedData.filter(s => !s.isFreeSlot).length;
+                context.freeSlots = todaySchedule.filter(s => s.isFreeSlot).map(s => `${s.startTime}-${s.endTime}`);
+                context.todaySchedule = todaySchedule.map(s => ({
+                    subject: s.subject,
+                    startTime: s.startTime,
+                    endTime: s.endTime,
+                    isFreeSlot: s.isFreeSlot
+                }));
+
+                if (context.todayClasses === 0 && (today === 'Saturday' || today === 'Sunday')) {
+                    const mondaySchedule = timetable.parsedData.filter(slot => slot.dayOfWeek === 'Monday');
+                    context.mondayPreview = {
+                        classes: mondaySchedule.filter(s => !s.isFreeSlot).length,
+                        subjects: Array.from(new Set(mondaySchedule.filter(s => !s.isFreeSlot).map(s => s.subject)))
+                    };
+                }
+            }
+        }
+    } catch (err) {
+        logger.error('Error fetching student context for AI:', err);
+    }
+    return context;
+};
+
 export const processAIChat = async (req: any, res: Response) => {
     try {
         const { message, mood } = req.body;
@@ -20,49 +68,7 @@ export const processAIChat = async (req: any, res: Response) => {
         }
 
         // 1. Fetch Academic Context
-        let academicContext: any = {
-            todayClasses: 0,
-            freeSlots: [],
-            day: new Date().toLocaleDateString('en-US', { weekday: 'long' }),
-            totalWeeklyClasses: 0
-        };
-
-        try {
-            // Find section for the student
-            const section = await Section.findOne({
-                $or: [
-                    { representativeId: userId },
-                    // Potential student role linking here
-                ]
-            });
-
-            if (section) {
-                const timetable = await Timetable.findOne({ sectionId: section._id });
-                if (timetable && timetable.parsedData) {
-                    const today = academicContext.day;
-                    const todaySchedule = timetable.parsedData.filter(slot => slot.dayOfWeek === today);
-
-                    academicContext.todayClasses = todaySchedule.filter(s => !s.isFreeSlot).length;
-                    academicContext.totalWeeklyClasses = timetable.parsedData.filter(s => !s.isFreeSlot).length;
-
-                    academicContext.freeSlots = todaySchedule
-                        .filter(s => s.isFreeSlot)
-                        .map(s => `${s.startTime}-${s.endTime}`);
-
-                    // Weekend Handling: If today is empty, fetch Monday's preview for verification
-                    if (academicContext.todayClasses === 0 && (today === 'Saturday' || today === 'Sunday')) {
-                        const mondaySchedule = timetable.parsedData.filter(slot => slot.dayOfWeek === 'Monday');
-                        academicContext.mondayPreview = {
-                            classes: mondaySchedule.filter(s => !s.isFreeSlot).length,
-                            subjects: Array.from(new Set(mondaySchedule.filter(s => !s.isFreeSlot).map(s => s.subject)))
-                        };
-                    }
-                }
-            }
-            logger.info('Fetched Academic Context:', JSON.stringify(academicContext));
-        } catch (err) {
-            logger.error('Error fetching academic context for AI:', err);
-        }
+        const academicContext = await getStudentContext(userId);
 
         // 2. Log Mood in Firestore
         if (firebaseUid) {
@@ -131,6 +137,7 @@ export const processImageChat = async (req: any, res: Response) => {
         const { message } = req.body;
         const file = req.file;
         const firebaseUid = req.user?.firebaseUid;
+        const userId = req.user?.userId;
 
         if (!file) {
             return sendError(res, 400, 'Image file is required');
@@ -151,7 +158,8 @@ export const processImageChat = async (req: any, res: Response) => {
             }
         }
 
-        const aiReply = await aiService.analyzeImage(message || 'Analyze this image.', fileBase64, mimeType, null, history);
+        const academicContext = userId ? await getStudentContext(userId) : null;
+        const aiReply = await aiService.analyzeImage(message || 'Analyze this image.', fileBase64, mimeType, academicContext, history);
 
         if (firebaseUid) {
             try {

@@ -27,13 +27,13 @@ class AIService {
         }
 
         try {
-            const systemPrompt = `You are an empathetic Emotional Intelligence Assistant for university students at Sharda University. 
-Current Student Mood: ${mood}
-Academic Context: ${JSON.stringify(context)}
+            const systemPrompt = `You are an empathetic Emotional Intelligence Assistant and Academic Helper for university students at Sharda University. 
+Current Time: ${context?.currentTime || 'Unknown'}, Day: ${context?.day || 'Unknown'}
+Academic Context (including today's schedule): ${JSON.stringify(context)}
 
 Your goal is to provide supportive, non-judgmental, and practical advice. 
-If the student is stressed, suggest study breaks or time management. 
-If they have a busy timetable, acknowledge their workload. 
+If the student asks about their current or next class, cross-reference the Current Time with their 'todaySchedule'. 
+If they are stressed, suggest study breaks or time management. 
 Always include a supportive tone and keep responses concise but warm.
 Safety Disclaimer: Remind them you are an AI assistant and not a professional counselor if they express serious distress.`;
 
@@ -227,8 +227,12 @@ CRITICAL RULES:
             logger.info('Analyzing image using Gemini Vision');
             
             const systemPrompt = `You are a helpful and intelligent AI assistant inside 'Academic Universe'. 
+Current Time: ${context?.currentTime || 'Unknown'}, Day: ${context?.day || 'Unknown'}
+Academic Context (including today's schedule): ${JSON.stringify(context || {})}
+
 Your task: Analyze the provided image and explain it clearly. If it contains a question, solve it step-by-step. If it contains notes, summarize them concisely.
-Respond intelligently based on the image context and the user's message. Use formatting to make it readable.`;
+Respond intelligently based on the image context and the user's message. Use formatting to make it readable.
+CRITICAL: If the user asks about their schedule or current class, cross-reference the Current Time with the 'todaySchedule' array.`;
 
             let conversationHistory = "";
             if (history && history.length > 0) {

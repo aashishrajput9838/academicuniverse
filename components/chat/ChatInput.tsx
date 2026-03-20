@@ -13,6 +13,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
     const [isDragging, setIsDragging] = useState(false);
     
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleSend = () => {
         if ((value.trim() || imageFile) && !disabled) {
@@ -36,6 +37,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
         setImageFile(file);
         const previewUrl = URL.createObjectURL(file);
         setImagePreview(previewUrl);
+    };
+
+    const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            handleFile(e.target.files[0]);
+        }
     };
 
     const handlePaste = (e: React.ClipboardEvent) => {
@@ -111,6 +118,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
                 )}
                 
                 <div className="flex items-end gap-3 flex-1 relative">
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileInput} 
+                        accept="image/*" 
+                        className="hidden" 
+                    />
                     <div className="flex-1 relative">
                         <textarea
                             ref={textareaRef}
@@ -123,9 +137,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
                             className="w-full bg-slate-900/80 text-white rounded-xl px-5 py-4 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 border border-slate-700 resize-none min-h-[56px] placeholder-slate-500 transition-all duration-300"
                             rows={1}
                         />
-                        <div className="absolute left-4 bottom-4 text-slate-500 pointer-events-none">
+                        <button 
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="absolute left-4 bottom-4 text-slate-500 hover:text-emerald-400 cursor-pointer z-10 p-1 rounded-md transition-colors"
+                            title="Upload an image"
+                        >
                             <ImageIcon size={20} className={imagePreview ? "text-emerald-500" : ""} />
-                        </div>
+                        </button>
                         <div className="absolute right-4 bottom-4 flex items-center gap-2 text-emerald-500/50 group-focus-within:text-emerald-500 transition-colors pointer-events-none">
                             <Sparkles size={18} />
                         </div>

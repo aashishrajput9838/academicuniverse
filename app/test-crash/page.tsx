@@ -1,6 +1,8 @@
-'use client';
-
 import { useState } from 'react';
+
+// INTENTIONAL FATAL CI FAILURE TEST
+// Unlike typescript errors, Webpack cannot ignore missing core modules.
+import { FakeComponent } from 'this-package-literally-does-not-exist';
 
 export default function TestCrashPage() {
     // INTENTIONAL CI FAILURE TEST

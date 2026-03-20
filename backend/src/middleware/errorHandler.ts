@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { sendError } from '../utils/response';
 import { AppError } from '../utils/errors';
+import { forwardErrorToAI } from '../services/logForwarder';
 
 /**
  * Global error handling middleware
@@ -14,13 +15,22 @@ export const errorHandler = (
 ) => {
   console.error('Error:', error);
 
-  // AppError instances have custom status codes
+  let statusCode = 500;
+  let message = 'Internal server error';
+
   if (error instanceof AppError) {
-    return sendError(res, error.statusCode, error.message, error);
+    statusCode = error.statusCode;
+    message = error.message;
+  } else if (error.message) {
+    message = error.message;
   }
 
-  // Default: Internal Server Error
-  return sendError(res, 500, 'Internal server error', error);
+  // Forward to AI Log Analyzer
+  if (statusCode >= 400) {
+    forwardErrorToAI(req.originalUrl, req.method, statusCode, message, error.stack);
+  }
+
+  return sendError(res, statusCode, message, error);
 };
 
 /**

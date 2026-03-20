@@ -13,4 +13,9 @@ router.post('/ai-chat', authenticateUser, processAIChat);
 router.post('/image-chat', authenticateUser, upload.single('image'), processImageChat);
 router.get('/history', authenticateUser, getChatHistory);
 
+// Temporary test route to trigger the AI Error Logger MCP
+router.get('/test-error', (req, res) => {
+    throw new Error('TEST_CRASH: Deliberate testing simulation of a deep system failure. Variable X is undefined.');
+});
+
 export default router;

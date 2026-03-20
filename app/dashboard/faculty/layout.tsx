@@ -34,6 +34,7 @@ export default function FacultyDashboardLayout({ children }: DashboardLayoutProp
   const sidebarItems = [
     { label: 'Overview', href: '/dashboard/faculty', icon: '🏠' },
     { label: 'Student Management', href: '/dashboard/faculty/students', icon: '👥' },
+    { label: 'Career Growth', href: '/dashboard/faculty/career-growth', icon: '📈' },
     { label: 'Course Management', href: '/dashboard/faculty/courses', icon: '📚' },
     { label: 'Grades & Assessments', href: '/dashboard/faculty/grades', icon: '📝' },
     { label: 'Resume Templates', href: '/dashboard/faculty/resume-templates', icon: '📄' },

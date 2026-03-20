@@ -16,6 +16,7 @@ import gmailRoutes from './gmailRoutes';
 import softSkillsRoutes from './softSkillsRoutes';
 import researchRoutes from './researchRoutes';
 import messRoutes from './messRoutes';
+import exportRoutes from './exportRoutes';
 
 const router = express.Router();
 
@@ -35,5 +36,6 @@ router.use('/gmail', gmailRoutes);
 router.use('/softskills', softSkillsRoutes);
 router.use('/research', researchRoutes);
 router.use('/mess', messRoutes);
+router.use('/export', exportRoutes);
 
 export default router;

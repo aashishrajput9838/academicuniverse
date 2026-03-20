@@ -87,7 +87,12 @@ export default function StudentChatbot() {
       }
 
       if (!response.ok) {
-        throw new Error('Failed to get response from AI assistant');
+        let errorMsg = 'Failed to get response from AI assistant';
+        try {
+          const errorData = await response.json();
+          if (errorData.message) errorMsg = errorData.message;
+        } catch (e) {}
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();
@@ -107,7 +112,7 @@ export default function StudentChatbot() {
       });
     } catch (err: any) {
       console.error('Chat error:', err);
-      setError('I lost connection for a moment. Please try again.');
+      setError(err.message || 'I lost connection for a moment. Please try again.');
     } finally {
       setIsSending(false);
     }

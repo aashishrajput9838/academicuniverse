@@ -128,7 +128,7 @@ export const processAIChat = async (req: any, res: Response) => {
         return sendResponse(res, 200, { reply: aiReply }, 'AI response generated successfully');
     } catch (error: any) {
         logger.error('AI Chat Error:', error);
-        return sendError(res, 500, 'Failed to process AI chat');
+        return sendError(res, 500, `Failed to process AI chat: ${error.message} \n ${error.stack}`);
     }
 };
 
@@ -191,6 +191,6 @@ export const processImageChat = async (req: any, res: Response) => {
         return sendResponse(res, 200, { reply: aiReply }, 'Image processed successfully');
     } catch (error: any) {
         logger.error('AI Image Chat Error:', error);
-        return sendError(res, 500, 'Failed to process image');
+        return sendError(res, 500, `Failed to process image: ${error.message} \n ${error.stack}`);
     }
 };

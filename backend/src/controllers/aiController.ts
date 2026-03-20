@@ -61,7 +61,7 @@ export const processAIChat = async (req: any, res: Response) => {
         const { message, mood } = req.body;
         const userId = req.user.userId;
         const organizationId = req.organizationId;
-        const firebaseUid = req.user.firebaseUid;
+        const chatId = req.user?.firebaseUid || req.user?.userId;
 
         if (!message || !mood) {
             return sendError(res, 400, 'Message and mood are required');
@@ -71,10 +71,10 @@ export const processAIChat = async (req: any, res: Response) => {
         const academicContext = await getStudentContext(userId);
 
         // 2. Log Mood in Firestore
-        if (firebaseUid) {
+        if (chatId) {
             try {
                 await firebaseFirestore.collection('moodLogs').add({
-                    uid: firebaseUid,
+                    uid: chatId,
                     mood: mood,
                     timestamp: new Date().toISOString()
                 });
@@ -86,21 +86,23 @@ export const processAIChat = async (req: any, res: Response) => {
         // 3. Generate AI Response
         // We fetch a bit of history from Firestore if available
         let history: any[] = [];
-        try {
-            const chatDoc = await firebaseFirestore.collection('aiChats').doc(firebaseUid).get();
-            if (chatDoc.exists) {
-                history = chatDoc.data()?.messages || [];
+        if (chatId) {
+            try {
+                const chatDoc = await firebaseFirestore.collection('aiChats').doc(chatId).get();
+                if (chatDoc.exists) {
+                    history = chatDoc.data()?.messages || [];
+                }
+            } catch (err) {
+                logger.error('Error fetching chat history:', err);
             }
-        } catch (err) {
-            logger.error('Error fetching chat history:', err);
         }
 
         const aiReply = await aiService.generateSupportResponse(message, mood, academicContext, history);
 
         // 4. Save Conversation in Firestore
-        if (firebaseUid) {
+        if (chatId) {
             try {
-                const chatRef = firebaseFirestore.collection('aiChats').doc(firebaseUid);
+                const chatRef = firebaseFirestore.collection('aiChats').doc(chatId);
                 const newMessagePair = [
                     { role: 'user', content: message, timestamp: new Date().toISOString() },
                     { role: 'assistant', content: aiReply, timestamp: new Date().toISOString() }
@@ -108,7 +110,7 @@ export const processAIChat = async (req: any, res: Response) => {
 
                 if (history.length === 0) {
                     await chatRef.set({
-                        uid: firebaseUid,
+                        uid: chatId,
                         messages: newMessagePair,
                         lastUpdated: new Date().toISOString()
                     });
@@ -136,8 +138,8 @@ export const processImageChat = async (req: any, res: Response) => {
     try {
         const { message } = req.body;
         const file = req.file;
-        const firebaseUid = req.user?.firebaseUid;
         const userId = req.user?.userId;
+        const chatId = req.user?.firebaseUid || userId;
 
         if (!file) {
             return sendError(res, 400, 'Image file is required');
@@ -147,9 +149,9 @@ export const processImageChat = async (req: any, res: Response) => {
         const mimeType = file.mimetype;
 
         let history: any[] = [];
-        if (firebaseUid) {
+        if (chatId) {
             try {
-                const chatDoc = await firebaseFirestore.collection('aiChats').doc(firebaseUid).get();
+                const chatDoc = await firebaseFirestore.collection('aiChats').doc(chatId).get();
                 if (chatDoc.exists) {
                     history = chatDoc.data()?.messages || [];
                 }
@@ -161,9 +163,9 @@ export const processImageChat = async (req: any, res: Response) => {
         const academicContext = userId ? await getStudentContext(userId) : null;
         const aiReply = await aiService.analyzeImage(message || 'Analyze this image.', fileBase64, mimeType, academicContext, history);
 
-        if (firebaseUid) {
+        if (chatId) {
             try {
-                const chatRef = firebaseFirestore.collection('aiChats').doc(firebaseUid);
+                const chatRef = firebaseFirestore.collection('aiChats').doc(chatId);
                 const userText = message ? `[Sent Image]: ${message}` : '[Sent Image]';
                 const newMessagePair = [
                     { role: 'user', content: userText, timestamp: new Date().toISOString() },
@@ -172,7 +174,7 @@ export const processImageChat = async (req: any, res: Response) => {
 
                 if (history.length === 0) {
                     await chatRef.set({
-                        uid: firebaseUid,
+                        uid: chatId,
                         messages: newMessagePair,
                         lastUpdated: new Date().toISOString()
                     });
@@ -197,12 +199,12 @@ export const processImageChat = async (req: any, res: Response) => {
 
 export const getChatHistory = async (req: any, res: Response) => {
     try {
-        const firebaseUid = req.user?.firebaseUid;
-        if (!firebaseUid) {
+        const chatId = req.user?.firebaseUid || req.user?.userId;
+        if (!chatId) {
             return sendResponse(res, 200, { history: [] }, 'No history available');
         }
 
-        const chatDoc = await firebaseFirestore.collection('aiChats').doc(firebaseUid).get();
+        const chatDoc = await firebaseFirestore.collection('aiChats').doc(chatId).get();
         if (!chatDoc.exists) {
             return sendResponse(res, 200, { history: [] }, 'No chat history found');
         }

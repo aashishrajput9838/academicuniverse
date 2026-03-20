@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import readline from 'readline';
 import { analyzeLog } from './aiService';
 
 const app = express();
@@ -18,9 +19,27 @@ interface ActiveError {
 
 // Global state for the real-time CLI dashboard
 const activeErrors = new Map<string, ActiveError>();
-const ERROR_EXPIRATION_MS = 1000 * 60; // 1 minute auto-vanish timer
 
 let isAnalyzing = false; // Prevent overlapping rendering glitches while Gemini is "thinking"
+
+// Setup Interactive CLI
+readline.emitKeypressEvents(process.stdin);
+if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
+}
+
+process.stdin.on('keypress', (str, key) => {
+    // Handle manual system exit
+    if (key.ctrl && key.name === 'c') {
+        process.exit();
+    }
+    // Handle manual error resolution
+    if (key.name === 'c' || key.name === 'r') {
+        activeErrors.clear();
+        console.clear();
+        renderDashboard();
+    }
+});
 
 const renderDashboard = () => {
     if (isAnalyzing) return; // Don't wipe the terminal if Gemini is busy fetching
@@ -29,21 +48,14 @@ const renderDashboard = () => {
     console.log('\x1b[36m%s\x1b[0m', '============================================================');
     console.log('\x1b[1m\x1b[32m%s\x1b[0m', '      🚀 ACADEMIC UNIVERSE REAL-TIME LOG ANALYZER');
     console.log('\x1b[36m%s\x1b[0m', '============================================================');
-    console.log(`\x1b[90mAuto-refreshing... Errors naturally vanish if not seen in 60s.\x1b[0m\n`);
+    console.log(`\x1b[90mTracking live errors. Press \x1b[1m\x1b[35m[C]\x1b[90m to clear all resolved errors.\x1b[0m\n`);
 
     const now = Date.now();
     let displayCount = 0;
 
     for (const [signature, err] of activeErrors.entries()) {
-        // 🗑️ Purge inherently resolved/inactive errors that haven't re-occurred recently
-        if (now - err.lastSeen > ERROR_EXPIRATION_MS) {
-            activeErrors.delete(signature);
-            continue;
-        }
-
         displayCount++;
         const secondsAgo = Math.floor((now - err.lastSeen) / 1000);
-        const vanishIn = Math.max(0, 60 - secondsAgo);
         
         const color = err.analysis?.severity === 'critical' || err.analysis?.severity === 'high' 
             ? '\x1b[31m' // Red
@@ -52,7 +64,7 @@ const renderDashboard = () => {
         console.log(`${color}[${(err.analysis?.severity || 'MEDIUM').toUpperCase()}]\x1b[0m \x1b[1m${err.route || 'Unknown Route'}\x1b[0m`);
         console.log(`\x1b[37mCause:\x1b[0m ${err.analysis?.cause || 'Analyzing...'}`);
         console.log(`\x1b[32mFix:\x1b[0m   ${err.analysis?.fix || 'Waiting for Gemini...'}`);
-        console.log(`\x1b[90mLast Seen: ${secondsAgo}s ago | ⏳ \x1b[35mVanish in: ${vanishIn}s\x1b[0m`);
+        console.log(`\x1b[90mLast Seen: ${secondsAgo}s ago \x1b[0m`);
         console.log('\x1b[90m------------------------------------------------------------\x1b[0m');
     }
 
@@ -61,7 +73,7 @@ const renderDashboard = () => {
     }
 };
 
-// Start the auto-refresh and vanish UI loop (Runs every 1 second for smooth countdowns)
+// Start the auto-refresh and vanish UI loop (Runs every 1 second for smooth rendering)
 setInterval(renderDashboard, 1000);
 
 app.post('/api/analyze-logs', async (req, res) => {

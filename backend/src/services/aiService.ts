@@ -240,8 +240,13 @@ Respond intelligently based on the image context and the user's message. Use for
             const response = await this.ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: [
-                    { inlineData: { data: imageBase64, mimeType } },
-                    promptText
+                    {
+                        role: 'user',
+                        parts: [
+                            { inlineData: { data: imageBase64, mimeType } },
+                            { text: promptText }
+                        ]
+                    }
                 ],
                 config: {
                     systemInstruction: systemPrompt,
@@ -249,7 +254,16 @@ Respond intelligently based on the image context and the user's message. Use for
                 }
             });
 
-            return response.text || "I processed the image but could not generate a response.";
+            logger.info('Gemini raw response parts:', JSON.stringify(response.candidates?.[0]?.content?.parts || []));
+            logger.info('Gemini finishReason:', response.candidates?.[0]?.finishReason);
+
+            if (response.text) {
+                return response.text;
+            } else if (response.candidates?.[0]?.finishReason === 'SAFETY') {
+                return "I'm sorry, I cannot analyze this image due to safety guidelines.";
+            } else {
+                return "I processed the image but could not generate a response. (No text returned by the model)";
+            }
         } catch (error: any) {
             logger.error('Error analyzing image with Gemini:', error);
             return "I failed to analyze the image. The file might be too large or the image format is unsupported.";

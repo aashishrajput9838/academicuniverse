@@ -42,6 +42,7 @@ export const uploadTemplateController = async (req: any, res: Response) => {
 
     let finalBuffer = file.buffer;
 
+    /* DISABLED FOR MVP
     // Apply interactive mappings if provided (from Interactive Editor)
     if (mappings) {
       try {
@@ -63,6 +64,7 @@ export const uploadTemplateController = async (req: any, res: Response) => {
         logger.error('Error rewriting XML with mappings:', err);
       }
     }
+    */
 
     // Upload file to Firebase Storage
     const fileUrl = await storageService.uploadResumeTemplate(
@@ -73,6 +75,8 @@ export const uploadTemplateController = async (req: any, res: Response) => {
 
     // Extract tags from DOCX and generate AI questions
     let questions: any[] = [];
+    
+    /* DISABLED FOR MVP
     try {
       const PizZip = (await import('pizzip')).default;
       const zip = new PizZip(finalBuffer);
@@ -83,7 +87,6 @@ export const uploadTemplateController = async (req: any, res: Response) => {
       const matches = cleanText.match(/\{\{([^}]+)\}\}/g);
       
       if (matches) {
-        // Extract raw tag names and remove duplicates
         const rawTags = matches.map((m: string) => m.replace(/\{\{|\}\}/g, '').trim());
         const uniqueTags = [...new Set(rawTags)];
         
@@ -97,8 +100,8 @@ export const uploadTemplateController = async (req: any, res: Response) => {
       }
     } catch (tagError: any) {
       logger.error('Failed to extract tags or generate AI questions:', tagError);
-      // We don't fail the upload, just proceed with an empty questions array
     }
+    */
 
     // Save metadata to DB
     const template = new ResumeTemplate({

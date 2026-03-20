@@ -262,7 +262,7 @@ Respond intelligently based on the image context and the user's message. Use for
             } else if (response.candidates?.[0]?.finishReason === 'SAFETY') {
                 return "I'm sorry, I cannot analyze this image due to safety guidelines.";
             } else {
-                return "I processed the image but could not generate a response. (No text returned by the model)";
+                return `[DEBUG] Raw Gemini lack of response. Finish Reason: ${response.candidates?.[0]?.finishReason || 'None'} | Parts length: ${response.candidates?.[0]?.content?.parts?.length || 0} | Full candidates array: ${JSON.stringify(response.candidates)}`;
             }
         } catch (error: any) {
             logger.error('Error analyzing image with Gemini:', error);

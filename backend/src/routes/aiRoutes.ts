@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { processAIChat, processImageChat } from '../controllers/aiController';
+import { processAIChat, processImageChat, getChatHistory } from '../controllers/aiController';
 import { authenticateUser } from '../middleware/auth';
 
 const router = express.Router();
@@ -11,5 +11,6 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 // and we can add additional role checks if needed via authorize()
 router.post('/ai-chat', authenticateUser, processAIChat);
 router.post('/image-chat', authenticateUser, upload.single('image'), processImageChat);
+router.get('/history', authenticateUser, getChatHistory);
 
 export default router;

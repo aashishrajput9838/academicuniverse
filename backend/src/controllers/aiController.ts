@@ -194,3 +194,23 @@ export const processImageChat = async (req: any, res: Response) => {
         return sendError(res, 500, `Failed to process image: ${error.message} \n ${error.stack}`);
     }
 };
+
+export const getChatHistory = async (req: any, res: Response) => {
+    try {
+        const firebaseUid = req.user?.firebaseUid;
+        if (!firebaseUid) {
+            return sendResponse(res, 200, { history: [] }, 'No history available');
+        }
+
+        const chatDoc = await firebaseFirestore.collection('aiChats').doc(firebaseUid).get();
+        if (!chatDoc.exists) {
+            return sendResponse(res, 200, { history: [] }, 'No chat history found');
+        }
+
+        const history = chatDoc.data()?.messages || [];
+        return sendResponse(res, 200, { history }, 'Chat history retrieved');
+    } catch (error: any) {
+        logger.error('Error fetching chat history:', error);
+        return sendError(res, 500, 'Failed to fetch chat history');
+    }
+};

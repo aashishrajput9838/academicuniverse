@@ -36,6 +36,37 @@ export default function StudentChatbot() {
     }
   }, [user, backendUser, loading, router]);
 
+  // Load Chat History
+  useEffect(() => {
+    if (!loading && user && backendUser?.role === 'STUDENT') {
+      const fetchHistory = async () => {
+        try {
+          const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+          const token = localStorage.getItem('authToken');
+          const response = await fetch(`${baseUrl}/api/ai/history`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.data?.history) {
+              const loadedMessages = data.data.history.map((msg: any, index: number) => ({
+                id: `history-${index}`,
+                text: msg.content,
+                sender: msg.role === 'assistant' ? 'ai' : 'user',
+                timestamp: msg.timestamp || new Date().toISOString(),
+                isNew: false
+              }));
+              setMessages(loadedMessages);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load chat history", err);
+        }
+      };
+      fetchHistory();
+    }
+  }, [user, backendUser, loading]);
+
   // Handle message sending
   const handleSendMessage = async (text: string, file?: File) => {
     if ((!text.trim() && !file) || isSending) return;

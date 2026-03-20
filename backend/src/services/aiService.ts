@@ -263,10 +263,10 @@ CRITICAL: If the user asks about their schedule or current class, cross-referenc
 
             if (response.text) {
                 return response.text;
-            } else if (response.candidates?.[0]?.finishReason === 'SAFETY') {
-                return "I'm sorry, I cannot analyze this image due to safety guidelines.";
+            } else if (!response.candidates || response.candidates.length === 0 || response.candidates[0].finishReason === 'SAFETY') {
+                return "I'm sorry, I cannot analyze this image. Gemini's safety guidelines prevent it from identifying real people or processing certain types of content.";
             } else {
-                return `[DEBUG] Raw Gemini lack of response. Finish Reason: ${response.candidates?.[0]?.finishReason || 'None'} | Parts length: ${response.candidates?.[0]?.content?.parts?.length || 0} | Full candidates array: ${JSON.stringify(response.candidates)}`;
+                return "I processed the image but could not generate a response. Please try a different prompt.";
             }
         } catch (error: any) {
             logger.error('Error analyzing image with Gemini:', error);

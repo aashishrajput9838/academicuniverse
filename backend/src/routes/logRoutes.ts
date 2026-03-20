@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { forwardErrorToAI } from '../services/logForwarder';
+import AILogAnalysis from '../models/AILogAnalysis';
 
 const router = Router();
 
@@ -23,6 +24,44 @@ router.post('/frontend', (req, res) => {
 
         return res.status(200).json({ status: 'received' });
     } catch(err) {
+        return res.status(500).json({ status: 'error' });
+    }
+});
+
+// Endpoint specifically to accept Vercel Webhooks (Build Errors)
+// Note: This operates independently of the Gemini AI to prevent spam during pipeline crashes.
+router.post('/vercel-build', async (req, res) => {
+    try {
+        const payload = req.body;
+        
+        // Vercel Webhooks send a `type` field to identify the event
+        if (payload?.type === 'deployment.error' || payload?.type === 'deployment.canceled') {
+            const deploymentUrl = payload?.payload?.deployment?.url || 'Unknown Subdomain';
+            const projectName = payload?.payload?.project?.name || 'Academic Universe Frontend';
+            const inspectUrl = payload?.payload?.deployment?.inspectorUrl || 'Vercel Dashboard';
+            const buildError = payload?.payload?.deployment?.meta?.error || 'Build compilation failed';
+
+            const errorMessage = `🚨 [Vercel Build Error] Project: ${projectName} - ${buildError}`;
+            console.error(errorMessage);
+
+            // Catalog the build failure into our standard MongoDB collection directly
+            await AILogAnalysis.create({
+                route: 'VERCEL_CI/CD_PIPELINE',
+                method: 'BUILD_CRASH',
+                statusCode: 500,
+                errorMessage: errorMessage,
+                aiAnalysis: {
+                    cause: `The Vercel cloud CI runner crashed while compiling the ${projectName} application.`,
+                    fix: `Check the exact terminal logs in the Vercel dashboard: ${inspectUrl}`,
+                    severity: 'critical'
+                }
+            });
+        }
+
+        // Always return 200 OK so Vercel doesn't aggressively retry the webhook
+        return res.status(200).json({ status: 'received' });
+    } catch(err) {
+        console.error('Failed to process Vercel webhook:', err);
         return res.status(500).json({ status: 'error' });
     }
 });

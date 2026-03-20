@@ -3,6 +3,10 @@
 import { useState } from 'react';
 
 export default function TestCrashPage() {
+    // INTENTIONAL CI FAILURE TEST
+    // This broken type definition will immediately crash the TypeScript compiler during 'next build'
+    const intentionalCIError: number = "This is a string assigned to a number";
+
     const [shouldCrash, setShouldCrash] = useState(false);
 
     if (shouldCrash) {

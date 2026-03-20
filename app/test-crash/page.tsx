@@ -1,14 +1,6 @@
 import { useState } from 'react';
 
-// INTENTIONAL FATAL CI FAILURE TEST
-// Unlike typescript errors, Webpack cannot ignore missing core modules.
-import { FakeComponent } from 'this-package-literally-does-not-exist';
-
 export default function TestCrashPage() {
-    // INTENTIONAL CI FAILURE TEST
-    // This broken type definition will immediately crash the TypeScript compiler during 'next build'
-    const intentionalCIError: number = "This is a string assigned to a number";
-
     const [shouldCrash, setShouldCrash] = useState(false);
 
     if (shouldCrash) {

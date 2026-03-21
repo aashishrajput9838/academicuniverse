@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
-    "build": "next build || node scripts/report-build-error.js",
+    "build": "node scripts/build.js",
     "start": "next start",
     "lint": "next lint"
   },

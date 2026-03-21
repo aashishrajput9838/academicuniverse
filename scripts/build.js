@@ -1,18 +1,12 @@
+const { spawn } = require('child_process');
 const https = require('https');
 const http = require('http');
 
-/**
- * Custom NPM Script Bypass for Vercel Webhooks (Hobby Tier)
- * This script runs ONLY if `next build` fails, securely shooting the crash 
- * telemetry to the log-analyzer without blocking or crashing further.
- */
-
-// We utilize native Node HTTP modules to guarantee it works without requiring package installs
 const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL 
   ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/logs/vercel-build`
   : 'https://academicuniverse-backend.onrender.com/api/logs/vercel-build';
 
-async function reportError() {
+async function reportError(errorLog) {
   try {
     const payload = JSON.stringify({
       type: 'deployment.error',
@@ -21,11 +15,11 @@ async function reportError() {
           url: process.env.VERCEL_URL || 'Local / Hobby Branch',
           inspectorUrl: 'Check Vercel Build Logs instantly to debug',
           meta: {
-            error: 'Turbopack / Next.js Build Compilation Failed. The webhook caught it.'
+            error: errorLog
           }
         },
         project: {
-          name: 'Academic Universe (Free Webhook Bypass)'
+          name: 'Academic Universe (Custom Build Wrapper)'
         }
       }
     });
@@ -41,7 +35,7 @@ async function reportError() {
       }
     };
 
-    console.log('[AI Logger] Build failed. Forwarding stack trace telemetry to backend...');
+    console.log('\n[AI Logger] Build failed. Forwarding real stack trace telemetry to backend...');
 
     await new Promise((resolve) => {
         const req = client.request(parsedUrl.toString(), options, (res) => {
@@ -52,7 +46,7 @@ async function reportError() {
         // Fail silently and immediately if the network drops to avoid hanging the build environment
         req.on('error', () => resolve(false));
         
-        req.setTimeout(3000, () => {
+        req.setTimeout(5000, () => {
             req.destroy();
             resolve(false);
         });
@@ -63,11 +57,34 @@ async function reportError() {
 
   } catch (err) {
     // Fail absolutely silently so we don't pollute the Vercel logs with our own telemetry trace
-  } finally {
-    // CRITICAL: Exit with code 1 so Vercel realizes the build actually crashed
-    // If we exit with 0, Vercel will think the build succeeded and deploy a broken site!
-    process.exit(1);
   }
 }
 
-reportError();
+// Spawn the actual nextjs build process
+const child = spawn('npx', ['next', 'build'], {
+  stdio: ['inherit', 'pipe', 'pipe'],
+  shell: true
+});
+
+let outputLog = '';
+
+child.stdout.on('data', (data) => {
+  process.stdout.write(data);
+  outputLog += data.toString();
+});
+
+child.stderr.on('data', (data) => {
+  process.stderr.write(data);
+  outputLog += data.toString();
+});
+
+child.on('close', async (code) => {
+  if (code !== 0) {
+    // Keep only the last 4000 chars to avoid payload too large (Vercel has limits on webhook sizes)
+    const clampedLog = outputLog.length > 4000 ? outputLog.slice(-4000) : outputLog;
+    await reportError(clampedLog);
+    // CRITICAL: Exit with code 1 so Vercel realizes the build actually crashed
+    process.exit(code);
+  }
+  process.exit(0);
+});

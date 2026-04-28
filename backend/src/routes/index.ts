@@ -14,9 +14,12 @@ import aiRoutes from './aiRoutes';
 import logRoutes from './logRoutes';
 import gmailRoutes from './gmailRoutes';
 import softSkillsRoutes from './softSkillsRoutes';
-import researchRoutes from './researchRoutes';
+// import researchRoutes from './researchRoutes'; // Old - using modular version
 import messRoutes from './messRoutes';
 import exportRoutes from './exportRoutes';
+
+// Import modular routes (new architecture)
+import { researchRoutes } from '../modules/research';
 
 const router = express.Router();
 
@@ -34,7 +37,7 @@ router.use('/ai', aiRoutes);
 router.use('/logs', logRoutes);
 router.use('/gmail', gmailRoutes);
 router.use('/softskills', softSkillsRoutes);
-router.use('/research', researchRoutes);
+router.use('/research', researchRoutes); // New modular route
 router.use('/mess', messRoutes);
 router.use('/export', exportRoutes);
 

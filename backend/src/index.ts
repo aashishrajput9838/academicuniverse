@@ -3,8 +3,10 @@ import cors from 'cors';
 import session from 'express-session';
 import dotenv from 'dotenv';
 import { connectDB } from './config';
-import { errorHandler, notFoundHandler } from './middleware';
+import { errorHandler, notFoundHandler, requestIdMiddleware, performanceMonitorMiddleware } from './middleware';
 import schedulerService from './services/schedulerService';
+import logger from './utils/logger';
+import { initSentry, sentryRequestHandler, sentryTracingHandler, sentryErrorHandler } from './config/sentry';
 
 // Load environment variables FIRST, before any other imports that might depend on them
 dotenv.config();
@@ -14,9 +16,24 @@ import routes from './routes';
 
 const app = express();
 
+// Initialize Sentry
+initSentry(app);
+
 /**
  * Middleware Setup
  */
+
+// Request ID tracking (first middleware)
+app.use(requestIdMiddleware);
+
+// Sentry request handler (placeholder)
+if (process.env.SENTRY_DSN) {
+  app.use(sentryRequestHandler);
+  app.use(sentryTracingHandler);
+}
+
+// Performance monitoring
+app.use(performanceMonitorMiddleware);
 
 // Body parser
 app.use(express.json());
@@ -35,7 +52,9 @@ app.use(cors({
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      const error = new Error('Not allowed by CORS');
+      logger.warn('CORS request blocked', { origin });
+      callback(error);
     }
   },
   credentials: true,
@@ -47,16 +66,10 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000
   }
 }));
-
-// Request logging (basic)
-app.use((req, express, next) => {
-  console.log(`${req.method} ${req.path}`);
-  next();
-});
 
 /**
  * Routes
@@ -67,12 +80,21 @@ app.use('/api', routes);
  * Health check
  */
 app.get('/health', (req, res) => {
+  logger.info('Health check requested', { requestId: req.requestId });
   res.json({
     status: 'ok',
     message: 'Academic Universe Backend is running',
     timestamp: new Date().toISOString(),
+    requestId: req.requestId,
   });
 });
+
+/**
+ * Sentry error handler (placeholder)
+ */
+if (process.env.SENTRY_DSN) {
+  app.use(sentryErrorHandler);
+}
 
 /**
  * Error Handling Middleware (must be last)
@@ -89,33 +111,48 @@ const startServer = async () => {
   try {
     // Connect to MongoDB
     await connectDB();
+    logger.info('Connected to MongoDB');
 
     // Start Express server unless running tests (tests will use the app directly)
     if (process.env.NODE_ENV !== 'test') {
       app.listen(PORT, () => {
-        console.log(`✓ Server running on port ${PORT}`);
-        console.log(`✓ Environment: ${process.env.NODE_ENV}`);
+        logger.info(`Server running on port ${PORT}`, {
+          port: PORT,
+          environment: process.env.NODE_ENV || 'development',
+        });
 
         // Start the scheduler service after server is running
         schedulerService.start();
-        console.log('✓ Scheduler service started');
+        logger.info('Scheduler service started');
       });
     }
   } catch (error) {
-    console.error('✗ Server startup failed:', error);
+    logger.error('Server startup failed', { error });
     process.exit(1);
   }
 };
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully...');
+  logger.info('SIGTERM received, shutting down gracefully...');
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully...');
+  logger.info('SIGINT received, shutting down gracefully...');
   process.exit(0);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught exception', { error });
+  process.exit(1);
+});
+
+// Handle unhandled rejections
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled rejection', { reason, promise });
+  process.exit(1);
 });
 
 startServer();

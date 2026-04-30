@@ -71,7 +71,11 @@ export class AIProviderFactory {
     }
 
     // Return first available provider
-    return this.providers.values().next().value;
+    const first = this.providers.values().next().value;
+    if (!first) {
+      throw new Error('No AI providers are available');
+    }
+    return first;
   }
 
   /**

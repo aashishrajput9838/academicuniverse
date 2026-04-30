@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { sendError } from '../utils/response';
 import { AppError } from '../utils/errors';
 import { forwardErrorToAI } from '../services/logForwarder';
+import logger from '../utils/logger';
 
 /**
  * Global error handling middleware
@@ -13,7 +14,13 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  console.error('Error:', error);
+  logger.error('Request error', {
+    requestId: req.requestId,
+    method: req.method,
+    url: req.originalUrl,
+    error: error.message,
+    stack: error.stack,
+  });
 
   let statusCode = 500;
   let message = 'Internal server error';
@@ -40,5 +47,10 @@ export const notFoundHandler = (
   req: Request,
   res: Response
 ) => {
+  logger.warn('Route not found', {
+    requestId: req.requestId,
+    method: req.method,
+    url: req.originalUrl,
+  });
   return sendError(res, 404, `Route ${req.originalUrl} not found`);
 };

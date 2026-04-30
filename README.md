@@ -141,6 +141,50 @@ Academic Universe features **automatic role detection** based on institutional e
 | **JWT** | Authentication | 9.0.0 |
 | **Google GenAI** | AI Services | 1.45.0 |
 | **Cloudinary** | File Storage | 2.9.0 |
+| **Winston** | Structured Logging | Latest |
+| **Sentry** | Error Tracking & Monitoring | Latest |
+
+### Monitoring & Observability
+| Technology | Purpose |
+|------------|---------|
+| **Winston** | Structured logging with log rotation |
+| **Sentry** | Full-stack error tracking & performance monitoring |
+| **Request ID** | Unique request tracking for debugging |
+| **Performance Monitor** | API response time tracking |
+
+---
+
+## 📊 Monitoring & Logging
+
+Academic Universe includes comprehensive monitoring and logging for both frontend and backend.
+
+### Frontend Monitoring (Sentry)
+- ✅ Error Monitoring - Captures client and server errors
+- ✅ Performance Tracing - Tracks page load and API response times
+- ✅ Session Replay - Video-like reproduction of user sessions around errors
+- ✅ Logging Integration - Sends application logs to Sentry
+
+### Backend Logging (Winston + Sentry)
+- ✅ Structured Logging - JSON format in production, colored output in development
+- ✅ Request ID Tracking - Unique UUID for every request
+- ✅ Performance Monitoring - Tracks API response times, method, URL, status code
+- ✅ Automatic Log Rotation - Logs saved to `logs/` directory:
+  - `error.log` - Error level logs only
+  - `combined.log` - All logs
+  - `exceptions.log` - Uncaught exceptions
+  - `rejections.log` - Unhandled promise rejections
+
+### Environment Variables
+Add these to your backend `.env`:
+```env
+# Sentry Error Tracking (Optional)
+SENTRY_DSN=your_sentry_dsn_here
+```
+
+### Testing the Setup
+1. Visit `/sentry-example-page` to test frontend error tracking
+2. Check `backend/logs/` directory for backend logs
+3. View your Sentry dashboard: https://sharda-university-rq.sentry.io/
 
 ---
 
@@ -215,6 +259,9 @@ GOOGLE_GENAI_API_KEY=your_google_ai_key
 
 # Cloud Storage
 CLOUDINARY_URL=cloudinary://api_key:api_secret@cloud_name
+
+# Sentry Error Tracking (Optional)
+SENTRY_DSN=your_sentry_dsn_here
 ```
 
 #### 5️⃣ Seed the Database
@@ -599,6 +646,8 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - **MongoDB** for flexible document database
 - **Next.js & Vercel** for seamless deployment
 - **shadcn/ui** for beautiful component library
+- **Sentry** for error tracking and monitoring
+- **Winston** for structured logging
 
 ---
 

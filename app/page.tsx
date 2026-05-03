@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/authContext'
 import { Navbar } from '@/components/Navbar'
+import { HeroSection } from '@/components/HeroSection'
+import { FeaturedPrograms } from '@/components/FeaturedPrograms'
+import { CTASection } from '@/components/CTASection'
+import { Footer } from '@/components/Footer'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Users, UserCheck, Calendar, Settings } from 'lucide-react'
@@ -16,12 +20,6 @@ export default function AcademicUniverseHome() {
 
   // All hooks must be called unconditionally at the top level
   useEffect(() => {
-    // Redirect to login if not authenticated
-    if (!user && !loading) {
-      router.push('/login');
-      return;
-    }
-    
     // Only check role and redirect when both user and backendUser are loaded
     if (user && !loading && backendUser) {
       const isAdminUser = (
@@ -71,9 +69,19 @@ export default function AcademicUniverseHome() {
     )
   }
 
-  // Don't render content until user is authenticated
+  // Show the public landing page for unauthenticated visitors
   if (!user) {
-    return null
+    return (
+      <>
+        <Navbar />
+        <main className="bg-slate-950 text-white">
+          <HeroSection />
+          <FeaturedPrograms />
+          <CTASection />
+          <Footer />
+        </main>
+      </>
+    )
   }
 
   // Still loading backend user data - show loading state

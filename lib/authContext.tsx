@@ -25,6 +25,8 @@ interface AuthContextType {
   user: User | null;
   backendUser: BackendUser | null;
   loading: boolean;
+  authError: string | null;
+  clearAuthError: () => void;
   signInWithGoogle: () => Promise<void>;
   signInWithEmailAndPassword: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -38,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [backendUser, setBackendUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
   const auth = getFirebaseAuth();
 
   useEffect(() => {
@@ -87,6 +90,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } catch (error) {
           console.error('Error exchanging Firebase token for backend token:', error);
+          if (error instanceof TypeError && error.message.includes('fetch')) {
+            setAuthError('Unable to reach backend for login exchange. Please ensure the backend is running on localhost:5000.');
+          } else {
+            setAuthError('An unexpected error occurred during login exchange.');
+          }
         } finally {
           setLoading(false); // Always set loading to false after attempt
         }
@@ -105,23 +113,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (response.ok) {
             const data = await response.json();
             setBackendUser(data.data);
+            setAuthError(null);
           } else {
             // If token is invalid, clear it and log out the user
             console.error('Invalid token, logging out user');
             await signOut(auth);
             localStorage.removeItem('authToken');
             setBackendUser(null);
+            setAuthError('Session expired or invalid. Please sign in again.');
           }
         } catch (error) {
           console.error('Error fetching backend user data:', error);
           // Check if it's a network error vs a token error
           if (error instanceof TypeError && error.message.includes('fetch')) {
+            setAuthError('Unable to connect to the backend. Please ensure it is running on localhost:5000.');
             // Network error - don't clear token, just set backend user to null temporarily
             console.warn('Network error, keeping token but showing as not fully authenticated');
           } else {
             // Other error (likely token invalid) - clear the token
             localStorage.removeItem('authToken');
             setBackendUser(null);
+            setAuthError('Unexpected authentication error. Please refresh the page.');
           }
         } finally {
           setLoading(false);
@@ -142,6 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (response.ok) {
             const data = await response.json();
             setBackendUser(data.data);
+            setAuthError(null);
             
             // Generate a persistent mock user so the UI features continue to work seamlessly
             const mockUser: any = {
@@ -158,15 +171,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.removeItem('authToken');
             setBackendUser(null);
             setUser(null);
+            setAuthError('Session expired or invalid. Please sign in again.');
           }
         } catch (error) {
           console.error('Error fetching backend user custom data:', error);
           if (error instanceof TypeError && error.message.includes('fetch')) {
+            setAuthError('Unable to connect to the backend. Please ensure it is running on localhost:5000.');
             console.warn('Network error during session restore');
           } else {
             localStorage.removeItem('authToken');
             setBackendUser(null);
             setUser(null);
+            setAuthError('Custom authentication session could not be restored.');
           }
         } finally {
           setLoading(false);
@@ -176,6 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('authToken');
         setBackendUser(null);
         setUser(null);
+        setAuthError(null);
         setLoading(false);
       }
     });
@@ -185,6 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
+      setAuthError(null);
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
 
@@ -268,6 +286,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithEmailAndPassword = async (email: string, password: string) => {
     try {
       setLoading(true);
+      setAuthError(null);
 
       // Send email and password to backend for authentication
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
@@ -339,15 +358,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(mockUser);
     } catch (error) {
       console.error('Error signing in with email and password:', error);
+      setAuthError((error as Error)?.message || 'Authentication failed.');
+      console.error('Error signing in with email and password:', error);
       throw error;
     } finally {
       setLoading(false);
     }
   };
 
+  const clearAuthError = () => setAuthError(null);
+
   return (
-    <AuthContext.Provider value={{ user, backendUser, loading, signInWithGoogle, signInWithEmailAndPassword, logout }}>
-      {children}
+    <AuthContext.Provider value={{ user, backendUser, loading, authError, clearAuthError, signInWithGoogle, signInWithEmailAndPassword, logout }}>
+      <div className="relative">
+        {authError && (
+          <div className="fixed inset-x-0 top-0 z-50 bg-amber-500 text-slate-950 shadow-xl">
+            <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-sm sm:text-base">
+                <span className="font-semibold">Connection issue:</span>
+                <span>{authError}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="rounded-lg bg-slate-950 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Retry
+                </button>
+                <button
+                  type="button"
+                  onClick={clearAuthError}
+                  className="rounded-lg border border-slate-950 bg-white/10 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-white/20"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {children}
+      </div>
     </AuthContext.Provider>
   );
 }

@@ -9,9 +9,9 @@ const _geist = Geist({ subsets: ['latin'] })
 const _geistMono = Geist_Mono({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: 'Academic Universe',
+  description: 'AI-powered platform for holistic student growth tracking, IQ/EQ analytics, and verified credential management.',
+  generator: 'Next.js',
 }
 
 export default function RootLayout({

@@ -19,6 +19,7 @@ interface NavItem {
 export function Navbar() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, backendUser, logout } = useAuth()
   const router = useRouter()
 
@@ -207,6 +208,26 @@ export function Navbar() {
 
         {/* Search & Auth Buttons */}
         <div className="flex items-center gap-4">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-lg border border-slate-600 bg-slate-800/80 p-2 text-slate-200 hover:bg-slate-700/80 md:hidden"
+            onClick={() => setMobileMenuOpen((current) => !current)}
+            aria-expanded={mobileMenuOpen}
+            aria-label="Toggle navigation menu"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {mobileMenuOpen ? (
+                <path d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <>
+                  <path d="M3 12h18" />
+                  <path d="M3 6h18" />
+                  <path d="M3 18h18" />
+                </>
+              )}
+            </svg>
+          </button>
+
           {/* Faculty Cabin Finder Search */}
           <div className="relative hidden md:block">
             <input
@@ -259,6 +280,42 @@ export function Navbar() {
             </>
           )}
         </div>
+
+        {mobileMenuOpen && (
+          <div className="absolute top-full inset-x-0 z-40 bg-slate-900/95 border-t border-slate-700/80 md:hidden shadow-2xl">
+            <div className="space-y-3 px-4 py-4">
+              {navItems.map((item) => (
+                <div key={item.label} className="space-y-1">
+                  {item.dropdown ? (
+                    <>
+                      <div className="px-3 py-2 rounded-lg bg-slate-800 text-slate-200 font-semibold">{item.label}</div>
+                      <div className="space-y-1 pl-4">
+                        {item.dropdown.map((subItem) => (
+                          <Link
+                            key={subItem.label}
+                            href={subItem.href}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition"
+                          >
+                            {subItem.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <Link
+                      href={item.href || '#'}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition"
+                    >
+                      {item.label}
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   )

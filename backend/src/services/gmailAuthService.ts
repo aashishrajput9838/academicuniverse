@@ -1,11 +1,24 @@
 import { google } from 'googleapis';
-import User from '../models/User';
+import User, { IGmailTokens } from '../models/User';
 
 export const getOAuth2Client = () => {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+
+    if (!clientId || !clientSecret || !redirectUri) {
+        console.error('Missing Google OAuth environment variables:', { 
+            clientId: !!clientId, 
+            clientSecret: !!clientSecret, 
+            redirectUri: !!redirectUri 
+        });
+        throw new Error('Google OAuth configuration is incomplete');
+    }
+
     return new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_CLIENT_SECRET,
-        process.env.GOOGLE_REDIRECT_URI
+        clientId,
+        clientSecret,
+        redirectUri
     );
 };
 
@@ -27,15 +40,23 @@ export const handleGmailCallback = async (code: string, userId: string) => {
     const oauth2Client = getOAuth2Client();
     const { tokens } = await oauth2Client.getToken(code);
 
+    if (!userId) {
+        throw new Error('No userId provided in state');
+    }
+
     const user = await User.findById(userId);
-    if (!user) throw new Error('User not found');
+    if (!user) throw new Error(`User not found with ID: ${userId}`);
 
     // Update the user's gmail tokens
-    user.gmailTokens = {
+    // CRITICAL: Google only sends refresh_token on the first consent.
+    // We must preserve the existing one if the new tokens don't include it.
+    const updatedTokens: IGmailTokens = {
         accessToken: tokens.access_token || '',
-        refreshToken: tokens.refresh_token || '',
+        refreshToken: tokens.refresh_token || user.gmailTokens?.refreshToken || '',
         expiryDate: tokens.expiry_date || 0,
     };
+
+    user.gmailTokens = updatedTokens;
 
     await user.save();
     return tokens;

@@ -44,7 +44,15 @@ export const gmailCallback = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error('Error handling Gmail callback:', error);
         const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:3000';
-        return res.redirect(`${frontendUrl}/dashboard/student/events?gmail_error=server_error`);
+        
+        // Map common errors to specific codes for better frontend handling
+        let errorCode = 'server_error';
+        if (error.message?.includes('invalid_grant')) errorCode = 'invalid_grant';
+        else if (error.message?.includes('User not found')) errorCode = 'user_not_found';
+        else if (error.message?.includes('redirect_uri_mismatch')) errorCode = 'redirect_mismatch';
+        else if (error.message?.includes('configuration is incomplete')) errorCode = 'config_incomplete';
+
+        return res.redirect(`${frontendUrl}/dashboard/student/events?gmail_error=${errorCode}`);
     }
 };
 

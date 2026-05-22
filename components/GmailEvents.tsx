@@ -37,7 +37,18 @@ export const GmailEvents: React.FC = () => {
             setGmailConnected(true);
             fetchEvents();
         } else if (error) {
-            toast({ title: 'Error', description: `Failed to connect Gmail: ${error}`, variant: 'destructive' });
+            let description = `Failed to connect Gmail: ${error}`;
+            if (error === 'invalid_grant') description = 'The authorization code has expired or has already been used. Please try again.';
+            else if (error === 'user_not_found') description = 'User account not found in our database.';
+            else if (error === 'redirect_mismatch') description = 'Configuration error: Redirect URI mismatch. Please contact support.';
+            else if (error === 'config_incomplete') description = 'Server configuration error: Google OAuth is not properly set up.';
+            else if (error === 'access_denied') description = 'Access was denied by the user.';
+            
+            toast({ 
+                title: 'Connection Failed', 
+                description: description, 
+                variant: 'destructive' 
+            });
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }, [toast]);

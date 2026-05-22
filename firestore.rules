@@ -5,18 +5,19 @@ service cloud.firestore {
     // Helper function to check if request comes from a service account (admin access)
     function isAdmin() {
       // Service accounts and users with admin claims have elevated privileges
-      return request.auth.token.admin == true || 
-             request.auth.token.claims.admin == true;
+      return request.auth != null && 
+             (request.auth.token.get('admin', false) == true || 
+              request.auth.token.get('claims', {}).get('admin', false) == true);
     }
     
     // Helper function to check if user is authenticated
     function isAuthenticated() {
-      return request.auth != null && !isAdmin();
+      return request.auth != null;
     }
     
     // Helper function to get user's organization ID
     function getUserOrganizationId() {
-      return request.auth.token.organizationId;
+      return request.auth.token.get('organizationId', '');
     }
     
     // Helper function to check if user belongs to the same organization

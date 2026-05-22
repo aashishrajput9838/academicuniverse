@@ -1,50 +1,43 @@
-# Academic Universe - AI Context Document
+# Academic Universe - Master AI Context (Token-Optimized)
 
-This document provides a structured overview of the "Academic Universe" project to help an AI assistant quickly understand the architecture, tech stacks, file structure, and core features.
+## 1. Project Essence
+Multi-tenant SaaS for holistic student development tracking. Moves beyond marks to IQ/EQ, wellness, and verified credentials. Automated RBAC via email domains.
 
-## 1. Project Overview
-Academic Universe is a multi-tenant SaaS educational platform that transforms traditional evaluation by incorporating holistic student development tracking. It measures comprehensive growth through IQ/EQ assessments, mental wellness tracking, and verified credentials, moving beyond conventional marks and attendance. It supports completely automated role assignment based on institutional email domains.
+## 2. Core Technical Stack
+- **Frontend**: Next.js 16 (App Router, Turbopack), React 19, Tailwind CSS 4, Radix UI, Lucide.
+- **Backend**: Node.js, Express 5, TypeScript.
+- **Databases**: 
+  - **MongoDB**: Primary store for users, roles, organizations, marks, and resumes.
+  - **Firebase/Firestore**: Client-side event streaming, detected events, and real-time data.
+- **Auth**: Hybrid (Firebase Auth for login + Custom JWT with embedded RBAC permissions).
+- **AI**: Google Gemini (gemini-2.5-flash) for EI Chatbot and Research Wing.
+- **External**: GitHub API (Analytics), Gmail API (Event Detection via sync).
 
-## 2. Technical Stack
-**Frontend Ecosystem:**
-- Framework: Next.js 16.1.6 (App Router)
-- UI Library: React 19.2.3, React DOM 19.2.3
-- Language: TypeScript 5.7.3
-- Styling & Components: Tailwind CSS, Radix UI Primitives, class-variance-authority, clsx, tailwind-merge, lucide-react.
-- Other libraries: embla-carousel-react, react-hook-form, zod, recharts.
+## 3. Architecture & Patterns
+- **Monorepo-style**: Root contains Next.js app; `/backend` contains Express server.
+- **Modular Backend**: New features follow `/backend/src/modules/` pattern (e.g., Research).
+- **Service Layer**: Business logic isolated in `/backend/src/services/` (GmailSync, Analytics, AI, Overlap).
+- **Isolation**: Multi-tenancy enforced via `organizationId` on all schemas and queries.
 
-**Backend Ecosystem:**
-- Framework: Node.js with Express.js 4.18.0
-- Database: MongoDB 7.0.0 with Mongoose ODM
-- Authentication: Firebase Admin SDK 12.9.0 + Custom JWT tokens with bcryptjs for password hashing.
-- Document Generation (PDF/Word): docx, jspdf, html2pdf.js, mammoth.
+## 4. Key Services & Features
+- **Automatic RBAC**: Domain-based (@ug.sharda.ac.in -> STUDENT, @fa.sharda.ac.in -> FACULTY).
+- **Overlap Engine**: Finds common free slots across sections (max 5) for event scheduling.
+- **Gmail Event Detector**: Syncs emails, filters spam, and extracts hackathons/exams into Firestore.
+- **GitHub Analytics**: Periodically (6h) syncs repo stats, languages, and commit trends.
+- **EI Chatbot**: Empathetic AI assistant cross-referencing student's timetable and mood.
+- **Research Wing**: Modular system for topic generation, content writing, and paper finalization.
 
-## 3. Core Features
-1. Automatic Role Detection: 
-   - `@ug.sharda.ac.in` / `@pg.sharda.ac.in` -> STUDENT
-   - `@fa.sharda.ac.in` -> FACULTY
-   - Powered by Server-side Firebase token verification.
-2. Verified Record System: Centralized profiles for reliable achievements, eliminating scattered Google Forms.
-3. Holistic Growth Engine: Weekly IQ/EQ assessments, AI growth degradation alerts, stress and burnout detection.
-4. AI Support Systems: Emotional Intelligence Chatbot, Research Assistant, Personalized Recommendations.
-5. Gamification & Competitive Arena: Leaderboards, integrations with coding platforms (GitHub, LeetCode, Codeforces), and bug bounties.
-6. Multi-Tenancy: Supports multiple organizations with complete data isolation and RBAC (SUPER_ADMIN, ADMIN, FACULTY, STUDENT).
+## 5. Directory Map
+- `/app/dashboard/[role]/`: Role-specific frontend routes.
+- `/backend/src/controllers/`: API entry points.
+- `/backend/src/models/`: Mongoose schemas (User, Timetable, Section, etc.).
+- `/backend/src/services/`: Core logic (AI, Sync, Analytics).
+- `/components/`: UI library (Chat, Mess, Research, SoftSkills, UI-shared).
+- `/firestore.rules`: Security for real-time collections.
+- `/scripts/`: Build wrappers and DB seeders.
 
-## 4. Architecture & File Structure
-The repository follows a decoupled architecture within a single repository structural setup:
-
-- `/app/` - Next.js 13+ App Router components, screens, and API routes.
-- `/backend/` - Complete Express.js server, containing MongoDB schemas, auth controllers, and middleware.
-- `/components/` - Global and shared React UI components (likely shadcn/ui components).
-- `/lib/` & `/utils/` - Shared helper modules, constants, and typed configurations.
-- `/hooks/` - Custom React hooks for state and data fetching.
-- `/styles/` - Global CSS files and Tailwind directives.
-- `/public/` - Static assets like images and metadata.
-- `/scripts/` - Custom build and utility scripts.
-- `/firebase.json` & `/firestore.rules` - Firebase configuration and security rules.
-- `/package.json` - Workspace definition and dependencies (using scripts like "dev", "build", "start").
-
-## 5. Development & Deployment
-- Environments: Frontend defaults to `http://localhost:3000`, Backend defaults to `http://localhost:5000`.
-- Scripts: `start-dev.bat` and `start-dev.ps1` for local setup orchestration. Database seeding available via `cd backend && npm run seed`.
-- Data flows via REST APIs (`/api/marks`, `/api/auth`, etc.) securely authenticated with JWT Bearer tokens containing embedded RBAC permissions.
+## 6. Development Rules
+- **Backend Port**: 5000 | **Frontend Port**: 3000.
+- **Auth**: Always use `authenticateFirebaseUser` middleware for protected routes.
+- **Environment**: Strict CSP and Glassmorphism UI style.
+- **Deployment**: Vercel (Frontend), Render (Backend), Firebase (Rules/Indexes).

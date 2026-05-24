@@ -15,11 +15,11 @@ import logRoutes from './logRoutes';
 import gmailRoutes from './gmailRoutes';
 import softSkillsRoutes from './softSkillsRoutes';
 // import researchRoutes from './researchRoutes'; // Old - using modular version
-import messRoutes from './messRoutes';
 import exportRoutes from './exportRoutes';
 
 // Import modular routes (new architecture)
 import { researchRoutes } from '../modules/research';
+import { ezoneRoutes } from '../modules/ezone-sync';
 
 const router = express.Router();
 

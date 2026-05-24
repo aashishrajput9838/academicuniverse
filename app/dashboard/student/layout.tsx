@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useAuth } from '@/lib/authContext';
+import { useAuth } from '@/lib/AuthContext';
 import { Navbar } from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { usePathname } from 'next/navigation';

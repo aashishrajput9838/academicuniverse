@@ -35,7 +35,7 @@ Core Logic: Domain-based RBAC (@ug.sharda.ac.in=STUDENT, @fa.sharda.ac.in=FACULT
 - `/backend/src/models/`: Mongoose schemas.
 - `/backend/src/services/`: Legacy business logic services.
 - `/components/`: Shared UI components (Chat, Research, SoftSkills, UI-shared).
-- `/lib/`: Shared frontend utilities (AuthContext, DB config).
+- `/lib/`: Shared frontend utilities (AuthContext, DB config, hooks).
 
 ## 6. Engineering Rules
 - **Ports**: 3000 (FE), 5000 (BE).

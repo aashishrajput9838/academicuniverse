@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/lib/authContext';
+import { useAuth } from '@/lib/AuthContext';
 import { FiDownload, FiUsers, FiTrendingUp } from 'react-icons/fi';
 
 export default function FacultyCareerGrowthPage() {

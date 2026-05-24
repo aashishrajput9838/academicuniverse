@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useAuth } from '@/lib/authContext';
+import { useAuth } from '@/lib/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/utils/api';
 import TopicGenerator from '@/components/ResearchWing/TopicGenerator';

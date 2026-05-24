@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '@/lib/authContext';
+import { useAuth } from '@/lib/AuthContext';
 
 interface UploadTimetableModalProps {
   isOpen: boolean;

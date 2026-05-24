@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/authContext';
+import { useAuth } from '@/lib/AuthContext';
 import { overlapAPI } from '@/utils/api/overlapAPI';
 import UploadTimetableModal from '@/components/UploadTimetableModal';
 import FilePreviewModal from '@/components/FilePreviewModal';

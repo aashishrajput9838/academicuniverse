@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useAuth } from '@/lib/authContext'
+import { useAuth } from '@/lib/AuthContext'
 import { useRouter } from 'next/navigation'
 
 interface DropdownItem {

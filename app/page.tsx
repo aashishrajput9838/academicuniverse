@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/authContext'
+import { useAuth } from '@/lib/AuthContext'
 import { Navbar } from '@/components/Navbar'
 import { HeroSection } from '@/components/HeroSection'
 import { FeaturedPrograms } from '@/components/FeaturedPrograms'

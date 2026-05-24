@@ -1,3 +1,4 @@
+import admin from 'firebase-admin';
 import { firebaseFirestore } from '../../../config/firebaseAdmin';
 import { Logger } from '../../../shared/utils';
 
@@ -70,6 +71,3 @@ export class EzoneLogger {
         }
     }
 }
-
-// Need to import admin for FieldValue
-import admin from 'firebase-admin';

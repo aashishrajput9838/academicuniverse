@@ -75,8 +75,30 @@ export class EzoneSessionProvider {
             await page.fill('input[name="otp"]', otp);
             await page.click('button[type="submit"]');
 
-            // Wait for successful login (navigation to dashboard)
-            await page.waitForURL('**/dashboard**', { timeout: 15000 });
+            // Wait for successful login (navigation to dashboard or presence of auth cookies)
+            // We'll use a race between URL navigation and specific success indicators
+            try {
+                await Promise.race([
+                    page.waitForURL('**/dashboard**', { timeout: 30000 }),
+                    page.waitForURL('**ezone.sharda.ac.in**', { timeout: 30000 }),
+                    page.waitForSelector('.student-profile-info', { timeout: 30000 }) // fallback success selector
+                ]);
+            } catch (navError) {
+                // If navigation timeout, check if we actually have cookies (sometimes ERPs are weird with redirects)
+                const cookies = await context.cookies();
+                const hasSessionCookie = cookies.some(c => c.name.toLowerCase().includes('session') || c.name.toLowerCase().includes('auth'));
+                
+                if (!hasSessionCookie) {
+                    // Check for visible error messages on the page
+                    const errorMsg = await page.evaluate(() => {
+                        const errorEl = document.querySelector('.alert-danger, .error-message, .text-danger');
+                        return errorEl ? errorEl.textContent?.trim() : null;
+                    });
+                    
+                    throw new Error(errorMsg || 'Authentication failed: Timeout or invalid OTP');
+                }
+                logger.info('Navigation timeout but auth cookies found, proceeding...');
+            }
 
             // Capture cookies
             const cookies = await context.cookies();

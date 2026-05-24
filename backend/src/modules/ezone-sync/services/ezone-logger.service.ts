@@ -1,4 +1,4 @@
-import { firebaseFirestoreInstance } from '../../../config/firebaseAdmin';
+import { firebaseFirestore } from '../../../config/firebaseAdmin';
 import { Logger } from '../../../shared/utils';
 
 const logger = new Logger('EzoneLogger');
@@ -30,13 +30,13 @@ export class EzoneLogger {
                 default: logger.info(`[-] ${message}`, data); break;
             }
 
-            if (!firebaseFirestoreInstance) {
+            if (!firebaseFirestore) {
                 return;
             }
 
             // Push to Firestore for real-time UI updates
             // We use a subcollection under user_logs/ezone_sync/[userId]/steps
-            const logRef = firebaseFirestoreInstance
+            const logRef = firebaseFirestore
                 .collection('ezone_sync_logs')
                 .doc(userId);
 
@@ -62,9 +62,9 @@ export class EzoneLogger {
      * Clear logs for a new session
      */
     async clearLogs(userId: string): Promise<void> {
-        if (!firebaseFirestoreInstance) return;
+        if (!firebaseFirestore) return;
         try {
-            await firebaseFirestoreInstance.collection('ezone_sync_logs').doc(userId).delete();
+            await firebaseFirestore.collection('ezone_sync_logs').doc(userId).delete();
         } catch (error) {
             console.error('Failed to clear ezone logs:', error);
         }

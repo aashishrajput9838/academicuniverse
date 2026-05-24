@@ -43,8 +43,7 @@
 │  • timetable/        │  │  • auth        │  │  • resume/           │
 │  • github/           │  │  • marks       │  │  • soft-skills       │
 │  • resume/           │  │  • user        │  │  • gmail             │
-│  • overlap/          │  │  • timetable   │  │                      │
-│  • mess/             │  │                │  │                      │
+│  • overlap/          │  │                │  │                      │
 └──────────────────────┘  └────────────────┘  └──────────────────────┘
                                 │
                                 ▼

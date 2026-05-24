@@ -32,7 +32,7 @@ Multi-tenant SaaS for holistic student development tracking. Moves beyond marks 
 - `/backend/src/controllers/`: API entry points.
 - `/backend/src/models/`: Mongoose schemas (User, Timetable, Section, etc.).
 - `/backend/src/services/`: Core logic (AI, Sync, Analytics).
-- `/components/`: UI library (Chat, Mess, Research, SoftSkills, UI-shared).
+- `/components/`: UI library (Chat, Research, SoftSkills, UI-shared).
 - `/firestore.rules`: Security for real-time collections.
 - `/scripts/`: Build wrappers and DB seeders.
 

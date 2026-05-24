@@ -38,7 +38,6 @@ router.use('/logs', logRoutes);
 router.use('/gmail', gmailRoutes);
 router.use('/softskills', softSkillsRoutes);
 router.use('/research', researchRoutes); // New modular route
-router.use('/mess', messRoutes);
 router.use('/export', exportRoutes);
 
 export default router;

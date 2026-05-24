@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/authContext';
 import GitHubProjects from '@/components/GitHubProjects';
-import StudentMessMenu from '@/components/Mess/StudentMessMenu';
 
 export default function StudentDashboardOverview() {
   const { user, backendUser, loading } = useAuth();
@@ -72,11 +71,6 @@ export default function StudentDashboardOverview() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Student Dashboard Overview</h1>
           <p className="text-slate-400">Welcome back! Here's what's happening with your academic journey.</p>
-        </div>
-
-        {/* AI Mess Menu Section */}
-        <div className="mb-10">
-          <StudentMessMenu />
         </div>
 
         {/* Quick Stats Cards */}

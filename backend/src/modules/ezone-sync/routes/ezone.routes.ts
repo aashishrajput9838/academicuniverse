@@ -18,6 +18,7 @@ const service = new EzoneService(sessionProvider, repository, profileScraper, at
 const controller = new EzoneController(service);
 
 // Routes
+router.get('/ping', (req, res) => { res.json({ success: true, message: 'Ezone router is live' }); });
 router.post('/send-otp', authenticateUser, controller.sendOtp);
 router.post('/verify-otp', authenticateUser, controller.verifyOtp);
 router.get('/profile', authenticateUser, controller.getProfile);

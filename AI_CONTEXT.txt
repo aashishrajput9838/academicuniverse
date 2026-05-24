@@ -15,7 +15,8 @@ Core Logic: Domain-based RBAC (@ug.sharda.ac.in=STUDENT, @fa.sharda.ac.in=FACULT
 
 ## 3. Architecture & Conventions
 - **Multi-Tenancy**: Mandatory `organizationId` isolation on ALL schemas and queries.
-- **Auth**: JWT with embedded permissions. Verified via `authenticateUser` middleware.
+- **Auth**: JWT with embedded permissions and synchronized `firebaseUid`. Verified via `authenticateUser` middleware.
+- **Realtime Logs**: Secure `ezoneLogs/{sessionId}/entries` structure authorized via `firebaseUid` and `organizationId` matching.
 - **Modular Backend**: New features go to `/backend/src/modules/[feature]/` using Controller-Service-Repository pattern.
 - **Core AI**: `/backend/src/core/ai/` provides a unified factory for AI providers (Gemini default).
 

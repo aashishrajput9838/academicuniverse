@@ -30,12 +30,12 @@ export default function LiveSyncLogs({ userId, sessionId, isActive }: LiveSyncLo
         if (!userId || !sessionId || !isActive) return;
 
         setError(null);
+        console.log(`[LiveSyncLogs] Starting listener for session: ${sessionId}`);
+
         // Listen to Firestore for real-time log updates from the backend
-        // Uses the new session-scoped structure: ezoneSyncSessions/{sessionId}/logs
-        // This collection allows public read (read: if true) to avoid dual-auth complexity
+        // Temporarily removing orderBy to verify if permission error is caused by missing index
         const logsQuery = query(
             collection(db, 'ezoneSyncSessions', sessionId, 'logs'),
-            orderBy('createdAt', 'asc'),
             limit(100)
         );
 
@@ -46,7 +46,15 @@ export default function LiveSyncLogs({ userId, sessionId, isActive }: LiveSyncLo
                     id: doc.id,
                     ...doc.data()
                 })) as LogStep[];
-                setLogs(newLogs);
+                
+                // Sort locally since we removed orderBy
+                const sortedLogs = [...newLogs].sort((a, b) => {
+                    const timeA = a.createdAt?.seconds || 0;
+                    const timeB = b.createdAt?.seconds || 0;
+                    return timeA - timeB;
+                });
+                
+                setLogs(sortedLogs);
             },
             (err) => {
                 console.error("Realtime logs failed", err);

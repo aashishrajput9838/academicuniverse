@@ -100,27 +100,46 @@ export class EzoneSessionProvider {
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'System ID field detected. Entering credentials...', null, firebaseUid);
             await page.fill(systemIdSelector, systemId);
             
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Submitting login request...', null, firebaseUid);
+            // Add a small human-like delay before locating the OTP trigger button
+            await page.waitForTimeout(1500);
+
+            // Step 2: Locate and click the REAL OTP trigger button
+            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Locating OTP trigger button...', null, firebaseUid);
             
-            // Resilient Submit Strategy
-            const submitSelector = 'button[type="submit"], input[type="submit"], #btn-login';
-            const submitBtn = await page.$(submitSelector);
-            if (submitBtn) {
-                await submitBtn.click();
-            } else {
-                await page.keyboard.press('Enter');
+            const otpTriggerSelector = '#send_stu_otp_phone';
+            const otpTriggerButton = page.locator(otpTriggerSelector);
+
+            try {
+                await otpTriggerButton.waitFor({ state: 'visible', timeout: 30000 });
+                await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'OTP trigger button located. Triggering...', null, firebaseUid);
+                
+                // Force click the anchor element since it uses javascript:void(0)
+                await otpTriggerButton.click({ force: true });
+                
+                // JS Fallback if the standard click doesn't trigger the university's event
+                await page.evaluate((sel) => {
+                    const btn = document.querySelector(sel) as HTMLElement;
+                    if (btn) btn.click();
+                }, otpTriggerSelector);
+
+            } catch (e) {
+                await page.screenshot({ path: path.join(process.cwd(), `ezone-trigger-missing-${Date.now()}.png`), fullPage: true });
+                throw new Error('Verified OTP trigger button (#send_stu_otp_phone) not found or not visible.');
             }
 
-            // Wait for OTP field to appear
+            // Post-click wait for university backend to process and UI to update
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Waiting for university OTP response...', null, firebaseUid);
-            
-            const otpSelector = '#otp, input[name="otp"]';
+            await page.waitForTimeout(5000);
+            await page.screenshot({ path: path.join(process.cwd(), `after-otp-click-${Date.now()}.png`), fullPage: true });
+
+            // Wait for OTP input field to appear (confirmation that trigger worked)
+            const otpInputSelector = '#otp, input[name="otp"]';
             try {
-                await page.waitForSelector(otpSelector, { timeout: 30000 });
-                await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'success', 'OTP field detected. Check your student email.', null, firebaseUid);
+                await page.waitForSelector(otpInputSelector, { timeout: 30000 });
+                await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'success', 'OTP successfully triggered. Check your student email.', null, firebaseUid);
             } catch (e) {
-                await page.screenshot({ path: path.join(process.cwd(), `ezone-otp-failure-${Date.now()}.png`), fullPage: true });
-                throw new Error('OTP field not detected after submission. University portal may be slow or rejected the ID.');
+                await page.screenshot({ path: path.join(process.cwd(), `ezone-otp-input-timeout-${Date.now()}.png`), fullPage: true });
+                throw new Error('OTP input field did not appear. The university portal may have rejected the ID or is experiencing delays.');
             }
 
             // Store the session for Step 2

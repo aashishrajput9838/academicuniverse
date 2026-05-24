@@ -47,7 +47,11 @@ export class EzoneController {
             const profile = await this.ezoneService.getProfile(userId, organizationId);
 
             if (!profile) {
-                res.status(404).json({ success: false, message: 'Profile not found. Please sync first.' });
+                res.status(200).json({ 
+                    success: false, 
+                    requiresConnection: true, 
+                    message: 'Ezone account not connected' 
+                });
                 return;
             }
 

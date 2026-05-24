@@ -103,9 +103,9 @@ service cloud.firestore {
 
     // Ezone Sync Logs - Secure realtime automation logs
     match /ezoneLogs/{sessionId}/entries/{logId} {
-      // Allow read if user is authenticated and is the owner or belongs to the same organization
+      // Allow read if user is authenticated and is the owner (via firebaseUid) or belongs to the same organization
       allow read: if isAuthenticated() && 
-                     (resource.data.userId == request.auth.uid || 
+                     (resource.data.firebaseUid == request.auth.uid || 
                       getUserOrganizationId() == resource.data.organizationId ||
                       isSuperAdmin()) ||
                      isAdmin();

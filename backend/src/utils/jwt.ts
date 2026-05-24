@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 export interface JWTPayload {
   userId: string;
   email: string;
+  firebaseUid?: string;
   organizationId: string;
   roleId: string;
   permissions: string[];

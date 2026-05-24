@@ -28,7 +28,8 @@ export class EzoneLogger {
         sessionId: string, 
         type: EzoneLogType, 
         message: string, 
-        data?: any
+        data?: any,
+        firebaseUid?: string
     ): Promise<void> {
         try {
             // Log to standard winston/console logger first
@@ -53,6 +54,7 @@ export class EzoneLogger {
                 .add({
                     organizationId,
                     userId,
+                    firebaseUid: firebaseUid || null,
                     sessionId,
                     type,
                     message,

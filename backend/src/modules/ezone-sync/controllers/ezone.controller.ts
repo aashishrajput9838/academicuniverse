@@ -10,14 +10,14 @@ export class EzoneController {
     sendOtp = async (req: Request, res: Response): Promise<void> => {
         try {
             const { systemId } = req.body;
-            const { userId, organizationId } = (req as any).user;
+            const { userId, organizationId, firebaseUid } = (req as any).user;
 
             if (!systemId) {
                 res.status(400).json({ success: false, message: 'System ID is required' });
                 return;
             }
 
-            await this.ezoneService.requestOtp(systemId, userId, organizationId);
+            await this.ezoneService.requestOtp(systemId, userId, organizationId, firebaseUid);
             res.status(200).json({ success: true, message: 'OTP sent to your official email' });
         } catch (error: any) {
             logger.error('Controller error in sendOtp:', error);
@@ -28,14 +28,14 @@ export class EzoneController {
     verifyOtp = async (req: Request, res: Response): Promise<void> => {
         try {
             const { systemId, otp } = req.body;
-            const { userId, organizationId } = (req as any).user;
+            const { userId, organizationId, firebaseUid } = (req as any).user;
 
             if (!systemId || !otp) {
                 res.status(400).json({ success: false, message: 'System ID and OTP are required' });
                 return;
             }
 
-            const profile = await this.ezoneService.verifyAndSync(systemId, otp, userId, organizationId);
+            const profile = await this.ezoneService.verifyAndSync(systemId, otp, userId, organizationId, firebaseUid);
             res.status(200).json({ success: true, data: profile });
         } catch (error: any) {
             logger.error('Controller error in verifyOtp:', error);

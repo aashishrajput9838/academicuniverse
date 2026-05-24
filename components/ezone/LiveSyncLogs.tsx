@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, limit, where } from 'firebase/firestore';
+import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Terminal, CheckCircle2, AlertCircle, Info, Timer, ShieldAlert } from 'lucide-react';
 
@@ -23,15 +24,18 @@ export default function LiveSyncLogs({ userId, sessionId, isActive }: LiveSyncLo
     const [logs, setLogs] = useState<LogStep[]>([]);
     const [error, setError] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const { user: firebaseUser } = useAuth();
 
     useEffect(() => {
-        if (!userId || !sessionId || !isActive) return;
+        if (!userId || !sessionId || !isActive || !firebaseUser) return;
 
         setError(null);
         // Listen to Firestore for real-time log updates from the backend
         // Uses the new structure: ezoneLogs/{sessionId}/entries
+        // We filter by firebaseUid to satisfy security rules: resource.data.firebaseUid == request.auth.uid
         const logsQuery = query(
             collection(db, 'ezoneLogs', sessionId, 'entries'),
+            where('firebaseUid', '==', firebaseUser.uid),
             orderBy('createdAt', 'asc'),
             limit(100)
         );
@@ -56,7 +60,7 @@ export default function LiveSyncLogs({ userId, sessionId, isActive }: LiveSyncLo
         );
 
         return () => unsub();
-    }, [userId, sessionId, isActive]);
+    }, [userId, sessionId, isActive, firebaseUser]);
 
     useEffect(() => {
         // Auto-scroll to bottom on new logs

@@ -241,6 +241,7 @@ export const loginWithFirebase = async (idToken: string): Promise<{ token: strin
     const payload: JWTPayload = {
       userId: user._id.toString(),
       email: user.email,
+      firebaseUid: user.firebaseUid,
       organizationId: organization._id.toString(), // Use actual ObjectId from database
       roleId: normalizedRoleId, // Keep the DB role for compatibility
       permissions, // Use permissions from role detection

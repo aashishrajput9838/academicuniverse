@@ -39,7 +39,6 @@ router.use('/gmail', gmailRoutes);
 router.use('/softskills', softSkillsRoutes);
 router.use('/research', researchRoutes); // New modular route
 router.use('/ezone', ezoneRoutes);
-router.get('/ezone-test', (req, res) => res.json({ success: true, message: 'Ezone test route' }));
 router.use('/export', exportRoutes);
 
 export default router;

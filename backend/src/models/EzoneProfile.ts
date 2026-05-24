@@ -53,14 +53,8 @@ const ezoneProfileSchema = new Schema<IEzoneProfile>(
         department: {
             type: String,
         },
-        subjects: {
-            type: [Schema.Types.Mixed],
-            default: [],
-        },
-        attendanceRecords: {
-            type: [Schema.Types.Mixed],
-            default: [],
-        },
+        subjects: [Schema.Types.Mixed],
+        attendanceRecords: [Schema.Types.Mixed],
         lastSyncedAt: {
             type: Date,
             default: Date.now,

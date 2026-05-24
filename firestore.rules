@@ -101,16 +101,13 @@ service cloud.firestore {
       allow write: if isAdmin() || isSuperAdmin();
     }
 
-    // Ezone Sync Logs - Secure realtime automation logs
-    match /ezoneLogs/{sessionId}/entries/{logId} {
-      // Allow read if user is authenticated and is the owner (via firebaseUid) or belongs to the same organization
-      allow read: if isAuthenticated() && 
-                     (resource.data.firebaseUid == request.auth.uid || 
-                      getUserOrganizationId() == resource.data.organizationId ||
-                      isSuperAdmin()) ||
-                     isAdmin();
+    // Ezone Sync Sessions - Publicly readable temporary automation telemetry
+    // This allows realtime logs without requiring Firebase Auth on the frontend
+    match /ezoneSyncSessions/{sessionId}/logs/{logId} {
+      // Publicly readable for those with the sessionId
+      allow read: if true;
       
-      // Backend (Service Account) writes the logs via admin SDK
+      // Only the backend (admin) can write
       allow write: if isAdmin();
     }
     

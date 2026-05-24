@@ -20,7 +20,8 @@ export class EzoneLogger {
 
     /**
      * Log a step in the Ezone sync process to Firestore for real-time frontend tracking
-     * Uses structure: ezoneLogs/{sessionId}/entries/{logId}
+     * Uses session-scoped structure: ezoneSyncSessions/{sessionId}/logs/{logId}
+     * This collection is publicly readable (read: if true) to avoid dual-auth complexity.
      */
     async logSyncStep(
         userId: string, 
@@ -45,12 +46,16 @@ export class EzoneLogger {
                 return;
             }
 
+            // Calculate expiration (1 hour from now)
+            const expiresAt = new Date();
+            expiresAt.setHours(expiresAt.getHours() + 1);
+
             // Push to Firestore for real-time UI updates
-            // Structured for security rules: ezoneLogs/{sessionId}/entries/{logId}
+            // Structured for public read by sessionId: ezoneSyncSessions/{sessionId}/logs/{logId}
             await firebaseFirestore
-                .collection('ezoneLogs')
+                .collection('ezoneSyncSessions')
                 .doc(sessionId)
-                .collection('entries')
+                .collection('logs')
                 .add({
                     organizationId,
                     userId,
@@ -59,6 +64,7 @@ export class EzoneLogger {
                     type,
                     message,
                     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
                     metadata: data || null
                 });
 
@@ -74,15 +80,15 @@ export class EzoneLogger {
     async clearLogs(sessionId: string): Promise<void> {
         if (!firebaseFirestore) return;
         try {
-            const entries = await firebaseFirestore
-                .collection('ezoneLogs')
+            const logs = await firebaseFirestore
+                .collection('ezoneSyncSessions')
                 .doc(sessionId)
-                .collection('entries')
+                .collection('logs')
                 .get();
             
             const batch = firebaseFirestore.batch();
-            entries.forEach((doc: admin.firestore.QueryDocumentSnapshot) => batch.delete(doc.ref));
-            batch.delete(firebaseFirestore.collection('ezoneLogs').doc(sessionId));
+            logs.forEach((doc: admin.firestore.QueryDocumentSnapshot) => batch.delete(doc.ref));
+            batch.delete(firebaseFirestore.collection('ezoneSyncSessions').doc(sessionId));
             await batch.commit();
         } catch (error) {
             console.error('Failed to clear ezone logs:', error);

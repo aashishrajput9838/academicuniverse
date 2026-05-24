@@ -27,15 +27,14 @@ export default function LiveSyncLogs({ userId, sessionId, isActive }: LiveSyncLo
     const { user: firebaseUser } = useAuth();
 
     useEffect(() => {
-        if (!userId || !sessionId || !isActive || !firebaseUser) return;
+        if (!userId || !sessionId || !isActive) return;
 
         setError(null);
         // Listen to Firestore for real-time log updates from the backend
-        // Uses the new structure: ezoneLogs/{sessionId}/entries
-        // We filter by firebaseUid to satisfy security rules: resource.data.firebaseUid == request.auth.uid
+        // Uses the new session-scoped structure: ezoneSyncSessions/{sessionId}/logs
+        // This collection allows public read (read: if true) to avoid dual-auth complexity
         const logsQuery = query(
-            collection(db, 'ezoneLogs', sessionId, 'entries'),
-            where('firebaseUid', '==', firebaseUser.uid),
+            collection(db, 'ezoneSyncSessions', sessionId, 'logs'),
             orderBy('createdAt', 'asc'),
             limit(100)
         );
@@ -60,7 +59,7 @@ export default function LiveSyncLogs({ userId, sessionId, isActive }: LiveSyncLo
         );
 
         return () => unsub();
-    }, [userId, sessionId, isActive, firebaseUser]);
+    }, [userId, sessionId, isActive]);
 
     useEffect(() => {
         // Auto-scroll to bottom on new logs

@@ -79,7 +79,7 @@ export class EzoneLogger {
                 .get();
             
             const batch = firebaseFirestore.batch();
-            entries.forEach(doc => batch.delete(doc.ref));
+            entries.forEach((doc: admin.firestore.QueryDocumentSnapshot) => batch.delete(doc.ref));
             batch.delete(firebaseFirestore.collection('ezoneLogs').doc(sessionId));
             await batch.commit();
         } catch (error) {

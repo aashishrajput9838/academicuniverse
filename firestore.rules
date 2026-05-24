@@ -4,14 +4,10 @@ service cloud.firestore {
     
     // Ezone Sync Sessions - Publicly readable temporary automation telemetry
     // This allows realtime logs without requiring Firebase Auth on the frontend.
-    // We use recursive wildcards {document=**} to ensure the entire sub-tree is readable.
-    match /ezoneSyncSessions/{sessionId} {
+    // We use a flat recursive wildcard to ensure all documents under this path are readable.
+    match /ezoneSyncSessions/{document=**} {
       allow read: if true;
-      match /logs/{logId=**} {
-        allow read: if true;
-      }
-      // Only the backend (Admin SDK) can write
-      allow write: if false; 
+      allow write: if false; // Only backend (Admin SDK) writes, which bypasses rules
     }
 
     // Helper function to check if request comes from a service account (admin access)

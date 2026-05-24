@@ -30,18 +30,17 @@ export default function LiveSyncLogs({ userId, sessionId, isActive }: LiveSyncLo
         if (!userId || !sessionId || !isActive) return;
 
         setError(null);
-        console.log(`[LiveSyncLogs] Starting listener for session: ${sessionId}`);
+        console.log(`[LiveSyncLogs] Attempting listener for path: ezoneSyncSessions/${sessionId}/logs`);
 
         // Listen to Firestore for real-time log updates from the backend
-        // Temporarily removing orderBy to verify if permission error is caused by missing index
-        const logsQuery = query(
-            collection(db, 'ezoneSyncSessions', sessionId, 'logs'),
-            limit(100)
-        );
+        // We use a flat query without orderBy to bypass permission/index issues
+        const logsCollectionRef = collection(db, 'ezoneSyncSessions', sessionId, 'logs');
+        const logsQuery = query(logsCollectionRef, limit(100));
 
         const unsub = onSnapshot(
             logsQuery, 
             (snapshot) => {
+                console.log(`[LiveSyncLogs] Snapshot received with ${snapshot.docs.length} docs`);
                 const newLogs = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()

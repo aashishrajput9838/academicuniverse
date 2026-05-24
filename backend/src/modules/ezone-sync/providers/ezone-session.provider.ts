@@ -1,6 +1,8 @@
 import { chromium, Browser, BrowserContext, Page } from 'playwright';
 import { Logger } from '../../../shared/utils';
 import { EzoneLogger } from '../services/ezone-logger.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const logger = new Logger('EzoneSessionProvider');
 const ezoneLogger = EzoneLogger.getInstance();
@@ -43,15 +45,93 @@ export class EzoneSessionProvider {
                 timeout: 30000 
             });
 
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', `Entering System ID: ${systemId}...`, null, firebaseUid);
-            await page.fill('input[name="system_id"]', systemId);
+            // Production-grade selector detection strategy
+            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Searching for System ID field dynamically...', null, firebaseUid);
+            
+            const systemIdSelectors = [
+                'input[name="system_id"]',
+                'input[id="system_id"]',
+                'input[placeholder*="System"]',
+                'input[placeholder*="ID"]',
+                'input[type="text"]',
+                '#txtuserid'
+            ];
+
+            let foundSelector: string | null = null;
+            for (const selector of systemIdSelectors) {
+                try {
+                    const element = await page.waitForSelector(selector, { timeout: 2000, state: 'visible' });
+                    if (element) {
+                        foundSelector = selector;
+                        break;
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+
+            if (!foundSelector) {
+                // Failsafe: Log DOM structure for debugging
+                const inputDetails = await page.evaluate(() => {
+                    return Array.from(document.querySelectorAll('input')).map(input => ({
+                        id: input.id,
+                        name: input.name,
+                        type: input.type,
+                        placeholder: input.placeholder,
+                        className: input.className
+                    }));
+                });
+                
+                logger.error('System ID field not found. Available inputs:', { inputDetails });
+                
+                // Take failsafe screenshot
+                const screenshotPath = path.join(process.cwd(), `ezone-failure-${Date.now()}.png`);
+                await page.screenshot({ path: screenshotPath, fullPage: true });
+                await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', `Field detection failed. Debug data captured.`, null, firebaseUid);
+                
+                throw new Error('Could not locate the System ID field on the university portal.');
+            }
+
+            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'System ID input detected. Entering credentials...', null, firebaseUid);
+            await page.fill(foundSelector, systemId);
             
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Submitting login form...', null, firebaseUid);
-            await page.click('button[type="submit"]');
+            
+            // Similar resilient strategy for the submit button
+            const submitSelectors = ['button[type="submit"]', 'input[type="submit"]', 'button:has-text("Login")', 'button:has-text("OTP")'];
+            let foundSubmit: string | null = null;
+            for (const sel of submitSelectors) {
+                if (await page.$(sel)) {
+                    foundSubmit = sel;
+                    break;
+                }
+            }
+            
+            if (foundSubmit) {
+                await page.click(foundSubmit);
+            } else {
+                await page.keyboard.press('Enter');
+            }
 
-            // Wait for OTP field to appear
+            // Wait for OTP field to appear with similar resilient logic
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Waiting for university OTP response...', null, firebaseUid);
-            await page.waitForSelector('input[name="otp"]', { timeout: 15000 });
+            
+            const otpSelectors = ['input[name="otp"]', 'input[id="otp"]', 'input[placeholder*="OTP"]', 'input[type="password"]'];
+            let foundOtpField: string | null = null;
+            for (const sel of otpSelectors) {
+                try {
+                    const el = await page.waitForSelector(sel, { timeout: 15000 });
+                    if (el) {
+                        foundOtpField = sel;
+                        break;
+                    }
+                } catch (e) { continue; }
+            }
+
+            if (!foundOtpField) {
+                throw new Error('OTP field not detected after submission.');
+            }
+
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'success', 'OTP field detected. Check your student email.', null, firebaseUid);
 
             // Store the session for Step 2

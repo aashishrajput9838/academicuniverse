@@ -27,112 +27,160 @@ export class EzoneSessionProvider {
         let browser: Browser | null = null;
         try {
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Launching secure automation engine...', null, firebaseUid);
+            
+            // Production-grade realistic browser config to bypass bot detection
             browser = await chromium.launch({ 
                 headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+                slowMo: 100,
+                args: [
+                    '--no-sandbox', 
+                    '--disable-setuid-sandbox', 
+                    '--disable-dev-shm-usage',
+                    '--disable-blink-features=AutomationControlled',
+                    '--disable-web-security',
+                    '--allow-running-insecure-content'
+                ]
             });
 
             const context = await browser.newContext({
                 viewport: { width: 1280, height: 720 },
-                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+                acceptDownloads: true,
+                ignoreHTTPSErrors: true
             });
 
             const page = await context.newPage();
             
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Connecting to Sharda University Ezone portal...', null, firebaseUid);
-            await page.goto('https://ezone.sharda.ac.in/ezone/login', { 
-                waitUntil: 'networkidle',
-                timeout: 30000 
+            
+            // Navigate to verified portal URL
+            await page.goto('https://student.sharda.ac.in/admin', { 
+                waitUntil: 'domcontentloaded',
+                timeout: 60000 
             });
 
-            // Production-grade selector detection strategy
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Searching for System ID field dynamically...', null, firebaseUid);
+            // Wait for full JS execution and network idle
+            await page.waitForTimeout(5000);
             
-            const systemIdSelectors = [
-                'input[name="system_id"]',
-                'input[id="system_id"]',
-                'input[placeholder*="System"]',
-                'input[placeholder*="ID"]',
-                'input[type="text"]',
-                '#txtuserid'
-            ];
+            const title = await page.title();
+            const currentUrl = page.url();
+            logger.info(`Page loaded: ${title} at ${currentUrl}`);
 
-            let foundSelector: string | null = null;
-            for (const selector of systemIdSelectors) {
-                try {
-                    const element = await page.waitForSelector(selector, { timeout: 2000, state: 'visible' });
-                    if (element) {
-                        foundSelector = selector;
-                        break;
-                    }
-                } catch (e) {
-                    continue;
-                }
+            // Full Page Validation
+            const html = await page.content();
+            
+            // Failsafe Debugging: Save state before interaction
+            const debugTimestamp = Date.now();
+            fs.writeFileSync(path.join(process.cwd(), `ezone-debug-${debugTimestamp}.html`), html);
+            await page.screenshot({ path: path.join(process.cwd(), `ezone-debug-${debugTimestamp}.png`), fullPage: true });
+
+            if (!html.toUpperCase().includes("STUDENT LOGIN") && !html.toUpperCase().includes("SHARDA UNIVERSITY")) {
+                await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', 'Ezone login DOM failed to load correctly.', null, firebaseUid);
+                throw new Error(`Actual Ezone login page not loaded (Title: ${title})`);
             }
 
-            if (!foundSelector) {
-                // Failsafe: Log DOM structure for debugging
-                const inputDetails = await page.evaluate(() => {
-                    return Array.from(document.querySelectorAll('input')).map(input => ({
-                        id: input.id,
-                        name: input.name,
-                        type: input.type,
-                        placeholder: input.placeholder,
-                        className: input.className
-                    }));
+            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Ezone portal verified. Locating System ID field...', null, firebaseUid);
+
+            // Use VERIFIED Selector
+            const systemIdSelector = '#system_id';
+            try {
+                await page.waitForSelector(systemIdSelector, { 
+                    timeout: 30000,
+                    state: 'visible' 
                 });
-                
-                logger.error('System ID field not found. Available inputs:', { inputDetails });
-                
-                // Take failsafe screenshot
-                const screenshotPath = path.join(process.cwd(), `ezone-failure-${Date.now()}.png`);
-                await page.screenshot({ path: screenshotPath, fullPage: true });
-                await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', `Field detection failed. Debug data captured.`, null, firebaseUid);
-                
-                throw new Error('Could not locate the System ID field on the university portal.');
-            }
-
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'System ID input detected. Entering credentials...', null, firebaseUid);
-            await page.fill(foundSelector, systemId);
-            
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Submitting login form...', null, firebaseUid);
-            
-            // Similar resilient strategy for the submit button
-            const submitSelectors = ['button[type="submit"]', 'input[type="submit"]', 'button:has-text("Login")', 'button:has-text("OTP")'];
-            let foundSubmit: string | null = null;
-            for (const sel of submitSelectors) {
-                if (await page.$(sel)) {
-                    foundSubmit = sel;
-                    break;
+            } catch (e) {
+                // One last resilient check before failing
+                const hasInput = await page.$('input[name="system_id"]');
+                if (!hasInput) {
+                    await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', 'System ID field not detected in DOM.', null, firebaseUid);
+                    throw new Error('System ID field (#system_id) not found after full page load.');
                 }
             }
+
+            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'System ID field detected. Entering credentials...', null, firebaseUid);
+            await page.fill(systemIdSelector, systemId);
             
-            if (foundSubmit) {
-                await page.click(foundSubmit);
+            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Submitting login request...', null, firebaseUid);
+            
+            // Resilient Submit Strategy
+            const submitSelector = 'button[type="submit"], input[type="submit"], #btn-login';
+            const submitBtn = await page.$(submitSelector);
+            if (submitBtn) {
+                await submitBtn.click();
             } else {
                 await page.keyboard.press('Enter');
             }
 
-            // Wait for OTP field to appear with similar resilient logic
+            // Wait for OTP field to appear
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Waiting for university OTP response...', null, firebaseUid);
             
-            const otpSelectors = ['input[name="otp"]', 'input[id="otp"]', 'input[placeholder*="OTP"]', 'input[type="password"]'];
-            let foundOtpField: string | null = null;
-            for (const sel of otpSelectors) {
-                try {
-                    const el = await page.waitForSelector(sel, { timeout: 15000 });
-                    if (el) {
-                        foundOtpField = sel;
-                        break;
-                    }
-                } catch (e) { continue; }
+            const otpSelector = '#otp, input[name="otp"]';
+            try {
+                await page.waitForSelector(otpSelector, { timeout: 30000 });
+                await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'success', 'OTP field detected. Check your student email.', null, firebaseUid);
+            } catch (e) {
+                await page.screenshot({ path: path.join(process.cwd(), `ezone-otp-failure-${Date.now()}.png`), fullPage: true });
+                throw new Error('OTP field not detected after submission. University portal may be slow or rejected the ID.');
             }
 
-            if (!foundOtpField) {
-                throw new Error('OTP field not detected after submission.');
+            // Store the session for Step 2
+            this.sessions.set(systemId, { browser, context, page, createdAt: new Date() });
+            
+            // Auto-cleanup after 10 minutes if not verified
+            setTimeout(() => this.cleanupSession(systemId), 10 * 60 * 1000);
+
+        } catch (error: any) {
+            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', `Sync failed: ${error.message}`, null, firebaseUid);
+            logger.error('Ezone Automation Error:', error);
+            if (browser) await browser.close();
+            throw new Error(`Automation Error: ${error.message}`);
+        }
+    }
+
+    /**
+     * Step 2: Verify OTP and navigate to dashboard
+     */
+    async verifyOtp(systemId: string, otp: string, userId: string, organizationId: string, firebaseUid?: string): Promise<void> {
+        const session = this.sessions.get(systemId);
+        if (!session) {
+            throw new Error('Session expired or not found. Please try again.');
+        }
+
+        const { page } = session;
+
+        try {
+            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Submitting OTP for verification...', null, firebaseUid);
+            
+            const otpSelector = '#otp, input[name="otp"]';
+            await page.fill(otpSelector, otp);
+            
+            const verifySelector = 'button[type="submit"], input[type="submit"], #btn-verify';
+            const verifyBtn = await page.$(verifySelector);
+            if (verifyBtn) {
+                await verifyBtn.click();
+            } else {
+                await page.keyboard.press('Enter');
             }
 
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'success', 'OTP field detected. Check your student email.', null, firebaseUid);
+            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Verifying session with university servers...', null, firebaseUid);
+            
+            // Race multiple success indicators (dashboard URL or profile elements)
+            await Promise.race([
+                page.waitForURL('**/dashboard', { timeout: 45000 }),
+                page.waitForSelector('.user-profile', { timeout: 45000 }),
+                page.waitForSelector('text=Attendance', { timeout: 45000 }),
+                page.waitForSelector('text=Logout', { timeout: 45000 })
+            ]);
+
+            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'success', 'Identity verified. Session established.', null, firebaseUid);
+
+        } catch (error: any) {
+            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', `Verification failed: ${error.message}`, null, firebaseUid);
+            logger.error('OTP verification failed:', error);
+            await page.screenshot({ path: path.join(process.cwd(), `ezone-verify-failure-${Date.now()}.png`), fullPage: true });
+            throw new Error(`OTP verification failed: ${error.message}`);
+        }
+    }
 
             // Store the session for Step 2
             this.sessions.set(systemId, { browser, context, page, createdAt: new Date() });

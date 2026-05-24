@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { ezoneApi } from '@/lib/api/ezone';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -9,6 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Loader2, RefreshCw, CheckCircle2, User, BookOpen, GraduationCap, Calendar, Lock } from 'lucide-react';
 
+/**
+ * SyncState Machine:
+ * idle -> (sendOtp) -> otp_sent -> (verifyOtp) -> verifying -> syncing -> completed
+ */
 type SyncState = 'idle' | 'otp_sent' | 'verifying' | 'syncing' | 'completed' | 'error';
 
 export default function EzoneSyncPage() {
@@ -19,32 +23,10 @@ export default function EzoneSyncPage() {
     const [profile, setProfile] = useState<any>(null);
     const { toast } = useToast();
 
-    // 1. NO AUTO-FETCH ON MOUNT. 
-    // We only fetch profile manually or after successful verification.
-    const fetchProfile = useCallback(async (isInitial = false) => {
-        try {
-            const res = await ezoneApi.getProfile();
-            if (res.success && res.data) {
-                setProfile(res.data);
-                setState('completed');
-            } else if (res.requiresConnection) {
-                // Handle 404/requiresConnection cleanly without showing error UI
-                setState('idle');
-            }
-        } catch (error: any) {
-            console.error('Failed to fetch profile:', error);
-            // If we get a 401, handle it cleanly
-            if (error.message?.includes('401') || error.status === 401) {
-                setState('idle');
-            }
-        }
-    }, []);
-
-    // Optionally check if a profile exists once, but safely
-    useEffect(() => {
-        // Initial check to see if user is already connected
-        fetchProfile(true);
-    }, [fetchProfile]);
+    /**
+     * CRITICAL FIX: Removed useEffect and auto-fetch logic on mount.
+     * The page now starts in 'idle' state with NO network requests.
+     */
 
     const handleSendOtp = async () => {
         if (!systemId) return;
@@ -54,6 +36,8 @@ export default function EzoneSyncPage() {
             if (res.success) {
                 setState('otp_sent');
                 toast({ title: 'OTP Sent', description: 'Please check your university email.' });
+            } else {
+                throw new Error(res.message || 'Failed to send OTP');
             }
         } catch (error: any) {
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -67,25 +51,46 @@ export default function EzoneSyncPage() {
         setLoading(true);
         setState('verifying');
         try {
+            // Step 1: Verify OTP and establish Ezone session
             const res = await ezoneApi.verifyOtp(systemId, otp);
+            
             if (res.success) {
-                // Successful verification, now fetch profile data
                 toast({ title: 'Verified', description: 'Establishing session and syncing data...' });
                 setState('syncing');
                 
-                // Fetch the newly created/updated profile
+                // Step 2: ONLY AFTER SUCCESSFUL VERIFICATION - Fetch profile data once
                 const profileRes = await ezoneApi.getProfile();
-                if (profileRes.success) {
+                
+                if (profileRes.success && profileRes.data) {
                     setProfile(profileRes.data);
                     setState('completed');
                     toast({ title: 'Sync Complete', description: 'Your academic profile is now up to date.' });
                 } else {
+                    // Handle case where session established but data fetch failed
                     throw new Error(profileRes.message || 'Failed to fetch synced profile');
                 }
+            } else {
+                throw new Error(res.message || 'Verification failed');
             }
         } catch (error: any) {
-            setState('otp_sent');
-            toast({ title: 'Verification Failed', description: error.message, variant: 'destructive' });
+            console.error('Sync Flow Error:', error);
+            setState('otp_sent'); // Allow retry
+            
+            // Handle 401 cleanly - stop retries and show message
+            if (error.status === 401 || error.message?.includes('401')) {
+                toast({ 
+                    title: 'Authentication Failed', 
+                    description: 'Please connect your college profile first.', 
+                    variant: 'destructive' 
+                });
+                resetFlow();
+            } else {
+                toast({ 
+                    title: 'Sync Error', 
+                    description: error.message || 'An unexpected error occurred.', 
+                    variant: 'destructive' 
+                });
+            }
         } finally {
             setLoading(false);
         }
@@ -95,6 +100,8 @@ export default function EzoneSyncPage() {
         setState('idle');
         setOtp('');
         setSystemId('');
+        setProfile(null);
+        setLoading(false);
     };
 
     return (

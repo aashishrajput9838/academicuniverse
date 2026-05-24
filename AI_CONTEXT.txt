@@ -1,43 +1,44 @@
 # Academic Universe - Master AI Context (Token-Optimized)
 
 ## 1. Project Essence
-Multi-tenant SaaS for holistic student development tracking. Moves beyond marks to IQ/EQ, wellness, and verified credentials. Automated RBAC via email domains.
+Multi-tenant student development SaaS. Tracks holistic growth (IQ/EQ, wellness, credentials).
+Core Logic: Domain-based RBAC (@ug.sharda.ac.in=STUDENT, @fa.sharda.ac.in=FACULTY).
 
-## 2. Core Technical Stack
-- **Frontend**: Next.js 16 (App Router, Turbopack), React 19, Tailwind CSS 4, Radix UI, Lucide.
-- **Backend**: Node.js, Express 5, TypeScript.
-- **Databases**: 
-  - **MongoDB**: Primary store for users, roles, organizations, marks, and resumes.
-  - **Firebase/Firestore**: Client-side event streaming, detected events, and real-time data.
-- **Auth**: Hybrid (Firebase Auth for login + Custom JWT with embedded RBAC permissions).
-- **AI**: Google Gemini (gemini-2.5-flash) for EI Chatbot and Research Wing.
-- **External**: GitHub API (Analytics), Gmail API (Event Detection via sync).
+## 2. Technical Stack
+- **Frontend**: Next.js 16 (App Router, Turbopack), React 19, Tailwind 4, Radix UI.
+- **Backend**: Node.js, Express 5, TypeScript. Modular architecture (DDD/DI pattern).
+- **Hybrid DB**: 
+  - **MongoDB**: Primary (Users, Orgs, Marks, Resumes).
+  - **Firestore**: Real-time (Detected Events, Logs, Research state).
+- **Services**: Google Gemini (gemini-2.5-flash), Cloudinary (Storage), Sentry (Monitoring).
+- **External APIs**: GitHub (Coding Analytics), Gmail (Event Extraction via sync).
 
-## 3. Architecture & Patterns
-- **Monorepo-style**: Root contains Next.js app; `/backend` contains Express server.
-- **Modular Backend**: New features follow `/backend/src/modules/` pattern (e.g., Research).
-- **Service Layer**: Business logic isolated in `/backend/src/services/` (GmailSync, Analytics, AI, Overlap).
-- **Isolation**: Multi-tenancy enforced via `organizationId` on all schemas and queries.
+## 3. Architecture & Conventions
+- **Multi-Tenancy**: Mandatory `organizationId` isolation on ALL schemas and queries.
+- **Auth**: JWT with embedded permissions. Verified via `authenticateUser` middleware.
+- **Modular Backend**: New features go to `/backend/src/modules/[feature]/` using Controller-Service-Repository pattern.
+- **Core AI**: `/backend/src/core/ai/` provides a unified factory for AI providers (Gemini default).
 
-## 4. Key Services & Features
-- **Automatic RBAC**: Domain-based (@ug.sharda.ac.in -> STUDENT, @fa.sharda.ac.in -> FACULTY).
-- **Overlap Engine**: Finds common free slots across sections (max 5) for event scheduling.
-- **Gmail Event Detector**: Syncs emails, filters spam, and extracts hackathons/exams into Firestore.
-- **GitHub Analytics**: Periodically (6h) syncs repo stats, languages, and commit trends.
-- **EI Chatbot**: Empathetic AI assistant cross-referencing student's timetable and mood.
-- **Research Wing**: Modular system for topic generation, content writing, and paper finalization.
+## 4. Key Modules & Features
+- **Research Wing**: Modular AI pipeline (Topic -> Outline -> Content -> Export). Firestore-backed state.
+- **Overlap Engine**: Finds common free slots across sections (max 5) for scheduling.
+- **Gmail Sync**: Background sync filtering spam/marketing to extract hackathons/exams.
+- **GitHub Sync**: Periodic (6h) sync of dev stats (commits, languages, repo growth).
+- **Soft Skills**: AI analysis of communication/behavior via specific student inputs.
+- **Resume Builder**: AI-enhanced template system for verified achievement resumes.
 
-## 5. Directory Map
-- `/app/dashboard/[role]/`: Role-specific frontend routes.
-- `/backend/src/controllers/`: API entry points.
-- `/backend/src/models/`: Mongoose schemas (User, Timetable, Section, etc.).
-- `/backend/src/services/`: Core logic (AI, Sync, Analytics).
-- `/components/`: UI library (Chat, Research, SoftSkills, UI-shared).
-- `/firestore.rules`: Security for real-time collections.
-- `/scripts/`: Build wrappers and DB seeders.
+## 5. Critical Directory Map
+- `/app/dashboard/[role]/`: Role-based frontend UI.
+- `/backend/src/modules/`: New modular features (DDD/DI).
+- `/backend/src/controllers/`: Legacy API endpoints (being migrated).
+- `/backend/src/models/`: Mongoose schemas.
+- `/backend/src/services/`: Legacy business logic services.
+- `/components/`: Shared UI components (Chat, Research, SoftSkills, UI-shared).
+- `/lib/`: Shared frontend utilities (AuthContext, DB config).
 
-## 6. Development Rules
-- **Backend Port**: 5000 | **Frontend Port**: 3000.
-- **Auth**: Always use `authenticateFirebaseUser` middleware for protected routes.
-- **Environment**: Strict CSP and Glassmorphism UI style.
-- **Deployment**: Vercel (Frontend), Render (Backend), Firebase (Rules/Indexes).
+## 6. Engineering Rules
+- **Ports**: 3000 (FE), 5000 (BE).
+- **Auth**: Always use `authenticateUser` (JWT) or `authenticateFirebaseUser` as required.
+- **DB**: Prefer `organizationId` filtering at the repository/model level.
+- **UI**: Glassmorphism, Dark Theme, Zero-flicker hydration. Strict CSP compliance.
+- **Deployment**: Vercel (FE), Render (BE), Firebase (Firestore Rules/Indexes).

@@ -20,15 +20,24 @@ export class EzoneLogger {
 
     /**
      * Log a step in the Ezone sync process to Firestore for real-time frontend tracking
+     * Uses structure: ezoneLogs/{sessionId}/entries/{logId}
      */
-    async logSyncStep(userId: string, type: EzoneLogType, message: string, data?: any): Promise<void> {
+    async logSyncStep(
+        userId: string, 
+        organizationId: string, 
+        sessionId: string, 
+        type: EzoneLogType, 
+        message: string, 
+        data?: any
+    ): Promise<void> {
         try {
             // Log to standard winston/console logger first
+            const logMsg = `[${sessionId}] ${message}`;
             switch (type) {
-                case 'success': logger.info(`[✓] ${message}`, data); break;
-                case 'warning': logger.warn(`[!] ${message}`, data); break;
-                case 'error': logger.error(`[✗] ${message}`, data); break;
-                default: logger.info(`[-] ${message}`, data); break;
+                case 'success': logger.info(`[✓] ${logMsg}`, data); break;
+                case 'warning': logger.warn(`[!] ${logMsg}`, data); break;
+                case 'error': logger.error(`[✗] ${logMsg}`, data); break;
+                default: logger.info(`[-] ${logMsg}`, data); break;
             }
 
             if (!firebaseFirestore) {
@@ -36,22 +45,20 @@ export class EzoneLogger {
             }
 
             // Push to Firestore for real-time UI updates
-            // We use a subcollection under user_logs/ezone_sync/[userId]/steps
-            const logRef = firebaseFirestore
-                .collection('ezone_sync_logs')
-                .doc(userId);
-
-            // We use arrayUnion to keep an ordered list of steps for the current session
-            // or just update a status field. For a terminal feel, we'll append to an array.
-            await logRef.set({
-                lastUpdate: new Date(),
-                steps: admin.firestore.FieldValue.arrayUnion({
+            // Structured for security rules: ezoneLogs/{sessionId}/entries/{logId}
+            await firebaseFirestore
+                .collection('ezoneLogs')
+                .doc(sessionId)
+                .collection('entries')
+                .add({
+                    organizationId,
+                    userId,
+                    sessionId,
                     type,
                     message,
-                    timestamp: new Date().toISOString(),
-                    id: Math.random().toString(36).substring(7)
-                })
-            }, { merge: true });
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    metadata: data || null
+                });
 
         } catch (error) {
             // Fail silently for logs to not interrupt main flow
@@ -60,12 +67,21 @@ export class EzoneLogger {
     }
 
     /**
-     * Clear logs for a new session
+     * Clear logs for a session
      */
-    async clearLogs(userId: string): Promise<void> {
+    async clearLogs(sessionId: string): Promise<void> {
         if (!firebaseFirestore) return;
         try {
-            await firebaseFirestore.collection('ezone_sync_logs').doc(userId).delete();
+            const entries = await firebaseFirestore
+                .collection('ezoneLogs')
+                .doc(sessionId)
+                .collection('entries')
+                .get();
+            
+            const batch = firebaseFirestore.batch();
+            entries.forEach(doc => batch.delete(doc.ref));
+            batch.delete(firebaseFirestore.collection('ezoneLogs').doc(sessionId));
+            await batch.commit();
         } catch (error) {
             console.error('Failed to clear ezone logs:', error);
         }

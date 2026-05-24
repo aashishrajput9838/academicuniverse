@@ -202,6 +202,7 @@ export default function EzoneSyncPage() {
             {/* Live Automation Logs */}
             <LiveSyncLogs 
                 userId={backendUser?.id || ''} 
+                sessionId={systemId}
                 isActive={state !== 'idle' && state !== 'completed'} 
             />
 

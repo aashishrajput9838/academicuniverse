@@ -2,41 +2,61 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Terminal, CheckCircle2, AlertCircle, Info, Timer } from 'lucide-react';
+import { Terminal, CheckCircle2, AlertCircle, Info, Timer, ShieldAlert } from 'lucide-react';
 
 interface LogStep {
     id: string;
     type: 'info' | 'success' | 'warning' | 'error';
     message: string;
-    timestamp: string;
+    createdAt: any;
 }
 
 interface LiveSyncLogsProps {
     userId: string;
+    sessionId: string;
     isActive: boolean;
 }
 
-export default function LiveSyncLogs({ userId, isActive }: LiveSyncLogsProps) {
+export default function LiveSyncLogs({ userId, sessionId, isActive }: LiveSyncLogsProps) {
     const [logs, setLogs] = useState<LogStep[]>([]);
+    const [error, setError] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!userId || !isActive) return;
+        if (!userId || !sessionId || !isActive) return;
 
+        setError(null);
         // Listen to Firestore for real-time log updates from the backend
-        const unsub = onSnapshot(doc(db, 'ezone_sync_logs', userId), (doc) => {
-            if (doc.exists()) {
-                const data = doc.data();
-                if (data.steps) {
-                    setLogs(data.steps);
+        // Uses the new structure: ezoneLogs/{sessionId}/entries
+        const logsQuery = query(
+            collection(db, 'ezoneLogs', sessionId, 'entries'),
+            orderBy('createdAt', 'asc'),
+            limit(100)
+        );
+
+        const unsub = onSnapshot(
+            logsQuery, 
+            (snapshot) => {
+                const newLogs = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                })) as LogStep[];
+                setLogs(newLogs);
+            },
+            (err) => {
+                console.error("Realtime logs failed", err);
+                if (err.code === 'permission-denied') {
+                    setError("Security Policy: Access to live logs restricted.");
+                } else {
+                    setError("Failed to connect to live log stream.");
                 }
             }
-        });
+        );
 
         return () => unsub();
-    }, [userId, isActive]);
+    }, [userId, sessionId, isActive]);
 
     useEffect(() => {
         // Auto-scroll to bottom on new logs
@@ -60,7 +80,13 @@ export default function LiveSyncLogs({ userId, isActive }: LiveSyncLogsProps) {
                     ref={scrollRef}
                     className="h-64 overflow-y-auto p-4 font-mono text-xs space-y-2 scrollbar-thin scrollbar-thumb-slate-700"
                 >
-                    {logs.length === 0 ? (
+                    {error ? (
+                        <div className="h-full flex flex-col items-center justify-center text-red-400 gap-2 opacity-80">
+                            <ShieldAlert className="h-8 w-8" />
+                            <div className="font-bold">Realtime logs unavailable</div>
+                            <div className="text-[10px] text-slate-500 max-w-[200px] text-center">{error}</div>
+                        </div>
+                    ) : logs.length === 0 ? (
                         <div className="text-slate-500 italic flex items-center gap-2">
                             <Timer className="h-3 w-3 animate-pulse" />
                             Waiting for automation engine...
@@ -69,7 +95,9 @@ export default function LiveSyncLogs({ userId, isActive }: LiveSyncLogsProps) {
                         logs.map((log) => (
                             <div key={log.id} className="flex gap-3 animate-in fade-in slide-in-from-left-2">
                                 <span className="text-slate-600 shrink-0">
-                                    [{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]
+                                    [{log.createdAt?.toDate ? 
+                                        log.createdAt.toDate().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 
+                                        '--:--:--'}]
                                 </span>
                                 <span className={`flex gap-2 ${getLogColor(log.type)}`}>
                                     {getLogIcon(log.type)}
@@ -82,8 +110,8 @@ export default function LiveSyncLogs({ userId, isActive }: LiveSyncLogsProps) {
                 <div className="px-4 py-2 border-t border-slate-800 bg-slate-950/30 text-[10px] text-slate-500 flex justify-between items-center">
                     <span>Engine: Playwright Chromium v1.60</span>
                     <span className="flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Real-time Stream Active
+                        <span className={`h-1.5 w-1.5 rounded-full ${error ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`}></span>
+                        {error ? 'Stream Blocked' : 'Real-time Stream Active'}
                     </span>
                 </div>
             </CardContent>

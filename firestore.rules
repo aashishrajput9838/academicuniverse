@@ -98,7 +98,20 @@ service cloud.firestore {
       allow read: if isAuthenticated() && 
                      (getUserOrganizationId() == orgId || isSuperAdmin()) ||
                      isAdmin();
-      allow write: if isAdmin() || isSuperAdmin() || hasRole('ADMIN');
+      allow write: if isAdmin() || isSuperAdmin();
+    }
+
+    // Ezone Sync Logs - Secure realtime automation logs
+    match /ezoneLogs/{sessionId}/entries/{logId} {
+      // Allow read if user is authenticated and is the owner or belongs to the same organization
+      allow read: if isAuthenticated() && 
+                     (resource.data.userId == request.auth.uid || 
+                      getUserOrganizationId() == resource.data.organizationId ||
+                      isSuperAdmin()) ||
+                     isAdmin();
+      
+      // Backend (Service Account) writes the logs via admin SDK
+      allow write: if isAdmin();
     }
     
     // Roles collection - Admin and super admin access

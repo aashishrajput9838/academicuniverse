@@ -10,14 +10,14 @@ export class EzoneController {
     sendOtp = async (req: Request, res: Response): Promise<void> => {
         try {
             const { systemId } = req.body;
-            const { userId } = (req as any).user;
+            const { userId, organizationId } = (req as any).user;
 
             if (!systemId) {
                 res.status(400).json({ success: false, message: 'System ID is required' });
                 return;
             }
 
-            await this.ezoneService.requestOtp(systemId, userId);
+            await this.ezoneService.requestOtp(systemId, userId, organizationId);
             res.status(200).json({ success: true, message: 'OTP sent to your official email' });
         } catch (error: any) {
             logger.error('Controller error in sendOtp:', error);

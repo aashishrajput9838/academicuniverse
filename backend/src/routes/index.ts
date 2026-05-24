@@ -38,6 +38,7 @@ router.use('/logs', logRoutes);
 router.use('/gmail', gmailRoutes);
 router.use('/softskills', softSkillsRoutes);
 router.use('/research', researchRoutes); // New modular route
+router.use('/ezone', ezoneRoutes);
 router.use('/export', exportRoutes);
 
 export default router;

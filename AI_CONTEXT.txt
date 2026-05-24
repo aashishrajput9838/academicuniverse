@@ -26,10 +26,11 @@ Core Logic: Domain-based RBAC (@ug.sharda.ac.in=STUDENT, @fa.sharda.ac.in=FACULT
 - **GitHub Sync**: Periodic (6h) sync of dev stats (commits, languages, repo growth).
 - **Soft Skills**: AI analysis of communication/behavior via specific student inputs.
 - **Resume Builder**: AI-enhanced template system for verified achievement resumes.
+- **Ezone Sync**: Playwright-based ERP integration for automated academic data syncing.
 
 ## 5. Critical Directory Map
 - `/app/dashboard/[role]/`: Role-based frontend UI.
-- `/backend/src/modules/`: New modular features (DDD/DI).
+- `/backend/src/modules/`: New modular features (DDD/DI). (e.g., Research, Ezone Sync).
 - `/backend/src/controllers/`: Legacy API endpoints (being migrated).
 - `/backend/src/models/`: Mongoose schemas.
 - `/backend/src/services/`: Legacy business logic services.

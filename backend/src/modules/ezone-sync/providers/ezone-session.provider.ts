@@ -182,55 +182,6 @@ export class EzoneSessionProvider {
         }
     }
 
-            // Store the session for Step 2
-            this.sessions.set(systemId, { browser, context, page, createdAt: new Date() });
-            
-            // Auto-cleanup after 10 minutes if not verified
-            setTimeout(() => this.cleanupSession(systemId), 10 * 60 * 1000);
-
-        } catch (error: any) {
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', `Trigger OTP failed: ${error.message}`, null, firebaseUid);
-            logger.error('Error triggering OTP:', error);
-            if (browser) await browser.close();
-            throw new Error(`Failed to trigger OTP: ${error.message}`);
-        }
-    }
-
-    /**
-     * Step 2: Verify OTP and navigate to dashboard
-     */
-    async verifyOtp(systemId: string, otp: string, userId: string, organizationId: string, firebaseUid?: string): Promise<void> {
-        const session = this.sessions.get(systemId);
-        if (!session) {
-            throw new Error('Session expired or not found. Please try again.');
-        }
-
-        const { page } = session;
-
-        try {
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Submitting OTP for verification...', null, firebaseUid);
-            await page.fill('input[name="otp"]', otp);
-            await page.click('button[type="submit"]');
-
-            // Wait for navigation or success indicator
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Verifying session with university servers...', null, firebaseUid);
-            
-            // Race multiple success indicators (dashboard URL or profile elements)
-            await Promise.race([
-                page.waitForURL('**/dashboard', { timeout: 30000 }),
-                page.waitForSelector('.user-profile', { timeout: 30000 }),
-                page.waitForSelector('text=Attendance', { timeout: 30000 })
-            ]);
-
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'success', 'Identity verified. Session established.', null, firebaseUid);
-
-        } catch (error: any) {
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', `Verification failed: ${error.message}`, null, firebaseUid);
-            logger.error('OTP verification failed:', error);
-            throw new Error(`OTP verification failed: ${error.message}`);
-        }
-    }
-
     /**
      * Get an authenticated page for scraping
      */

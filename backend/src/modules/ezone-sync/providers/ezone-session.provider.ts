@@ -1,7 +1,9 @@
 import { chromium, Browser, BrowserContext, Page } from 'playwright';
 import { Logger } from '../../../shared/utils';
+import { EzoneLogger } from '../services/ezone-logger.service';
 
 const logger = new Logger('EzoneSessionProvider');
+const ezoneLogger = EzoneLogger.getInstance();
 
 export class EzoneSessionProvider {
     private static instance: EzoneSessionProvider;
@@ -19,8 +21,11 @@ export class EzoneSessionProvider {
     /**
      * Step 1: Trigger OTP by submitting System ID
      */
-    async triggerOtp(systemId: string): Promise<void> {
+    async triggerOtp(systemId: string, userId: string): Promise<void> {
         try {
+            await ezoneLogger.clearLogs(userId);
+            await ezoneLogger.logSyncStep(userId, 'info', 'Initializing automated browser session...');
+            
             logger.info('Triggering OTP for System ID:', { systemId });
             const browser = await chromium.launch({ 
                 headless: true,
@@ -31,20 +36,27 @@ export class EzoneSessionProvider {
                     '--disable-gpu'
                 ]
             });
+            await ezoneLogger.logSyncStep(userId, 'success', 'Headless browser launched successfully.');
+            
             const context = await browser.newContext();
             const page = await context.newPage();
 
             // Navigate to Sharda Student Portal
-            await page.goto('https://student.sharda.ac.in/admin');
+            await ezoneLogger.logSyncStep(userId, 'info', 'Navigating to Sharda Student Portal...');
+            await page.goto('https://student.sharda.ac.in/admin', { waitUntil: 'networkidle' });
+            await ezoneLogger.logSyncStep(userId, 'success', 'Portal loaded.');
 
             // Find System ID input and submit
-            // Note: Selectors are placeholders and need to be verified against the actual site
+            await ezoneLogger.logSyncStep(userId, 'info', `Entering System ID: ${systemId.substring(0, 4)}XXXXXX`);
             await page.fill('input[name="system_id"]', systemId);
+            
+            await ezoneLogger.logSyncStep(userId, 'info', 'Submitting login form...');
             await page.click('button[type="submit"]');
 
-            // Wait for OTP field to appear or check for success message
-            // If the site stays on the same page or redirects to OTP page
-            await page.waitForSelector('input[name="otp"]', { timeout: 10000 });
+            // Wait for OTP field to appear
+            await ezoneLogger.logSyncStep(userId, 'info', 'Waiting for university OTP response...');
+            await page.waitForSelector('input[name="otp"]', { timeout: 15000 });
+            await ezoneLogger.logSyncStep(userId, 'success', 'OTP field detected. Check your student email.');
 
             // Store the session for Step 2
             this.sessions.set(systemId, { browser, context, page, createdAt: new Date() });
@@ -53,6 +65,7 @@ export class EzoneSessionProvider {
             setTimeout(() => this.cleanupSession(systemId), 10 * 60 * 1000);
 
         } catch (error: any) {
+            await ezoneLogger.logSyncStep(userId, 'error', `Trigger OTP failed: ${error.message}`);
             logger.error('Error triggering OTP:', error);
             throw new Error(`Failed to trigger OTP: ${error.message}`);
         }
@@ -61,54 +74,54 @@ export class EzoneSessionProvider {
     /**
      * Step 2: Verify OTP and establish session
      */
-    async verifyOtp(systemId: string, otp: string): Promise<any[]> {
+    async verifyOtp(systemId: string, otp: string, userId: string): Promise<any[]> {
         const session = this.sessions.get(systemId);
         if (!session) {
             throw new Error('Session expired or not found. Please request OTP again.');
         }
 
         try {
+            await ezoneLogger.logSyncStep(userId, 'info', 'Verifying OTP code...');
             logger.info('Verifying OTP for System ID:', { systemId });
             const { page, context } = session;
 
             // Fill OTP and submit
             await page.fill('input[name="otp"]', otp);
+            await ezoneLogger.logSyncStep(userId, 'info', 'Submitting OTP to Ezone...');
             await page.click('button[type="submit"]');
 
-            // Wait for successful login (navigation to dashboard or presence of auth cookies)
-            // We'll use a race between URL navigation and specific success indicators
+            // Wait for successful login
+            await ezoneLogger.logSyncStep(userId, 'info', 'Waiting for authenticated session redirect...');
+            
             try {
                 await Promise.race([
                     page.waitForURL('**/dashboard**', { timeout: 30000 }),
                     page.waitForURL('**ezone.sharda.ac.in**', { timeout: 30000 }),
-                    page.waitForSelector('.student-profile-info', { timeout: 30000 }) // fallback success selector
+                    page.waitForSelector('.student-profile-info', { timeout: 30000 })
                 ]);
+                await ezoneLogger.logSyncStep(userId, 'success', 'Authentication successful. Session established.');
             } catch (navError) {
-                // If navigation timeout, check if we actually have cookies (sometimes ERPs are weird with redirects)
                 const cookies = await context.cookies();
                 const hasSessionCookie = cookies.some(c => c.name.toLowerCase().includes('session') || c.name.toLowerCase().includes('auth'));
                 
                 if (!hasSessionCookie) {
-                    // Check for visible error messages on the page
                     const errorMsg = await page.evaluate(() => {
                         const errorEl = document.querySelector('.alert-danger, .error-message, .text-danger');
                         return errorEl ? errorEl.textContent?.trim() : null;
                     });
                     
+                    await ezoneLogger.logSyncStep(userId, 'error', errorMsg || 'Authentication failed: Invalid OTP or Timeout');
                     throw new Error(errorMsg || 'Authentication failed: Timeout or invalid OTP');
                 }
-                logger.info('Navigation timeout but auth cookies found, proceeding...');
+                await ezoneLogger.logSyncStep(userId, 'warning', 'Navigation slow, but auth cookies detected. Proceeding...');
             }
 
             // Capture cookies
             const cookies = await context.cookies();
-            
-            // We don't need the browser open anymore for this specific flow if we just need cookies
-            // but we might want to keep it if we scrape immediately.
-            // For now, let's return cookies and keep session for immediate sync.
             return cookies;
 
         } catch (error: any) {
+            await ezoneLogger.logSyncStep(userId, 'error', `Verification failed: ${error.message}`);
             logger.error('Error verifying OTP:', error);
             this.cleanupSession(systemId);
             throw new Error(`Failed to verify OTP: ${error.message}`);

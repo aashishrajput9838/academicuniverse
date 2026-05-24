@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import { ezoneApi } from '@/lib/api/ezone';
+import { useAuth } from '@/lib/AuthContext';
+import LiveSyncLogs from '@/components/ezone/LiveSyncLogs';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,6 +23,7 @@ export default function EzoneSyncPage() {
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
     const [profile, setProfile] = useState<any>(null);
+    const { backendUser } = useAuth();
     const { toast } = useToast();
 
     /**
@@ -195,6 +198,12 @@ export default function EzoneSyncPage() {
                     </CardContent>
                 </Card>
             )}
+
+            {/* Live Automation Logs */}
+            <LiveSyncLogs 
+                userId={backendUser?.id || ''} 
+                isActive={state !== 'idle' && state !== 'completed'} 
+            />
 
             {state === 'completed' && profile && (
                 <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-top-4">

@@ -2,9 +2,11 @@ import { EzoneSessionProvider } from '../providers/ezone-session.provider';
 import { EzoneRepository } from '../repositories/ezone.repository';
 import { ProfileScraper } from '../scrapers/profile.scraper';
 import { AttendanceScraper } from '../scrapers/attendance.scraper';
+import { EzoneLogger } from '../services/ezone-logger.service';
 import { Logger } from '../../../shared/utils';
 
 const logger = new Logger('EzoneService');
+const ezoneLogger = EzoneLogger.getInstance();
 
 export class EzoneService {
     constructor(
@@ -14,22 +16,28 @@ export class EzoneService {
         private attendanceScraper: AttendanceScraper
     ) {}
 
-    async requestOtp(systemId: string): Promise<void> {
-        await this.sessionProvider.triggerOtp(systemId);
+    async requestOtp(systemId: string, userId: string): Promise<void> {
+        await this.sessionProvider.triggerOtp(systemId, userId);
     }
 
     async verifyAndSync(systemId: string, otp: string, userId: string, organizationId: string): Promise<any> {
         try {
             // 1. Verify OTP and get authenticated page
-            await this.sessionProvider.verifyOtp(systemId, otp);
+            await this.sessionProvider.verifyOtp(systemId, otp, userId);
             const page = await this.sessionProvider.getAuthenticatedPage(systemId);
 
             // 2. Scrape data
+            await ezoneLogger.logSyncStep(userId, 'info', 'Initiating academic data extraction...');
             logger.info('Starting sync for user:', { userId });
+            
+            await ezoneLogger.logSyncStep(userId, 'info', 'Fetching student profile details...');
             const profile = await this.profileScraper.scrape(page);
+            
+            await ezoneLogger.logSyncStep(userId, 'info', 'Fetching attendance and subject records...');
             const attendance = await this.attendanceScraper.scrape(page);
 
             // 3. Normalize and save to MongoDB
+            await ezoneLogger.logSyncStep(userId, 'info', 'Normalizing and saving data to Academic Universe...');
             const syncedData = {
                 ...profile,
                 ...attendance,
@@ -39,12 +47,14 @@ export class EzoneService {
             };
 
             const savedProfile = await this.repository.upsertProfile(userId, organizationId, syncedData);
+            await ezoneLogger.logSyncStep(userId, 'success', 'Sync completed successfully! Dashboard updated.');
 
             // 4. Cleanup session
             await this.sessionProvider.cleanupSession(systemId);
 
             return savedProfile;
         } catch (error: any) {
+            await ezoneLogger.logSyncStep(userId, 'error', `Sync process failed: ${error.message}`);
             logger.error('Sync failed:', error);
             await this.repository.updateSyncStatus(userId, organizationId, 'FAILED');
             throw error;

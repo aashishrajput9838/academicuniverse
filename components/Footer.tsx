@@ -25,7 +25,7 @@ export function Footer() {
             <div className="lg:col-span-2">
               <div className="flex items-center gap-3 mb-4">
                 <img 
-                  src="/new_logo_2.png" 
+                  src="/sharda_logo.png" 
                   alt="Academic Universe" 
                   className="h-12 w-auto"
                 />

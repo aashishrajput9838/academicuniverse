@@ -150,7 +150,7 @@ export default function LoginPage() {
             <div className="mb-8 text-center">
               <Link href="/" className="inline-block mb-4">
                 <img
-                  src="/new_logo_2.png"
+                  src="/sharda_logo.png"
                   alt="Sharda University"
                   className="h-12 w-auto mx-auto"
                 />

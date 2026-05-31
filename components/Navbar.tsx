@@ -149,7 +149,7 @@ export function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex-shrink-0">
           <img
-            src="/new_logo_2.png"
+            src="/sharda_logo.png"
             alt="Sharda University - Beyond Boundaries"
             className="h-14 w-auto"
           />

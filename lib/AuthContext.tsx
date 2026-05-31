@@ -44,155 +44,150 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const auth = getFirebaseAuth();
 
   useEffect(() => {
+    const exchangeToken = async (currentUser: User) => {
+      try {
+        const idToken = await currentUser.getIdToken(true); // Force refresh to be safe
+
+        // Send the Firebase ID token to our backend to exchange for a JWT token
+        const response = await fetch(`${API_BASE_URL}/api/auth/firebase-login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ idToken }),
+        });
+
+        // Check if response is actually HTML (error page)
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+          console.error('Backend server is not running or route not found');
+          return false;
+        }
+
+        if (response.ok) {
+          const data = await response.json();
+          // Store the backend JWT token in localStorage for API calls
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('authToken', data.data.token);
+          }
+          // Update the backend user state
+          setBackendUser(data.data.user);
+          return true;
+        } else {
+          const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+          console.error('Failed to authenticate with backend:', errorData.message);
+          return false;
+        }
+      } catch (error) {
+        console.error('Error exchanging Firebase token for backend token:', error);
+        return false;
+      }
+    };
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      setLoading(true); // Set loading to true when auth state changes
+      setLoading(true);
 
-      // If user is authenticated and we haven't exchanged the token yet,
-      // try to exchange the Firebase token for a backend JWT token
-      if (currentUser && !localStorage.getItem('authToken')) {
-        try {
-          const idToken = await currentUser.getIdToken();
+      if (currentUser) {
+        const storedToken = localStorage.getItem('authToken');
+        
+        if (!storedToken) {
+          // No token, need to exchange
+          await exchangeToken(currentUser);
+          setLoading(false);
+        } else {
+          // Have token, verify it
+          try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${storedToken}`
+              },
+            });
 
-          // Send the Firebase ID token to our backend to exchange for a JWT token
-          const response = await fetch(`${API_BASE_URL}/api/auth/firebase-login`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ idToken }),
-          });
-
-          // Check if response is actually HTML (error page)
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('text/html')) {
-            console.error('Backend server is not running or route not found');
+            if (response.ok) {
+              const data = await response.json();
+              setBackendUser(data.data);
+              setAuthError(null);
+              setLoading(false);
+            } else {
+              // Token invalid, try to re-exchange instead of logging out immediately
+              console.warn('Backend token invalid, attempting to refresh using Firebase session...');
+              const success = await exchangeToken(currentUser);
+              
+              if (!success) {
+                console.error('Failed to refresh backend token, logging out');
+                await signOut(auth);
+                localStorage.removeItem('authToken');
+                setBackendUser(null);
+                setAuthError('Session expired. Please sign in again.');
+              }
+              setLoading(false);
+            }
+          } catch (error) {
+            console.error('Error fetching backend user data:', error);
+            if (error instanceof TypeError && error.message.includes('fetch')) {
+              setAuthError('Unable to connect to the backend. Please ensure it is running on localhost:5000.');
+            } else {
+              // For other errors, try to refresh once before giving up
+              const success = await exchangeToken(currentUser);
+              if (!success) {
+                localStorage.removeItem('authToken');
+                setBackendUser(null);
+                setAuthError('Unexpected authentication error. Please refresh the page.');
+              }
+            }
             setLoading(false);
-            return;
           }
-
-          if (response.ok) {
-            const data = await response.json();
-            // Store the backend JWT token in localStorage for API calls
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('authToken', data.data.token);
-            }
-            // Update the backend user state
-            setBackendUser(data.data.user);
-          } else {
-            const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-            console.error('Failed to authenticate with backend:', errorData.message);
-            // If the backend rejected the token (e.g., unauthorized email), clear the Firebase auth
-            if (response.status === 401) {
-              await signOut(auth);
-              localStorage.removeItem('authToken');
-            }
-          }
-        } catch (error) {
-          console.error('Error exchanging Firebase token for backend token:', error);
-          if (error instanceof TypeError && error.message.includes('fetch')) {
-            setAuthError('Unable to reach backend for login exchange. Please ensure the backend is running on localhost:5000.');
-          } else {
-            setAuthError('An unexpected error occurred during login exchange.');
-          }
-        } finally {
-          setLoading(false); // Always set loading to false after attempt
-        }
-      } else if (currentUser && localStorage.getItem('authToken')) {
-        // If user is authenticated and we already have a stored token
-        // Fetch the backend user data to restore the session
-        try {
-          const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-            },
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            setBackendUser(data.data);
-            setAuthError(null);
-          } else {
-            // If token is invalid, clear it and log out the user
-            console.error('Invalid token, logging out user');
-            await signOut(auth);
-            localStorage.removeItem('authToken');
-            setBackendUser(null);
-            setAuthError('Session expired or invalid. Please sign in again.');
-          }
-        } catch (error) {
-          console.error('Error fetching backend user data:', error);
-          // Check if it's a network error vs a token error
-          if (error instanceof TypeError && error.message.includes('fetch')) {
-            setAuthError('Unable to connect to the backend. Please ensure it is running on localhost:5000.');
-            // Network error - don't clear token, just set backend user to null temporarily
-            console.warn('Network error, keeping token but showing as not fully authenticated');
-          } else {
-            // Other error (likely token invalid) - clear the token
-            localStorage.removeItem('authToken');
-            setBackendUser(null);
-            setAuthError('Unexpected authentication error. Please refresh the page.');
-          }
-        } finally {
-          setLoading(false);
-        }
-      } else if (!currentUser && localStorage.getItem('authToken')) {
-        // Custom email/password login is being used, so there is no Firebase user,
-        // but we have a JWT token. Fetch the backend user data to restore the session.
-        try {
-          const storedToken = localStorage.getItem('authToken');
-          const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${storedToken}`
-            },
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            setBackendUser(data.data);
-            setAuthError(null);
-            
-            // Generate a persistent mock user so the UI features continue to work seamlessly
-            const mockUser: any = {
-              uid: data.data.id,
-              email: data.data.email,
-              displayName: data.data.name,
-              photoURL: null,
-              emailVerified: true,
-              getIdToken: async () => storedToken,
-            };
-            setUser(mockUser);
-          } else {
-            console.error('Invalid custom token, logging out user');
-            localStorage.removeItem('authToken');
-            setBackendUser(null);
-            setUser(null);
-            setAuthError('Session expired or invalid. Please sign in again.');
-          }
-        } catch (error) {
-          console.error('Error fetching backend user custom data:', error);
-          if (error instanceof TypeError && error.message.includes('fetch')) {
-            setAuthError('Unable to connect to the backend. Please ensure it is running on localhost:5000.');
-            console.warn('Network error during session restore');
-          } else {
-            localStorage.removeItem('authToken');
-            setBackendUser(null);
-            setUser(null);
-            setAuthError('Custom authentication session could not be restored.');
-          }
-        } finally {
-          setLoading(false);
         }
       } else {
-        // No Firebase user and no custom JWT token. Truly logged out.
-        localStorage.removeItem('authToken');
-        setBackendUser(null);
-        setUser(null);
-        setAuthError(null);
+        // No Firebase user
+        const storedToken = localStorage.getItem('authToken');
+        if (storedToken) {
+          // Might be a custom login (no Firebase)
+          try {
+            const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${storedToken}`
+              },
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              setBackendUser(data.data);
+              setAuthError(null);
+              
+              // Mock user for UI consistency
+              const mockUser: any = {
+                uid: data.data.id,
+                email: data.data.email,
+                displayName: data.data.name,
+                photoURL: null,
+                emailVerified: true,
+                getIdToken: async () => storedToken,
+              };
+              setUser(mockUser);
+            } else {
+              console.error('Invalid custom token, clearing session');
+              localStorage.removeItem('authToken');
+              setBackendUser(null);
+              setUser(null);
+            }
+          } catch (error) {
+            console.error('Error restoring custom session:', error);
+            localStorage.removeItem('authToken');
+            setBackendUser(null);
+            setUser(null);
+          }
+        } else {
+          // Truly logged out
+          setBackendUser(null);
+          setUser(null);
+          setAuthError(null);
+        }
         setLoading(false);
       }
     });

@@ -1,7 +1,7 @@
 # 🎓 Academic Universe
 
 <div align="center">
-  <img src="public/new_logo_2.png" alt="Academic Universe Logo" width="200"/>
+  <img src="public/sharda_logo.png" alt="Academic Universe Logo" width="200"/>
   <br />
   <h3><b>The First AI-Powered Student Growth Ecosystem</b></h3>
   <p><i>Beyond Marks & Attendance: Transforming Education Through Holistic Development</i></p>

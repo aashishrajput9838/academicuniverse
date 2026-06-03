@@ -1,5 +1,6 @@
 import { EzoneRepository } from '../repositories/ezone.repository';
 import { EzoneScraper } from '../scrapers/ezone.scraper';
+import { EzoneExplorer } from '../scrapers/ezone.explorer';
 import { EzoneSessionProvider } from '../providers/ezone-session.provider';
 import { EzoneLogger } from './ezone-logger.service';
 import { Logger } from '../../../shared/utils';
@@ -9,6 +10,8 @@ const logger = new Logger('EzoneService');
 const ezoneLogger = EzoneLogger.getInstance();
 
 export class EzoneService {
+    private explorer = new EzoneExplorer();
+
     constructor(
         private sessionProvider: EzoneSessionProvider,
         private repository: EzoneRepository,
@@ -36,18 +39,11 @@ export class EzoneService {
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'OTP verified. Extracting academic profile and attendance...', null, firebaseUid);
             const extractedData = await this.scraper.extractData(page);
             
-            // 3. Validation Layer (Requirement 4 & 5)
+            // 3. Validation Layer
             this.validateExtractedData(extractedData);
 
-            // 4. Log extracted values (Requirement 6)
-            logger.info('[EZONE] Final Sync Data:', {
-                studentName: extractedData.studentName,
-                systemId: extractedData.systemId,
-                attendance: extractedData.attendancePercentage,
-                present: extractedData.presentClasses,
-                absent: extractedData.absentClasses,
-                total: extractedData.totalClasses
-            });
+            // 4. Log extracted values
+            logger.info('[EZONE] Final Sync Data:', extractedData);
 
             // 5. Save to MongoDB
             const savedProfile = await this.repository.upsertProfile(userId, organizationId, {
@@ -57,8 +53,16 @@ export class EzoneService {
 
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'success', 'Academic data sync completed successfully!', null, firebaseUid);
 
-            // 6. Cleanup session
-            await this.sessionProvider.cleanupSession(sessionId);
+            // 6. EXPLORER MODE: Discover other modules in the background
+            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Launching Discovery Mode to identify available data modules...', null, firebaseUid);
+            this.explorer.explore(page, userId).catch(err => {
+                logger.error('Explorer Mode failed in background:', err);
+            });
+
+            // 7. Cleanup session (We don't wait for explorer to finish since it uses the same page)
+            // Note: If explorer needs the page, we should cleanup after explorer finishes.
+            // For now, let's keep session open for 2 mins longer for exploration.
+            setTimeout(() => this.sessionProvider.cleanupSession(sessionId), 2 * 60 * 1000);
 
             return savedProfile;
         } catch (error: any) {

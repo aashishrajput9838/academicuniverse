@@ -45,7 +45,9 @@ export class EzoneScraper {
                     // Filter out hidden or decorative elements
                     const validElements = elements.filter(el => {
                         const style = window.getComputedStyle(el);
-                        return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
+                        const isVisible = style.display !== 'none' && style.visibility !== 'hidden';
+                        const hasLayout = (el as HTMLElement).offsetParent !== null || el.tagName === 'BODY';
+                        return isVisible && hasLayout;
                     });
 
                     const target = validElements.find(el => {

@@ -212,10 +212,26 @@ export default function EzoneSyncPage() {
             {state === 'completed' && profile && (
                 <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-top-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <StatCard icon={<CheckCircle2 className="text-emerald-400" />} label="Attendance" value={`${profile.attendance.toFixed(1)}%`} />
-                        <StatCard icon={<GraduationCap className="text-blue-400" />} label="CGPA" value={profile.cgpa.toFixed(2)} />
-                        <StatCard icon={<Calendar className="text-purple-400" />} label="Semester" value={profile.semester} />
-                        <StatCard icon={<BookOpen className="text-orange-400" />} label="Subjects" value={profile.subjects?.length || 0} />
+                        <StatCard 
+                            icon={<CheckCircle2 className="text-emerald-400" />} 
+                            label="Attendance" 
+                            value={`${(profile.attendancePercentage || 0).toFixed(1)}%`} 
+                        />
+                        <StatCard 
+                            icon={<GraduationCap className="text-blue-400" />} 
+                            label="CGPA" 
+                            value="N/A" 
+                        />
+                        <StatCard 
+                            icon={<Calendar className="text-purple-400" />} 
+                            label="Semester" 
+                            value="N/A" 
+                        />
+                        <StatCard 
+                            icon={<BookOpen className="text-orange-400" />} 
+                            label="System ID" 
+                            value={profile.systemId || 'N/A'} 
+                        />
                     </div>
 
                     <Card className="bg-slate-800/50 backdrop-blur-md border-slate-700">
@@ -239,27 +255,32 @@ export default function EzoneSyncPage() {
                                     <User className="text-emerald-400 h-6 w-6" />
                                 </div>
                                 <div>
-                                    <div className="text-white font-bold">{profile.fullName}</div>
-                                    <div className="text-slate-400 text-sm">System ID: {profile.ezoneStudentId} • {profile.department}</div>
+                                    <div className="text-white font-bold">{profile.studentName}</div>
+                                    <div className="text-slate-400 text-sm">System ID: {profile.systemId} • {profile.program}</div>
+                                    <div className="text-slate-500 text-xs mt-1">{profile.school} • Status: {profile.status}</div>
                                 </div>
                             </div>
 
                             <div className="space-y-3">
-                                <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Subject-wise Attendance</h3>
-                                <div className="grid grid-cols-1 gap-3">
-                                    {profile.subjects?.map((sub: any, i: number) => (
-                                        <div key={i} className="flex items-center justify-between p-3 bg-slate-900/30 rounded-lg border border-slate-700/30 hover:border-emerald-500/30 transition-colors">
-                                            <span className="text-slate-300 text-sm">{sub.subject}</span>
-                                            <span className={`text-sm font-bold ${sub.percentage >= 75 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                {sub.percentage}%
-                                            </span>
-                                        </div>
-                                    ))}
+                                <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Attendance Breakdown</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div className="p-3 bg-slate-900/30 rounded-lg border border-slate-700/30">
+                                        <div className="text-xs text-slate-500 uppercase">Total Classes</div>
+                                        <div className="text-lg font-bold text-white">{profile.totalClasses || 0}</div>
+                                    </div>
+                                    <div className="p-3 bg-slate-900/30 rounded-lg border border-slate-700/30">
+                                        <div className="text-xs text-slate-500 uppercase">Present</div>
+                                        <div className="text-lg font-bold text-emerald-400">{profile.presentClasses || 0}</div>
+                                    </div>
+                                    <div className="p-3 bg-slate-900/30 rounded-lg border border-slate-700/30">
+                                        <div className="text-xs text-slate-500 uppercase">Absent</div>
+                                        <div className="text-lg font-bold text-red-400">{profile.absentClasses || 0}</div>
+                                    </div>
                                 </div>
                             </div>
 
                             <div className="text-xs text-slate-500 text-right italic">
-                                Last synced: {new Date(profile.lastSyncedAt).toLocaleString()}
+                                Last synced: {profile.lastSyncedAt ? new Date(profile.lastSyncedAt).toLocaleString() : 'Just now'}
                             </div>
                         </CardContent>
                     </Card>

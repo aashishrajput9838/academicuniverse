@@ -95,10 +95,10 @@ export class EzoneScraper {
                 const status = getTextByLabel('Status') || 'Active';
 
                 // Attendance Summary
-                const attendancePercentage = extractNumber(getTextByLabel('Attendance %') || getTextByLabel('Percentage') || '0');
-                const totalClasses = extractNumber(getTextByLabel('Total Classes') || getTextByLabel('Total') || '0');
-                const presentClasses = extractNumber(getTextByLabel('Present Classes') || getTextByLabel('Present') || '0');
-                const absentClasses = extractNumber(getTextByLabel('Absent Classes') || getTextByLabel('Absent') || '0');
+                const attendancePercentage = extractNumber(getTextByLabel('Attendance %') || getTextByLabel('Percentage') || '0') || 0;
+                const totalClasses = extractNumber(getTextByLabel('Total Classes') || getTextByLabel('Total') || '0') || 0;
+                const presentClasses = extractNumber(getTextByLabel('Present Classes') || getTextByLabel('Present') || '0') || 0;
+                const absentClasses = extractNumber(getTextByLabel('Absent Classes') || getTextByLabel('Absent') || '0') || 0;
 
                 return {
                     studentName,

@@ -70,9 +70,13 @@ export default function StudentDashboardOverview() {
   };
 
   const calculateGrowthVelocity = (attendance: number, cgpa: number) => {
+    // Safety check for undefined values
+    const safeAttendance = attendance || 0;
+    const safeCgpa = cgpa || 0;
+    
     // Derived logic: weighted average of attendance and normalized CGPA
-    const normalizedCGPA = (cgpa / 10) * 100;
-    const velocity = (attendance * 0.4) + (normalizedCGPA * 0.6);
+    const normalizedCGPA = (safeCgpa / 10) * 100;
+    const velocity = (safeAttendance * 0.4) + (normalizedCGPA * 0.6);
     return Math.round(velocity) + '%';
   };
 

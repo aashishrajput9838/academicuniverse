@@ -21,10 +21,10 @@ export const ezoneApi = {
         });
     },
 
-    verifyOtp: async (systemId: string, otp: string) => {
+    verifyOtp: async (systemId: string, otp: string, sessionId: string) => {
         return await apiRequest('/api/ezone/verify-otp', {
             method: 'POST',
-            body: JSON.stringify({ systemId, otp }),
+            body: JSON.stringify({ systemId, otp, sessionId }),
             headers: getAuthHeaders()
         });
     },

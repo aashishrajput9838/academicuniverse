@@ -33,10 +33,7 @@ export function Navbar() {
     const baseItems: NavItem[] = [
       {
         label: 'Growth Hub',
-        dropdown: [
-          { label: 'IQ/EQ Trends', href: '/dashboard/student/growth/trends' },
-          { label: 'Growth Degradation Analysis', href: '/dashboard/student/growth/analysis' },
-        ]
+        href: '/dashboard/student/growth',
       },
       {
         label: 'Career & Verified Profile',

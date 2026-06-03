@@ -1,4 +1,5 @@
 import { chromium, Browser, BrowserContext, Page } from 'playwright';
+import { v4 as uuidv4 } from 'uuid';
 import { Logger } from '../../../shared/utils';
 import { EzoneLogger } from '../services/ezone-logger.service';
 import * as fs from 'fs';
@@ -9,10 +10,19 @@ const ezoneLogger = EzoneLogger.getInstance();
 
 export class EzoneSessionProvider {
     private static instance: EzoneSessionProvider;
-    private sessions: Map<string, { browser: Browser; context: BrowserContext; page: Page; createdAt: Date }> = new Map();
+    private sessions: Map<string, { 
+        browser: Browser; 
+        context: BrowserContext; 
+        page: Page; 
+        systemId: string;
+        createdAt: Date 
+    }> = new Map();
 
     private constructor() {
         logger.info('EzoneSessionProvider initialized - Session Map cleared.');
+        
+        // Background task to clean up old sessions every minute
+        setInterval(() => this.cleanupExpiredSessions(), 60 * 1000);
     }
 
     public static getInstance(): EzoneSessionProvider {
@@ -25,8 +35,10 @@ export class EzoneSessionProvider {
     /**
      * Step 1: Trigger OTP by submitting the system ID
      */
-    async triggerOtp(systemId: string, userId: string, organizationId: string, firebaseUid?: string): Promise<void> {
+    async triggerOtp(systemId: string, userId: string, organizationId: string, firebaseUid?: string): Promise<string> {
         let browser: Browser | null = null;
+        const sessionId = uuidv4();
+        
         try {
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Launching secure automation engine...', null, firebaseUid);
             
@@ -46,16 +58,17 @@ export class EzoneSessionProvider {
 
             const context = await browser.newContext({
                 viewport: { width: 1280, height: 720 },
-                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/136.0.0.0 Safari/537.36',
                 acceptDownloads: true,
                 ignoreHTTPSErrors: true
             });
 
             const page = await context.newPage();
             
-            // PRE-STORE SESSION: Store as soon as browser is up to avoid race conditions with verifyOtp
-            logger.info(`Pre-storing session for ${systemId}`);
-            this.sessions.set(systemId, { browser, context, page, createdAt: new Date() });
+            // PRE-STORE SESSION: Store as soon as browser is up
+            logger.info(`Session created: ${sessionId} for System ID: ${systemId}`);
+            this.sessions.set(sessionId, { browser, context, page, systemId, createdAt: new Date() });
+            this.logActiveSessions();
 
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Connecting to Sharda University Ezone portal...', null, firebaseUid);
             
@@ -70,7 +83,7 @@ export class EzoneSessionProvider {
             
             const title = await page.title();
             const currentUrl = page.url();
-            logger.info(`Page loaded: ${title} at ${currentUrl}`);
+            logger.info(`Page loaded for session ${sessionId}: ${title} at ${currentUrl}`);
 
             // Full Page Validation
             const html = await page.content();
@@ -148,14 +161,13 @@ export class EzoneSessionProvider {
                 throw new Error('OTP input field did not appear. The university portal may have rejected the ID or is experiencing delays.');
             }
 
-            // Auto-cleanup after 10 minutes if not verified
-            setTimeout(() => this.cleanupSession(systemId), 10 * 60 * 1000);
+            return sessionId;
 
         } catch (error: any) {
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', `Sync failed: ${error.message}`, null, firebaseUid);
             logger.error('Ezone Automation Error:', error);
             if (browser) await browser.close();
-            this.sessions.delete(systemId); // Ensure cleanup on error
+            this.sessions.delete(sessionId);
             throw new Error(`Automation Error: ${error.message}`);
         }
     }
@@ -163,14 +175,17 @@ export class EzoneSessionProvider {
     /**
      * Step 2: Verify OTP and navigate to dashboard
      */
-    async verifyOtp(systemId: string, otp: string, userId: string, organizationId: string, firebaseUid?: string): Promise<void> {
-        logger.info(`Looking up session for ${systemId}. Available keys: ${Array.from(this.sessions.keys()).join(', ')}`);
-        const session = this.sessions.get(systemId);
+    async verifyOtp(sessionId: string, otp: string, userId: string, organizationId: string, firebaseUid?: string): Promise<void> {
+        logger.info(`Session retrieval attempt: ${sessionId}. Active IDs: ${Array.from(this.sessions.keys()).join(', ')}`);
+        const session = this.sessions.get(sessionId);
+        
         if (!session) {
+            logger.error(`Session retrieval failed: ${sessionId} not found in map.`);
             throw new Error('Session expired or not found. Please try again.');
         }
 
-        const { page } = session;
+        const { page, systemId } = session;
+        logger.info(`Session retrieved successfully: ${sessionId} for System ID: ${systemId}`);
 
         try {
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Submitting OTP for verification...', null, firebaseUid);
@@ -209,8 +224,8 @@ export class EzoneSessionProvider {
     /**
      * Get an authenticated page for scraping
      */
-    async getAuthenticatedPage(systemId: string): Promise<Page> {
-        const session = this.sessions.get(systemId);
+    async getAuthenticatedPage(sessionId: string): Promise<Page> {
+        const session = this.sessions.get(sessionId);
         if (!session) {
             throw new Error('No authenticated session found.');
         }
@@ -220,12 +235,46 @@ export class EzoneSessionProvider {
     /**
      * Cleanup session
      */
-    async cleanupSession(systemId: string): Promise<void> {
-        const session = this.sessions.get(systemId);
+    async cleanupSession(sessionId: string): Promise<void> {
+        const session = this.sessions.get(sessionId);
         if (session) {
             await session.browser.close();
-            this.sessions.delete(systemId);
-            logger.info('Session cleaned up for System ID:', { systemId });
+            this.sessions.delete(sessionId);
+            logger.info(`Session destroyed: ${sessionId}`);
+            this.logActiveSessions();
         }
+    }
+
+    /**
+     * Periodic cleanup of expired sessions (TTL 10 mins)
+     */
+    private async cleanupExpiredSessions(): Promise<void> {
+        const now = new Date();
+        const TTL = 10 * 60 * 1000; // 10 minutes
+
+        for (const [id, session] of this.sessions.entries()) {
+            const age = now.getTime() - session.createdAt.getTime();
+            if (age > TTL) {
+                logger.info(`Cleaning up expired session: ${id} (Age: ${Math.round(age / 1000)}s)`);
+                await this.cleanupSession(id);
+            }
+        }
+    }
+
+    /**
+     * Diagnostic log of active sessions
+     */
+    private logActiveSessions(): void {
+        const now = new Date();
+        const activeSessions = Array.from(this.sessions.entries()).map(([id, s]) => ({
+            id,
+            systemId: s.systemId,
+            age: `${Math.round((now.getTime() - s.createdAt.getTime()) / 1000)}s`
+        }));
+        
+        logger.info(`Active Sessions Status:`, {
+            count: this.sessions.size,
+            sessions: activeSessions
+        });
     }
 }

@@ -20,6 +20,7 @@ type SyncState = 'idle' | 'otp_sent' | 'verifying' | 'syncing' | 'completed' | '
 export default function EzoneSyncPage() {
     const [state, setState] = useState<SyncState>('idle');
     const [systemId, setSystemId] = useState('');
+    const [sessionId, setSessionId] = useState('');
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
     const [profile, setProfile] = useState<any>(null);
@@ -36,7 +37,8 @@ export default function EzoneSyncPage() {
         setLoading(true);
         try {
             const res = await ezoneApi.sendOtp(systemId);
-            if (res.success) {
+            if (res.success && res.sessionId) {
+                setSessionId(res.sessionId);
                 setState('otp_sent');
                 toast({ title: 'OTP Sent', description: 'Please check your university email.' });
             } else {
@@ -50,12 +52,12 @@ export default function EzoneSyncPage() {
     };
 
     const handleVerifyOtp = async () => {
-        if (!otp) return;
+        if (!otp || !sessionId) return;
         setLoading(true);
         setState('verifying');
         try {
             // Step 1: Verify OTP and establish Ezone session
-            const res = await ezoneApi.verifyOtp(systemId, otp);
+            const res = await ezoneApi.verifyOtp(systemId, otp, sessionId);
             
             if (res.success) {
                 toast({ title: 'Verified', description: 'Establishing session and syncing data...' });
@@ -103,6 +105,7 @@ export default function EzoneSyncPage() {
         setState('idle');
         setOtp('');
         setSystemId('');
+        setSessionId('');
         setProfile(null);
         setLoading(false);
     };

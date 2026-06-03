@@ -16,16 +16,16 @@ export class EzoneService {
         private attendanceScraper: AttendanceScraper
     ) {}
 
-    async requestOtp(systemId: string, userId: string, organizationId: string, firebaseUid?: string): Promise<void> {
+    async requestOtp(systemId: string, userId: string, organizationId: string, firebaseUid?: string): Promise<string> {
         await ezoneLogger.clearLogs(systemId);
-        await this.sessionProvider.triggerOtp(systemId, userId, organizationId, firebaseUid);
+        return await this.sessionProvider.triggerOtp(systemId, userId, organizationId, firebaseUid);
     }
 
-    async verifyAndSync(systemId: string, otp: string, userId: string, organizationId: string, firebaseUid?: string): Promise<any> {
+    async verifyAndSync(sessionId: string, systemId: string, otp: string, userId: string, organizationId: string, firebaseUid?: string): Promise<any> {
         try {
             // 1. Verify OTP and get authenticated page
-            await this.sessionProvider.verifyOtp(systemId, otp, userId, organizationId, firebaseUid);
-            const page = await this.sessionProvider.getAuthenticatedPage(systemId);
+            await this.sessionProvider.verifyOtp(sessionId, otp, userId, organizationId, firebaseUid);
+            const page = await this.sessionProvider.getAuthenticatedPage(sessionId);
 
             // 2. Scrape data
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Initiating academic data extraction...', null, firebaseUid);

@@ -50,14 +50,14 @@ export class EzoneScraper {
                         // 1. Check next sibling
                         if (el.nextElementSibling) {
                             const val = el.nextElementSibling.textContent?.trim();
-                            if (val) return val;
+                            if (val && /\d/.test(val)) return val;
                         }
                         
                         // 2. Check parent's next sibling (common in <tr>)
                         const parent = el.parentElement;
                         if (parent && parent.nextElementSibling) {
                             const val = parent.nextElementSibling.textContent?.trim();
-                            if (val) return val;
+                            if (val && /\d/.test(val)) return val;
                         }
 
                         // 3. Check for value within the same element (e.g., "System ID: 2023...")
@@ -66,8 +66,15 @@ export class EzoneScraper {
                             const parts = fullText.split(new RegExp(label, 'i'));
                             if (parts.length > 1) {
                                 const val = parts[1].replace(/[:\-]/g, '').trim().split('\n')[0];
-                                if (val) return val;
+                                if (val && /\d/.test(val)) return val;
                             }
+                        }
+
+                        // 4. NEW: Check all children of the parent for a number
+                        if (parent) {
+                            const siblings = Array.from(parent.children);
+                            const valueNode = siblings.find(s => s !== el && /\d/.test(s.textContent || ''));
+                            if (valueNode) return valueNode.textContent?.trim() || '';
                         }
                         
                         return '';
@@ -130,6 +137,12 @@ export class EzoneScraper {
                 const presentClasses = extractNumber(getAttendanceValue('Present Classes') || getAttendanceValue('Present') || '0');
                 const absentClasses = extractNumber(getAttendanceValue('Absent Classes') || getAttendanceValue('Absent') || '0');
 
+                // EXTRA FALLBACK for Sharda dashboard cards: 
+                // Sometimes Present/Absent are just in spans/divs inside a card with a class like 'attendance-box'
+                const finalPresent = presentClasses || extractNumber(getTextByLabel('Present'));
+                const finalAbsent = absentClasses || extractNumber(getTextByLabel('Absent'));
+                const finalTotal = totalClasses || extractNumber(getTextByLabel('Total'));
+
                 return {
                     studentName,
                     systemId,
@@ -137,9 +150,9 @@ export class EzoneScraper {
                     school,
                     status,
                     attendancePercentage,
-                    totalClasses,
-                    presentClasses,
-                    absentClasses
+                    totalClasses: finalTotal,
+                    presentClasses: finalPresent,
+                    absentClasses: finalAbsent
                 };
             });
 

@@ -3,14 +3,14 @@ import { sendResponse, sendError } from '../utils/response';
 import Mark from '../models/Mark';
 import User from '../models/User';
 import Section from '../models/Section';
-import { EzoneProfile } from '../models/EzoneProfile';
+import { EzoneAcademicProfile } from '../models/EzoneAcademicProfile';
 
 export const getStudentDashboard = async (req: any, res: Response) => {
     try {
         const studentId = req.user.userId || req.user._id;
 
         // Fetch real ezone data if it exists
-        const ezoneProfile = await EzoneProfile.findOne({ userId: studentId });
+        const ezoneProfile = await EzoneAcademicProfile.findOne({ userId: studentId });
 
         // Fetch marks to calculate GPA (internal marks)
         const marks = await Mark.find({ studentId });

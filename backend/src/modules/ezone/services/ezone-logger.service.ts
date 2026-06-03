@@ -18,11 +18,6 @@ export class EzoneLogger {
         return EzoneLogger.instance;
     }
 
-    /**
-     * Log a step in the Ezone sync process to Firestore for real-time frontend tracking
-     * Uses session-scoped structure: ezoneSyncSessions/{sessionId}/logs/{logId}
-     * This collection is publicly readable (read: if true) to avoid dual-auth complexity.
-     */
     async logSyncStep(
         userId: string, 
         organizationId: string, 
@@ -33,7 +28,6 @@ export class EzoneLogger {
         firebaseUid?: string
     ): Promise<void> {
         try {
-            // Log to standard winston/console logger first
             const logMsg = `[${sessionId}] ${message}`;
             switch (type) {
                 case 'success': logger.info(`[✓] ${logMsg}`, data); break;
@@ -42,16 +36,11 @@ export class EzoneLogger {
                 default: logger.info(`[-] ${logMsg}`, data); break;
             }
 
-            if (!firebaseFirestore) {
-                return;
-            }
+            if (!firebaseFirestore) return;
 
-            // Calculate expiration (1 hour from now)
             const expiresAt = new Date();
             expiresAt.setHours(expiresAt.getHours() + 1);
 
-            // Push to Firestore for real-time UI updates
-            // Structured for public read by sessionId: ezoneSyncSessions/{sessionId}/logs/{logId}
             await firebaseFirestore
                 .collection('ezoneSyncSessions')
                 .doc(sessionId)
@@ -69,14 +58,10 @@ export class EzoneLogger {
                 });
 
         } catch (error) {
-            // Fail silently for logs to not interrupt main flow
             console.error('Failed to emit realtime ezone log:', error);
         }
     }
 
-    /**
-     * Clear logs for a session
-     */
     async clearLogs(sessionId: string): Promise<void> {
         if (!firebaseFirestore) return;
         try {

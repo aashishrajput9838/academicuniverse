@@ -6,46 +6,42 @@ import { useAuth } from '@/lib/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 
-interface EzoneProfile {
-  attendance: number;
-  cgpa: number;
-  semester: number;
+interface EzoneAcademicProfile {
+  studentName: string;
+  systemId: string;
+  program: string;
+  school: string;
+  status: string;
+  attendancePercentage: number;
+  totalClasses: number;
+  presentClasses: number;
+  absentClasses: number;
   lastSyncedAt: string;
-  subjects: any[];
-  department?: string;
 }
 
 export default function StudentDashboardOverview() {
   const { user, backendUser, loading: authLoading } = useAuth();
   const router = useRouter();
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [ezoneProfile, setEzoneProfile] = useState<EzoneProfile | null>(null);
-  const [internalMetrics, setInternalMetrics] = useState({
-    growthRate: '85%',
-    internalGpa: 'N/A'
-  });
+  const [ezoneProfile, setEzoneProfile] = useState<EzoneAcademicProfile | null>(null);
 
   useEffect(() => {
     if (backendUser && backendUser.role === 'STUDENT') {
       const fetchDashboardData = async () => {
         try {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/dashboard/student`, {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/ezone/profile`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('authToken')}`
             }
           });
           if (res.ok) {
             const data = await res.json();
-            if (data.data) {
-              setInternalMetrics({
-                growthRate: data.data.growthRate,
-                internalGpa: data.data.internalGpa
-              });
-              setEzoneProfile(data.data.ezoneProfile);
+            if (data.success && data.data) {
+              setEzoneProfile(data.data);
             }
           }
         } catch (err) {
-          console.error('Failed to fetch dashboard data', err);
+          console.error('Failed to fetch ezone profile', err);
         } finally {
           setIsInitialLoading(false);
         }
@@ -103,7 +99,7 @@ export default function StudentDashboardOverview() {
           <h1 className="text-3xl font-bold text-white tracking-tight">Student View</h1>
           <p className="text-slate-400 mt-1 text-sm md:text-base">
             {ezoneProfile 
-              ? `Real-time academic intelligence from your Ezone profile.`
+              ? `Real-time academic intelligence for ${ezoneProfile.studentName}.`
               : `Your academic performance at a glance.`}
           </p>
         </div>
@@ -111,7 +107,7 @@ export default function StudentDashboardOverview() {
           <div className="bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl shadow-lg shadow-emerald-500/5">
             <span className="text-emerald-400 text-sm font-semibold">
               {ezoneProfile 
-                ? `Active Session: ${getSemesterOrdinal(ezoneProfile.semester)} Semester`
+                ? `System ID: ${ezoneProfile.systemId}`
                 : 'Session: Profile Not Synced'}
             </span>
           </div>
@@ -148,7 +144,7 @@ export default function StudentDashboardOverview() {
             <div className="space-y-2 max-w-sm">
               <h3 className="text-white font-bold text-lg">Ezone Not Connected</h3>
               <p className="text-slate-400 text-sm leading-relaxed">
-                Connect your college profile to view your real attendance, CGPA, and credits earned.
+                Connect your Ezone account to load academic data.
               </p>
             </div>
             <Link 
@@ -161,66 +157,80 @@ export default function StudentDashboardOverview() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
-            {/* Attendance Card */}
+            {/* Card 1: Attendance % */}
             <div className="space-y-3 p-5 bg-slate-900/30 rounded-2xl border border-slate-700/30 transition-all hover:border-emerald-500/30 hover:bg-slate-900/50">
-              <div className="text-3xl font-black text-white">{ezoneProfile.attendance}%</div>
+              <div className="text-3xl font-black text-white">{ezoneProfile.attendancePercentage}%</div>
               <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Attendance</div>
               <div className="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
                 <div 
                   className={`h-full rounded-full transition-all duration-1000 ${
-                    ezoneProfile.attendance >= 75 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-red-500'
+                    ezoneProfile.attendancePercentage >= 75 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-red-500'
                   }`} 
-                  style={{ width: `${ezoneProfile.attendance}%` }}
+                  style={{ width: `${ezoneProfile.attendancePercentage}%` }}
                 ></div>
               </div>
               <div className="text-[10px] font-bold text-slate-600">
-                {ezoneProfile.attendance >= 75 ? 'Above criteria' : 'Needs improvement'}
+                {ezoneProfile.presentClasses} / {ezoneProfile.totalClasses} Classes
               </div>
             </div>
 
-            {/* GPA Card */}
+            {/* Card 2: Program */}
             <div className="space-y-3 p-5 bg-slate-900/30 rounded-2xl border border-slate-700/30 transition-all hover:border-emerald-500/30 hover:bg-slate-900/50">
-              <div className="text-3xl font-black text-white">{ezoneProfile.cgpa.toFixed(2)}</div>
-              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Current CGPA</div>
-              <div className="flex items-center gap-1 text-emerald-400 text-[11px] font-bold">
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd"/></svg>
-                Real-time Sync
+              <div className="text-xl font-black text-white line-clamp-2 min-h-[3.5rem] flex items-center">
+                {ezoneProfile.program}
               </div>
-              <div className="text-[10px] font-bold text-slate-600">Verified by Sharda Ezone</div>
+              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Program</div>
+              <div className="text-[10px] font-bold text-slate-600 truncate">{ezoneProfile.school}</div>
             </div>
 
-            {/* Credits Card */}
+            {/* Card 3: System ID */}
             <div className="space-y-3 p-5 bg-slate-900/30 rounded-2xl border border-slate-700/30 transition-all hover:border-emerald-500/30 hover:bg-slate-900/50">
-              <div className="text-3xl font-black text-white">{calculateTotalCredits(ezoneProfile.subjects)}</div>
-              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Credits Earned</div>
-              <div className="text-slate-500 text-[11px] font-medium italic">Current sem loading</div>
-              <div className="text-[10px] font-bold text-slate-600">Across {ezoneProfile.subjects.length} Subjects</div>
+              <div className="text-3xl font-black text-white">{ezoneProfile.systemId}</div>
+              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">System ID</div>
+              <div className="text-[10px] font-bold text-slate-600">Status: {ezoneProfile.status}</div>
             </div>
 
-            {/* Growth Velocity Card */}
+            {/* Card 4: Last Sync Time */}
             <div className="space-y-3 p-5 bg-slate-900/30 rounded-2xl border border-slate-700/30 transition-all hover:border-emerald-500/30 hover:bg-slate-900/50">
-              <div className="text-3xl font-black text-white">
-                {calculateGrowthVelocity(ezoneProfile.attendance, ezoneProfile.cgpa)}
+              <div className="text-2xl font-black text-white">
+                {formatDistanceToNow(new Date(ezoneProfile.lastSyncedAt))} ago
               </div>
-              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Growth Velocity</div>
+              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Last Sync Time</div>
               <div className="text-emerald-500 text-[11px] font-bold uppercase tracking-tighter">
-                {ezoneProfile.cgpa >= 8 ? 'Elite Performance' : 'Consistent Growth'}
+                Database Updated
               </div>
-              <div className="text-[10px] font-bold text-slate-600">AI Derived Metric</div>
             </div>
           </div>
         )}
       </div>
+
+      {/* Other stats - Temporarily showing N/A as requested */}
+      {ezoneProfile && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-6">
+            <div className="text-slate-500 text-xs font-bold uppercase mb-1">Credits Earned</div>
+            <div className="text-2xl font-bold text-white">N/A</div>
+          </div>
+          <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-6">
+            <div className="text-slate-500 text-xs font-bold uppercase mb-1">Cumulative GPA</div>
+            <div className="text-2xl font-bold text-white">N/A</div>
+          </div>
+          <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-6">
+            <div className="text-slate-500 text-xs font-bold uppercase mb-1">Current Semester</div>
+            <div className="text-2xl font-bold text-white">N/A</div>
+          </div>
+        </div>
+      )}
 
       {/* Manual Sync Button if profile exists */}
       {ezoneProfile && (
         <div className="flex justify-center">
           <Link 
             href="/dashboard/student/ezone-sync"
-            className="text-xs font-bold text-slate-500 hover:text-emerald-400 transition-colors flex items-center gap-2 group"
+            className="px-6 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 rounded-xl text-xs font-bold text-slate-400 hover:text-emerald-400 transition-all flex items-center gap-2 group"
           >
             <svg className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            Refresh Academic Data
+            Resync Academic Records
           </Link>
         </div>
       )}

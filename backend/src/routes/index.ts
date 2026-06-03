@@ -19,7 +19,7 @@ import exportRoutes from './exportRoutes';
 
 // Import modular routes (new architecture)
 import { researchRoutes } from '../modules/research';
-import { ezoneRoutes } from '../modules/ezone-sync';
+import { ezoneRoutes } from '../modules/ezone';
 
 const router = express.Router();
 

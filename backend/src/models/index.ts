@@ -3,6 +3,6 @@ import User from './User';
 import Role from './Role';
 import Permission from './Permission';
 import RolePermission from './RolePermission';
-import { EzoneProfile } from './EzoneProfile';
+import { EzoneAcademicProfile } from './EzoneAcademicProfile';
 
-export { Organization, User, Role, Permission, RolePermission, EzoneProfile };
+export { Organization, User, Role, Permission, RolePermission, EzoneAcademicProfile };

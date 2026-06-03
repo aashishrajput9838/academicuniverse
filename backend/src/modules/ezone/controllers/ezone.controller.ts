@@ -7,6 +7,9 @@ const logger = new Logger('EzoneController');
 export class EzoneController {
     constructor(private ezoneService: EzoneService) {}
 
+    /**
+     * POST /api/ezone/send-otp
+     */
     sendOtp = async (req: Request, res: Response): Promise<void> => {
         try {
             let { systemId } = req.body;
@@ -17,13 +20,9 @@ export class EzoneController {
                 return;
             }
 
-            // Standardize systemId
             systemId = String(systemId).trim();
-
-            // Execute OTP trigger
             const sessionId = await this.ezoneService.requestOtp(systemId, userId, organizationId, firebaseUid);
 
-            // Return immediately to the frontend with the sessionId
             res.status(200).json({ 
                 success: true, 
                 sessionId,
@@ -35,6 +34,9 @@ export class EzoneController {
         }
     };
 
+    /**
+     * POST /api/ezone/verify-otp
+     */
     verifyOtp = async (req: Request, res: Response): Promise<void> => {
         try {
             let { systemId, otp, sessionId } = req.body;
@@ -45,10 +47,9 @@ export class EzoneController {
                 return;
             }
 
-            // Standardize systemId
             systemId = String(systemId).trim();
-
             const profile = await this.ezoneService.verifyAndSync(sessionId, systemId, otp, userId, organizationId, firebaseUid);
+            
             res.status(200).json({ success: true, data: profile });
         } catch (error: any) {
             logger.error('Controller error in verifyOtp:', error);
@@ -56,16 +57,18 @@ export class EzoneController {
         }
     };
 
+    /**
+     * GET /api/ezone/profile
+     */
     getProfile = async (req: Request, res: Response): Promise<void> => {
         try {
             const { userId, organizationId } = (req as any).user;
             const profile = await this.ezoneService.getProfile(userId, organizationId);
 
             if (!profile) {
-                res.status(200).json({ 
+                res.status(404).json({ 
                     success: false, 
-                    requiresConnection: true, 
-                    message: 'Ezone account not connected' 
+                    message: 'Connect your Ezone account to load academic data.' 
                 });
                 return;
             }

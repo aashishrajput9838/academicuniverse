@@ -5,6 +5,55 @@ const logger = new Logger('EzoneScraper');
 
 export class EzoneScraper {
     /**
+     * Strict sanitization to prevent raw HTML/CSS/JS from entering the database
+     */
+    private sanitize(text: string): string {
+        if (!text) return '';
+        
+        // 1. Remove common HTML tags
+        let clean = text.replace(/<[^>]*>?/gm, ' ');
+        
+        // 2. Remove technical fragments and CSS-like patterns
+        const blacklist = [
+            /\.apexcharts[a-z-]*/gi,
+            /iframe/gi,
+            /script/gi,
+            /style/gi,
+            /translateY\([^)]*\)/gi,
+            /display\s*:\s*[a-z-]+/gi,
+            /position\s*:\s*[a-z-]+/gi,
+            /color\s*:\s*#[0-9a-f]+/gi,
+            /background\s*:\s*[a-z]+/gi,
+            /padding\s*:\s*[0-9]+px/gi,
+            /!important/gi,
+            /\{[\s\S]*?\}/g, // CSS blocks
+            /\s\s+/g // Multiple spaces
+        ];
+
+        blacklist.forEach(pattern => {
+            clean = clean.replace(pattern, ' ');
+        });
+
+        return clean.trim();
+    }
+
+    /**
+     * Reject values that still contain suspicious technical terms
+     */
+    private isValidValue(value: any): boolean {
+        if (typeof value !== 'string') return true;
+        if (!value || value === 'N/A') return true;
+
+        const suspiciousTerms = [
+            '.apexcharts', 'iframe', 'script', 'style', 'translateY(', 
+            'display:flex', 'position:absolute', 'fill:', 'stroke:',
+            'data-v-', 'ng-content', 'react-root'
+        ];
+
+        return !suspiciousTerms.some(term => value.toLowerCase().includes(term.toLowerCase()));
+    }
+
+    /**
      * Extract real profile and attendance data from the Ezone Home page
      * URL: https://student.sharda.ac.in/admin/home
      */
@@ -28,186 +77,154 @@ export class EzoneScraper {
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Checking for blocking popups or feedback forms...', { category: 'EXTRACTION', actionType: 'handlePopups', progress: 25 }, firebaseUid);
             await this.handlePopups(page, userId, organizationId, sessionId, firebaseUid);
 
-            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Executing extraction script in browser context...', { category: 'EXTRACTION', actionType: 'page.evaluate', progress: 50 }, firebaseUid);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Executing strict structured extraction...', { category: 'EXTRACTION', actionType: 'page.evaluate', progress: 50 }, firebaseUid);
             
-            const data = await page.evaluate(() => {
-                const cleanText = (text: string) => {
+            const rawData = await page.evaluate(() => {
+                const clean = (text: string) => {
                     if (!text) return '';
-                    // Remove scripts, styles, iframes, and excessive whitespace
-                    return text
-                        .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, '')
-                        .replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gim, '')
-                        .replace(/<iframe\b[^>]*>([\s\S]*?)<\/iframe>/gim, '')
-                        .replace(/\s+/g, ' ')
-                        .trim();
+                    return text.trim().replace(/\s+/g, ' ');
                 };
 
-                const getTextByLabel = (label: string) => {
-                    // Search for labels specifically in meaningful elements
-                    const elements = Array.from(document.querySelectorAll('td, th, span, div, p, label, strong, b'));
+                const extractTable = (selector: string, colMap: Record<string, number>) => {
+                    const table = document.querySelector(selector);
+                    if (!table) return [];
                     
-                    // Filter out hidden or decorative elements
-                    const validElements = elements.filter(el => {
-                        const style = window.getComputedStyle(el);
-                        const isVisible = style.display !== 'none' && style.visibility !== 'hidden';
-                        const hasLayout = (el as HTMLElement).offsetParent !== null || el.tagName === 'BODY';
-                        return isVisible && hasLayout;
+                    const rows = Array.from(table.querySelectorAll('tr')).slice(1); // Skip header
+                    return rows.map(row => {
+                        const cells = Array.from(row.querySelectorAll('td'));
+                        const data: any = {};
+                        Object.entries(colMap).forEach(([key, idx]) => {
+                            data[key] = clean(cells[idx]?.textContent || 'N/A');
+                        });
+                        return data;
                     });
+                };
 
-                    const target = validElements.find(el => {
+                const findLabelValue = (label: string) => {
+                    const elements = Array.from(document.querySelectorAll('td, th, span, div, p, strong, b, label'));
+                    const target = elements.find(el => {
                         const text = el.textContent?.trim().toUpperCase() || '';
                         return text === label.toUpperCase() || text === (label.toUpperCase() + ':');
-                    }) || validElements.find(el => el.textContent?.trim().toUpperCase().includes(label.toUpperCase()));
+                    });
                     
-                    if (!target) return '';
+                    if (!target) return 'N/A';
                     
-                    const findValue = (el: Element): string => {
-                        // 1. Check next sibling
-                        if (el.nextElementSibling) {
-                            const val = cleanText(el.nextElementSibling.textContent || '');
-                            if (val && !val.includes('<') && !val.includes('>')) return val;
-                        }
-                        
-                        // 2. Check parent's next sibling (common in table rows)
-                        const parent = el.parentElement;
-                        if (parent && parent.nextElementSibling) {
-                            const val = cleanText(parent.nextElementSibling.textContent || '');
-                            if (val && !val.includes('<') && !val.includes('>')) return val;
-                        }
+                    // Try next sibling
+                    if (target.nextElementSibling) return clean(target.nextElementSibling.textContent || 'N/A');
+                    
+                    // Try parent's next sibling
+                    const parent = target.parentElement;
+                    if (parent && parent.nextElementSibling) return clean(parent.nextElementSibling.textContent || 'N/A');
 
-                        // 3. Check for value within the same element (e.g., "System ID: 2023...")
-                        const fullText = cleanText(el.textContent || '');
-                        if (fullText.toUpperCase().includes(label.toUpperCase())) {
-                            const parts = fullText.split(new RegExp(label, 'i'));
-                            if (parts.length > 1) {
-                                const val = parts[1].replace(/[:\-]/g, '').trim().split('\n')[0];
-                                if (val && !val.includes('<') && !val.includes('>')) return val;
-                            }
-                        }
-
-                        // 4. Check all children of the parent for a value that isn't the label
-                        if (parent) {
-                            const siblings = Array.from(parent.children);
-                            const valueNode = siblings.find(s => s !== el && cleanText(s.textContent || '') !== '');
-                            if (valueNode) {
-                                const val = cleanText(valueNode.textContent || '');
-                                if (val && !val.includes('<') && !val.includes('>')) return val;
-                            }
-                        }
-                        
-                        return '';
-                    };
-
-                    return findValue(target);
+                    return 'N/A';
                 };
 
-                const extractNumber = (text: string) => {
-                    if (!text) return 0;
-                    const cleaned = text.replace(/[^0-9.]/g, '');
-                    const match = cleaned.match(/\d+(\.\d+)?/);
-                    return match ? parseFloat(match[0]) : 0;
+                // PROFILE
+                const profile = {
+                    studentName: '',
+                    systemId: findLabelValue('System ID'),
+                    program: findLabelValue('Program') || findLabelValue('Course'),
+                    school: findLabelValue('School') || findLabelValue('Department'),
+                    semester: findLabelValue('Semester') || findLabelValue('Term'),
+                    status: findLabelValue('Status') || 'Active'
                 };
 
-                // SHARDA SPECIFIC SELECTORS
-                const getAttendanceValue = (label: string) => {
-                    const specificSelectors: Record<string, string> = {
-                        'Attendance %': '#attendance_perc, .attendance-perc, .perc-val',
-                        'Total Classes': '#total_classes, .total-classes',
-                        'Present Classes': '#present_classes, .present-classes',
-                        'Absent Classes': '#absent_classes, .absent-classes'
-                    };
-
-                    const selector = specificSelectors[label];
-                    if (selector) {
-                        const el = document.querySelector(selector);
-                        if (el && el.textContent?.trim()) return cleanText(el.textContent);
-                    }
-
-                    return getTextByLabel(label);
-                };
-
-                // Extraction logic
-                let studentName = '';
-                
-                // 1. Try to find name in common profile containers/headers
-                const nameSelectors = [
-                    '.user-name', '.profile-name', '.student-name', 
-                    '.navbar-user .name', '.profile-details h3',
-                    '.user-profile-name', '#student_name'
-                ];
-
-                for (const selector of nameSelectors) {
-                    const el = document.querySelector(selector);
+                // Find Name
+                const nameSelectors = ['.user-name', '.profile-name', '.student-name', '#student_name', '.navbar-user .name'];
+                for (const s of nameSelectors) {
+                    const el = document.querySelector(s);
                     if (el) {
-                        let text = cleanText(el.textContent || '');
-                        // Clean up "Welcome" greetings
-                        if (text.toUpperCase().includes('WELCOME')) {
-                            text = text.replace(/Welcome[,!\s]*/i, '').trim();
-                            // If it was just "Welcome To Sharda E-Zone", this might leave it as "To Sharda E-Zone"
-                            text = text.replace(/To Sharda E-Zone/i, '').trim();
-                        }
-                        
-                        // If we have a valid-looking name (more than 2 chars, not a greeting)
-                        if (text && text.length > 2 && !text.toUpperCase().includes('SHARDA') && !text.toUpperCase().includes('EZONE')) {
-                            studentName = text;
+                        let text = clean(el.textContent || '');
+                        if (text && text.length > 2 && !text.toUpperCase().includes('WELCOME')) {
+                            profile.studentName = text;
                             break;
                         }
                     }
                 }
 
-                // 2. Fallback: Search all H3/H4 for name patterns
-                if (!studentName) {
-                    const headers = Array.from(document.querySelectorAll('h3, h4, .page-title'));
-                    for (const h of headers) {
-                        let text = cleanText(h.textContent || '');
-                        if (text.toUpperCase().includes('WELCOME')) {
-                            text = text.replace(/Welcome[,!\s]*/i, '').trim();
-                            text = text.replace(/To Sharda E-Zone/i, '').trim();
-                            if (text && text.length > 2 && !text.toUpperCase().includes('SHARDA')) {
-                                studentName = text;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // 3. Last Resort Fallback: Label search
-                if (!studentName) {
-                    studentName = getTextByLabel('Student Name') || getTextByLabel('Name');
-                }
-
-                const systemId = getTextByLabel('System ID');
-                const program = getTextByLabel('Program') || getTextByLabel('Course');
-                const school = getTextByLabel('School') || getTextByLabel('Department');
-                const status = getTextByLabel('Status');
-
-                // Attendance Summary
-                const totalClasses = extractNumber(getAttendanceValue('Total Classes') || getAttendanceValue('Total'));
-                const presentClasses = extractNumber(getAttendanceValue('Present Classes') || getAttendanceValue('Present'));
-                const absentClasses = extractNumber(getAttendanceValue('Absent Classes') || getAttendanceValue('Absent'));
-
-                // Calculate attendancePercentage (Requirement 3)
-                const attendancePercentage = totalClasses > 0 
-                    ? parseFloat(((presentClasses / totalClasses) * 100).toFixed(2)) 
-                    : 0;
-
-                return {
-                    studentName,
-                    systemId,
-                    program,
-                    school,
-                    status,
-                    attendancePercentage,
-                    totalClasses,
-                    presentClasses,
-                    absentClasses
+                // ATTENDANCE
+                const attendance = {
+                    percentage: findLabelValue('Attendance %') || findLabelValue('Attendance'),
+                    total: findLabelValue('Total Classes') || findLabelValue('Total'),
+                    present: findLabelValue('Present Classes') || findLabelValue('Present'),
+                    absent: findLabelValue('Absent Classes') || findLabelValue('Absent')
                 };
+
+                // CA MARKS (Continuous Assessment)
+                // Assuming CA marks are in a table with Course, Assignment, Assessment, Total
+                const caMarks = extractTable('.ca-marks-table, table:has(th:contains("Course"))', {
+                    courseName: 0,
+                    assignmentMarks: 1,
+                    assessmentMarks: 2,
+                    total: 3
+                });
+
+                // TIMETABLE
+                const timetable = extractTable('.timetable-table, table:has(th:contains("Subject"))', {
+                    subject: 0,
+                    faculty: 1,
+                    room: 2,
+                    time: 3
+                });
+
+                // HOLIDAYS
+                const holidays = extractTable('.holidays-table, table:has(th:contains("Holiday"))', {
+                    name: 0,
+                    date: 1
+                });
+
+                return { profile, attendance, caMarks, timetable, holidays };
             });
 
-            // Requirement 6: Log extracted values before validation
-            logger.info('[EZONE] Extracted Data (Raw):', data);
-            
-            return data;
+            // Post-Extraction Sanitization & Validation
+            const sanitizedData = {
+                studentName: this.sanitize(rawData.profile.studentName),
+                systemId: this.sanitize(rawData.profile.systemId),
+                program: this.sanitize(rawData.profile.program),
+                school: this.sanitize(rawData.profile.school),
+                status: this.sanitize(rawData.profile.status),
+                
+                attendancePercentage: parseFloat(rawData.attendance.percentage.replace(/[^0-9.]/g, '')) || 0,
+                totalClasses: parseInt(rawData.attendance.total.replace(/[^0-9]/g, '')) || 0,
+                presentClasses: parseInt(rawData.attendance.present.replace(/[^0-9]/g, '')) || 0,
+                absentClasses: parseInt(rawData.attendance.absent.replace(/[^0-9]/g, '')) || 0,
+
+                caMarks: (rawData.caMarks || []).map((m: any) => ({
+                    courseName: this.sanitize(m.courseName),
+                    assignmentMarks: this.sanitize(m.assignmentMarks),
+                    assessmentMarks: this.sanitize(m.assessmentMarks),
+                    total: this.sanitize(m.total)
+                })),
+
+                timetable: (rawData.timetable || []).map((t: any) => ({
+                    subject: this.sanitize(t.subject),
+                    faculty: this.sanitize(t.faculty),
+                    room: this.sanitize(t.room),
+                    time: this.sanitize(t.time)
+                })),
+
+                holidays: (rawData.holidays || []).map((h: any) => ({
+                    name: this.sanitize(h.name),
+                    date: this.sanitize(h.date)
+                }))
+            };
+
+            // Final Validation Layer
+            const allValues = [
+                sanitizedData.studentName, sanitizedData.systemId, 
+                sanitizedData.program, sanitizedData.school,
+                ...sanitizedData.caMarks.flatMap((m: any) => Object.values(m)),
+                ...sanitizedData.timetable.flatMap((t: any) => Object.values(t)),
+                ...sanitizedData.holidays.flatMap((h: any) => Object.values(h))
+            ];
+
+            if (allValues.some(v => !this.isValidValue(v))) {
+                throw new Error('Data validation failed: Extracted data contains technical fragments or CSS/JS code. Sync aborted to prevent data corruption.');
+            }
+
+            logger.info('[EZONE] Strict Extracted Data:', sanitizedData);
+            return sanitizedData;
+
         } catch (error: any) {
             logger.error('Failed to extract Ezone data:', error);
             throw new Error(`Extraction Error: ${error.message}`);

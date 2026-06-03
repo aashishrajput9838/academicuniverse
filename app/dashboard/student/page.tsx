@@ -16,6 +16,22 @@ interface EzoneAcademicProfile {
   totalClasses: number;
   presentClasses: number;
   absentClasses: number;
+  caMarks: {
+    courseName: string;
+    assignmentMarks: string;
+    assessmentMarks: string;
+    total: string;
+  }[];
+  timetable: {
+    subject: string;
+    faculty: string;
+    room: string;
+    time: string;
+  }[];
+  holidays: {
+    name: string;
+    date: string;
+  }[];
   lastSyncedAt: string;
 }
 
@@ -222,6 +238,90 @@ export default function StudentDashboardOverview() {
           <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-6">
             <div className="text-slate-500 text-xs font-bold uppercase mb-1">Current Semester</div>
             <div className="text-2xl font-bold text-white">N/A</div>
+          </div>
+        </div>
+      )}
+
+      {/* Detailed Academic Data Sections */}
+      {ezoneProfile && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* CA Marks Section */}
+          <div className="bg-slate-800/20 border border-slate-700/30 rounded-2xl p-6 overflow-hidden">
+            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+              <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Continuous Assessment (CA)
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-slate-500 border-b border-slate-700/50">
+                    <th className="pb-3 font-semibold">Course</th>
+                    <th className="pb-3 font-semibold text-center">Assign</th>
+                    <th className="pb-3 font-semibold text-center">Assess</th>
+                    <th className="pb-3 font-semibold text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/30">
+                  {ezoneProfile.caMarks?.length > 0 ? ezoneProfile.caMarks.map((mark, i) => (
+                    <tr key={i} className="text-slate-300 group hover:bg-slate-700/20 transition-colors">
+                      <td className="py-3 font-medium text-white max-w-[150px] truncate">{mark.courseName}</td>
+                      <td className="py-3 text-center">{mark.assignmentMarks}</td>
+                      <td className="py-3 text-center">{mark.assessmentMarks}</td>
+                      <td className="py-3 text-right font-bold text-emerald-400">{mark.total}</td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={4} className="py-8 text-center text-slate-500 italic">No CA marks records found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Timetable Section */}
+          <div className="bg-slate-800/20 border border-slate-700/30 rounded-2xl p-6">
+            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Daily Schedule
+            </h3>
+            <div className="space-y-4">
+              {ezoneProfile.timetable?.length > 0 ? ezoneProfile.timetable.map((slot, i) => (
+                <div key={i} className="flex items-center justify-between p-4 bg-slate-900/40 rounded-xl border border-slate-700/30 group hover:border-blue-500/30 transition-all">
+                  <div className="space-y-1">
+                    <div className="text-white font-bold text-sm">{slot.subject}</div>
+                    <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">{slot.faculty}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-blue-400 font-black text-sm">{slot.time}</div>
+                    <div className="text-[10px] text-slate-500 font-bold">Room: {slot.room}</div>
+                  </div>
+                </div>
+              )) : (
+                <div className="py-8 text-center text-slate-500 italic text-sm">No active timetable for today</div>
+              )}
+            </div>
+          </div>
+
+          {/* Holidays Section */}
+          <div className="bg-slate-800/20 border border-slate-700/30 rounded-2xl p-6 lg:col-span-2">
+            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+              <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              Upcoming Holidays
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {ezoneProfile.holidays?.length > 0 ? ezoneProfile.holidays.map((holiday, i) => (
+                <div key={i} className="flex items-center gap-4 p-4 bg-slate-900/40 rounded-xl border border-slate-700/30 hover:border-amber-500/30 transition-all">
+                  <div className="bg-amber-500/10 p-3 rounded-lg text-amber-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                  </div>
+                  <div>
+                    <div className="text-white font-bold text-sm">{holiday.name}</div>
+                    <div className="text-xs text-slate-500">{holiday.date}</div>
+                  </div>
+                </div>
+              )) : (
+                <div className="col-span-full py-8 text-center text-slate-500 italic text-sm">No upcoming holidays scheduled</div>
+              )}
+            </div>
           </div>
         </div>
       )}

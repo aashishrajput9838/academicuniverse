@@ -14,6 +14,25 @@ export interface IEzoneAcademicProfile extends Document {
     totalClasses: number;
     presentClasses: number;
     absentClasses: number;
+
+    caMarks: {
+        courseName: string;
+        assignmentMarks: string;
+        assessmentMarks: string;
+        total: string;
+    }[];
+
+    timetable: {
+        subject: string;
+        faculty: string;
+        room: string;
+        time: string;
+    }[];
+
+    holidays: {
+        name: string;
+        date: string;
+    }[];
     
     lastSyncedAt: Date;
 }
@@ -66,6 +85,28 @@ const ezoneAcademicProfileSchema = new Schema<IEzoneAcademicProfile>(
             type: Number,
             default: 0,
         },
+        caMarks: [
+            {
+                courseName: String,
+                assignmentMarks: String,
+                assessmentMarks: String,
+                total: String,
+            },
+        ],
+        timetable: [
+            {
+                subject: String,
+                faculty: String,
+                room: String,
+                time: String,
+            },
+        ],
+        holidays: [
+            {
+                name: String,
+                date: String,
+            },
+        ],
         lastSyncedAt: {
             type: Date,
             default: Date.now,

@@ -78,34 +78,46 @@ export class EzoneService {
      * Validate extracted data before database save
      */
     private validateExtractedData(data: any): void {
-        const { studentName, presentClasses, totalClasses } = data;
+        const { studentName, systemId, caMarks, timetable, holidays } = data;
 
-        // 1. Student Name Validation
+        // 1. Core Profile Validation
         if (!studentName || studentName === 'N/A') {
             throw new Error('Student name not found in university portal.');
         }
 
-        if (!/[a-zA-Z]/.test(studentName)) {
-            throw new Error(`Invalid student name extracted: "${studentName}". Name must contain letters.`);
+        if (!systemId || systemId === 'N/A') {
+            throw new Error('System ID not found in university portal.');
         }
 
-        const blacklistedNames = ["Holiday's", "iframe", "script", "GoogleTagManager"];
-        if (blacklistedNames.some(name => studentName.includes(name))) {
-            throw new Error(`Data extraction blocked by security policy: "${studentName}" contains blacklisted terms.`);
-        }
+        // 2. Strict Technical Leak Prevention
+        const suspiciousTerms = [
+            '.apexcharts', 'iframe', 'script', 'style', 'translateY(', 
+            'display:flex', 'position:absolute', 'fill:', 'stroke:',
+            'data-v-', 'ng-content', 'react-root', '<script', '<style'
+        ];
 
-        // 2. Attendance Validation
-        if (totalClasses > 0 && presentClasses === 0) {
-            // We only throw if total classes are high but present is 0, which is unlikely for a valid sync
-            if (totalClasses > 10) {
-                throw new Error('Extraction failure: Attendance summary returned 0 present classes while total classes are high. Data may be blocked by a popup.');
+        const checkValue = (val: any) => {
+            if (typeof val === 'string') {
+                if (suspiciousTerms.some(term => val.toLowerCase().includes(term.toLowerCase()))) {
+                    throw new Error(`Security Alert: Extracted data contains forbidden technical fragments: "${val.substring(0, 50)}..."`);
+                }
+                if (val.includes('<') || val.includes('>')) {
+                    throw new Error(`Security Alert: HTML tags detected in extracted data: "${val.substring(0, 50)}..."`);
+                }
+            } else if (Array.isArray(val)) {
+                val.forEach(item => checkValue(item));
+            } else if (typeof val === 'object' && val !== null) {
+                Object.values(val).forEach(v => checkValue(v));
             }
-        }
+        };
 
-        // 3. HTML Injection Prevention
-        const rawValues = Object.values(data);
-        if (rawValues.some(val => typeof val === 'string' && (val.includes('<') || val.includes('>')))) {
-            throw new Error('Extraction blocked: Detected HTML tags in profile data. Extraction logic may be reading raw source code.');
+        // Validate all extracted fields recursively
+        checkValue(data);
+
+        // 3. Blacklist Terms Validation (e.g. from previous logic)
+        const blacklistedTerms = ["Holiday's", "iframe", "script", "GoogleTagManager"];
+        if (blacklistedTerms.some(term => studentName.includes(term))) {
+            throw new Error(`Data extraction blocked: "${studentName}" contains blacklisted terms.`);
         }
     }
 

@@ -1,7 +1,5 @@
 import { Page } from 'playwright';
 import { Logger } from '../../../shared/utils';
-import * as fs from 'fs';
-import * as path from 'path';
 
 const logger = new Logger('EzoneScraper');
 
@@ -25,56 +23,70 @@ export class EzoneScraper {
             // Wait for the page to stabilize
             await page.waitForTimeout(5000);
 
-            // 1. RESILIENCE: Handle mandatory popups/modals (like Exit Feedback)
+            // Handle mandatory popups/modals
             await this.handlePopups(page);
 
-            // 2. WAIT FOR DATA: Look for specific attendance indicators
-            logger.info('Waiting for dashboard data to load...');
-            await page.waitForSelector('.attendance-summary, .profile-info, text=Attendance', { 
-                state: 'attached', 
-                timeout: 15000 
-            }).catch(() => logger.warn('Generic attendance indicators not found, proceeding with raw extraction.'));
-
             const data = await page.evaluate(() => {
+                const cleanText = (text: string) => {
+                    if (!text) return '';
+                    // Remove scripts, styles, iframes, and excessive whitespace
+                    return text
+                        .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, '')
+                        .replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gim, '')
+                        .replace(/<iframe\b[^>]*>([\s\S]*?)<\/iframe>/gim, '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                };
+
                 const getTextByLabel = (label: string) => {
+                    // Search for labels specifically in meaningful elements
                     const elements = Array.from(document.querySelectorAll('td, th, span, div, p, label, strong, b'));
-                    // Look for exact match or strong inclusion, avoiding noise
-                    const target = elements.find(el => {
+                    
+                    // Filter out hidden or decorative elements
+                    const validElements = elements.filter(el => {
+                        const style = window.getComputedStyle(el);
+                        return style.display !== 'none' && style.visibility !== 'hidden' && el.offsetParent !== null;
+                    });
+
+                    const target = validElements.find(el => {
                         const text = el.textContent?.trim().toUpperCase() || '';
                         return text === label.toUpperCase() || text === (label.toUpperCase() + ':');
-                    }) || elements.find(el => el.textContent?.trim().toUpperCase().includes(label.toUpperCase()));
+                    }) || validElements.find(el => el.textContent?.trim().toUpperCase().includes(label.toUpperCase()));
                     
                     if (!target) return '';
                     
                     const findValue = (el: Element): string => {
                         // 1. Check next sibling
                         if (el.nextElementSibling) {
-                            const val = el.nextElementSibling.textContent?.trim();
-                            if (val && /\d/.test(val)) return val;
+                            const val = cleanText(el.nextElementSibling.textContent || '');
+                            if (val && !val.includes('<') && !val.includes('>')) return val;
                         }
                         
-                        // 2. Check parent's next sibling (common in <tr>)
+                        // 2. Check parent's next sibling (common in table rows)
                         const parent = el.parentElement;
                         if (parent && parent.nextElementSibling) {
-                            const val = parent.nextElementSibling.textContent?.trim();
-                            if (val && /\d/.test(val)) return val;
+                            const val = cleanText(parent.nextElementSibling.textContent || '');
+                            if (val && !val.includes('<') && !val.includes('>')) return val;
                         }
 
                         // 3. Check for value within the same element (e.g., "System ID: 2023...")
-                        const fullText = el.textContent || '';
+                        const fullText = cleanText(el.textContent || '');
                         if (fullText.toUpperCase().includes(label.toUpperCase())) {
                             const parts = fullText.split(new RegExp(label, 'i'));
                             if (parts.length > 1) {
                                 const val = parts[1].replace(/[:\-]/g, '').trim().split('\n')[0];
-                                if (val && /\d/.test(val)) return val;
+                                if (val && !val.includes('<') && !val.includes('>')) return val;
                             }
                         }
 
-                        // 4. NEW: Check all children of the parent for a number
+                        // 4. Check all children of the parent for a value that isn't the label
                         if (parent) {
                             const siblings = Array.from(parent.children);
-                            const valueNode = siblings.find(s => s !== el && /\d/.test(s.textContent || ''));
-                            if (valueNode) return valueNode.textContent?.trim() || '';
+                            const valueNode = siblings.find(s => s !== el && cleanText(s.textContent || '') !== '');
+                            if (valueNode) {
+                                const val = cleanText(valueNode.textContent || '');
+                                if (val && !val.includes('<') && !val.includes('>')) return val;
+                            }
                         }
                         
                         return '';
@@ -90,9 +102,8 @@ export class EzoneScraper {
                     return match ? parseFloat(match[0]) : 0;
                 };
 
-                // SHARDA SPECIFIC: Often attendance is in a table with specific IDs
+                // SHARDA SPECIFIC SELECTORS
                 const getAttendanceValue = (label: string) => {
-                    // Try to find by specific Sharda IDs first if they exist
                     const specificSelectors: Record<string, string> = {
                         'Attendance %': '#attendance_perc, .attendance-perc, .perc-val',
                         'Total Classes': '#total_classes, .total-classes',
@@ -103,45 +114,46 @@ export class EzoneScraper {
                     const selector = specificSelectors[label];
                     if (selector) {
                         const el = document.querySelector(selector);
-                        if (el && el.textContent?.trim()) return el.textContent.trim();
+                        if (el && el.textContent?.trim()) return cleanText(el.textContent);
                     }
 
                     return getTextByLabel(label);
                 };
 
                 // Extraction logic
-                // Avoid "Welcome..." text for student name
                 let studentName = '';
-                const nameElements = Array.from(document.querySelectorAll('.user-name, .profile-name, .student-name, h3, h4'));
-                for (const el of nameElements) {
-                    const text = el.textContent?.trim() || '';
-                    if (text && !text.toUpperCase().includes('WELCOME') && !text.toUpperCase().includes('SHARDA')) {
-                        studentName = text;
-                        break;
+                const profileContainers = Array.from(document.querySelectorAll('.user-profile, .profile-details, .student-info, .navbar-user'));
+                
+                // Prioritize finding name in specific containers
+                for (const container of profileContainers) {
+                    const nameEl = container.querySelector('.user-name, .name, h3, h4');
+                    if (nameEl) {
+                        const text = cleanText(nameEl.textContent || '');
+                        if (text && !text.toUpperCase().includes('WELCOME') && !text.toUpperCase().includes('HOLIDAY') && !text.toUpperCase().includes('SHARDA')) {
+                            studentName = text;
+                            break;
+                        }
                     }
                 }
-                if (!studentName) studentName = getTextByLabel('Student Name') || 'N/A';
 
-                const systemId = getTextByLabel('System ID') || 'N/A';
-                
-                // If program is "Exit Feedback", it means we are still on a popup/form
-                let program = getTextByLabel('Program') || getTextByLabel('Course') || 'N/A';
-                if (program.toUpperCase().includes('FEEDBACK')) program = 'N/A';
+                if (!studentName) {
+                    studentName = getTextByLabel('Student Name');
+                }
 
-                const school = getTextByLabel('School') || getTextByLabel('Department') || 'N/A';
-                const status = getTextByLabel('Status') || 'Active';
+                const systemId = getTextByLabel('System ID');
+                const program = getTextByLabel('Program') || getTextByLabel('Course');
+                const school = getTextByLabel('School') || getTextByLabel('Department');
+                const status = getTextByLabel('Status');
 
                 // Attendance Summary
-                const attendancePercentage = extractNumber(getAttendanceValue('Attendance %') || getAttendanceValue('Percentage') || '0');
-                const totalClasses = extractNumber(getAttendanceValue('Total Classes') || getAttendanceValue('Total') || '0');
-                const presentClasses = extractNumber(getAttendanceValue('Present Classes') || getAttendanceValue('Present') || '0');
-                const absentClasses = extractNumber(getAttendanceValue('Absent Classes') || getAttendanceValue('Absent') || '0');
+                const totalClasses = extractNumber(getAttendanceValue('Total Classes') || getAttendanceValue('Total'));
+                const presentClasses = extractNumber(getAttendanceValue('Present Classes') || getAttendanceValue('Present'));
+                const absentClasses = extractNumber(getAttendanceValue('Absent Classes') || getAttendanceValue('Absent'));
 
-                // EXTRA FALLBACK for Sharda dashboard cards: 
-                // Sometimes Present/Absent are just in spans/divs inside a card with a class like 'attendance-box'
-                const finalPresent = presentClasses || extractNumber(getTextByLabel('Present'));
-                const finalAbsent = absentClasses || extractNumber(getTextByLabel('Absent'));
-                const finalTotal = totalClasses || extractNumber(getTextByLabel('Total'));
+                // Calculate attendancePercentage (Requirement 3)
+                const attendancePercentage = totalClasses > 0 
+                    ? parseFloat(((presentClasses / totalClasses) * 100).toFixed(2)) 
+                    : 0;
 
                 return {
                     studentName,
@@ -150,28 +162,18 @@ export class EzoneScraper {
                     school,
                     status,
                     attendancePercentage,
-                    totalClasses: finalTotal,
-                    presentClasses: finalPresent,
-                    absentClasses: finalAbsent
+                    totalClasses,
+                    presentClasses,
+                    absentClasses
                 };
             });
 
-            // Requirement: Log extracted values before saving
-            logger.info('[EZONE] Extracted Values:', data);
+            // Requirement 6: Log extracted values before validation
+            logger.info('[EZONE] Extracted Data (Raw):', data);
             
-            // Final check: if we have 0 attendance but have a system ID, something is wrong
-            if (data.systemId !== 'N/A' && data.attendancePercentage === 0) {
-                logger.warn('System ID found but Attendance is 0. Dashboard might be blocked by a popup.');
-                // Try one more time to handle popups and re-extract
-                await this.handlePopups(page);
-                // (Optionally repeat extraction here, but let's try to be proactive in handlePopups first)
-            }
-
             return data;
         } catch (error: any) {
             logger.error('Failed to extract Ezone data:', error);
-            const screenshotPath = `extraction-failed-${Date.now()}.png`;
-            await page.screenshot({ path: screenshotPath, fullPage: true });
             throw new Error(`Extraction Error: ${error.message}`);
         }
     }
@@ -181,13 +183,9 @@ export class EzoneScraper {
      */
     private async handlePopups(page: Page): Promise<void> {
         try {
-            logger.info('Checking for blocking popups or modals...');
-            
-            // 1. Check for common "Close" or "Skip" buttons
             const closeButtons = [
                 'button:has-text("Close")',
                 'button:has-text("Skip")',
-                'button:has-text("Remind Me Later")',
                 '.modal-header .close',
                 '.close-modal',
                 '#close-btn'
@@ -196,20 +194,10 @@ export class EzoneScraper {
             for (const selector of closeButtons) {
                 const btn = await page.$(selector);
                 if (btn && await btn.isVisible()) {
-                    logger.info(`Closing popup using selector: ${selector}`);
                     await btn.click();
                     await page.waitForTimeout(1000);
                 }
             }
-
-            // 2. Specific Sharda Exit Feedback/Survey check
-            const feedbackText = await page.content();
-            if (feedbackText.toUpperCase().includes('EXIT FEEDBACK') || feedbackText.toUpperCase().includes('SURVEY')) {
-                logger.warn('Detected mandatory Feedback/Survey form. Attempting to navigate to home directly.');
-                await page.goto('https://student.sharda.ac.in/admin/home', { waitUntil: 'networkidle' });
-                await page.waitForTimeout(2000);
-            }
-
         } catch (err) {
             logger.error('Error while handling popups:', err);
         }

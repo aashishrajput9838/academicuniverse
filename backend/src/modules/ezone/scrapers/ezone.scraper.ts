@@ -12,52 +12,89 @@ export class EzoneScraper {
         try {
             logger.info('Starting extraction from Ezone Home...');
             
-            // Navigate to the home page
-            await page.goto('https://student.sharda.ac.in/admin/home', { 
-                waitUntil: 'networkidle',
-                timeout: 60000 
-            });
+            // Navigate to the home page if not already there
+            const currentUrl = page.url();
+            if (!currentUrl.includes('/admin/home')) {
+                await page.goto('https://student.sharda.ac.in/admin/home', { 
+                    waitUntil: 'networkidle',
+                    timeout: 60000 
+                });
+            }
 
-            // Wait for profile details to be visible
-            // The selectors below are based on the user's requirement and expected university portal structure
-            await page.waitForSelector('text=System ID', { timeout: 30000 });
+            // Wait for the page to stabilize
+            await page.waitForTimeout(3000);
+
+            // Resilient selector: Wait for 'System ID' to be ATTACHED, not necessarily visible
+            // Some portals use hidden containers or lazy-loaded tabs
+            logger.info('Waiting for System ID element to be attached...');
+            await page.waitForSelector('text=System ID', { 
+                state: 'attached', 
+                timeout: 30000 
+            }).catch(async (err) => {
+                logger.warn('System ID text not found by direct selector, checking page title and content...');
+                const title = await page.title();
+                const content = await page.content();
+                logger.info(`Page Title: ${title}`);
+                if (content.includes('Login')) {
+                    throw new Error('Still on login page - authentication may have failed or timed out.');
+                }
+            });
 
             const data = await page.evaluate(() => {
                 const getTextByLabel = (label: string) => {
-                    const elements = Array.from(document.querySelectorAll('td, th, span, div, p, label'));
-                    const target = elements.find(el => el.textContent?.trim().includes(label));
+                    // Search all elements for the label text, case-insensitive
+                    const elements = Array.from(document.querySelectorAll('td, th, span, div, p, label, strong, b'));
+                    const target = elements.find(el => el.textContent?.trim().toUpperCase().includes(label.toUpperCase()));
+                    
                     if (!target) return '';
                     
-                    // Usually the value is in the next sibling or a child
-                    const parent = target.parentElement;
-                    if (parent) {
-                        const nextSibling = target.nextElementSibling;
-                        if (nextSibling) return nextSibling.textContent?.trim() || '';
+                    // Try to find the value in common nearby locations
+                    const findValue = (el: Element): string => {
+                        // 1. Next sibling
+                        if (el.nextElementSibling) return el.nextElementSibling.textContent?.trim() || '';
                         
-                        // Try finding value in the same parent row/cell
-                        const text = parent.textContent || '';
-                        const parts = text.split(label);
+                        // 2. Parent's next sibling (common in table rows)
+                        const parent = el.parentElement;
+                        if (parent && parent.nextElementSibling) return parent.nextElementSibling.textContent?.trim() || '';
+                        
+                        // 3. Same container text after the label
+                        const fullText = el.textContent || '';
+                        const parts = fullText.split(label);
                         if (parts.length > 1) {
-                            return parts[1].replace(/[:\-]/, '').trim().split('\n')[0];
+                            return parts[1].replace(/[:\-]/g, '').trim().split('\n')[0];
                         }
-                    }
-                    return '';
+
+                        // 4. If target has a parent, try the parent's full text
+                        if (parent) {
+                            const parentText = parent.textContent || '';
+                            const pParts = parentText.split(label);
+                            if (pParts.length > 1) {
+                                return pParts[1].replace(/[:\-]/g, '').trim().split('\n')[0];
+                            }
+                        }
+                        
+                        return '';
+                    };
+
+                    return findValue(target);
                 };
 
                 const extractNumber = (text: string) => {
-                    const match = text.match(/\d+(\.\d+)?/);
+                    if (!text) return 0;
+                    // Handle percentages like "82.35%" or "82.35"
+                    const cleaned = text.replace(/[^0-9.]/g, '');
+                    const match = cleaned.match(/\d+(\.\d+)?/);
                     return match ? parseFloat(match[0]) : 0;
                 };
 
-                // Extracting Profile Data
-                const studentName = getTextByLabel('Student Name') || document.querySelector('.user-name')?.textContent?.trim() || 'N/A';
+                // Extraction logic
+                const studentName = document.querySelector('.user-name, .profile-name, h3, h4')?.textContent?.trim() || getTextByLabel('Student Name') || 'N/A';
                 const systemId = getTextByLabel('System ID') || 'N/A';
-                const program = getTextByLabel('Program') || 'N/A';
-                const school = getTextByLabel('School') || 'N/A';
+                const program = getTextByLabel('Program') || getTextByLabel('Course') || 'N/A';
+                const school = getTextByLabel('School') || getTextByLabel('Department') || 'N/A';
                 const status = getTextByLabel('Status') || 'Active';
 
-                // Extracting Attendance Data (Summary Section)
-                // We look for labels like "Total Classes", "Present", "Absent", "Attendance %"
+                // Attendance Summary
                 const attendancePercentage = extractNumber(getTextByLabel('Attendance %') || getTextByLabel('Percentage') || '0');
                 const totalClasses = extractNumber(getTextByLabel('Total Classes') || getTextByLabel('Total') || '0');
                 const presentClasses = extractNumber(getTextByLabel('Present Classes') || getTextByLabel('Present') || '0');
@@ -79,15 +116,24 @@ export class EzoneScraper {
             // Requirement: Log extracted values before saving
             logger.info('[EZONE] Extracted Values:', data);
             
-            if (data.systemId === 'N/A') {
-                throw new Error('Failed to extract core profile data (System ID missing)');
+            // Validation: If we got nothing at all, it's an error
+            if (data.systemId === 'N/A' && data.attendancePercentage === 0) {
+                const title = await page.title();
+                const url = page.url();
+                throw new Error(`Failed to extract data. Page Title: ${title}, URL: ${url}`);
             }
 
             return data;
         } catch (error: any) {
             logger.error('Failed to extract Ezone data:', error);
-            // Take a screenshot for debugging if extraction fails
-            await page.screenshot({ path: `extraction-failed-${Date.now()}.png`, fullPage: true });
+            // Capture screenshot for debugging
+            try {
+                const screenshotPath = `extraction-failed-${Date.now()}.png`;
+                await page.screenshot({ path: screenshotPath, fullPage: true });
+                logger.info(`Debug screenshot saved to ${screenshotPath}`);
+            } catch (screenshotError) {
+                logger.error('Failed to capture debug screenshot');
+            }
             throw new Error(`Extraction Error: ${error.message}`);
         }
     }

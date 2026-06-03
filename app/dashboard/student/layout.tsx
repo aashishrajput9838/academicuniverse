@@ -51,7 +51,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Define sidebar navigation items
   const sidebarItems = [
-    { label: 'Overview', href: '/dashboard/student', icon: '🏠' },
     { label: 'Events from Gmail', href: '/dashboard/student/events', icon: '📧', badge: eventsCount },
     { label: 'Growth Hub', href: '/dashboard/student/growth', icon: '📈' },
     { label: 'Career Profile', href: '/dashboard/student/career', icon: '💼' },

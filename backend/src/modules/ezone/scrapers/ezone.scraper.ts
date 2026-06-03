@@ -26,7 +26,7 @@ export class EzoneScraper {
             await page.waitForTimeout(5000);
 
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Checking for blocking popups or feedback forms...', { category: 'EXTRACTION', actionType: 'handlePopups', progress: 25 }, firebaseUid);
-            await this.handlePopups(page);
+            await this.handlePopups(page, userId, organizationId, sessionId, firebaseUid);
 
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Executing extraction script in browser context...', { category: 'EXTRACTION', actionType: 'page.evaluate', progress: 50 }, firebaseUid);
             
@@ -217,7 +217,8 @@ export class EzoneScraper {
     /**
      * Handle mandatory popups, feedback forms, or modals that block the dashboard
      */
-    private async handlePopups(page: Page): Promise<void> {
+    private async handlePopups(page: Page, userId?: string, organizationId?: string, sessionId?: string, firebaseUid?: string): Promise<void> {
+        const ezoneLogger = (await import('../services/ezone-logger.service')).EzoneLogger.getInstance();
         try {
             const closeButtons = [
                 'button:has-text("Close")',
@@ -230,6 +231,9 @@ export class EzoneScraper {
             for (const selector of closeButtons) {
                 const btn = await page.$(selector);
                 if (btn && await btn.isVisible()) {
+                    if (userId && organizationId && sessionId) {
+                        await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'warning', `Blocking popup detected (${selector}). Attempting to bypass...`, { category: 'EXTRACTION', actionType: 'popup.close' }, firebaseUid);
+                    }
                     await btn.click();
                     await page.waitForTimeout(1000);
                 }

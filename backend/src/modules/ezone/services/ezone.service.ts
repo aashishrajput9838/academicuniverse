@@ -68,7 +68,7 @@ export class EzoneService {
 
             return savedProfile;
         } catch (error: any) {
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', `Sync failed: ${error.message}`, null, firebaseUid);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'error', `Sync failed: ${error.message}`, { category: 'GENERAL', status: 'failed', progress: 0 }, firebaseUid);
             logger.error('Sync process failed:', error);
             throw error;
         }

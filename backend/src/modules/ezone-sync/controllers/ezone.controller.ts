@@ -9,7 +9,7 @@ export class EzoneController {
 
     sendOtp = async (req: Request, res: Response): Promise<void> => {
         try {
-            const { systemId } = req.body;
+            let { systemId } = req.body;
             const { userId, organizationId, firebaseUid } = (req as any).user;
 
             if (!systemId) {
@@ -17,8 +17,10 @@ export class EzoneController {
                 return;
             }
 
+            // Standardize systemId
+            systemId = String(systemId).trim();
+
             // Start the OTP request in the background to avoid timeouts on platforms like Render
-            // We don't await this call
             this.ezoneService.requestOtp(systemId, userId, organizationId, firebaseUid).catch(error => {
                 logger.error('Background error in sendOtp:', error);
             });
@@ -36,13 +38,16 @@ export class EzoneController {
 
     verifyOtp = async (req: Request, res: Response): Promise<void> => {
         try {
-            const { systemId, otp } = req.body;
+            let { systemId, otp } = req.body;
             const { userId, organizationId, firebaseUid } = (req as any).user;
 
             if (!systemId || !otp) {
                 res.status(400).json({ success: false, message: 'System ID and OTP are required' });
                 return;
             }
+
+            // Standardize systemId
+            systemId = String(systemId).trim();
 
             const profile = await this.ezoneService.verifyAndSync(systemId, otp, userId, organizationId, firebaseUid);
             res.status(200).json({ success: true, data: profile });

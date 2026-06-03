@@ -11,7 +11,9 @@ export class EzoneSessionProvider {
     private static instance: EzoneSessionProvider;
     private sessions: Map<string, { browser: Browser; context: BrowserContext; page: Page; createdAt: Date }> = new Map();
 
-    private constructor() {}
+    private constructor() {
+        logger.info('EzoneSessionProvider initialized - Session Map cleared.');
+    }
 
     public static getInstance(): EzoneSessionProvider {
         if (!EzoneSessionProvider.instance) {
@@ -51,6 +53,10 @@ export class EzoneSessionProvider {
 
             const page = await context.newPage();
             
+            // PRE-STORE SESSION: Store as soon as browser is up to avoid race conditions with verifyOtp
+            logger.info(`Pre-storing session for ${systemId}`);
+            this.sessions.set(systemId, { browser, context, page, createdAt: new Date() });
+
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Connecting to Sharda University Ezone portal...', null, firebaseUid);
             
             // Navigate to verified portal URL
@@ -142,9 +148,6 @@ export class EzoneSessionProvider {
                 throw new Error('OTP input field did not appear. The university portal may have rejected the ID or is experiencing delays.');
             }
 
-            // Store the session for Step 2
-            this.sessions.set(systemId, { browser, context, page, createdAt: new Date() });
-            
             // Auto-cleanup after 10 minutes if not verified
             setTimeout(() => this.cleanupSession(systemId), 10 * 60 * 1000);
 
@@ -152,6 +155,7 @@ export class EzoneSessionProvider {
             await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', `Sync failed: ${error.message}`, null, firebaseUid);
             logger.error('Ezone Automation Error:', error);
             if (browser) await browser.close();
+            this.sessions.delete(systemId); // Ensure cleanup on error
             throw new Error(`Automation Error: ${error.message}`);
         }
     }
@@ -160,6 +164,7 @@ export class EzoneSessionProvider {
      * Step 2: Verify OTP and navigate to dashboard
      */
     async verifyOtp(systemId: string, otp: string, userId: string, organizationId: string, firebaseUid?: string): Promise<void> {
+        logger.info(`Looking up session for ${systemId}. Available keys: ${Array.from(this.sessions.keys()).join(', ')}`);
         const session = this.sessions.get(systemId);
         if (!session) {
             throw new Error('Session expired or not found. Please try again.');

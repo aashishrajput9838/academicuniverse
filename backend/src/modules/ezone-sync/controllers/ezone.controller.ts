@@ -17,8 +17,17 @@ export class EzoneController {
                 return;
             }
 
-            await this.ezoneService.requestOtp(systemId, userId, organizationId, firebaseUid);
-            res.status(200).json({ success: true, message: 'OTP sent to your official email' });
+            // Start the OTP request in the background to avoid timeouts on platforms like Render
+            // We don't await this call
+            this.ezoneService.requestOtp(systemId, userId, organizationId, firebaseUid).catch(error => {
+                logger.error('Background error in sendOtp:', error);
+            });
+
+            // Return immediately to the frontend
+            res.status(202).json({ 
+                success: true, 
+                message: 'OTP request initiated. Please follow the progress in the logs below.' 
+            });
         } catch (error: any) {
             logger.error('Controller error in sendOtp:', error);
             res.status(500).json({ success: false, message: error.message });

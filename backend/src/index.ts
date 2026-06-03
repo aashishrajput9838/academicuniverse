@@ -44,20 +44,48 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'https://academicuniverse.vercel.app',
-  ...(process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : [])
+  'https://academicuniverse.onrender.com',
+  'https://academic-universe.onrender.com',
 ];
+
+if (process.env.CORS_ORIGIN) {
+  const origins = process.env.CORS_ORIGIN.split(',').map(o => o.trim());
+  allowedOrigins.push(...origins);
+}
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    // Allow requests with no origin (like mobile apps, curl requests, or some browser extensions)
+    if (!origin || origin === 'null' || origin === '') {
+      return callback(null, true);
+    }
+    
+    // Check if the origin is in the allowed list or is a subdomain of an allowed domain
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (!allowed) return false;
+      if (allowed === origin) return true;
+      // Handle wildcard subdomains for vercel.app
+      if (allowed.includes('vercel.app') && origin.endsWith('.vercel.app')) return true;
+      // Handle same domain but different protocol/port if needed (usually covered by exact match)
+      return false;
+    });
+
+    if (isAllowed) {
       callback(null, true);
     } else {
-      const error = new Error('Not allowed by CORS');
-      logger.warn('CORS request blocked', { origin });
-      callback(error);
-    }
+        logger.warn('CORS request blocked', { 
+          origin, 
+          allowedOrigins
+        });
+        // Instead of throwing an error, we just return false to the callback
+        // This results in a standard CORS rejection without breaking the middleware chain
+        callback(null, false);
+      }
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-Request-ID'],
+  optionsSuccessStatus: 200,
 }));
 
 // Session middleware

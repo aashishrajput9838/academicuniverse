@@ -124,22 +124,52 @@ export class EzoneScraper {
 
                 // Extraction logic
                 let studentName = '';
-                const profileContainers = Array.from(document.querySelectorAll('.user-profile, .profile-details, .student-info, .navbar-user'));
                 
-                // Prioritize finding name in specific containers
-                for (const container of profileContainers) {
-                    const nameEl = container.querySelector('.user-name, .name, h3, h4');
-                    if (nameEl) {
-                        const text = cleanText(nameEl.textContent || '');
-                        if (text && !text.toUpperCase().includes('WELCOME') && !text.toUpperCase().includes('HOLIDAY') && !text.toUpperCase().includes('SHARDA')) {
+                // 1. Try to find name in common profile containers/headers
+                const nameSelectors = [
+                    '.user-name', '.profile-name', '.student-name', 
+                    '.navbar-user .name', '.profile-details h3',
+                    '.user-profile-name', '#student_name'
+                ];
+
+                for (const selector of nameSelectors) {
+                    const el = document.querySelector(selector);
+                    if (el) {
+                        let text = cleanText(el.textContent || '');
+                        // Clean up "Welcome" greetings
+                        if (text.toUpperCase().includes('WELCOME')) {
+                            text = text.replace(/Welcome[,!\s]*/i, '').trim();
+                            // If it was just "Welcome To Sharda E-Zone", this might leave it as "To Sharda E-Zone"
+                            text = text.replace(/To Sharda E-Zone/i, '').trim();
+                        }
+                        
+                        // If we have a valid-looking name (more than 2 chars, not a greeting)
+                        if (text && text.length > 2 && !text.toUpperCase().includes('SHARDA') && !text.toUpperCase().includes('EZONE')) {
                             studentName = text;
                             break;
                         }
                     }
                 }
 
+                // 2. Fallback: Search all H3/H4 for name patterns
                 if (!studentName) {
-                    studentName = getTextByLabel('Student Name');
+                    const headers = Array.from(document.querySelectorAll('h3, h4, .page-title'));
+                    for (const h of headers) {
+                        let text = cleanText(h.textContent || '');
+                        if (text.toUpperCase().includes('WELCOME')) {
+                            text = text.replace(/Welcome[,!\s]*/i, '').trim();
+                            text = text.replace(/To Sharda E-Zone/i, '').trim();
+                            if (text && text.length > 2 && !text.toUpperCase().includes('SHARDA')) {
+                                studentName = text;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // 3. Last Resort Fallback: Label search
+                if (!studentName) {
+                    studentName = getTextByLabel('Student Name') || getTextByLabel('Name');
                 }
 
                 const systemId = getTextByLabel('System ID');

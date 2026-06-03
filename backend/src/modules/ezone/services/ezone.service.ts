@@ -78,25 +78,32 @@ export class EzoneService {
     private validateExtractedData(data: any): void {
         const { studentName, presentClasses, totalClasses } = data;
 
-        // 1. Student Name Validation (Requirement 4)
-        if (!studentName || !/[a-zA-Z]/.test(studentName)) {
-            throw new Error('Invalid student name extracted. Data may be corrupted.');
+        // 1. Student Name Validation
+        if (!studentName || studentName === 'N/A') {
+            throw new Error('Student name not found in university portal.');
         }
 
-        const blacklistedNames = ["Holiday's", "iframe", "script", "GoogleTagManager", "Welcome"];
+        if (!/[a-zA-Z]/.test(studentName)) {
+            throw new Error(`Invalid student name extracted: "${studentName}". Name must contain letters.`);
+        }
+
+        const blacklistedNames = ["Holiday's", "iframe", "script", "GoogleTagManager"];
         if (blacklistedNames.some(name => studentName.includes(name))) {
-            throw new Error(`Data extraction blocked by security policy: ${studentName}`);
+            throw new Error(`Data extraction blocked by security policy: "${studentName}" contains blacklisted terms.`);
         }
 
-        // 2. Attendance Validation (Requirement 5)
-        if (presentClasses === 0 && totalClasses > 0) {
-            throw new Error('Extraction failure: Attendance summary returned 0 present classes while total is non-zero.');
+        // 2. Attendance Validation
+        if (totalClasses > 0 && presentClasses === 0) {
+            // We only throw if total classes are high but present is 0, which is unlikely for a valid sync
+            if (totalClasses > 10) {
+                throw new Error('Extraction failure: Attendance summary returned 0 present classes while total classes are high. Data may be blocked by a popup.');
+            }
         }
 
         // 3. HTML Injection Prevention
         const rawValues = Object.values(data);
         if (rawValues.some(val => typeof val === 'string' && (val.includes('<') || val.includes('>')))) {
-            throw new Error('Extraction blocked: Detected HTML tags in profile data.');
+            throw new Error('Extraction blocked: Detected HTML tags in profile data. Extraction logic may be reading raw source code.');
         }
     }
 

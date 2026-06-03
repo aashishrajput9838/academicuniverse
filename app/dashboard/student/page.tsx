@@ -3,23 +3,31 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
+import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
+
+interface EzoneProfile {
+  attendance: number;
+  cgpa: number;
+  semester: number;
+  lastSyncedAt: string;
+  subjects: any[];
+  department?: string;
+}
 
 export default function StudentDashboardOverview() {
-  const { user, backendUser, loading } = useAuth();
+  const { user, backendUser, loading: authLoading } = useAuth();
   const router = useRouter();
-  
-  // Focused metrics for the minimal intelligence dashboard
-  const [metrics, setMetrics] = useState({
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [ezoneProfile, setEzoneProfile] = useState<EzoneProfile | null>(null);
+  const [internalMetrics, setInternalMetrics] = useState({
     growthRate: '85%',
-    gpa: '3.8',
-    attendance: '92%',
-    currentSemester: '6th',
-    creditsEarned: 112,
+    internalGpa: 'N/A'
   });
 
   useEffect(() => {
     if (backendUser && backendUser.role === 'STUDENT') {
-      const fetchMetrics = async () => {
+      const fetchDashboardData = async () => {
         try {
           const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/dashboard/student`, {
             headers: {
@@ -29,29 +37,56 @@ export default function StudentDashboardOverview() {
           if (res.ok) {
             const data = await res.json();
             if (data.data) {
-              setMetrics(prev => ({ ...prev, ...data.data }));
+              setInternalMetrics({
+                growthRate: data.data.growthRate,
+                internalGpa: data.data.internalGpa
+              });
+              setEzoneProfile(data.data.ezoneProfile);
             }
           }
         } catch (err) {
-          console.error('Failed to fetch metrics', err);
+          console.error('Failed to fetch dashboard data', err);
+        } finally {
+          setIsInitialLoading(false);
         }
       };
-      fetchMetrics();
+      fetchDashboardData();
     }
   }, [backendUser]);
 
   useEffect(() => {
-    if (!loading && (!user || !backendUser)) {
+    if (!authLoading && (!user || !backendUser)) {
       router.push('/login');
-    } else if (!loading && backendUser && backendUser.role !== 'STUDENT' && backendUser.role !== 'FACULTY') {
+    } else if (!authLoading && backendUser && backendUser.role !== 'STUDENT' && backendUser.role !== 'FACULTY') {
       router.push('/');
     }
-  }, [user, backendUser, loading, router]);
+  }, [user, backendUser, authLoading, router]);
 
-  if (loading) {
+  const getSemesterOrdinal = (sem: number) => {
+    const s = ["th", "st", "nd", "rd"];
+    const v = sem % 100;
+    return sem + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+
+  const calculateTotalCredits = (subjects: any[]) => {
+    if (!subjects || !Array.isArray(subjects)) return 0;
+    return subjects.reduce((acc, sub) => acc + (Number(sub.credits) || 0), 0);
+  };
+
+  const calculateGrowthVelocity = (attendance: number, cgpa: number) => {
+    // Derived logic: weighted average of attendance and normalized CGPA
+    const normalizedCGPA = (cgpa / 10) * 100;
+    const velocity = (attendance * 0.4) + (normalizedCGPA * 0.6);
+    return Math.round(velocity) + '%';
+  };
+
+  if (authLoading || isInitialLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-400 border-opacity-50" />
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-400 border-opacity-50 mx-auto" />
+          <p className="text-slate-400 animate-pulse text-sm">Refreshing academic records...</p>
+        </div>
       </div>
     );
   }
@@ -66,63 +101,129 @@ export default function StudentDashboardOverview() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Student View</h1>
-          <p className="text-slate-400 mt-1 text-sm md:text-base">Your academic performance at a glance.</p>
+          <p className="text-slate-400 mt-1 text-sm md:text-base">
+            {ezoneProfile 
+              ? `Real-time academic intelligence from your Ezone profile.`
+              : `Your academic performance at a glance.`}
+          </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl">
-            <span className="text-emerald-400 text-sm font-semibold">Active Session: {metrics.currentSemester} Semester</span>
+          <div className="bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl shadow-lg shadow-emerald-500/5">
+            <span className="text-emerald-400 text-sm font-semibold">
+              {ezoneProfile 
+                ? `Active Session: ${getSemesterOrdinal(ezoneProfile.semester)} Semester`
+                : 'Session: Profile Not Synced'}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Primary Hero Section - Academic Snapshot */}
-      <div className="w-full bg-slate-800/40 backdrop-blur-md rounded-2xl p-8 border border-slate-700/50 shadow-xl">
-        <div className="flex items-center justify-between mb-8">
+      <div className="w-full bg-slate-800/40 backdrop-blur-md rounded-2xl p-8 border border-slate-700/50 shadow-2xl relative overflow-hidden group">
+        {/* Decorative background element */}
+        <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl group-hover:bg-emerald-500/10 transition-colors duration-700" />
+        
+        <div className="flex items-center justify-between mb-8 relative z-10">
           <h2 className="text-xl font-bold text-white flex items-center gap-3">
             <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
             Academic Snapshot
           </h2>
-          <span className="text-xs text-slate-500 font-medium tracking-wide uppercase">Real-time Intelligence</span>
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-xs text-slate-500 font-medium tracking-wide uppercase">Real-time Intelligence</span>
+            {ezoneProfile && (
+              <span className="text-[10px] text-slate-600 font-bold">
+                Last synced {formatDistanceToNow(new Date(ezoneProfile.lastSyncedAt))} ago
+              </span>
+            )}
+          </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* Attendance Card */}
-          <div className="space-y-3 p-4 bg-slate-900/30 rounded-2xl border border-slate-700/30 transition-all hover:border-emerald-500/30">
-            <div className="text-3xl font-black text-white">{metrics.attendance}</div>
-            <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Attendance</div>
-            <div className="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
-              <div 
-                className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-1000" 
-                style={{ width: metrics.attendance }}
-              ></div>
+        {!ezoneProfile ? (
+          <div className="py-12 flex flex-col items-center justify-center text-center space-y-6 relative z-10">
+            <div className="w-20 h-20 bg-slate-900/50 rounded-full flex items-center justify-center border border-slate-700">
+              <svg className="w-10 h-10 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </div>
+            <div className="space-y-2 max-w-sm">
+              <h3 className="text-white font-bold text-lg">Ezone Not Connected</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                Connect your college profile to view your real attendance, CGPA, and credits earned.
+              </p>
+            </div>
+            <Link 
+              href="/dashboard/student/ezone-sync"
+              className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-600/20 active:scale-95 flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Sync College Profile
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
+            {/* Attendance Card */}
+            <div className="space-y-3 p-5 bg-slate-900/30 rounded-2xl border border-slate-700/30 transition-all hover:border-emerald-500/30 hover:bg-slate-900/50">
+              <div className="text-3xl font-black text-white">{ezoneProfile.attendance}%</div>
+              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Attendance</div>
+              <div className="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-1000 ${
+                    ezoneProfile.attendance >= 75 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-red-500'
+                  }`} 
+                  style={{ width: `${ezoneProfile.attendance}%` }}
+                ></div>
+              </div>
+              <div className="text-[10px] font-bold text-slate-600">
+                {ezoneProfile.attendance >= 75 ? 'Above criteria' : 'Needs improvement'}
+              </div>
+            </div>
+
+            {/* GPA Card */}
+            <div className="space-y-3 p-5 bg-slate-900/30 rounded-2xl border border-slate-700/30 transition-all hover:border-emerald-500/30 hover:bg-slate-900/50">
+              <div className="text-3xl font-black text-white">{ezoneProfile.cgpa.toFixed(2)}</div>
+              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Current CGPA</div>
+              <div className="flex items-center gap-1 text-emerald-400 text-[11px] font-bold">
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd"/></svg>
+                Real-time Sync
+              </div>
+              <div className="text-[10px] font-bold text-slate-600">Verified by Sharda Ezone</div>
+            </div>
+
+            {/* Credits Card */}
+            <div className="space-y-3 p-5 bg-slate-900/30 rounded-2xl border border-slate-700/30 transition-all hover:border-emerald-500/30 hover:bg-slate-900/50">
+              <div className="text-3xl font-black text-white">{calculateTotalCredits(ezoneProfile.subjects)}</div>
+              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Credits Earned</div>
+              <div className="text-slate-500 text-[11px] font-medium italic">Current sem loading</div>
+              <div className="text-[10px] font-bold text-slate-600">Across {ezoneProfile.subjects.length} Subjects</div>
+            </div>
+
+            {/* Growth Velocity Card */}
+            <div className="space-y-3 p-5 bg-slate-900/30 rounded-2xl border border-slate-700/30 transition-all hover:border-emerald-500/30 hover:bg-slate-900/50">
+              <div className="text-3xl font-black text-white">
+                {calculateGrowthVelocity(ezoneProfile.attendance, ezoneProfile.cgpa)}
+              </div>
+              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Growth Velocity</div>
+              <div className="text-emerald-500 text-[11px] font-bold uppercase tracking-tighter">
+                {ezoneProfile.cgpa >= 8 ? 'Elite Performance' : 'Consistent Growth'}
+              </div>
+              <div className="text-[10px] font-bold text-slate-600">AI Derived Metric</div>
             </div>
           </div>
-
-          {/* GPA Card */}
-          <div className="space-y-3 p-4 bg-slate-900/30 rounded-2xl border border-slate-700/30 transition-all hover:border-emerald-500/30">
-            <div className="text-3xl font-black text-white">{metrics.gpa}</div>
-            <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Current CGPA</div>
-            <div className="flex items-center gap-1 text-emerald-400 text-[11px] font-bold">
-              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd"/></svg>
-              +0.2 Performance gain
-            </div>
-          </div>
-
-          {/* Credits Card */}
-          <div className="space-y-3 p-4 bg-slate-900/30 rounded-2xl border border-slate-700/30 transition-all hover:border-emerald-500/30">
-            <div className="text-3xl font-black text-white">{metrics.creditsEarned}</div>
-            <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Credits Earned</div>
-            <div className="text-slate-500 text-[11px] font-medium italic">Target: 160 Total Credits</div>
-          </div>
-
-          {/* Growth Velocity Card */}
-          <div className="space-y-3 p-4 bg-slate-900/30 rounded-2xl border border-slate-700/30 transition-all hover:border-emerald-500/30">
-            <div className="text-3xl font-black text-white">{metrics.growthRate}</div>
-            <div className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Growth Velocity</div>
-            <div className="text-emerald-500 text-[11px] font-bold uppercase tracking-tighter">Elite Performance</div>
-          </div>
-        </div>
+        )}
       </div>
+
+      {/* Manual Sync Button if profile exists */}
+      {ezoneProfile && (
+        <div className="flex justify-center">
+          <Link 
+            href="/dashboard/student/ezone-sync"
+            className="text-xs font-bold text-slate-500 hover:text-emerald-400 transition-colors flex items-center gap-2 group"
+          >
+            <svg className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Refresh Academic Data
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

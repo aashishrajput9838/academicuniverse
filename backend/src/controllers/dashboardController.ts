@@ -3,30 +3,35 @@ import { sendResponse, sendError } from '../utils/response';
 import Mark from '../models/Mark';
 import User from '../models/User';
 import Section from '../models/Section';
+import { EzoneProfile } from '../models/EzoneProfile';
 
 export const getStudentDashboard = async (req: any, res: Response) => {
     try {
         const studentId = req.user.userId || req.user._id;
 
-        // Fetch marks to calculate GPA
+        // Fetch real ezone data if it exists
+        const ezoneProfile = await EzoneProfile.findOne({ userId: studentId });
+
+        // Fetch marks to calculate GPA (internal marks)
         const marks = await Mark.find({ studentId });
-        let gpa = 'N/A';
+        let internalGpa = 'N/A';
         if (marks.length > 0) {
             const totalMarks = marks.reduce((acc, curr) => acc + curr.marks, 0);
             const avg = totalMarks / marks.length;
-            if (avg >= 90) gpa = 'A+';
-            else if (avg >= 80) gpa = 'A';
-            else if (avg >= 70) gpa = 'B';
-            else if (avg >= 60) gpa = 'C';
-            else if (avg >= 50) gpa = 'D';
-            else gpa = 'F';
+            if (avg >= 90) internalGpa = 'A+';
+            else if (avg >= 80) internalGpa = 'A';
+            else if (avg >= 70) internalGpa = 'B';
+            else if (avg >= 60) internalGpa = 'C';
+            else if (avg >= 50) internalGpa = 'D';
+            else internalGpa = 'F';
         }
 
         const data = {
-            growthRate: '85%',
-            gpa: gpa,
+            growthRate: '85%', // Default/Calculated later
+            internalGpa: internalGpa,
             skillsAcquired: 42,
-            projectsCompleted: 27
+            projectsCompleted: 27,
+            ezoneProfile: ezoneProfile || null
         };
 
         return sendResponse(res, 200, data, 'Student dashboard metrics retrieved successfully');

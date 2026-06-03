@@ -8,9 +8,11 @@ export class EzoneScraper {
      * Extract real profile and attendance data from the Ezone Home page
      * URL: https://student.sharda.ac.in/admin/home
      */
-    async extractData(page: Page): Promise<any> {
+    async extractData(page: Page, userId: string, organizationId: string, sessionId: string, firebaseUid?: string): Promise<any> {
+        const ezoneLogger = (await import('../services/ezone-logger.service')).EzoneLogger.getInstance();
+        
         try {
-            logger.info('Starting extraction from Ezone Home...');
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Navigating to Dashboard Home...', { category: 'EXTRACTION', actionType: 'page.goto', progress: 5 }, firebaseUid);
             
             // Navigate to the home page if not already there
             if (!page.url().includes('/admin/home')) {
@@ -20,12 +22,14 @@ export class EzoneScraper {
                 });
             }
 
-            // Wait for the page to stabilize
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'info', 'Dashboard reached. Waiting for data widgets to render...', { category: 'EXTRACTION', actionType: 'page.waitForTimeout', progress: 15 }, firebaseUid);
             await page.waitForTimeout(5000);
 
-            // Handle mandatory popups/modals
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Checking for blocking popups or feedback forms...', { category: 'EXTRACTION', actionType: 'handlePopups', progress: 25 }, firebaseUid);
             await this.handlePopups(page);
 
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Executing extraction script in browser context...', { category: 'EXTRACTION', actionType: 'page.evaluate', progress: 50 }, firebaseUid);
+            
             const data = await page.evaluate(() => {
                 const cleanText = (text: string) => {
                     if (!text) return '';

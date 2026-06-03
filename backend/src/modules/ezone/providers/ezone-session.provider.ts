@@ -40,7 +40,7 @@ export class EzoneSessionProvider {
         const sessionId = uuidv4();
         
         try {
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Launching secure automation engine...', null, firebaseUid);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Launching secure automation engine...', { category: 'AUTHENTICATION', actionType: 'playwright.launch', progress: 5 }, firebaseUid);
             
             // Production-grade realistic browser config to bypass bot detection
             browser = await chromium.launch({ 
@@ -56,6 +56,8 @@ export class EzoneSessionProvider {
                 ]
             });
 
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Browser engine ready. Creating secure context...', { category: 'AUTHENTICATION', actionType: 'browser.newContext', progress: 10 }, firebaseUid);
+
             const context = await browser.newContext({
                 viewport: { width: 1280, height: 720 },
                 userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/136.0.0.0 Safari/537.36',
@@ -65,12 +67,10 @@ export class EzoneSessionProvider {
 
             const page = await context.newPage();
             
-            // PRE-STORE SESSION: Store as soon as browser is up
-            logger.info(`Session created: ${sessionId} for System ID: ${systemId}`);
+            // PRE-STORE SESSION
             this.sessions.set(sessionId, { browser, context, page, systemId, createdAt: new Date() });
-            this.logActiveSessions();
 
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Connecting to Sharda University Ezone portal...', null, firebaseUid);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Connecting to Sharda University Ezone portal...', { category: 'AUTHENTICATION', actionType: 'page.goto', progress: 15 }, firebaseUid);
             
             // Navigate to verified portal URL
             await page.goto('https://student.sharda.ac.in/admin', { 
@@ -78,97 +78,64 @@ export class EzoneSessionProvider {
                 timeout: 60000 
             });
 
-            // Wait for full JS execution and network idle
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'info', 'Portal reached. Waiting for login DOM to stabilize...', { category: 'AUTHENTICATION', actionType: 'page.waitForTimeout', progress: 20 }, firebaseUid);
             await page.waitForTimeout(5000);
             
             const title = await page.title();
-            const currentUrl = page.url();
-            logger.info(`Page loaded for session ${sessionId}: ${title} at ${currentUrl}`);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'success', `Ezone portal verified: "${title}"`, { category: 'AUTHENTICATION', progress: 25 }, firebaseUid);
 
-            // Full Page Validation
-            const html = await page.content();
-            
-            // Failsafe Debugging: Save state before interaction
-            const debugTimestamp = Date.now();
-            fs.writeFileSync(path.join(process.cwd(), `ezone-debug-${debugTimestamp}.html`), html);
-            await page.screenshot({ path: path.join(process.cwd(), `ezone-debug-${debugTimestamp}.png`), fullPage: true });
-
-            if (!html.toUpperCase().includes("STUDENT LOGIN") && !html.toUpperCase().includes("SHARDA UNIVERSITY")) {
-                await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', 'Ezone login DOM failed to load correctly.', null, firebaseUid);
-                throw new Error(`Actual Ezone login page not loaded (Title: ${title})`);
-            }
-
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Ezone portal verified. Locating System ID field...', null, firebaseUid);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Locating System ID field...', { category: 'AUTHENTICATION', actionType: 'page.waitForSelector', progress: 30 }, firebaseUid);
 
             // Use VERIFIED Selector
             const systemIdSelector = '#system_id';
             try {
-                await page.waitForSelector(systemIdSelector, { 
-                    timeout: 30000,
-                    state: 'visible' 
-                });
+                await page.waitForSelector(systemIdSelector, { timeout: 30000, state: 'visible' });
             } catch (e) {
-                // One last resilient check before failing
                 const hasInput = await page.$('input[name="system_id"]');
-                if (!hasInput) {
-                    await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', 'System ID field not detected in DOM.', null, firebaseUid);
-                    throw new Error('System ID field (#system_id) not found after full page load.');
-                }
+                if (!hasInput) throw new Error('System ID field (#system_id) not found after full page load.');
             }
 
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'System ID field detected. Entering credentials...', null, firebaseUid);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', `Entering System ID: ${systemId}...`, { category: 'AUTHENTICATION', actionType: 'page.fill', progress: 35 }, firebaseUid);
             await page.fill(systemIdSelector, systemId);
-            
-            // Add a small human-like delay before locating the OTP trigger button
             await page.waitForTimeout(1500);
 
-            // Step 2: Locate and click the REAL OTP trigger button
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Locating OTP trigger button...', null, firebaseUid);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Locating OTP trigger button...', { category: 'AUTHENTICATION', actionType: 'page.locator', progress: 40 }, firebaseUid);
             
             const otpTriggerSelector = '#send_stu_otp_phone';
             const otpTriggerButton = page.locator(otpTriggerSelector);
 
             try {
                 await otpTriggerButton.waitFor({ state: 'visible', timeout: 30000 });
-                await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'OTP trigger button located. Triggering...', null, firebaseUid);
+                await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Triggering university OTP service...', { category: 'AUTHENTICATION', actionType: 'otpTriggerButton.click', progress: 45 }, firebaseUid);
                 
-                // Force click the anchor element since it uses javascript:void(0)
                 await otpTriggerButton.click({ force: true });
-                
-                // JS Fallback if the standard click doesn't trigger the university's event
                 await page.evaluate((sel) => {
                     const btn = document.querySelector(sel) as HTMLElement;
                     if (btn) btn.click();
                 }, otpTriggerSelector);
 
             } catch (e) {
-                await page.screenshot({ path: path.join(process.cwd(), `ezone-trigger-missing-${Date.now()}.png`), fullPage: true });
                 throw new Error('Verified OTP trigger button (#send_stu_otp_phone) not found or not visible.');
             }
 
-            // Post-click wait for university backend to process and UI to update
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Waiting for university OTP response...', null, firebaseUid);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'info', 'Waiting for university backend to dispatch OTP...', { category: 'AUTHENTICATION', progress: 50 }, firebaseUid);
             await page.waitForTimeout(5000);
-            await page.screenshot({ path: path.join(process.cwd(), `after-otp-click-${Date.now()}.png`), fullPage: true });
 
-            // Wait for OTP input field to appear (confirmation that trigger worked)
             const otpInputSelector = '#otp, input[name="otp"]';
             try {
                 await page.waitForSelector(otpInputSelector, { timeout: 30000 });
-                await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'success', 'OTP successfully triggered. Check your student email.', null, firebaseUid);
+                await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'success', 'OTP successfully triggered. Check your student email.', { category: 'AUTHENTICATION', progress: 100 }, firebaseUid);
             } catch (e) {
-                await page.screenshot({ path: path.join(process.cwd(), `ezone-otp-input-timeout-${Date.now()}.png`), fullPage: true });
                 throw new Error('OTP input field did not appear. The university portal may have rejected the ID or is experiencing delays.');
             }
 
             return sessionId;
 
         } catch (error: any) {
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', `Sync failed: ${error.message}`, null, firebaseUid);
-            logger.error('Ezone Automation Error:', error);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'error', `Authentication failed: ${error.message}`, { category: 'AUTHENTICATION', status: 'failed' }, firebaseUid);
             if (browser) await browser.close();
             this.sessions.delete(sessionId);
-            throw new Error(`Automation Error: ${error.message}`);
+            throw error;
         }
     }
 
@@ -176,34 +143,30 @@ export class EzoneSessionProvider {
      * Step 2: Verify OTP and navigate to dashboard
      */
     async verifyOtp(sessionId: string, otp: string, userId: string, organizationId: string, firebaseUid?: string): Promise<void> {
-        logger.info(`Session retrieval attempt: ${sessionId}. Active IDs: ${Array.from(this.sessions.keys()).join(', ')}`);
         const session = this.sessions.get(sessionId);
-        
-        if (!session) {
-            logger.error(`Session retrieval failed: ${sessionId} not found in map.`);
-            throw new Error('Session expired or not found. Please try again.');
-        }
+        if (!session) throw new Error('Session expired or not found. Please try again.');
 
         const { page, systemId } = session;
-        logger.info(`Session retrieved successfully: ${sessionId} for System ID: ${systemId}`);
-
+        
         try {
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Submitting OTP for verification...', null, firebaseUid);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', `Submitting OTP for System ID: ${systemId}...`, { category: 'AUTHENTICATION', actionType: 'page.fill', progress: 10 }, firebaseUid);
             
             const otpSelector = '#otp, input[name="otp"]';
             await page.fill(otpSelector, otp);
             
             const verifySelector = 'button[type="submit"], input[type="submit"], #btn-verify';
             const verifyBtn = await page.$(verifySelector);
+            
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Authenticating with university servers...', { category: 'AUTHENTICATION', actionType: 'verifyBtn.click', progress: 30 }, firebaseUid);
+            
             if (verifyBtn) {
                 await verifyBtn.click();
             } else {
                 await page.keyboard.press('Enter');
             }
 
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Verifying session with university servers...', null, firebaseUid);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'info', 'Verifying secure session tokens...', { category: 'AUTHENTICATION', progress: 60 }, firebaseUid);
             
-            // Race multiple success indicators (dashboard URL or profile elements)
             await Promise.race([
                 page.waitForURL('**/dashboard', { timeout: 45000 }),
                 page.waitForSelector('.user-profile', { timeout: 45000 }),
@@ -211,13 +174,11 @@ export class EzoneSessionProvider {
                 page.waitForSelector('text=Logout', { timeout: 45000 })
             ]);
 
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'success', 'Identity verified. Session established.', null, firebaseUid);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'success', 'Identity verified. Dashboard access granted.', { category: 'AUTHENTICATION', progress: 100 }, firebaseUid);
 
         } catch (error: any) {
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'error', `Verification failed: ${error.message}`, null, firebaseUid);
-            logger.error('OTP verification failed:', error);
-            await page.screenshot({ path: path.join(process.cwd(), `ezone-verify-failure-${Date.now()}.png`), fullPage: true });
-            throw new Error(`OTP verification failed: ${error.message}`);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'error', `Verification failed: ${error.message}`, { category: 'AUTHENTICATION', status: 'failed' }, firebaseUid);
+            throw error;
         }
     }
 

@@ -22,13 +22,17 @@ export class EzoneExplorer {
     /**
      * Launch Explorer Mode to discover all available data routes
      */
-    async explore(page: Page, userId: string): Promise<string> {
+    async explore(page: Page, userId: string, organizationId: string, sessionId: string, firebaseUid?: string): Promise<string> {
+        const ezoneLogger = (await import('../services/ezone-logger.service')).EzoneLogger.getInstance();
+        
         try {
-            logger.info('🚀 Launching Ezone Explorer Mode...');
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', '🚀 Launching Ezone Explorer Mode...', { category: 'DISCOVERY', progress: 0 }, firebaseUid);
             
             // 1. Setup Request Interception for API discovery
+            let apisFound = 0;
             page.on('request', request => {
                 if (request.resourceType() === 'fetch' || request.resourceType() === 'xhr') {
+                    apisFound++;
                     this.capturedRequests.push({
                         url: request.url(),
                         method: request.method(),
@@ -37,14 +41,8 @@ export class EzoneExplorer {
                 }
             });
 
-            page.on('response', response => {
-                const req = response.request();
-                const captured = this.capturedRequests.find(r => r.url === req.url() && r.method === req.method());
-                if (captured) captured.status = response.status();
-            });
-
             // 2. Discover Sidebar Routes
-            logger.info('Scanning sidebar for available modules...');
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Scanning sidebar for available modules...', { category: 'DISCOVERY', actionType: 'page.evaluate', progress: 10 }, firebaseUid);
             const routes = await page.evaluate(() => {
                 const links = Array.from(document.querySelectorAll('a[href*="/admin/"], .sidebar-menu a, .nav-link'));
                 return links
@@ -60,16 +58,27 @@ export class EzoneExplorer {
                     );
             });
 
-            logger.info(`Found ${routes.length} unique routes to explore.`);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'success', `Found ${routes.length} unique routes to explore.`, { category: 'DISCOVERY', routesDiscovered: routes.length, progress: 20 }, firebaseUid);
 
             // 3. Visit each route and collect data
+            let currentRouteIdx = 0;
             for (const route of routes) {
                 try {
-                    logger.info(`Exploring: ${route.name} (${route.href})`);
+                    currentRouteIdx++;
+                    const progress = Math.round(20 + (currentRouteIdx / routes.length) * 70);
+                    
+                    await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', `[${currentRouteIdx}/${routes.length}] Exploring: ${route.name}...`, { 
+                        category: 'DISCOVERY', 
+                        actionType: 'page.goto', 
+                        progress,
+                        routesDiscovered: routes.length,
+                        apisFound
+                    }, firebaseUid);
+
                     this.capturedRequests = []; // Clear for this route
                     
                     await page.goto(route.href, { waitUntil: 'networkidle', timeout: 30000 });
-                    await page.waitForTimeout(3000); // Allow JS to render components
+                    await page.waitForTimeout(2000);
 
                     const routeData = await page.evaluate((rName) => {
                         const getTables = () => {

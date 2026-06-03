@@ -36,26 +36,28 @@ export class EzoneService {
             const page = await this.sessionProvider.getAuthenticatedPage(sessionId);
 
             // 2. Extract academic data
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'OTP verified. Extracting academic profile and attendance...', null, firebaseUid);
-            const extractedData = await this.scraper.extractData(page);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Starting primary data extraction...', { category: 'EXTRACTION', progress: 0 }, firebaseUid);
+            const extractedData = await this.scraper.extractData(page, userId, organizationId, sessionId, firebaseUid);
             
             // 3. Validation Layer
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'info', 'Validating extracted intelligence...', { category: 'EXTRACTION', progress: 80 }, firebaseUid);
             this.validateExtractedData(extractedData);
 
             // 4. Log extracted values
             logger.info('[EZONE] Final Sync Data:', extractedData);
 
             // 5. Save to MongoDB
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Persisting profile to Academic Universe Database...', { category: 'DATABASE', actionType: 'mongodb.save', progress: 50 }, firebaseUid);
             const savedProfile = await this.repository.upsertProfile(userId, organizationId, {
                 ...extractedData,
                 lastSyncedAt: new Date()
             });
 
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'success', 'Academic data sync completed successfully!', null, firebaseUid);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'success', 'Academic data sync completed successfully!', { category: 'DATABASE', progress: 100 }, firebaseUid);
 
             // 6. EXPLORER MODE: Discover other modules in the background
-            await ezoneLogger.logSyncStep(userId, organizationId, systemId, 'info', 'Launching Discovery Mode to identify available data modules...', null, firebaseUid);
-            this.explorer.explore(page, userId).catch(err => {
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'info', 'Launching Discovery Mode to identify available data modules...', { category: 'DISCOVERY', progress: 0 }, firebaseUid);
+            this.explorer.explore(page, userId, organizationId, sessionId, firebaseUid).catch(err => {
                 logger.error('Explorer Mode failed in background:', err);
             });
 

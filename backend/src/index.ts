@@ -16,6 +16,11 @@ import routes from './routes';
 
 const app = express();
 
+// Trust proxy for Render/Vercel (must be set before other middleware)
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Initialize Sentry
 initSentry(app);
 

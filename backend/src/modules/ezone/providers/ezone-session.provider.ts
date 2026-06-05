@@ -40,6 +40,14 @@ export class EzoneSessionProvider {
         const sessionId = uuidv4();
         
         try {
+            // Check for Render Free Tier / Low Memory environment
+            const memoryMB = Math.round(require('os').totalmem() / 1024 / 1024);
+            if (memoryMB < 600 && process.env.NODE_ENV === 'production') {
+                logger.warn(`Low memory environment detected (${memoryMB}MB). Playwright may crash the server.`);
+                await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'error', 'Server memory is too low to run the automation engine. Please upgrade your hosting plan (min 1GB RAM recommended).', { category: 'AUTHENTICATION', status: 'failed' }, firebaseUid);
+                throw new Error('Insufficient server memory to start automation engine.');
+            }
+
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Launching secure automation engine...', { category: 'AUTHENTICATION', actionType: 'playwright.launch', progress: 5 }, firebaseUid);
             
             // Production-grade realistic browser config to bypass bot detection

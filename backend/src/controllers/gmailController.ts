@@ -18,7 +18,12 @@ export const gmailCallback = async (req: Request, res: Response) => {
     try {
         const { code, state, error } = req.query;
 
-        const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:3000';
+        const getFrontendUrl = () => {
+            const origin = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:3000';
+            // If it's a comma-separated list, take the first one
+            return origin.split(',')[0].trim();
+        };
+        const frontendUrl = getFrontendUrl();
         const redirectUrl = `${frontendUrl}/dashboard/student/events`;
 
         if (error) {
@@ -43,7 +48,12 @@ export const gmailCallback = async (req: Request, res: Response) => {
         return res.redirect(`${redirectUrl}?gmail_success=true`);
     } catch (error: any) {
         console.error('Error handling Gmail callback:', error);
-        const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:3000';
+        const getFrontendUrl = () => {
+            const origin = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:3000';
+            // If it's a comma-separated list, take the first one
+            return origin.split(',')[0].trim();
+        };
+        const frontendUrl = getFrontendUrl();
         
         // Map common errors to specific codes for better frontend handling
         let errorCode = 'server_error';

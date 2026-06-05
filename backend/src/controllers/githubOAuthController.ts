@@ -91,6 +91,13 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
     delete req.session.github_oauth_state;
     delete req.session.firebase_uid;
 
+    const getFrontendUrl = () => {
+      const origin = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:3000';
+      // If it's a comma-separated list, take the first one
+      return origin.split(',')[0].trim();
+    };
+    const frontendUrl = getFrontendUrl();
+
     // For now, return a message to indicate success
     // In practice, you'd need to redirect back to your frontend
     // with the necessary parameters to complete the flow
@@ -111,7 +118,7 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
             }
             // Or redirect to main app if not in popup
             setTimeout(() => {
-              window.location.href = '${process.env.FRONTEND_URL || 'http://localhost:3000'}';
+              window.location.href = '${frontendUrl}';
             }, 3000);
           </script>
         </body>
@@ -125,6 +132,13 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
       delete req.session.github_oauth_state;
       delete req.session.firebase_uid;
     }
+
+    const getFrontendUrl = () => {
+      const origin = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:3000';
+      // If it's a comma-separated list, take the first one
+      return origin.split(',')[0].trim();
+    };
+    const frontendUrl = getFrontendUrl();
     
     res.send(`
       <html>
@@ -142,7 +156,7 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
             }
             // Or redirect to main app if not in popup
             setTimeout(() => {
-              window.location.href = '${process.env.FRONTEND_URL || 'http://localhost:3000'}?error=${encodeURIComponent(error.message)}';
+              window.location.href = '${frontendUrl}?error=${encodeURIComponent(error.message)}';
             }, 3000);
           </script>
         </body>

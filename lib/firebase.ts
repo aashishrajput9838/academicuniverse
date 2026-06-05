@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB-3AiaySXOhTEaC0NWKr67-LntmXDK45Y",
@@ -18,7 +18,13 @@ export const firebaseApp = !getApps().length
 
 export const isBrowser = typeof window !== "undefined";
 
-export const db = getFirestore(firebaseApp);
+// Initialize Firestore with experimentalForceLongPolling to prevent QUIC_NETWORK_IDLE_TIMEOUT errors
+// which often happen in restricted network environments or due to browser issues.
+export const db = isBrowser 
+  ? initializeFirestore(firebaseApp, {
+      experimentalForceLongPolling: true,
+    })
+  : getFirestore(firebaseApp);
 
 export function getFirebaseAuth() {
   return getAuth(firebaseApp);

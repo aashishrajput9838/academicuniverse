@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
-import { EzoneService } from '../services/ezone.service';
+import { EzoneSyncService } from '../services/ezoneSyncService';
 import { Logger } from '../../../shared/utils';
 
 const logger = new Logger('EzoneController');
 
 export class EzoneController {
-    constructor(private ezoneService: EzoneService) {}
+    constructor(private ezoneService: EzoneSyncService) {}
 
     /**
      * POST /api/ezone/send-otp

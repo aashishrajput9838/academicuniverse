@@ -151,12 +151,24 @@ export class EzoneScraper {
                 };
 
                 // CA MARKS (Continuous Assessment)
-                // Assuming CA marks are in a table with Course, Assignment, Assessment, Total
                 const caMarks = extractTable('.ca-marks-table, table:has(th:contains("Course"))', {
-                    courseName: 0,
-                    assignmentMarks: 1,
-                    assessmentMarks: 2,
-                    total: 3
+                    courseCode: 0,
+                    courseName: 1,
+                    assignment1: 2,
+                    assignment2: 3,
+                    assessment1: 4,
+                    assessment2: 5,
+                    total: 6
+                });
+
+                // SUBJECTS
+                const subjects = extractTable('.subjects-table, table:has(th:contains("Credits"))', {
+                    courseCode: 0,
+                    courseName: 1,
+                    faculty: 2,
+                    courseType: 3,
+                    credits: 4,
+                    attendancePercentage: 5
                 });
 
                 // TIMETABLE
@@ -190,10 +202,22 @@ export class EzoneScraper {
                 absentClasses: parseInt(rawData.attendance.absent.replace(/[^0-9]/g, '')) || 0,
 
                 caMarks: (rawData.caMarks || []).map((m: any) => ({
+                    courseCode: this.sanitize(m.courseCode),
                     courseName: this.sanitize(m.courseName),
-                    assignmentMarks: this.sanitize(m.assignmentMarks),
-                    assessmentMarks: this.sanitize(m.assessmentMarks),
+                    assignment1: this.sanitize(m.assignment1),
+                    assignment2: this.sanitize(m.assignment2),
+                    assessment1: this.sanitize(m.assessment1),
+                    assessment2: this.sanitize(m.assessment2),
                     total: this.sanitize(m.total)
+                })),
+
+                subjects: (rawData.subjects || []).map((s: any) => ({
+                    courseCode: this.sanitize(s.courseCode),
+                    courseName: this.sanitize(s.courseName),
+                    faculty: this.sanitize(s.faculty),
+                    courseType: this.sanitize(s.courseType),
+                    credits: parseFloat(this.sanitize(s.credits)) || 0,
+                    attendancePercentage: parseFloat(this.sanitize(s.attendancePercentage)) || 0
                 })),
 
                 timetable: (rawData.timetable || []).map((t: any) => ({

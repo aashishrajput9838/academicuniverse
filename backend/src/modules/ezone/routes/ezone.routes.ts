@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { EzoneController } from '../controllers/ezone.controller';
-import { EzoneService } from '../services/ezone.service';
+import { EzoneSyncService } from '../services/ezoneSyncService';
 import { EzoneRepository } from '../repositories/ezone.repository';
 import { EzoneScraper } from '../scrapers/ezone.scraper';
 import { EzoneSessionProvider } from '../providers/ezone-session.provider';
@@ -12,7 +12,7 @@ const router = Router();
 const sessionProvider = EzoneSessionProvider.getInstance();
 const repository = new EzoneRepository();
 const scraper = new EzoneScraper();
-const service = new EzoneService(sessionProvider, repository, scraper);
+const service = new EzoneSyncService(sessionProvider, repository, scraper);
 const controller = new EzoneController(service);
 
 /**

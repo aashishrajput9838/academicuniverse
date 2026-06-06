@@ -185,7 +185,7 @@ export class EzoneScraper {
                     date: 1
                 });
 
-                return { profile, attendance, caMarks, timetable, holidays };
+                return { profile, attendance, caMarks, subjects, timetable, holidays };
             });
 
             // Post-Extraction Sanitization & Validation

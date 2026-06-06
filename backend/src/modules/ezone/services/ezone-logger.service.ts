@@ -5,7 +5,7 @@ import { Logger } from '../../../shared/utils';
 const logger = new Logger('EzoneLogger');
 
 export type EzoneLogType = 'info' | 'success' | 'warning' | 'error' | 'action';
-export type EzoneLogCategory = 'AUTHENTICATION' | 'DISCOVERY' | 'EXTRACTION' | 'DATABASE' | 'GENERAL';
+export type EzoneLogCategory = 'AUTHENTICATION' | 'DISCOVERY' | 'EXTRACTION' | 'DATABASE' | 'GENERAL' | 'AUTH' | 'VALIDATION' | 'SHEETS';
 
 export interface EzoneLogMetadata {
     category?: EzoneLogCategory;

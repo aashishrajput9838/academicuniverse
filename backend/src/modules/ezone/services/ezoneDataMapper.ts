@@ -48,22 +48,26 @@ export class EzoneDataMapper {
     /**
      * Maps raw scraper data to structured Google Sheets format
      */
-    public toSheets(data: any, systemId: string): Record<string, any[]> {
+    public toSheets(data: any, systemId: string, userId: string, organizationId: string): Record<string, any[]> {
         const syncTime = new Date().toISOString();
 
         return {
             StudentProfile: [[
+                organizationId,
+                userId,
                 systemId,
                 data.studentName || 'N/A',
                 data.email || 'N/A',
-                data.school || 'N/A', // Department
+                data.department || data.school || 'N/A',
                 data.program || 'N/A',
+                data.school || 'N/A',
                 data.semester || 'N/A',
-                data.school || 'N/A', // School
                 data.status || 'Active',
                 syncTime
             ]],
             Attendance: [[
+                organizationId,
+                userId,
                 systemId,
                 data.totalClasses || 0,
                 data.presentClasses || 0,
@@ -72,6 +76,8 @@ export class EzoneDataMapper {
                 syncTime
             ]],
             Subjects: (data.subjects || []).map((s: any) => [
+                organizationId,
+                userId,
                 systemId,
                 s.courseCode || 'N/A',
                 s.courseName || 'N/A',
@@ -82,6 +88,8 @@ export class EzoneDataMapper {
                 syncTime
             ]),
             CAMarks: (data.caMarks || []).map((m: any) => [
+                organizationId,
+                userId,
                 systemId,
                 m.courseCode || 'N/A',
                 m.courseName || 'N/A',
@@ -93,16 +101,16 @@ export class EzoneDataMapper {
                 syncTime
             ]),
             Timetable: (data.timetable || []).map((t: any) => [
-                systemId,
+                t.day || 'N/A',
+                t.time || 'N/A',
                 t.subject || 'N/A',
                 t.faculty || 'N/A',
                 t.room || 'N/A',
-                t.time || 'N/A',
                 syncTime
             ]),
             Holidays: (data.holidays || []).map((h: any) => [
-                h.name || 'N/A',
-                h.date || 'N/A',
+                h.holidayName || h.name || 'N/A',
+                h.holidayDate || h.date || 'N/A',
                 syncTime
             ])
         };
@@ -116,46 +124,47 @@ export class EzoneDataMapper {
         const attendanceRow = sheetsData.Attendance?.[0] || [];
 
         return {
-            studentName: profileRow[1],
-            systemId: profileRow[0],
-            program: profileRow[4],
-            school: profileRow[6],
-            status: profileRow[7],
+            studentName: profileRow[3],
+            systemId: profileRow[2],
+            program: profileRow[6],
+            school: profileRow[7],
+            status: profileRow[9],
             
-            attendancePercentage: parseFloat(attendanceRow[4]) || 0,
-            totalClasses: parseInt(attendanceRow[1]) || 0,
-            presentClasses: parseInt(attendanceRow[2]) || 0,
-            absentClasses: parseInt(attendanceRow[3]) || 0,
+            attendancePercentage: parseFloat(attendanceRow[6]) || 0,
+            totalClasses: parseInt(attendanceRow[3]) || 0,
+            presentClasses: parseInt(attendanceRow[4]) || 0,
+            absentClasses: parseInt(attendanceRow[5]) || 0,
 
             caMarks: (sheetsData.CAMarks || []).map(row => ({
-                courseCode: row[1],
-                courseName: row[2],
-                assignment1: row[3],
-                assignment2: row[4],
-                assessment1: row[5],
-                assessment2: row[6],
-                total: row[7]
+                courseCode: row[3],
+                courseName: row[4],
+                assignment1: row[5],
+                assignment2: row[6],
+                assessment1: row[7],
+                assessment2: row[8],
+                total: row[9]
             })),
 
             subjects: (sheetsData.Subjects || []).map(row => ({
-                courseCode: row[1],
-                courseName: row[2],
-                faculty: row[3],
-                courseType: row[4],
-                credits: parseFloat(row[5]) || 0,
-                attendancePercentage: parseFloat(row[6]) || 0
+                courseCode: row[3],
+                courseName: row[4],
+                faculty: row[5],
+                courseType: row[6],
+                credits: parseFloat(row[7]) || 0,
+                attendancePercentage: parseFloat(row[8]) || 0
             })),
 
             timetable: (sheetsData.Timetable || []).map(row => ({
-                subject: row[1],
-                faculty: row[2],
-                room: row[3],
-                time: row[4]
+                day: row[0],
+                time: row[1],
+                subject: row[2],
+                faculty: row[3],
+                room: row[4]
             })),
 
             holidays: (sheetsData.Holidays || []).map(row => ({
-                name: row[0],
-                date: row[1]
+                holidayName: row[0],
+                holidayDate: row[1]
             })),
             
             lastSyncedAt: new Date()

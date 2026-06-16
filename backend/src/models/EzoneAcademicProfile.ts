@@ -9,6 +9,9 @@ export interface IEzoneAcademicProfile extends Document {
     program: string;
     school: string;
     status: string;
+    email?: string;
+    department?: string;
+    semester?: string;
     
     attendancePercentage: number;
     totalClasses: number;
@@ -35,15 +38,19 @@ export interface IEzoneAcademicProfile extends Document {
     }[];
 
     timetable: {
+        day?: string;
+        time: string;
         subject: string;
+        courseName?: string;
         faculty: string;
         room: string;
-        time: string;
     }[];
 
     holidays: {
-        name: string;
-        date: string;
+        holidayName?: string;
+        name?: string;
+        holidayDate?: string;
+        date?: string;
     }[];
     
     lastSyncedAt: Date;
@@ -72,12 +79,15 @@ const ezoneAcademicProfileSchema = new Schema<IEzoneAcademicProfile>(
             required: true,
             index: true,
         },
+        email: String,
+        department: String,
         program: {
             type: String,
         },
         school: {
             type: String,
         },
+        semester: String,
         status: {
             type: String,
         },
@@ -120,15 +130,19 @@ const ezoneAcademicProfileSchema = new Schema<IEzoneAcademicProfile>(
         ],
         timetable: [
             {
+                day: String,
+                time: String,
                 subject: String,
+                courseName: String,
                 faculty: String,
                 room: String,
-                time: String,
             },
         ],
         holidays: [
             {
+                holidayName: String,
                 name: String,
+                holidayDate: String,
                 date: String,
             },
         ],

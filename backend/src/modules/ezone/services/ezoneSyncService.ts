@@ -71,7 +71,7 @@ export class EzoneSyncService {
 
             // 4. Save to Google Sheets
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Archiving data to Google Sheets...', { category: 'SHEETS', progress: 70 }, firebaseUid);
-            const sheetsData = this.mapper.toSheets(sanitizedData, systemId);
+            const sheetsData = this.mapper.toSheets(sanitizedData, systemId, userId, organizationId);
             
             for (const [sheetName, rows] of Object.entries(sheetsData)) {
                 if (rows && rows.length > 0) {

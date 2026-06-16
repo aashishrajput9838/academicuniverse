@@ -1,6 +1,5 @@
 import { google } from 'googleapis';
 import { Logger } from '../../../shared/utils';
-import * as path from 'path';
 
 const logger = new Logger('GoogleSheetsService');
 
@@ -12,8 +11,21 @@ export class GoogleSheetsService {
     private readonly SPREADSHEET_NAME = 'AcademicUniverse_EzoneSync';
 
     private constructor() {
+        const credentials = {
+            type: 'service_account',
+            project_id: process.env.GOOGLE_PROJECT_ID,
+            private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
+            private_key: process.env.GOOGLE_SHEETS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            client_email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+            token_uri: 'https://oauth2.googleapis.com/token',
+            auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+            client_x509_cert_url: process.env.GOOGLE_CLIENT_X509_CERT_URL
+        };
+
         const auth = new google.auth.GoogleAuth({
-            keyFile: path.join(process.cwd(), 'serviceAccountKey.json'),
+            credentials,
             scopes: [
                 'https://www.googleapis.com/auth/spreadsheets',
                 'https://www.googleapis.com/auth/drive.file'
@@ -35,6 +47,13 @@ export class GoogleSheetsService {
      */
     public async initialize(): Promise<string> {
         if (this.spreadsheetId) return this.spreadsheetId;
+
+        if (process.env.GOOGLE_SHEET_ID) {
+            this.spreadsheetId = process.env.GOOGLE_SHEET_ID;
+            logger.info(`Using provided Google Sheet ID: ${this.spreadsheetId}`);
+            await this.ensureSheetsExist();
+            return this.spreadsheetId;
+        }
 
         try {
             // 1. Search for existing spreadsheet
@@ -112,13 +131,13 @@ export class GoogleSheetsService {
 
     private async initializeSheetHeaders(sheetName: string): Promise<void> {
         const headers: Record<string, string[]> = {
-            StudentProfile: ['SystemId', 'StudentName', 'Email', 'Department', 'Program', 'Semester', 'School', 'Status', 'SyncTime'],
-            Attendance: ['SystemId', 'TotalClasses', 'PresentClasses', 'AbsentClasses', 'AttendancePercentage', 'SyncTime'],
-            Subjects: ['SystemId', 'CourseCode', 'CourseName', 'Faculty', 'CourseType', 'Credits', 'AttendancePercentage', 'SyncTime'],
-            CAMarks: ['SystemId', 'CourseCode', 'CourseName', 'Assignment1', 'Assignment2', 'Assessment1', 'Assessment2', 'Total', 'SyncTime'],
-            Timetable: ['SystemId', 'Subject', 'Faculty', 'Room', 'Time', 'SyncTime'],
-            Holidays: ['HolidayName', 'HolidayDate', 'SyncTime'],
-            SyncLogs: ['Timestamp', 'Step', 'Status', 'Message']
+            StudentProfile: ['organizationId', 'userId', 'systemId', 'studentName', 'email', 'department', 'program', 'school', 'semester', 'status', 'syncTime'],
+            Attendance: ['organizationId', 'userId', 'systemId', 'totalClasses', 'presentClasses', 'absentClasses', 'attendancePercentage', 'syncTime'],
+            Subjects: ['organizationId', 'userId', 'systemId', 'courseCode', 'courseName', 'faculty', 'courseType', 'credits', 'attendancePercentage', 'syncTime'],
+            CAMarks: ['organizationId', 'userId', 'systemId', 'courseCode', 'courseName', 'assignment1', 'assignment2', 'assessment1', 'assessment2', 'total', 'syncTime'],
+            Timetable: ['day', 'time', 'courseName', 'faculty', 'room', 'syncTime'],
+            Holidays: ['holidayName', 'holidayDate', 'syncTime'],
+            SyncLogs: ['timestamp', 'step', 'status', 'message']
         };
 
         if (headers[sheetName]) {
@@ -160,7 +179,7 @@ export class GoogleSheetsService {
      * Specialized logging to SyncLogs sheet
      */
     public async logSync(step: string, status: 'SUCCESS' | 'FAILED' | 'PENDING', message: string): Promise<void> {
-        const row = [new Date().toLocaleString(), step, status, message];
+        const row = [new Date().toISOString(), step, status, message];
         await this.appendRows('SyncLogs', [row]);
     }
 }

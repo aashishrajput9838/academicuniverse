@@ -85,8 +85,25 @@ export class EzoneScraper {
                     return text.trim().replace(/\s+/g, ' ');
                 };
 
-                const extractTable = (selector: string, colMap: Record<string, number>) => {
-                    const table = document.querySelector(selector);
+                const findTableByHeaders = (headerTexts: string[]) => {
+                    const allTables = Array.from(document.querySelectorAll('table'));
+                    for (const table of allTables) {
+                        const headers = Array.from(table.querySelectorAll('th'));
+                        const headerText = headers.map(h => clean(h.textContent || '')).join(' ').toUpperCase();
+                        if (headerTexts.some(text => headerText.includes(text.toUpperCase()))) {
+                            return table;
+                        }
+                    }
+                    return null;
+                };
+
+                const extractTable = (options: string | { headers: string[] }, colMap: Record<string, number>) => {
+                    let table;
+                    if (typeof options === 'string') {
+                        table = document.querySelector(options);
+                    } else {
+                        table = findTableByHeaders(options.headers);
+                    }
                     if (!table) return [];
                     
                     const rows = Array.from(table.querySelectorAll('tr')).slice(1); // Skip header
@@ -151,7 +168,7 @@ export class EzoneScraper {
                 };
 
                 // CA MARKS (Continuous Assessment)
-                const caMarks = extractTable('.ca-marks-table, table:has(th:contains("Course"))', {
+                const caMarks = extractTable({ headers: ['Course'] }, {
                     courseCode: 0,
                     courseName: 1,
                     assignment1: 2,
@@ -162,7 +179,7 @@ export class EzoneScraper {
                 });
 
                 // SUBJECTS
-                const subjects = extractTable('.subjects-table, table:has(th:contains("Credits"))', {
+                const subjects = extractTable({ headers: ['Credits'] }, {
                     courseCode: 0,
                     courseName: 1,
                     faculty: 2,
@@ -172,7 +189,7 @@ export class EzoneScraper {
                 });
 
                 // TIMETABLE
-                const timetable = extractTable('.timetable-table, table:has(th:contains("Subject"))', {
+                const timetable = extractTable({ headers: ['Subject'] }, {
                     subject: 0,
                     faculty: 1,
                     room: 2,
@@ -180,7 +197,7 @@ export class EzoneScraper {
                 });
 
                 // HOLIDAYS
-                const holidays = extractTable('.holidays-table, table:has(th:contains("Holiday"))', {
+                const holidays = extractTable({ headers: ['Holiday'] }, {
                     name: 0,
                     date: 1
                 });

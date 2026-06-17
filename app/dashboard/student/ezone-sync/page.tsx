@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ezoneApi } from '@/lib/api/ezone';
 import { useAuth } from '@/lib/AuthContext';
 import LiveSyncLogs from '@/components/ezone/LiveSyncLogs';
@@ -27,10 +27,23 @@ export default function EzoneSyncPage() {
     const { backendUser } = useAuth();
     const { toast } = useToast();
 
-    /**
-     * CRITICAL FIX: Removed useEffect and auto-fetch logic on mount.
-     * The page now starts in 'idle' state with NO network requests.
-     */
+    // Check for existing profile on page mount
+    useEffect(() => {
+        const fetchExistingProfile = async () => {
+            try {
+                const profileRes = await ezoneApi.getProfile();
+                if (profileRes.success && profileRes.data) {
+                    setProfile(profileRes.data);
+                    setState('completed');
+                }
+            } catch (error) {
+                // No profile found or error, just stay in idle state
+                console.log('No existing profile found or error fetching profile');
+            }
+        };
+
+        fetchExistingProfile();
+    }, []);
 
     const handleSendOtp = async () => {
         if (!systemId) return;

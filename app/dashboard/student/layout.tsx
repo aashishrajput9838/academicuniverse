@@ -59,6 +59,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: 'Code Arena', href: '/dashboard/student/code', icon: '💻' },
     { label: 'Academic Records', href: '/dashboard/student/records', icon: '📚' },
     { label: 'Sync College Profile', href: '/dashboard/student/ezone-sync', icon: '🔄' },
+    { label: 'Webscrap', href: '/dashboard/student/webscrap', icon: '🕷️' },
     { label: 'Skills Tracker', href: '/dashboard/student/skills', icon: '🎯' },
     { label: 'Resume Builder', href: '/dashboard/student/resume-builder', icon: '📄' },
     { label: 'Overlap Engine', href: '/dashboard/student/overlap', icon: '📅' },

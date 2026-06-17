@@ -4,4 +4,5 @@
 
 export { IAIProvider, AIConfig, AIResponse } from './ai.provider';
 export { GeminiAIProvider } from './gemini.provider';
-export { AIProviderFactory, AIProviderType } from './ai.factory';
+export { MockAIProvider } from './mock.provider';
+export { AIProviderFactory, AIProviderType, aiProvider } from './ai.factory';

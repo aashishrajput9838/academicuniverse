@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import mongoose from 'mongoose';
 import { User } from '../models';
 import analyticsService from './analyticsService';
 import { syncGmailEvents } from './gmailSyncService';
@@ -33,20 +34,32 @@ export class SchedulerService {
 
     // Schedule GitHub analytics updates every 6 hours
     cron.schedule('0 */6 * * *', async () => {
-      logger.info('Running scheduled GitHub analytics updates...');
-      await this.updateAllUsersGitHubAnalytics();
+      try {
+        logger.info('Running scheduled GitHub analytics updates...');
+        await this.updateAllUsersGitHubAnalytics();
+      } catch (error) {
+        logger.error('Scheduled GitHub analytics failed:', error);
+      }
     });
 
     // Also run once when the service starts
     setTimeout(async () => {
-      await this.updateAllUsersGitHubAnalytics();
-      await this.syncAllUsersGmailEvents();
+      try {
+        await this.updateAllUsersGitHubAnalytics();
+        await this.syncAllUsersGmailEvents();
+      } catch (error) {
+        logger.error('Initial scheduled tasks failed:', error);
+      }
     }, 5000); // Run first update after 5 seconds
 
     // Schedule Gmail events updates every 6 hours
     cron.schedule('0 */6 * * *', async () => {
-      logger.info('Running scheduled Gmail events sync...');
-      await this.syncAllUsersGmailEvents();
+      try {
+        logger.info('Running scheduled Gmail events sync...');
+        await this.syncAllUsersGmailEvents();
+      } catch (error) {
+        logger.error('Scheduled Gmail sync failed:', error);
+      }
     });
 
     this.isRunning = true;
@@ -58,6 +71,12 @@ export class SchedulerService {
    */
   private async updateAllUsersGitHubAnalytics(): Promise<void> {
     try {
+      // Check if MongoDB is connected
+      if (mongoose.connection.readyState !== 1) {
+        logger.warn('MongoDB not connected, skipping GitHub analytics update');
+        return;
+      }
+
       // Find all users who have GitHub access tokens
       const users = await User.find({
         'githubAccessToken.encryptedToken': { $exists: true, $ne: null }
@@ -95,6 +114,12 @@ export class SchedulerService {
    */
   private async syncAllUsersGmailEvents(): Promise<void> {
     try {
+      // Check if MongoDB is connected
+      if (mongoose.connection.readyState !== 1) {
+        logger.warn('MongoDB not connected, skipping Gmail sync');
+        return;
+      }
+
       // Find all users who have Gmail access tokens
       const users = await User.find({
         'gmailTokens.accessToken': { $exists: true, $ne: '' }

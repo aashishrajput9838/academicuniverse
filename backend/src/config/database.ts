@@ -8,7 +8,7 @@ export const connectDB = async () => {
     console.log(`Connecting to MongoDB at: ${maskedUri}`);
 
     await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000, // Increased timeout for slow production cold starts
+      serverSelectionTimeoutMS: 5000, // Faster timeout for dev
     });
     console.log('✓ MongoDB connected successfully');
   } catch (error: any) {
@@ -21,13 +21,9 @@ export const connectDB = async () => {
       console.error('Please set the MONGODB_URI environment variable in your Render/Vercel dashboard.');
     }
     
-    // In production, we don't want to crash immediately on a transient connection error
-    // but Render will restart the service anyway if it fails the health check.
-    if (process.env.NODE_ENV === 'production') {
-        console.warn('Continuing anyway to allow health check to respond (though features will fail)...');
-        return; 
-    }
-    process.exit(1);
+    // In both development and production, we continue (though features will fail)
+    console.warn('Continuing without MongoDB (features using MongoDB will fail)...');
+    return;
   }
 };
 

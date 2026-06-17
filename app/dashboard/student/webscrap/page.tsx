@@ -214,11 +214,13 @@ export default function WebscrapPage() {
       )}
 
       {/* Live Automation Logs */}
-      <LiveSyncLogs
-        userId={backendUser?.id || ''}
-        sessionId={systemId}
-        isActive={state !== 'idle' && state !== 'completed'}
-      />
+      {sessionId && (
+        <LiveSyncLogs
+          userId={backendUser?.id || ''}
+          sessionId={sessionId}
+          isActive={state !== 'idle' && state !== 'completed'}
+        />
+      )}
 
       {state === 'completed' && profile && (
         <div className="space-y-6 animate-in fade-in duration-500 slide-in-from-top-4">

@@ -43,7 +43,7 @@ export default function LiveSyncLogs({ userId, sessionId, isActive }: LiveSyncLo
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!userId || !sessionId || !isActive) return;
+        if (!userId || !sessionId || sessionId === 'N/A' || !isActive) return;
 
         setError(null);
 

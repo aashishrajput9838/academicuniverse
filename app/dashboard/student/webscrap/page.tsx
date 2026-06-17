@@ -108,31 +108,45 @@ export default function WebscrapPage() {
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <Lock className="h-5 w-5 text-emerald-400" />
-              Webscrap Setup
+              {profile ? 'Ready to Resync to Google Sheets!' : 'Webscrap Setup'}
             </CardTitle>
             <CardDescription className="text-slate-400">
-              Enter your System ID to start the webscraping process!
+              {profile 
+                ? 'Click the button to resync your data to Google Sheets!' 
+                : 'Enter your System ID to start scraping data from Ezone to Google Sheets!'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="systemId" className="text-slate-300">System ID</Label>
-              <Input
-                id="systemId"
-                placeholder="e.g. 2023XXXXXX"
-                value={systemId}
-                onChange={(e) => setSystemId(e.target.value)}
-                className="bg-slate-900/50 border-slate-700 text-white focus:ring-emerald-500"
-                disabled={loading}
-              />
-            </div>
-            <Button
-              onClick={handleSendOtp}
-              disabled={loading || !systemId}
-              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white transition-all"
-            >
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Send OTP'}
-            </Button>
+            {profile ? (
+              <Button
+                onClick={resetFlow} // Reset to start OTP flow again
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white transition-all py-6 text-lg"
+              >
+                <RefreshCw className="mr-2 h-6 w-6" />
+                Start Webscraping to Google Sheets
+              </Button>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="systemId" className="text-slate-300">System ID</Label>
+                  <Input
+                    id="systemId"
+                    placeholder="e.g. 2023XXXXXX"
+                    value={systemId}
+                    onChange={(e) => setSystemId(e.target.value)}
+                    className="bg-slate-900/50 border-slate-700 text-white focus:ring-emerald-500"
+                    disabled={loading}
+                  />
+                </div>
+                <Button
+                  onClick={handleSendOtp}
+                  disabled={loading || !systemId}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white transition-all"
+                >
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Send OTP'}
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       )}

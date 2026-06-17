@@ -88,13 +88,28 @@ export class EzoneScraper {
                 const findTableByHeaders = (headerTexts: string[]) => {
                     const allTables = Array.from(document.querySelectorAll('table'));
                     for (const table of allTables) {
-                        const headers = Array.from(table.querySelectorAll('th'));
-                        const headerText = headers.map(h => clean(h.textContent || '')).join(' ').toUpperCase();
-                        if (headerTexts.some(text => headerText.includes(text.toUpperCase()))) {
+                        // Check both <th> and also first <tr> for headers!
+                        const headerCandidates = [
+                            ...Array.from(table.querySelectorAll('th')),
+                            ...Array.from(table.querySelectorAll('tr:first-child td'))
+                        ];
+                        
+                        const headerText = headerCandidates.map(h => clean(h.textContent || '')).join(' ').toUpperCase();
+                        
+                        // Check if any header contains any of the required texts
+                        const hasMatchingHeader = headerTexts.some(text => 
+                            headerCandidates.some(h => 
+                                clean(h.textContent || '').toUpperCase().includes(text.toUpperCase())
+                            )
+                        );
+                        
+                        if (hasMatchingHeader) {
                             return table;
                         }
                     }
-                    return null;
+                    
+                    // If no table found by headers, just return the first table!
+                    return allTables[0] || null;
                 };
 
                 const extractTable = (options: string | { headers: string[] }, colMap: Record<string, number>) => {

@@ -9,7 +9,8 @@ import logger from './utils/logger';
 import { initSentry, sentryRequestHandler, sentryTracingHandler, sentryErrorHandler } from './config/sentry';
 
 // Load environment variables FIRST, before any other imports that might depend on them
-dotenv.config();
+const envPath = process.env.NODE_ENV === 'development' ? '.env.development' : '.env';
+dotenv.config({ path: envPath, override: true });
 
 // Import routes after environment is loaded
 import routes from './routes';

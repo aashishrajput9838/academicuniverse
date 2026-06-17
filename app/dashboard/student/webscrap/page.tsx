@@ -120,10 +120,20 @@ export default function WebscrapPage() {
             {profile ? (
               <Button
                 onClick={resetFlow} // Reset to start OTP flow again
+                disabled={loading} // Only disable while loading
                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white transition-all py-6 text-lg"
               >
-                <RefreshCw className="mr-2 h-6 w-6" />
-                Start Webscraping to Google Sheets
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-6 w-6" />
+                    Start Webscraping to Google Sheets
+                  </>
+                )}
               </Button>
             ) : (
               <>

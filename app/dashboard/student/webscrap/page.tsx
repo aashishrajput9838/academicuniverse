@@ -40,10 +40,11 @@ export default function WebscrapPage() {
   }, []);
 
   const handleSendOtp = async () => {
-    if (!systemId) return;
+    const idToUse = profile?.systemId || systemId;
+    if (!idToUse) return;
     setLoading(true);
     try {
-      const res = await ezoneApi.sendOtp(systemId);
+      const res = await ezoneApi.sendOtp(idToUse);
       if (res.success && res.sessionId) {
         setSessionId(res.sessionId);
         setState('otp_sent');
@@ -59,11 +60,12 @@ export default function WebscrapPage() {
   };
 
   const handleVerifyOtp = async () => {
-    if (!otp || !sessionId) return;
+    const idToUse = profile?.systemId || systemId;
+    if (!otp || !sessionId || !idToUse) return;
     setLoading(true);
     setState('verifying');
     try {
-      const res = await ezoneApi.verifyOtp(systemId, otp, sessionId);
+      const res = await ezoneApi.verifyOtp(idToUse, otp, sessionId);
       if (res.success) {
         setState('syncing');
         const profileRes = await ezoneApi.getProfile();

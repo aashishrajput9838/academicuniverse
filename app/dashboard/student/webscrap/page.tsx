@@ -119,7 +119,7 @@ export default function WebscrapPage() {
           <CardContent className="space-y-4">
             {profile ? (
               <Button
-                onClick={resetFlow} // Reset to start OTP flow again
+                onClick={handleSendOtp} // Directly send OTP!
                 disabled={loading} // Only disable while loading
                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white transition-all py-6 text-lg"
               >

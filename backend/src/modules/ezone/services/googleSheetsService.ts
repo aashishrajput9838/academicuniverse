@@ -5,34 +5,61 @@ const logger = new Logger('GoogleSheetsService');
 
 export class GoogleSheetsService {
     private static instance: GoogleSheetsService;
-    private sheets: any;
-    private drive: any;
+    private sheets: any = null;
+    private drive: any = null;
     private spreadsheetId: string | null = null;
     private readonly SPREADSHEET_NAME = 'AcademicUniverse_EzoneSync';
+    private isAvailable: boolean = false;
 
     private constructor() {
-        const credentials = {
-            type: 'service_account',
-            project_id: process.env.GOOGLE_PROJECT_ID,
-            private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
-            private_key: process.env.GOOGLE_SHEETS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-            client_email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
-            client_id: process.env.GOOGLE_CLIENT_ID,
-            auth_uri: 'https://accounts.google.com/o/oauth2/auth',
-            token_uri: 'https://oauth2.googleapis.com/token',
-            auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
-            client_x509_cert_url: process.env.GOOGLE_CLIENT_X509_CERT_URL
-        };
+        try {
+            // Check if required credentials are available and not empty
+            const clientEmail = process.env.GOOGLE_SHEETS_CLIENT_EMAIL;
+            const privateKey = process.env.GOOGLE_SHEETS_PRIVATE_KEY;
+            const projectId = process.env.GOOGLE_PROJECT_ID;
 
-        const auth = new google.auth.GoogleAuth({
-            credentials,
-            scopes: [
-                'https://www.googleapis.com/auth/spreadsheets',
-                'https://www.googleapis.com/auth/drive.file'
-            ],
-        });
-        this.sheets = google.sheets({ version: 'v4', auth });
-        this.drive = google.drive({ version: 'v3', auth });
+            if (!clientEmail || !privateKey || !projectId || 
+                clientEmail.trim() === '' || privateKey.trim() === '' || projectId.trim() === '') {
+                logger.warn('Google Sheets integration disabled: Missing or empty required credentials');
+                this.isAvailable = false;
+                return;
+            }
+
+            const credentials = {
+                type: 'service_account',
+                project_id: projectId,
+                private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
+                private_key: privateKey.replace(/\\n/g, '\n'),
+                client_email: clientEmail,
+                client_id: process.env.GOOGLE_CLIENT_ID,
+                auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+                token_uri: 'https://oauth2.googleapis.com/token',
+                auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+                client_x509_cert_url: process.env.GOOGLE_CLIENT_X509_CERT_URL
+            };
+
+            // Validate that private_key and client_email are present in credentials object
+            if (!credentials.private_key || !credentials.client_email) {
+                logger.warn('Google Sheets integration disabled: Missing private_key or client_email in credentials');
+                this.isAvailable = false;
+                return;
+            }
+
+            const auth = new google.auth.GoogleAuth({
+                credentials,
+                scopes: [
+                    'https://www.googleapis.com/auth/spreadsheets',
+                    'https://www.googleapis.com/auth/drive.file'
+                ],
+            });
+            this.sheets = google.sheets({ version: 'v4', auth });
+            this.drive = google.drive({ version: 'v3', auth });
+            this.isAvailable = true;
+            logger.info('Google Sheets integration initialized successfully');
+        } catch (error) {
+            logger.warn('Google Sheets integration disabled due to initialization error:', error);
+            this.isAvailable = false;
+        }
     }
 
     public static getInstance(): GoogleSheetsService {
@@ -42,10 +69,15 @@ export class GoogleSheetsService {
         return GoogleSheetsService.instance;
     }
 
+    public isEnabled(): boolean {
+        return this.isAvailable;
+    }
+
     /**
      * Ensures the spreadsheet exists and has the required sheets
      */
-    public async initialize(): Promise<string> {
+    public async initialize(): Promise<string | null> {
+        if (!this.isAvailable) return null;
         if (this.spreadsheetId) return this.spreadsheetId;
 
         if (process.env.GOOGLE_SHEET_ID) {
@@ -87,11 +119,13 @@ export class GoogleSheetsService {
             return this.spreadsheetId!;
         } catch (error) {
             logger.error('Failed to initialize Google Sheets:', error);
-            throw error;
+            return null;
         }
     }
 
     private async ensureSheetsExist(): Promise<void> {
+        if (!this.isAvailable || !this.spreadsheetId) return;
+        
         const requiredSheets = [
             'StudentProfile', 'Attendance', 'Subjects', 'CAMarks', 
             'Timetable', 'Holidays', 'SyncLogs'
@@ -130,6 +164,8 @@ export class GoogleSheetsService {
     }
 
     private async initializeSheetHeaders(sheetName: string): Promise<void> {
+        if (!this.isAvailable || !this.spreadsheetId) return;
+        
         const headers: Record<string, string[]> = {
             StudentProfile: ['organizationId', 'userId', 'systemId', 'studentName', 'email', 'department', 'program', 'school', 'semester', 'status', 'syncTime'],
             Attendance: ['organizationId', 'userId', 'systemId', 'totalClasses', 'presentClasses', 'absentClasses', 'attendancePercentage', 'syncTime'],
@@ -154,7 +190,9 @@ export class GoogleSheetsService {
      * Appends data to a specific sheet
      */
     public async appendRows(sheetName: string, rows: any[][]): Promise<void> {
+        if (!this.isAvailable) return;
         await this.initialize();
+        if (!this.spreadsheetId) return;
         await this.sheets.spreadsheets.values.append({
             spreadsheetId: this.spreadsheetId,
             range: `${sheetName}!A:A`,
@@ -167,7 +205,9 @@ export class GoogleSheetsService {
      * Reads all data from a specific sheet
      */
     public async readRows(sheetName: string): Promise<any[][]> {
+        if (!this.isAvailable) return [];
         await this.initialize();
+        if (!this.spreadsheetId) return [];
         const response = await this.sheets.spreadsheets.values.get({
             spreadsheetId: this.spreadsheetId,
             range: `${sheetName}!A:Z`,
@@ -179,6 +219,7 @@ export class GoogleSheetsService {
      * Specialized logging to SyncLogs sheet
      */
     public async logSync(step: string, status: 'SUCCESS' | 'FAILED' | 'PENDING', message: string): Promise<void> {
+        if (!this.isAvailable) return;
         const row = [new Date().toISOString(), step, status, message];
         await this.appendRows('SyncLogs', [row]);
     }

@@ -35,18 +35,24 @@ export class EzoneSyncService {
      */
     async verifyAndSync(sessionId: string, systemId: string, otp: string, userId: string, organizationId: string, firebaseUid?: string): Promise<IEzoneAcademicProfile> {
         try {
-            await this.googleSheets.logSync('SYNC_STARTED', 'PENDING', `Starting sync for user ${userId}`);
+            if (this.googleSheets.isEnabled()) {
+                await this.googleSheets.logSync('SYNC_STARTED', 'PENDING', `Starting sync for user ${userId}`);
+            }
 
             // 1. Verify OTP and get authenticated page
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Verifying OTP...', { category: 'AUTH', progress: 10 }, firebaseUid);
             await this.sessionProvider.verifyOtp(sessionId, otp, userId, organizationId, firebaseUid);
             const page = await this.sessionProvider.getAuthenticatedPage(sessionId);
-            await this.googleSheets.logSync('OTP_VERIFIED', 'SUCCESS', 'User identity verified');
+            if (this.googleSheets.isEnabled()) {
+                await this.googleSheets.logSync('OTP_VERIFIED', 'SUCCESS', 'User identity verified');
+            }
 
             // 2. Extract academic data using Playwright
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Extracting academic data from Ezone...', { category: 'EXTRACTION', progress: 30 }, firebaseUid);
             const rawExtractedData = await this.scraper.extractData(page, userId, organizationId, sessionId, firebaseUid);
-            await this.googleSheets.logSync('DATA_EXTRACTED', 'SUCCESS', 'Raw data extracted from Ezone');
+            if (this.googleSheets.isEnabled()) {
+                await this.googleSheets.logSync('DATA_EXTRACTED', 'SUCCESS', 'Raw data extracted from Ezone');
+            }
 
             // 3. Sanitize and Validate
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'info', 'Sanitizing and validating data...', { category: 'VALIDATION', progress: 50 }, firebaseUid);
@@ -67,29 +73,40 @@ export class EzoneSyncService {
 
             const sanitizedData = sanitizeObject(rawExtractedData);
             this.validator.validate(sanitizedData);
-            await this.googleSheets.logSync('DATA_VALIDATED', 'SUCCESS', 'Data sanitized and validated (No HTML/CSS/JS)');
-
-            // 4. Save to Google Sheets
-            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Archiving data to Google Sheets...', { category: 'SHEETS', progress: 70 }, firebaseUid);
-            const sheetsData = this.mapper.toSheets(sanitizedData, systemId, userId, organizationId);
-            
-            for (const [sheetName, rows] of Object.entries(sheetsData)) {
-                if (rows && rows.length > 0) {
-                    await this.googleSheets.appendRows(sheetName, rows);
-                }
+            if (this.googleSheets.isEnabled()) {
+                await this.googleSheets.logSync('DATA_VALIDATED', 'SUCCESS', 'Data sanitized and validated (No HTML/CSS/JS)');
             }
-            await this.googleSheets.logSync('SHEETS_UPDATED', 'SUCCESS', 'Structured data saved to Google Sheets');
 
-            // 5. Read normalized data from Google Sheets and transform for MongoDB
-            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'info', 'Syncing clean data from Sheets to MongoDB...', { category: 'DATABASE', progress: 90 }, firebaseUid);
+            // 4. Save to Google Sheets (if enabled)
+            let sheetsData: Record<string, any[][]> | null = null;
+            if (this.googleSheets.isEnabled()) {
+                await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Archiving data to Google Sheets...', { category: 'SHEETS', progress: 70 }, firebaseUid);
+                sheetsData = this.mapper.toSheets(sanitizedData, systemId, userId, organizationId);
+                
+                for (const [sheetName, rows] of Object.entries(sheetsData)) {
+                    if (rows && rows.length > 0) {
+                        await this.googleSheets.appendRows(sheetName, rows);
+                    }
+                }
+                await this.googleSheets.logSync('SHEETS_UPDATED', 'SUCCESS', 'Structured data saved to Google Sheets');
+            }
+
+            // 5. Prepare data for MongoDB
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'info', 'Syncing clean data to MongoDB...', { category: 'DATABASE', progress: 90 }, firebaseUid);
             
-            // In a real scenario, we might want to fetch the latest rows for this systemId
-            // For now, we use the data we just prepared for sheets as the "normalized" source
-            const mongoData = this.mapper.fromSheetsToMongo(sheetsData);
+            let mongoData;
+            if (sheetsData) {
+                mongoData = this.mapper.fromSheetsToMongo(sheetsData);
+            } else {
+                // Use sanitized data directly if Google Sheets is disabled
+                mongoData = sanitizedData;
+            }
 
             // 6. Store clean data into MongoDB
             const savedProfile = await this.repository.upsertProfile(userId, organizationId, mongoData);
-            await this.googleSheets.logSync('MONGODB_UPDATED', 'SUCCESS', 'Clean data persisted to MongoDB');
+            if (this.googleSheets.isEnabled()) {
+                await this.googleSheets.logSync('MONGODB_UPDATED', 'SUCCESS', 'Clean data persisted to MongoDB');
+            }
 
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'success', 'Academic data pipeline completed!', { category: 'DATABASE', progress: 100 }, firebaseUid);
 
@@ -98,7 +115,9 @@ export class EzoneSyncService {
 
             return savedProfile;
         } catch (error: any) {
-            await this.googleSheets.logSync('SYNC_FAILED', 'FAILED', error.message);
+            if (this.googleSheets.isEnabled()) {
+                await this.googleSheets.logSync('SYNC_FAILED', 'FAILED', error.message);
+            }
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'error', `Pipeline failed: ${error.message}`, { category: 'GENERAL', status: 'failed', progress: 0 }, firebaseUid);
             logger.error('Sync pipeline failed:', error);
             throw error;

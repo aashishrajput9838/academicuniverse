@@ -48,7 +48,7 @@ export class EzoneDataMapper {
     /**
      * Maps raw scraper data to structured Google Sheets format
      */
-    public toSheets(data: any, systemId: string, userId: string, organizationId: string): Record<string, any[]> {
+    public toSheets(data: any, systemId: string, userId: string, organizationId: string): Record<string, any[][]> {
         const syncTime = new Date().toISOString();
 
         return {
@@ -119,7 +119,7 @@ export class EzoneDataMapper {
     /**
      * Maps Google Sheets rows back to MongoDB schema
      */
-    public fromSheetsToMongo(sheetsData: Record<string, any[]>): any {
+    public fromSheetsToMongo(sheetsData: Record<string, any[][]>): any {
         const profileRow = sheetsData.StudentProfile?.[0] || [];
         const attendanceRow = sheetsData.Attendance?.[0] || [];
 

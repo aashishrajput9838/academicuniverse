@@ -110,8 +110,8 @@ export class EzoneSyncService {
 
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'success', 'Academic data pipeline completed!', { category: 'DATABASE', progress: 100 }, firebaseUid);
 
-            // Cleanup session
-            setTimeout(() => this.sessionProvider.cleanupSession(sessionId), 60000);
+            // Cleanup session immediately
+            await this.sessionProvider.cleanupSession(sessionId);
 
             return savedProfile;
         } catch (error: any) {
@@ -120,6 +120,14 @@ export class EzoneSyncService {
             }
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'error', `Pipeline failed: ${error.message}`, { category: 'GENERAL', status: 'failed', progress: 0 }, firebaseUid);
             logger.error('Sync pipeline failed:', error);
+            
+            // Cleanup session on error too!
+            try {
+                await this.sessionProvider.cleanupSession(sessionId);
+            } catch (cleanupErr) {
+                logger.error('Error cleaning up session after failure:', cleanupErr);
+            }
+            
             throw error;
         }
     }

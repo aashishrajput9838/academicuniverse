@@ -50,26 +50,33 @@ export class EzoneSessionProvider {
 
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Launching secure automation engine...', { category: 'AUTHENTICATION', actionType: 'playwright.launch', progress: 5 }, firebaseUid);
             
-            // Production-grade realistic browser config to bypass bot detection
+            // Memory-optimized browser config for Render Free Tier
             browser = await chromium.launch({ 
                 headless: true,
-                slowMo: 100,
                 args: [
                     '--no-sandbox', 
                     '--disable-setuid-sandbox', 
                     '--disable-dev-shm-usage',
-                    '--disable-blink-features=AutomationControlled',
-                    '--disable-web-security',
-                    '--allow-running-insecure-content'
+                    '--disable-extensions',
+                    '--disable-gpu',
+                    '--disable-images',
+                    '--disable-devtools',
+                    '--disable-background-networking',
+                    '--disable-default-apps',
+                    '--disable-sync',
+                    '--disable-metrics',
+                    '--disable-default-apps',
+                    '--mute-audio',
+                    '--no-first-run'
                 ]
             });
 
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Browser engine ready. Creating secure context...', { category: 'AUTHENTICATION', actionType: 'browser.newContext', progress: 10 }, firebaseUid);
 
             const context = await browser.newContext({
-                viewport: { width: 1280, height: 720 },
+                viewport: { width: 800, height: 600 },
                 userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/136.0.0.0 Safari/537.36',
-                acceptDownloads: true,
+                acceptDownloads: false,
                 ignoreHTTPSErrors: true
             });
 

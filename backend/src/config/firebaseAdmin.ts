@@ -5,9 +5,16 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+type FirebaseCredentialSource =
+  | 'FIREBASE_SERVICE_ACCOUNT_JSON'
+  | 'FIREBASE_SPLIT_ENV'
+  | 'LOCAL_FILE_FALLBACK'
+  | 'NO_CREDENTIAL_SOURCE';
+
 let firebaseAuthInstance: any = null;
 let firebaseFirestoreInstance: any = null;
 let firebaseStorageInstance: any = null;
+let credentialSource: FirebaseCredentialSource = 'NO_CREDENTIAL_SOURCE';
 
 // Initialize Firebase Admin SDK safely
 try {
@@ -16,6 +23,7 @@ try {
   // Option 1: Full JSON string from environment variable (Best for production)
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     credential = admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON));
+    credentialSource = 'FIREBASE_SERVICE_ACCOUNT_JSON';
   }
   // Option 2: Individual environment variables
   else {
@@ -29,6 +37,7 @@ try {
         clientEmail: cEmail,
         privateKey: pKey.replace(/\\n/g, '\n'),
       });
+      credentialSource = 'FIREBASE_SPLIT_ENV';
     }
     // Option 3: Local file (for development)
     else {
@@ -36,13 +45,21 @@ try {
       if (fs.existsSync(serviceAccountPath)) {
         const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
         credential = admin.credential.cert(serviceAccount);
+        credentialSource = 'LOCAL_FILE_FALLBACK';
       } else {
+        credentialSource = 'NO_CREDENTIAL_SOURCE';
         throw new Error('No Firebase credentials found in environment (tried FIREBASE_PRIVATE_KEY/private_key etc.) or local file');
       }
     }
   }
 
   const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'academicuniverse.appspot.com';
+
+  if (credentialSource === 'LOCAL_FILE_FALLBACK' && process.env.NODE_ENV === 'production') {
+    console.warn('Firebase credential source selected: LOCAL_FILE_FALLBACK');
+  } else {
+    console.info(`Firebase credential source selected: ${credentialSource}`);
+  }
 
   if (!admin.apps.length) {
     admin.initializeApp({
@@ -53,9 +70,9 @@ try {
   firebaseAuthInstance = admin.auth();
   firebaseFirestoreInstance = admin.firestore();
   firebaseStorageInstance = admin.storage();
-  console.log('✓ Firebase initialized successfully');
+  console.log(`Firebase Admin initialized successfully using source: ${credentialSource}`);
 } catch (error) {
-  console.warn('Firebase Admin SDK initialization failed:', error);
+  console.warn(`Firebase Admin initialization failed using source: ${credentialSource}`);
   console.info('Running in limited mode - using mock authentication for development');
 
   // Create mock Firebase Auth that simulates token verification

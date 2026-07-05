@@ -356,7 +356,7 @@ export const GmailEvents: React.FC = () => {
                         : `No ${selectedCategory.toLowerCase()} events found.`}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0 overflow-y-auto pr-2" style={{ maxHeight: 'calc(100vh - 26rem)' }}>
                     {filteredEvents.map(event => (
                         <div key={event.id} className="bg-slate-700/30 p-4 rounded-xl border border-slate-600/50 hover:border-blue-500/30 transition">
                             <h3 className="font-semibold text-white mb-2 line-clamp-2" title={event.title}>{event.title}</h3>

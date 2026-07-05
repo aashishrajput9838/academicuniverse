@@ -281,7 +281,7 @@ export default function MailExplorerPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-4">
+      <div className="grid gap-4 min-h-0 overflow-y-auto pr-2" style={{ maxHeight: 'calc(100vh - 26rem)' }}>
         {loading ? (
           Array.from({ length: 4 }).map((_, index) => (
             <Card key={index} className="bg-slate-800/60 border-slate-700">

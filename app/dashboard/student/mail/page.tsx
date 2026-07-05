@@ -162,6 +162,24 @@ export default function MailExplorerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, backendToken, authLoading, fetchGmailStatus]);
 
+  // Listen for mark-as-read notifications (from detail page) and update list state
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'gmail_message_read' && e.newValue) {
+        try {
+          const data = JSON.parse(e.newValue);
+          if (data?.messageId) {
+            setMessages((prev) => prev.map((m) => m.id === data.messageId ? { ...m, isUnread: false, labels: m.labels.filter((l) => l !== 'UNREAD') } : m));
+          }
+        } catch (err) {
+          // ignore parse errors
+        }
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = sanitizeQueryValue(event.target.value);
     setSearchText(value);

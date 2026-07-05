@@ -51,6 +51,26 @@ export default function MailMessageDetailPage() {
           signal: controller.signal,
         });
         setMessage(response.data);
+
+        // If message is unread, mark it as read on the backend and notify list via localStorage
+        try {
+          if (response.data?.labels && Array.isArray(response.data.labels) && response.data.labels.includes('UNREAD')) {
+            await apiRequest(`/api/gmail/messages/${params.messageId}/read`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${backendToken}` },
+            });
+            // Update local state immediately
+            setMessage((prev) => prev ? { ...prev, labels: prev.labels.filter((l) => l !== 'UNREAD') } : prev);
+            // Notify other parts of the app to refresh their view
+            try {
+              localStorage.setItem('gmail_message_read', JSON.stringify({ messageId: params.messageId, ts: Date.now() }));
+            } catch (e) {
+              // ignore storage errors
+            }
+          }
+        } catch (err) {
+          console.error('Failed to mark message as read:', err);
+        }
       } catch (err: any) {
         if (err.name === 'AbortError') return;
         console.error('Failed to fetch message detail:', err);

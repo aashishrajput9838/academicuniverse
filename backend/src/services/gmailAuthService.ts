@@ -51,7 +51,8 @@ export const refreshAccessToken = async (userId: string): Promise<IGmailTokens> 
 export const getGmailAuthUrl = (userId: string) => {
     const oauth2Client = getOAuth2Client();
     const scopes = [
-        'https://www.googleapis.com/auth/gmail.readonly'
+        'https://www.googleapis.com/auth/gmail.readonly',
+        'https://www.googleapis.com/auth/gmail.modify'
     ];
 
     const authUrl = oauth2Client.generateAuthUrl({

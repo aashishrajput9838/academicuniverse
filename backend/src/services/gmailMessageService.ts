@@ -341,3 +341,21 @@ export const getGmailMessage = async (userId: string, messageId: string): Promis
     attachments,
   };
 };
+
+// Minimal helper to mark a Gmail message as read by removing the UNREAD label
+export const markMessageAsRead = async (userId: string, messageId: string) => {
+  const gmail = await getAuthenticatedGmailClient(userId);
+  try {
+    await executeGmailRequestWithRetry(() =>
+      gmail.users.messages.modify({
+        userId: 'me',
+        id: messageId,
+        requestBody: { removeLabelIds: ['UNREAD'] },
+      })
+    );
+    return { success: true };
+  } catch (error) {
+    console.error(`Failed to mark message ${messageId} as read:`, error);
+    throw error;
+  }
+};

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { getGmailAuthUrl, handleGmailCallback, disconnectGmail, getGmailStats } from '../services/gmailAuthService';
 import { syncGmailEvents } from '../services/gmailSyncService';
 import { listGmailMessages, getGmailMessage } from '../services/gmailMessageService';
+import { markMessageAsRead } from '../services/gmailMessageService';
 import { sendResponse, sendError } from '../utils/response';
 import User from '../models/User';
 
@@ -147,6 +148,19 @@ export const getGmailMessageController = async (req: any, res: Response) => {
         console.error('Error fetching Gmail message detail:', error);
         const message = error.message || 'Failed to fetch Gmail message detail';
         return sendError(res, error.statusCode || 500, message);
+    }
+};
+
+export const markGmailMessageReadController = async (req: any, res: Response) => {
+    try {
+        const userId = req.user.userId || req.user._id;
+        const { messageId } = req.params;
+        if (!messageId) return sendError(res, 400, 'Message ID is required');
+        await markMessageAsRead(userId.toString(), messageId);
+        return sendResponse(res, 200, { success: true }, 'Message marked as read');
+    } catch (error: any) {
+        console.error('Error marking Gmail message read:', error);
+        return sendError(res, error.statusCode || 500, error.message || 'Failed to mark message as read');
     }
 };
 

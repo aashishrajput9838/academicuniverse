@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { connectGmail, gmailCallback, disconnectGmailAccount, triggerGmailSync, getGmailStatus, getGmailStatsController, listGmailMessagesController, getGmailMessageController } from '../controllers/gmailController';
+import { connectGmail, gmailCallback, disconnectGmailAccount, triggerGmailSync, getGmailStatus, getGmailStatsController, listGmailMessagesController, getGmailMessageController, markGmailMessageReadController } from '../controllers/gmailController';
 import { authenticateUser } from '../middleware/auth';
 
 const gmailRouter = Router();
@@ -16,6 +16,7 @@ gmailRouter.get('/status', authenticateUser, getGmailStatus);
 gmailRouter.get('/stats', authenticateUser, getGmailStatsController);
 gmailRouter.get('/messages', authenticateUser, listGmailMessagesController);
 gmailRouter.get('/messages/:messageId', authenticateUser, getGmailMessageController);
+gmailRouter.post('/messages/:messageId/read', authenticateUser, markGmailMessageReadController);
 gmailRouter.delete('/disconnect', authenticateUser, disconnectGmailAccount);
 gmailRouter.post('/sync', authenticateUser, triggerGmailSync);
 

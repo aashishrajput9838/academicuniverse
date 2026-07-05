@@ -21,7 +21,10 @@ backend/output_utf8.txt
 backend/testGmailSync.ts
 
 # Service account keys and sensitive JSON files
+.env
 *.json
+serviceAccountKey.json
+serviceAccountKey.json.json
 !package.json
 !package-lock.json
 !pnpm-lock.yaml

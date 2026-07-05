@@ -7,10 +7,11 @@ import {
   RolePermission,
   User,
 } from '../src/models';
+import { resolveMongoUri } from '../src/config/database';
 
 dotenv.config();
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/academic_universe';
+const MONGODB_URI = resolveMongoUri();
 
 /**
  * Seed Script: Initialize database with roles, permissions, and demo data

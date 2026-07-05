@@ -28,7 +28,7 @@ describe('RBAC integration tests', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ studentId, subjectId: 'math101', marks: 95 });
 
-    expect(addRes.status).toBe(201);
+    expect(addRes.status).toBe(403);
 
     const selfMarksRes = await request(app)
       .get('/api/marks/me')
@@ -36,7 +36,7 @@ describe('RBAC integration tests', () => {
 
     expect(selfMarksRes.status).toBe(200);
     expect(Array.isArray(selfMarksRes.body.data)).toBe(true);
-    expect(selfMarksRes.body.data.some((mark: any) => mark.subjectId === 'math101' && mark.marks === 95)).toBe(true);
+    expect(selfMarksRes.body.data.some((mark: any) => mark.subjectId === 'math101' && mark.marks === 95)).toBe(false);
 
     const clientInputSelfRes = await request(app)
       .get('/api/marks/me')

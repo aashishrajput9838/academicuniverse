@@ -24,6 +24,7 @@ interface BackendUser {
 interface AuthContextType {
   user: User | null;
   backendUser: BackendUser | null;
+  backendToken: string | null;
   loading: boolean;
   authError: string | null;
   clearAuthError: () => void;
@@ -39,6 +40,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [backendUser, setBackendUser] = useState<any | null>(null);
+  const [backendToken, setBackendToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const auth = getFirebaseAuth();
@@ -70,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (typeof window !== 'undefined') {
             localStorage.setItem('authToken', data.data.token);
           }
+          setBackendToken(data.data.token);
           // Update the backend user state
           setBackendUser(data.data.user);
           return true;
@@ -109,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (response.ok) {
               const data = await response.json();
               setBackendUser(data.data);
+              setBackendToken(storedToken);
               setAuthError(null);
               setLoading(false);
             } else {
@@ -119,8 +123,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (!success) {
                 console.error('Failed to refresh backend token, logging out');
                 await signOut(auth);
-                localStorage.removeItem('authToken');
+                if (typeof window !== 'undefined') {
+                  localStorage.removeItem('authToken');
+                }
+                setBackendToken(null);
                 setBackendUser(null);
+                setUser(null);
                 setAuthError('Session expired. Please sign in again.');
               }
               setLoading(false);
@@ -158,32 +166,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (response.ok) {
               const data = await response.json();
               setBackendUser(data.data);
+              setBackendToken(storedToken);
               setAuthError(null);
               
-              // Mock user for UI consistency
+              // Mock user for UI consistency; do not treat backend JWT as Firebase ID token.
               const mockUser: any = {
                 uid: data.data.id,
                 email: data.data.email,
                 displayName: data.data.name,
                 photoURL: null,
                 emailVerified: true,
-                getIdToken: async () => storedToken,
+                getIdToken: async () => {
+                  throw new Error('Backend JWT is not a Firebase ID token');
+                },
               };
               setUser(mockUser);
             } else {
               console.error('Invalid custom token, clearing session');
               localStorage.removeItem('authToken');
+              setBackendToken(null);
               setBackendUser(null);
               setUser(null);
             }
           } catch (error) {
             console.error('Error restoring custom session:', error);
-            localStorage.removeItem('authToken');
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('authToken');
+            }
+            setBackendToken(null);
             setBackendUser(null);
             setUser(null);
           }
         } else {
           // Truly logged out
+          setBackendToken(null);
           setBackendUser(null);
           setUser(null);
           setAuthError(null);
@@ -242,6 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined') {
         localStorage.setItem('authToken', data.data.token);
       }
+      setBackendToken(data.data.token);
 
       // Update the backend user state
       setBackendUser(data.data.user);
@@ -271,6 +288,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('authToken');
       }
+      setBackendToken(null);
       setBackendUser(null);
     } catch (error) {
       console.error('Error signing out:', error);
@@ -317,6 +335,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined') {
         localStorage.setItem('authToken', data.data.token);
       }
+      setBackendToken(data.data.token);
 
       // Update the backend user state
       setBackendUser(data.data.user);
@@ -337,7 +356,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         phoneNumber: null,
         providerId: 'password',
         delete: async () => { },
-        getIdToken: async () => data.data.token,
+        getIdToken: async () => {
+          throw new Error('Backend JWT is not a Firebase ID token');
+        },
         getIdTokenResult: async () => ({
           token: data.data.token,
           expirationTime: new Date(Date.now() + 3600 * 1000).toISOString(),
@@ -364,7 +385,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const clearAuthError = () => setAuthError(null);
 
   return (
-    <AuthContext.Provider value={{ user, backendUser, loading, authError, clearAuthError, signInWithGoogle, signInWithEmailAndPassword, logout }}>
+    <AuthContext.Provider value={{ user, backendUser, backendToken, loading, authError, clearAuthError, signInWithGoogle, signInWithEmailAndPassword, logout }}>
       <div className="relative">
         {authError && (
           <div className="fixed inset-x-0 top-0 z-50 bg-amber-500 text-slate-950 shadow-xl">

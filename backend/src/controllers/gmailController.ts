@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
-import { getGmailAuthUrl, handleGmailCallback, disconnectGmail } from '../services/gmailAuthService';
+import { getGmailAuthUrl, handleGmailCallback, disconnectGmail, getGmailStats } from '../services/gmailAuthService';
 import { syncGmailEvents } from '../services/gmailSyncService';
+import { listGmailMessages, getGmailMessage } from '../services/gmailMessageService';
 import { sendResponse, sendError } from '../utils/response';
+import User from '../models/User';
 
 export const connectGmail = async (req: any, res: Response) => {
     try {
@@ -67,13 +69,84 @@ export const gmailCallback = async (req: Request, res: Response) => {
 };
 
 export const disconnectGmailAccount = async (req: any, res: Response) => {
+    console.log("🔙 [Backend] disconnectGmailAccount controller ENTERED!");
+    console.log("🔙 [Backend] req.user object:", JSON.stringify(req.user, null, 2));
     try {
         const userId = req.user.userId || req.user._id;
+        console.log("🔙 [Backend] User ID from auth middleware:", userId);
         await disconnectGmail(userId.toString());
+        console.log("🔙 [Backend] disconnectGmail service finished successfully!");
         return sendResponse(res, 200, null, 'Gmail disconnected successfully');
     } catch (error: any) {
-        console.error('Error disconnecting Gmail:', error);
+        console.error('🔙 [Backend] Error disconnecting Gmail:', error);
         return sendError(res, 500, 'Failed to disconnect Gmail account');
+    }
+};
+
+export const getGmailStatus = async (req: any, res: Response) => {
+    console.log("🔙 [Backend] getGmailStatus controller ENTERED!");
+    console.log("🔙 [Backend] getGmailStatus req.user object:", JSON.stringify(req.user, null, 2));
+    try {
+        const userId = req.user.userId || req.user._id;
+        console.log("🔙 [Backend] getGmailStatus userId:", userId);
+        const userLean = await User.findById(userId).lean();
+        console.log("🔙 [Backend] getGmailStatus userLean._id:", userLean?._id);
+        console.log("🔙 [Backend] getGmailStatus (lean): hasOwnProperty('gmailTokens')?", userLean?.hasOwnProperty('gmailTokens'));
+        const isConnected = userLean?.hasOwnProperty('gmailTokens') && !!userLean.gmailTokens;
+        console.log("🔙 [Backend] getGmailStatus returning connected:", isConnected);
+        return sendResponse(res, 200, { connected: isConnected }, 'Gmail status retrieved successfully');
+    } catch (error: any) {
+        console.error('🔙 [Backend] Error getting Gmail status:', error);
+        return sendError(res, 500, 'Failed to get Gmail status');
+    }
+};
+
+export const listGmailMessagesController = async (req: any, res: Response) => {
+    try {
+        const userId = req.user.userId || req.user._id;
+        const { pageToken, maxResults, q, labelIds } = req.query;
+
+        const parsedMaxResults = maxResults ? Math.min(Number(maxResults), 50) : undefined;
+
+        const result = await listGmailMessages(userId.toString(), {
+            pageToken: pageToken ? String(pageToken) : undefined,
+            maxResults: parsedMaxResults,
+            q: q ? String(q) : undefined,
+            labelIds: labelIds ? labelIds : undefined,
+        });
+
+        return sendResponse(res, 200, result, 'Gmail messages retrieved successfully');
+    } catch (error: any) {
+        console.error('Error listing Gmail messages:', error);
+        const message = error.message || 'Failed to list Gmail messages';
+        const statusCode = error.statusCode || (error?.response?.status === 429 ? 429 : 500);
+        if (statusCode === 429 && !message.toLowerCase().includes('rate limit')) {
+            error.message = 'Rate limit exceeded. Please wait and try again.';
+        }
+        if (error?.response?.headers?.get?.('retry-after')) {
+            res.setHeader('Retry-After', error.response.headers.get('retry-after'));
+        } else if (error?.response?.headers?.['retry-after']) {
+            res.setHeader('Retry-After', error.response.headers['retry-after']);
+        }
+        return sendError(res, statusCode, error.message || message);
+    }
+};
+
+export const getGmailMessageController = async (req: any, res: Response) => {
+    try {
+        const userId = req.user.userId || req.user._id;
+        const { messageId } = req.params;
+
+        if (!messageId) {
+            return sendError(res, 400, 'Message ID is required');
+        }
+
+        const result = await getGmailMessage(userId.toString(), messageId);
+        return sendResponse(res, 200, result, 'Gmail message retrieved successfully');
+    } catch (error: any) {
+        console.error('Error fetching Gmail message detail:', error);
+        const message = error.message || 'Failed to fetch Gmail message detail';
+        return sendError(res, error.statusCode || 500, message);
     }
 };
 
@@ -86,11 +159,22 @@ export const triggerGmailSync = async (req: any, res: Response) => {
     } catch (error: any) {
         console.error('Error syncing Gmail events:', error);
 
-        // Provide a better error if getting "User not found or Gmail not connected"
-        if (error.message && error.message.includes('not connected')) {
-            return sendError(res, 400, 'Gmail account is not connected');
+        // Provide a better error messages
+        if (error.message && (error.message.includes('not connected') || error.message.includes('expired'))) {
+            return sendError(res, 400, error.message);
         }
 
         return sendError(res, 500, 'Failed to sync Gmail events');
+    }
+};
+
+export const getGmailStatsController = async (req: any, res: Response) => {
+    try {
+        const userId = req.user.userId || req.user._id;
+        const stats = await getGmailStats(userId.toString());
+        return sendResponse(res, 200, stats, 'Gmail stats retrieved successfully');
+    } catch (error: any) {
+        console.error('Error getting Gmail stats:', error);
+        return sendError(res, 500, 'Failed to get Gmail stats');
     }
 };

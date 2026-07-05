@@ -1,24 +1,186 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 
-export default function StudentGrowthHub() {
-  const { user, backendUser, loading } = useAuth();
-  const router = useRouter();
+type GrowthMetricState = 'AVAILABLE' | 'EMPTY' | 'NOT_CONNECTED' | 'NOT_SYNCED' | 'UNAVAILABLE' | 'ERROR';
+type GrowthMetricReasonCode = 'NO_DATA' | 'NOT_CONNECTED' | 'NOT_SYNCED' | 'UNAVAILABLE' | 'AUTH_REQUIRED' | 'ORG_REQUIRED' | 'SOURCE_ERROR' | 'UNKNOWN';
 
-  // Redirect to login if not authenticated
+type GrowthMetric<T> = {
+  state: GrowthMetricState;
+  value: T | null;
+  updatedAt: string | null;
+  stale: boolean | null;
+  reasonCode: GrowthMetricReasonCode | null;
+};
+
+type SubjectPerformance = {
+  subjectId: string;
+  averageMarks: number;
+  count: number;
+};
+
+type GrowthResponse = {
+  generatedAt: string;
+  metrics: {
+    marksSummary: GrowthMetric<number>;
+    averageMarks: GrowthMetric<number>;
+    subjectWisePerformance: GrowthMetric<SubjectPerformance[]>;
+    attendance: GrowthMetric<number>;
+    academicProfileStatus: GrowthMetric<string>;
+    githubRepositoryCount: GrowthMetric<number>;
+    completedProjects: GrowthMetric<number>;
+  };
+};
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+
+const isMetricValuePresent = <T,>(value: T | null | undefined): value is T => value !== null && value !== undefined;
+
+const describeState = (metric: GrowthMetric<unknown>) => {
+  switch (metric.state) {
+    case 'AVAILABLE':
+      return 'Available';
+    case 'EMPTY':
+      return 'No data yet';
+    case 'NOT_CONNECTED':
+      return 'Not connected';
+    case 'NOT_SYNCED':
+      return 'Not synced';
+    case 'UNAVAILABLE':
+      return 'Unavailable';
+    case 'ERROR':
+      return 'Unavailable';
+    default:
+      return 'Unavailable';
+  }
+};
+
+const formatMetricValue = (metric: GrowthMetric<number>, label: string) => {
+  if (metric.state === 'AVAILABLE' && isMetricValuePresent(metric.value)) {
+    return `${metric.value}${label}`;
+  }
+
+  if (metric.state === 'EMPTY') {
+    return 'No data yet';
+  }
+
+  if (metric.state === 'NOT_SYNCED') {
+    return 'Not synced';
+  }
+
+  if (metric.state === 'NOT_CONNECTED') {
+    return 'Not connected';
+  }
+
+  return 'Unavailable';
+};
+
+const formatAttendanceValue = (metric: GrowthMetric<number>) => {
+  if (metric.state === 'AVAILABLE' && isMetricValuePresent(metric.value)) {
+    return `${metric.value}%`;
+  }
+
+  if (metric.state === 'EMPTY') {
+    return 'No attendance data';
+  }
+
+  if (metric.state === 'NOT_SYNCED') {
+    return 'Not synced';
+  }
+
+  return 'Unavailable';
+};
+
+const formatStatusValue = (metric: GrowthMetric<string>) => {
+  if (metric.state === 'AVAILABLE' && isMetricValuePresent(metric.value)) {
+    return metric.value;
+  }
+
+  if (metric.state === 'EMPTY') {
+    return 'No academic profile status yet';
+  }
+
+  if (metric.state === 'NOT_SYNCED') {
+    return 'Not synced';
+  }
+
+  return 'Unavailable';
+};
+
+export default function StudentGrowthHub() {
+  const { user, backendUser, backendToken, loading } = useAuth();
+  const router = useRouter();
+  const [growthData, setGrowthData] = useState<GrowthResponse | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
   useEffect(() => {
     if (!loading && (!user || !backendUser)) {
       router.push('/login');
     } else if (!loading && backendUser && backendUser.role !== 'STUDENT' && backendUser.role !== 'FACULTY') {
-      // For unauthorized role, redirect to home
       router.push('/');
     }
   }, [user, backendUser, loading, router]);
 
-  // Show loading state while checking authentication
+  useEffect(() => {
+    if (loading || !user || !backendUser || backendUser.role !== 'STUDENT') {
+      return;
+    }
+
+    if (!backendToken) {
+      setGrowthData(null);
+      setError('Your session is no longer authenticated. Please sign in again to view your growth summary.');
+      setIsLoadingData(false);
+      return;
+    }
+
+    let isActive = true;
+
+    const loadGrowthData = async () => {
+      setIsLoadingData(true);
+      setError(null);
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/growth/me`, {
+          headers: {
+            Authorization: `Bearer ${backendToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('growth-request-failed');
+        }
+
+        const payload = await response.json();
+        if (!payload?.success || !payload?.data?.metrics) {
+          throw new Error('growth-response-invalid');
+        }
+
+        if (isActive) {
+          setGrowthData(payload.data as GrowthResponse);
+        }
+      } catch {
+        if (isActive) {
+          setGrowthData(null);
+          setError('We could not load your growth summary right now. Please try again.');
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingData(false);
+        }
+      }
+    };
+
+    loadGrowthData();
+
+    return () => {
+      isActive = false;
+    };
+  }, [backendToken, backendUser, loading, retryCount, user]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 flex items-center justify-center">
@@ -27,7 +189,6 @@ export default function StudentGrowthHub() {
     );
   }
 
-  // Don't render content until user is authenticated and is a student
   if (!user || !backendUser || backendUser.role !== 'STUDENT') {
     return null;
   }
@@ -36,96 +197,150 @@ export default function StudentGrowthHub() {
     <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-2">Growth Hub</h1>
-        <p className="text-slate-400">Track your intellectual and emotional growth with our AI-powered analytics</p>
+        <p className="text-slate-400">A secure summary of your verified marks, attendance, and connected learning activity.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* IQ/EQ Trends */}
+      {isLoadingData ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {[0, 1, 2, 3].map((index) => (
+            <div key={index} className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 animate-pulse">
+              <div className="h-4 w-28 bg-slate-700 rounded mb-4" />
+              <div className="h-8 w-20 bg-slate-700 rounded mb-2" />
+              <div className="h-4 w-40 bg-slate-700 rounded" />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {!isLoadingData && error ? (
         <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-bold text-emerald-400 mb-4">IQ/EQ Trends</h2>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-slate-300">Cognitive Intelligence</span>
-                <span className="text-emerald-400 font-semibold">87%</span>
-              </div>
-              <div className="w-full bg-slate-700 rounded-full h-2">
-                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '87%' }}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-slate-300">Emotional Intelligence</span>
-                <span className="text-emerald-400 font-semibold">82%</span>
-              </div>
-              <div className="w-full bg-slate-700 rounded-full h-2">
-                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '82%' }}></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-slate-300">Social Intelligence</span>
-                <span className="text-emerald-400 font-semibold">78%</span>
-              </div>
-              <div className="w-full bg-slate-700 rounded-full h-2">
-                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '78%' }}></div>
-              </div>
-            </div>
-          </div>
-          <div className="mt-6 p-4 bg-slate-800/50 rounded-lg border border-slate-600">
-            <p className="text-slate-300 text-sm">Based on your activity, your cognitive intelligence has increased by 5% in the last month. Great job!</p>
-          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Growth summary unavailable</h2>
+          <p className="text-slate-400 mb-4">{error}</p>
+          <button
+            type="button"
+            onClick={() => setRetryCount((value) => value + 1)}
+            className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/20"
+          >
+            Try again
+          </button>
         </div>
+      ) : null}
 
-        {/* Growth Analysis */}
-        <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-bold text-emerald-400 mb-4">Growth Analysis</h2>
-          <div className="space-y-4">
-            <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/30">
-              <h3 className="font-semibold text-green-400">Improvement Areas</h3>
-              <ul className="mt-2 space-y-1 text-slate-300 text-sm">
-                <li>• Time Management (+12%)</li>
-                <li>• Critical Thinking (+8%)</li>
-                <li>• Collaboration Skills (+10%)</li>
-              </ul>
+      {!isLoadingData && growthData ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold text-emerald-400">Marks overview</h2>
+                <p className="text-sm text-slate-400">Verified marks recorded for your current organization.</p>
+              </div>
+              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium uppercase tracking-wide text-emerald-300">
+                {describeState(growthData.metrics.marksSummary)}
+              </span>
             </div>
-            <div className="p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
-              <h3 className="font-semibold text-yellow-400">Focus Areas</h3>
-              <ul className="mt-2 space-y-1 text-slate-300 text-sm">
-                <li>• Public Speaking (-5%)</li>
-                <li>• Stress Management (-3%)</li>
-              </ul>
+            <div className="mt-6 space-y-4">
+              <div>
+                <p className="text-sm text-slate-400">Recorded mark entries</p>
+                <p className="mt-1 text-3xl font-semibold text-white">
+                  {growthData.metrics.marksSummary.state === 'AVAILABLE' && isMetricValuePresent(growthData.metrics.marksSummary.value)
+                    ? growthData.metrics.marksSummary.value
+                    : 'No data'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Average marks</p>
+                <p className="mt-1 text-3xl font-semibold text-white">
+                  {formatMetricValue(growthData.metrics.averageMarks, '')}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Growth Chart */}
-        <div className="md:col-span-2 bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-bold text-emerald-400 mb-4">Growth Over Time</h2>
-          <div className="h-64 flex items-center justify-center bg-slate-800/50 rounded-lg border border-slate-600">
-            <p className="text-slate-400">Interactive growth chart visualization would appear here</p>
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold text-emerald-400">Attendance</h2>
+                <p className="text-sm text-slate-400">Current Ezone attendance status if available.</p>
+              </div>
+              <span className="rounded-full border border-slate-600 bg-slate-800 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-300">
+                {describeState(growthData.metrics.attendance)}
+              </span>
+            </div>
+            <p className="mt-6 text-3xl font-semibold text-white">{formatAttendanceValue(growthData.metrics.attendance)}</p>
           </div>
-        </div>
 
-        {/* Recommendations */}
-        <div className="md:col-span-2 bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-bold text-emerald-400 mb-4">Personalized Recommendations</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-semibold text-white mb-2">Join Public Speaking Workshop</h3>
-              <p className="text-slate-400 text-sm">Improve your communication skills and boost confidence</p>
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold text-emerald-400">Academic profile</h2>
+                <p className="text-sm text-slate-400">Latest profile status from the connected academic source.</p>
+              </div>
+              <span className="rounded-full border border-slate-600 bg-slate-800 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-300">
+                {describeState(growthData.metrics.academicProfileStatus)}
+              </span>
             </div>
-            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-semibold text-white mb-2">Take Stress Management Course</h3>
-              <p className="text-slate-400 text-sm">Learn techniques to manage academic pressure</p>
+            <p className="mt-6 text-lg font-semibold text-white">{formatStatusValue(growthData.metrics.academicProfileStatus)}</p>
+          </div>
+
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold text-emerald-400">GitHub activity</h2>
+                <p className="text-sm text-slate-400">Repository and project counts from your connected GitHub profile.</p>
+              </div>
+              <span className="rounded-full border border-slate-600 bg-slate-800 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-300">
+                {describeState(growthData.metrics.githubRepositoryCount)}
+              </span>
             </div>
-            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-semibold text-white mb-2">Participate in Group Projects</h3>
-              <p className="text-slate-400 text-sm">Enhance collaboration and teamwork skills</p>
+            <div className="mt-6 space-y-4">
+              <div>
+                <p className="text-sm text-slate-400">Repositories</p>
+                <p className="mt-1 text-3xl font-semibold text-white">
+                  {growthData.metrics.githubRepositoryCount.state === 'AVAILABLE' && isMetricValuePresent(growthData.metrics.githubRepositoryCount.value)
+                    ? growthData.metrics.githubRepositoryCount.value
+                    : 'Not available'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Completed projects</p>
+                <p className="mt-1 text-3xl font-semibold text-white">
+                  {growthData.metrics.completedProjects.state === 'AVAILABLE' && isMetricValuePresent(growthData.metrics.completedProjects.value)
+                    ? growthData.metrics.completedProjects.value
+                    : 'Not available'}
+                </p>
+              </div>
             </div>
           </div>
+
+          <div className="md:col-span-2 bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold text-emerald-400">Subject performance</h2>
+                <p className="text-sm text-slate-400">Real subject averages from your verified marks data.</p>
+              </div>
+              <span className="rounded-full border border-slate-600 bg-slate-800 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-300">
+                {describeState(growthData.metrics.subjectWisePerformance)}
+              </span>
+            </div>
+
+            {growthData.metrics.subjectWisePerformance.state === 'AVAILABLE' && growthData.metrics.subjectWisePerformance.value?.length ? (
+              <div className="mt-6 grid gap-4 md:grid-cols-2">
+                {growthData.metrics.subjectWisePerformance.value.map((item) => (
+                  <div key={item.subjectId} className="rounded-lg border border-slate-700 bg-slate-800/60 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="font-semibold text-white">{item.subjectId}</h3>
+                      <span className="text-sm text-emerald-300">{item.averageMarks.toFixed(2)}</span>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-400">{item.count} recorded mark{item.count === 1 ? '' : 's'}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-6 text-sm text-slate-400">No subject-wise marks are available yet.</p>
+            )}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

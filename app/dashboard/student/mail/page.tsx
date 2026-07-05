@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { apiRequest } from '@/utils/api';
 import { Button } from '@/components/ui/button';
@@ -70,16 +70,6 @@ export default function MailExplorerPage() {
   const searchDebounceTimeout = useRef<NodeJS.Timeout | null>(null);
   const lastRequestId = useRef(0);
 
-  const queryParams = useMemo(() => {
-    const base = buildLabelQuery(filter);
-    const search = searchText.trim();
-    if (search) {
-      const existingQ = base.q ? `${base.q} ` : '';
-      return { ...base, q: `${existingQ}${search}`.trim() };
-    }
-    return base;
-  }, [filter, searchText]);
-
   const fetchGmailStatus = useCallback(async () => {
     if (!user) return;
     try {
@@ -95,7 +85,7 @@ export default function MailExplorerPage() {
     }
   }, [user]);
 
-  const fetchMessages = useCallback(async (options: { pageToken?: string; reset?: boolean; searchQuery?: string } = {}) => {
+  const fetchMessages = useCallback(async (options: { pageToken?: string; reset?: boolean; searchQuery?: string; filterOverride?: string } = {}) => {
     if (!user || !backendToken) return;
     const requestId = ++lastRequestId.current;
 
@@ -111,11 +101,18 @@ export default function MailExplorerPage() {
     try {
       const params = new URLSearchParams();
       const actualPageToken = options.pageToken || '';
+      const activeFilter = options.filterOverride ?? filter;
+      const activeSearch = options.searchQuery !== undefined ? options.searchQuery.trim() : searchText.trim();
       if (actualPageToken) params.set('pageToken', actualPageToken);
       params.set('maxResults', '25');
-      const searchValue = options.searchQuery !== undefined ? options.searchQuery.trim() : queryParams.q;
-      if (searchValue) params.set('q', searchValue);
-      if (queryParams.labelIds) params.set('labelIds', queryParams.labelIds.join(','));
+      const labelQuery = buildLabelQuery(activeFilter);
+      if (activeSearch) {
+        const existingQ = labelQuery.q ? `${labelQuery.q} ` : '';
+        params.set('q', `${existingQ}${activeSearch}`.trim());
+      } else if (labelQuery.q) {
+        params.set('q', labelQuery.q);
+      }
+      if (labelQuery.labelIds) params.set('labelIds', labelQuery.labelIds.join(','));
 
       const response = await apiRequest(`/api/gmail/messages?${params.toString()}`, {
         headers: { Authorization: `Bearer ${backendToken}` },
@@ -144,7 +141,7 @@ export default function MailExplorerPage() {
       setLoading(false);
       setQueryInFlight(null);
     }
-  }, [queryParams, user, queryInFlight]);
+  }, [user, backendToken, filter, searchText, queryInFlight]);
 
   useEffect(() => {
     if (!user || !backendToken || authLoading) return;
@@ -190,7 +187,7 @@ export default function MailExplorerPage() {
     searchDebounceTimeout.current = setTimeout(() => {
       setPageTokenHistory([]);
       setPageNumber(1);
-      fetchMessages({ reset: true, searchQuery: capturedQuery });
+      fetchMessages({ reset: true, searchQuery: capturedQuery, filterOverride: filter });
     }, 500) as unknown as ReturnType<typeof setTimeout>;
   };
 
@@ -198,7 +195,7 @@ export default function MailExplorerPage() {
     setFilter(value);
     setPageTokenHistory([]);
     setPageNumber(1);
-    fetchMessages({ reset: true });
+    fetchMessages({ reset: true, filterOverride: value, searchQuery: searchText });
   };
 
   const handleNextPage = () => {

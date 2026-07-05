@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { sendResponse, sendError } from '../utils/response';
 import Mark from '../models/Mark';
+import User from '../models/User';
 
 /**
  * Add marks for a student
@@ -38,16 +40,55 @@ export const addMarksController = async (req: any, res: Response) => {
 };
 
 /**
+ * View marks for the authenticated student
+ * GET /api/marks/me
+ * Requires: VIEW_MARKS permission
+ */
+export const getMyMarksController = async (req: any, res: Response) => {
+  try {
+    const studentId = req.user?.userId;
+
+    if (!studentId) {
+      return sendError(res, 401, 'Authentication required');
+    }
+
+    const studentMarks = await Mark.find({ studentId, organizationId: req.organizationId })
+      .populate('createdBy', 'name')
+      .sort({ createdAt: -1 });
+
+    return sendResponse(res, 200, studentMarks, 'Marks retrieved successfully');
+  } catch (error: any) {
+    console.error('Get my marks error:', error);
+    return sendError(res, 500, 'Failed to fetch marks');
+  }
+};
+
+/**
  * View marks for a student
  * GET /api/marks/:studentId
- * Requires: VIEW_MARKS permission
+ * Requires: VIEW_MARKS permission and privileged role/permission
  */
 export const getStudentMarksController = async (req: any, res: Response) => {
   try {
     const { studentId } = req.params;
 
-    // Fetch marks for this student in this organization
-    const studentMarks = await Mark.find({ studentId, organizationId: req.organizationId })
+    if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
+      return sendError(res, 400, 'Invalid studentId');
+    }
+
+    const targetUser = await User.findOne({
+      _id: studentId,
+      organizationId: req.organizationId,
+    }).select('_id');
+
+    if (!targetUser) {
+      return sendError(res, 404, 'Student not found');
+    }
+
+    const studentMarks = await Mark.find({
+      studentId: targetUser._id,
+      organizationId: req.organizationId,
+    })
       .populate('createdBy', 'name')
       .sort({ createdAt: -1 });
 

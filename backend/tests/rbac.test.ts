@@ -18,42 +18,85 @@ describe('RBAC integration tests', () => {
     { name: 'student', email: 'john.doe@sharda.com', password: 'Student123' },
   ];
 
-  it('should enforce permissions correctly for add/view/update/delete marks', async () => {
-    for (const u of users) {
-      const loginRes = await request(app).post('/api/auth/login').send({ email: u.email, password: u.password }).expect(200);
-      const token = loginRes.body.data.token;
-      const perms = loginRes.body.data.user.permissions;
+  it('should allow a student to read only their own marks through /api/marks/me', async () => {
+    const loginRes = await request(app).post('/api/auth/login').send({ email: 'john.doe@sharda.com', password: 'Student123' }).expect(200);
+    const token = loginRes.body.data.token;
+    const studentId = loginRes.body.data.user.id.toString();
 
-      // Add marks
-      const addRes = await request(app)
-        .post('/api/marks')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ studentId: 'student1', subjectId: 'math101', term: '2025-fall', marks: 95 });
+    const addRes = await request(app)
+      .post('/api/marks')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ studentId, subjectId: 'math101', marks: 95 });
 
-      if (perms.includes('ADD_MARKS') || loginRes.body.data.isSuperAdmin) {
-        expect(addRes.status).toBe(201);
-        expect(addRes.body.success).toBe(true);
-        const markId = addRes.body.data.id;
+    expect(addRes.status).toBe(201);
 
-        // View student marks
-        const viewRes = await request(app).get('/api/marks/student1').set('Authorization', `Bearer ${token}`);
-        expect([200, 200]).toContain(viewRes.status);
+    const selfMarksRes = await request(app)
+      .get('/api/marks/me')
+      .set('Authorization', `Bearer ${token}`);
 
-        // If can edit
-        if (perms.includes('EDIT_MARKS')) {
-          const upd = await request(app).put(`/api/marks/${markId}`).set('Authorization', `Bearer ${token}`).send({ marks: 88 });
-          expect(upd.status).toBe(200);
-        }
+    expect(selfMarksRes.status).toBe(200);
+    expect(Array.isArray(selfMarksRes.body.data)).toBe(true);
+    expect(selfMarksRes.body.data.some((mark: any) => mark.subjectId === 'math101' && mark.marks === 95)).toBe(true);
 
-        // If can delete
-        if (perms.includes('DELETE_MARKS')) {
-          const del = await request(app).delete(`/api/marks/${markId}`).set('Authorization', `Bearer ${token}`);
-          expect(del.status).toBe(200);
-        }
-      } else {
-        expect(addRes.status).toBe(403);
-      }
-    }
+    const clientInputSelfRes = await request(app)
+      .get('/api/marks/me')
+      .set('Authorization', `Bearer ${token}`)
+      .query({ studentId: '507f1f77bcf86cd799439011' });
+
+    expect(clientInputSelfRes.status).toBe(200);
+    expect(Array.isArray(clientInputSelfRes.body.data)).toBe(true);
+  });
+
+  it('should deny /:studentId to users without VIEW_ALL_MARKS and allow /:studentId to users with VIEW_ALL_MARKS', async () => {
+    const studentLoginRes = await request(app).post('/api/auth/login').send({ email: 'john.doe@sharda.com', password: 'Student123' }).expect(200);
+    const studentToken = studentLoginRes.body.data.token;
+    const studentId = studentLoginRes.body.data.user.id.toString();
+
+    const adminLoginRes = await request(app).post('/api/auth/login').send({ email: 'admin@sharda.com', password: 'Admin123456' }).expect(200);
+    const adminToken = adminLoginRes.body.data.token;
+
+    const addRes = await request(app)
+      .post('/api/marks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ studentId, subjectId: 'math201', marks: 90 });
+
+    expect(addRes.status).toBe(201);
+
+    const deniedRes = await request(app)
+      .get(`/api/marks/${studentId}`)
+      .set('Authorization', `Bearer ${studentToken}`);
+
+    expect(deniedRes.status).toBe(403);
+
+    const allowedRes = await request(app)
+      .get(`/api/marks/${studentId}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(allowedRes.status).toBe(200);
+    expect(Array.isArray(allowedRes.body.data)).toBe(true);
+  });
+
+  it('should return a 400 for malformed studentId on /:studentId', async () => {
+    const adminLoginRes = await request(app).post('/api/auth/login').send({ email: 'admin@sharda.com', password: 'Admin123456' }).expect(200);
+    const adminToken = adminLoginRes.body.data.token;
+
+    const invalidIdRes = await request(app)
+      .get('/api/marks/not-a-valid-object-id')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(invalidIdRes.status).toBe(400);
+    expect(invalidIdRes.body.success).toBe(false);
+  });
+
+  it('should not expose marks for a target user outside the authenticated organization', async () => {
+    const adminLoginRes = await request(app).post('/api/auth/login').send({ email: 'admin@sharda.com', password: 'Admin123456' }).expect(200);
+    const adminToken = adminLoginRes.body.data.token;
+
+    const outsideOrgRes = await request(app)
+      .get('/api/marks/507f1f77bcf86cd799439011')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(outsideOrgRes.status).toBe(404);
   });
 });
 

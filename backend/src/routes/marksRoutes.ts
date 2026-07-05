@@ -34,13 +34,24 @@ router.get(
 );
 
 /**
- * GET /api/marks/:studentId
- * Get marks for a specific student
+ * GET /api/marks/me
+ * Get marks for the authenticated student
  * Requires: VIEW_MARKS permission
  */
 router.get(
-  '/:studentId',
+  '/me',
   authorize('VIEW_MARKS'),
+  MarksController.getMyMarksController
+);
+
+/**
+ * GET /api/marks/:studentId
+ * Get marks for a specific student
+ * Requires: VIEW_ALL_MARKS permission
+ */
+router.get(
+  '/:studentId',
+  authorize('VIEW_ALL_MARKS'),
   MarksController.getStudentMarksController
 );
 

@@ -15,6 +15,9 @@ export interface IDocument extends MongooseDocument {
   normalizedData?: any;
   confidenceScore?: number;
   status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'NEEDS_OCR';
+  // Knowledge‑layer fields (MVP)
+  knowledgeStatus?: 'PENDING' | 'COMPLETED' | 'FAILED';
+  knowledgeError?: string;
 }
 
 const DocumentSchema = new Schema<IDocument>({
@@ -29,6 +32,8 @@ const DocumentSchema = new Schema<IDocument>({
   normalizedData: { type: Schema.Types.Mixed },
   confidenceScore: { type: Number },
   status: { type: String, enum: ['PENDING', 'SUCCESS', 'FAILED', 'NEEDS_OCR'], default: 'PENDING' },
+  knowledgeStatus: { type: String, enum: ['PENDING', 'COMPLETED', 'FAILED'] },
+  knowledgeError: { type: String },
 });
 
 export const DocumentModel = model<IDocument>('Document', DocumentSchema);

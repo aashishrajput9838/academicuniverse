@@ -6,6 +6,8 @@ import { Logger } from '../../utils/logger';
 import { aiProvider } from '../../core/ai'; // uses factory and failover internally
 import { OCRService } from './ocr.service';
 import { DocumentRegistryRepository } from '../repositories/documentRegistry.repository';
+import { KnowledgeDispatcher } from './knowledgeDispatcher.service';
+import { DocumentModel } from '../../models/Document';
 
 const logger = new Logger('DocumentProcessingService');
 
@@ -60,7 +62,29 @@ export class DocumentProcessingService {
         sourceExample: dto.file.originalname,
       });
     }
-
+    // 5️⃣ Dispatch to Knowledge Layer
+    try {
+      const dispatcher = new KnowledgeDispatcher();
+      await dispatcher.dispatch({
+        organizationId: dto.organizationId,
+        authUserId: dto.userId,
+        sourceDocumentId: docId,
+        domain: 'academic',
+        data: finalResult.normalizedData || {},
+        rawConfidence: finalResult.confidenceScore ?? 0,
+        correlationId: docId,
+      });
+      // Mark knowledge processing as completed
+      await DocumentModel.findByIdAndUpdate(docId, {
+        knowledgeStatus: 'COMPLETED',
+      });
+    } catch (err: any) {
+      logger.error('Knowledge dispatch failed', { error: err, documentId: docId });
+      await DocumentModel.findByIdAndUpdate(docId, {
+        knowledgeStatus: 'FAILED',
+        knowledgeError: err.message,
+      });
+    }
     return {
       documentId: docId,
       status: finalResult.status as DocumentStatus,

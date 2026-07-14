@@ -45,4 +45,10 @@ export const decodeToken = (token: string): JWTPayload | null => {
   } catch (error) {
     return null;
   }
-};
+}
+
+// Refresh token generation – short-lived access token plus longer-lived refresh token
+export const generateRefreshToken = (payload: { userId: string; email: string }): string => {
+  const REFRESH_EXPIRY = (process.env.REFRESH_TOKEN_EXPIRY || '30d') as string;
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: REFRESH_EXPIRY } as any);
+};;

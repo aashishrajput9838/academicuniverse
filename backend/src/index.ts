@@ -51,6 +51,9 @@ import session from 'express-session';
 import { connectDB } from './config';
 import { errorHandler, notFoundHandler, requestIdMiddleware, performanceMonitorMiddleware } from './middleware';
 import schedulerService from './services/schedulerService';
+import { KnowledgeJobRepository } from './shared/repositories/knowledgeJob.repository';
+import { KnowledgeDispatcher } from './shared/services/knowledgeDispatcher.service';
+import { KnowledgeQueueService } from './shared/services/knowledgeQueue.service';
 import logger from './utils/logger';
 import { initSentry, sentryRequestHandler, sentryTracingHandler, sentryErrorHandler } from './config/sentry';
 import routes from './routes';
@@ -202,6 +205,24 @@ const startServer = async () => {
                 // Start the scheduler service after server is running
                 schedulerService.start();
                 logger.info('Scheduler service started');
+                // Initialize Knowledge Queue Service (singleton) only once
+                if (!(global as any).knowledgeQueueService) {
+                  const knowledgeJobRepo = new KnowledgeJobRepository();
+                  const knowledgeDispatcher = new KnowledgeDispatcher();
+                  const knowledgeQueueService = new KnowledgeQueueService(knowledgeJobRepo, knowledgeDispatcher);
+                  knowledgeQueueService.start();
+                  (global as any).knowledgeQueueService = knowledgeQueueService;
+                  // Graceful shutdown handling (only once)
+                  const shutdown = () => {
+                    knowledgeQueueService.stop();
+                    logger.info('Knowledge queue service stopped');
+                    process.exit(0);
+                  };
+                  process.on('SIGINT', shutdown);
+                  process.on('SIGTERM', shutdown);
+                }
+                // else: already running
+
             });
         }
     } catch (error) {

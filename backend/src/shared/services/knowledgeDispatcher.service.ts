@@ -3,28 +3,20 @@ import { ExperienceService } from '../services/experience.service';
 import { PersonResolver } from './personResolver.service';
 import { AcademicRecordService } from './academicRecord.service';
 import { AuditEntry } from '../../models/AuditEntry';
-/* removed stray code */
+import { KnowledgeJobRepository } from '../repositories/knowledgeJob.repository';
+import { KnowledgeJobStatus } from '../enums/knowledgeJobStatus.enum';
 
 /**
  * KnowledgeDispatcher orchestrates updates to the Knowledge Layer.
  *
- * It receives a payload from the DocumentProcessingService, resolves the
- * canonical Person, forwards the data to the appropriate domain service, and
- * records structured audit entries.  In case of any error it records a failure
- * audit entry, stores the error on the payload, and pushes the payload onto an
- * in‑memory retry queue (MVP placeholder).
+ * Errors are now persisted as KnowledgeJob documents for durable retry handling.
  */
 export class KnowledgeDispatcher {
   private personResolver = new PersonResolver();
   private academicService = new AcademicRecordService();
   private certificateService = new CertificateService();
   private experienceService = new ExperienceService();
-
-  /**
-   * Simple in‑memory retry queue – MVP placeholder. In production this should be
-   * replaced with a durable queue (e.g., RabbitMQ, SQS, or a DB‑backed job table).
-   */
-  private retryQueue: any[] = [];
+  private jobRepo = new KnowledgeJobRepository();
 
   /**
    * Dispatch a knowledge payload.
@@ -37,7 +29,7 @@ export class KnowledgeDispatcher {
     name?: string; // optional display name from auth context
     sourceDocumentId: string;
     domain: 'academic' | 'certificate' | 'experience' | string;
-    data: any; // normalized domain‑specific data
+    data: unknown; // normalized domain‑specific data
     rawConfidence: number;
     correlationId?: string;
   }): Promise<void> {
@@ -58,7 +50,7 @@ export class KnowledgeDispatcher {
       // Resolve (or create) the canonical Person first
       personId = await this.personResolver.resolve(authUserId, organizationId, email, name);
     } catch (err: any) {
-      // Person resolution failed – record audit and requeue
+      // Person resolution failed – record audit and persist a retry job
       await AuditEntry.create({
         organizationId,
         recordId: sourceDocumentId,
@@ -72,7 +64,13 @@ export class KnowledgeDispatcher {
           correlationId,
         },
       });
-      this.retryQueue.push(payload);
+      await this.jobRepo.create({
+        personId: authUserId,
+        sourceDocumentId,
+        domain,
+        payload: data,
+        maxRetries: 3,
+      });
       return; // exit early – downstream domain services are not invoked
     }
 
@@ -84,13 +82,13 @@ export class KnowledgeDispatcher {
             personId,
             sourceDocumentId,
             rawConfidence,
-            subjectCode: data.subjectCode,
-            subjectName: data.subjectName,
-            semester: data.semester,
-            year: data.year,
-            grade: data.grade,
-            credits: data.credits,
-            status: data.status,
+            subjectCode: (data as any).subjectCode,
+            subjectName: (data as any).subjectName,
+            semester: (data as any).semester,
+            year: (data as any).year,
+            grade: (data as any).grade,
+            credits: (data as any).credits,
+            status: (data as any).status,
             correlationId,
           });
           break;
@@ -100,9 +98,9 @@ export class KnowledgeDispatcher {
             personId,
             sourceDocumentId,
             rawConfidence,
-            title: data.title,
-            issuer: data.issuer,
-            issuedDate: data.issuedDate,
+            title: (data as any).title,
+            issuer: (data as any).issuer,
+            issuedDate: (data as any).issuedDate,
             correlationId,
           });
           break;
@@ -112,15 +110,15 @@ export class KnowledgeDispatcher {
             personId,
             sourceDocumentId,
             rawConfidence,
-            title: data.title,
-            company: data.company,
-            startDate: data.startDate,
-            endDate: data.endDate,
+            title: (data as any).title,
+            company: (data as any).company,
+            startDate: (data as any).startDate,
+            endDate: (data as any).endDate,
             correlationId,
           });
           break;
         default:
-          // For unknown domains we treat it as a no‑op but still audit
+          // Unsupported domain – audit and schedule retry via repository
           await AuditEntry.create({
             organizationId,
             recordId: sourceDocumentId,
@@ -134,10 +132,17 @@ export class KnowledgeDispatcher {
               correlationId,
             },
           });
-          this.retryQueue.push(payload);
+          await this.jobRepo.create({
+            personId,
+            sourceDocumentId,
+            domain,
+            payload: data,
+            maxRetries: 3,
+          });
+          break;
       }
     } catch (err: any) {
-      // Domain merge failed – record audit entry and enqueue for retry
+      // Domain merge failed – audit and persist a retry job
       await AuditEntry.create({
         organizationId,
         recordId: sourceDocumentId,
@@ -151,15 +156,13 @@ export class KnowledgeDispatcher {
           correlationId,
         },
       });
-      this.retryQueue.push(payload);
+      await this.jobRepo.create({
+        personId,
+        sourceDocumentId,
+        domain,
+        payload: data,
+        maxRetries: 3,
+      });
     }
-  }
-
-  /**
-   * Returns the current in‑memory retry queue.  This method is for debugging/
-   * inspection only – in production the queue would be external.
-   */
-  getRetryQueue() {
-    return this.retryQueue;
   }
 }

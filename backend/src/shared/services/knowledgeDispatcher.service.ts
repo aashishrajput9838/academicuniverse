@@ -1,7 +1,9 @@
-import { Types } from 'mongoose';
+import { CertificateService } from '../services/certificate.service';
+import { ExperienceService } from '../services/experience.service';
 import { PersonResolver } from './personResolver.service';
 import { AcademicRecordService } from './academicRecord.service';
 import { AuditEntry } from '../../models/AuditEntry';
+/* removed stray code */
 
 /**
  * KnowledgeDispatcher orchestrates updates to the Knowledge Layer.
@@ -15,6 +17,8 @@ import { AuditEntry } from '../../models/AuditEntry';
 export class KnowledgeDispatcher {
   private personResolver = new PersonResolver();
   private academicService = new AcademicRecordService();
+  private certificateService = new CertificateService();
+  private experienceService = new ExperienceService();
 
   /**
    * Simple in‑memory retry queue – MVP placeholder. In production this should be
@@ -32,7 +36,7 @@ export class KnowledgeDispatcher {
     email?: string; // optional primary email from auth context
     name?: string; // optional display name from auth context
     sourceDocumentId: string;
-    domain: 'academic' | string;
+    domain: 'academic' | 'certificate' | 'experience' | string;
     data: any; // normalized domain‑specific data
     rawConfidence: number;
     correlationId?: string;
@@ -87,6 +91,31 @@ export class KnowledgeDispatcher {
             grade: data.grade,
             credits: data.credits,
             status: data.status,
+            correlationId,
+          });
+          break;
+        case 'certificate':
+          await this.certificateService.merge({
+            organizationId,
+            personId,
+            sourceDocumentId,
+            rawConfidence,
+            title: data.title,
+            issuer: data.issuer,
+            issuedDate: data.issuedDate,
+            correlationId,
+          });
+          break;
+        case 'experience':
+          await this.experienceService.merge({
+            organizationId,
+            personId,
+            sourceDocumentId,
+            rawConfidence,
+            title: data.title,
+            company: data.company,
+            startDate: data.startDate,
+            endDate: data.endDate,
             correlationId,
           });
           break;

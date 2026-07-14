@@ -1,0 +1,306 @@
+﻿[INFO] [GeminiAIProvider] Google Gemini client initialized successfully { geminiKeyMasked: 'AIza...giWk' }
+[INFO] [AIProviderFactory] Gemini AI provider registered 
+[INFO] [MockAIProvider] Mock AI provider initialized (for development only) 
+[INFO] [AIProviderFactory] AI Providers initialized: gemini 
+Firebase credential source selected: FIREBASE_SPLIT_ENV
+Firebase Admin initialized successfully using source: FIREBASE_SPLIT_ENV
+PROVIDER Google Gemini true
+[INFO] [ResearchService] Generating research topics { domain: 'quantum computing in education' }
+[INFO] [GeminiAIProvider] Gemini request started {
+  provider: 'Google Gemini',
+  model: 'gemini-2.5-flash',
+  requestTimestamp: '2026-07-13T17:53:45.500Z',
+  attempt: 1,
+  maxRetries: 3
+}
+node.exe : [ERROR] [GeminiAIProvider] Error calling Gemini API: {
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\elitebook840g89319\App ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([ERROR] [Gemini...g Gemini API: { 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  provider: 'Google Gemini',
+  model: 'gemini-2.5-flash',
+  requestTimestamp: '2026-07-13T17:53:45.500Z',
+  responseTimeMs: 287,
+  httpStatus: 429,
+  errorCode: 'RESOURCE_EXHAUSTED',
+  attempt: 1,
+  message: '{"error":{"code":429,"message":"You exceeded your current quota, 
+please check your plan and billing details. For more information on this 
+error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor 
+your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded 
+for metric: 
+generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 
+20, model: gemini-2.5-flash\\nPlease retry in 48.104812874s.","status":"RESOURC
+E_EXHAUSTED","details":[{"@type":"type.googleapis.com/google.rpc.Help","links":
+[{"description":"Learn more about Gemini API quotas","url":"https://ai.google.d
+ev/gemini-api/docs/rate-limits"}]},{"@type":"type.googleapis.com/google.rpc.Quo
+taFailure","violations":[{"quotaMetric":"generativelanguage.googleapis.com/gene
+rate_content_free_tier_requests","quotaId":"GenerateRequestsPerDayPerProjectPer
+Model-FreeTier","quotaDimensions":{"location":"global","model":"gemini-2.5-flas
+h"},"quotaValue":"20"}]},{"@type":"type.googleapis.com/google.rpc.RetryInfo","r
+etryDelay":"48s"}]}}',
+  stack: 'ApiError: {"error":{"code":429,"message":"You exceeded your current 
+quota, please check your plan and billing details. For more information on 
+this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To 
+monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota 
+exceeded for metric: 
+generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 
+20, model: gemini-2.5-flash\\nPlease retry in 48.104812874s.","status":"RESOURC
+E_EXHAUSTED","details":[{"@type":"type.googleapis.com/google.rpc.Help","links":
+[{"description":"Learn more about Gemini API quotas","url":"https://ai.google.d
+ev/gemini-api/docs/rate-limits"}]},{"@type":"type.googleapis.com/google.rpc.Quo
+taFailure","violations":[{"quotaMetric":"generativelanguage.googleapis.com/gene
+rate_content_free_tier_requests","quotaId":"GenerateRequestsPerDayPerProjectPer
+Model-FreeTier","quotaDimensions":{"location":"global","model":"gemini-2.5-flas
+h"},"quotaValue":"20"}]},{"@type":"type.googleapis.com/google.rpc.RetryInfo","r
+etryDelay":"48s"}]}}\n' +
+    '    at throwErrorIfNotOK (C:\\github\\academicuniverse.com\\academicuniver
+se\\backend\\node_modules\\@google\\genai\\dist\\node\\index.cjs:12713:30)\n' +
+    '    at processTicksAndRejections 
+(node:internal/process/task_queues:104:5)\n' +
+    '    at async C:\\github\\academicuniverse.com\\academicuniverse\\backend\\
+node_modules\\@google\\genai\\dist\\node\\index.cjs:12416:13\n' +
+    '    at async Models.generateContent (C:\\github\\academicuniverse.com\\aca
+demicuniverse\\backend\\node_modules\\@google\\genai\\dist\\node\\index.cjs:138
+17:24)\n' +
+    '    at async GeminiAIProvider.generateContent (C:\\github\\academicunivers
+e.com\\academicuniverse\\backend\\src\\core\\ai\\gemini.provider.ts:77:26)\n' +
+    '    at async GeminiAIProvider.generateJSON (C:\\github\\academicuniverse.c
+om\\academicuniverse\\backend\\src\\core\\ai\\gemini.provider.ts:176:24)\n' +
+    '    at async C:\\github\\academicuniverse.com\\academicuniverse\\backend\\
+trace_tmp.ts:13:20'
+}
+[WARN] [GeminiAIProvider] Transient Gemini failure detected; retrying request {
+  provider: 'Google Gemini',
+  model: 'gemini-2.5-flash',
+  requestTimestamp: '2026-07-13T17:53:45.500Z',
+  retryAttempt: 2,
+  delayMs: 500,
+  httpStatus: 429,
+  errorCode: 'RESOURCE_EXHAUSTED'
+}
+[INFO] [GeminiAIProvider] Gemini request started {
+  provider: 'Google Gemini',
+  model: 'gemini-2.5-flash',
+  requestTimestamp: '2026-07-13T17:53:45.500Z',
+  attempt: 2,
+  maxRetries: 3
+}
+[ERROR] [GeminiAIProvider] Error calling Gemini API: {
+  provider: 'Google Gemini',
+  model: 'gemini-2.5-flash',
+  requestTimestamp: '2026-07-13T17:53:45.500Z',
+  responseTimeMs: 1076,
+  httpStatus: 429,
+  errorCode: 'RESOURCE_EXHAUSTED',
+  attempt: 2,
+  message: '{"error":{"code":429,"message":"You exceeded your current quota, 
+please check your plan and billing details. For more information on this 
+error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor 
+your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded 
+for metric: 
+generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 
+20, model: gemini-2.5-flash\\nPlease retry in 47.384915295s.","status":"RESOURC
+E_EXHAUSTED","details":[{"@type":"type.googleapis.com/google.rpc.Help","links":
+[{"description":"Learn more about Gemini API quotas","url":"https://ai.google.d
+ev/gemini-api/docs/rate-limits"}]},{"@type":"type.googleapis.com/google.rpc.Quo
+taFailure","violations":[{"quotaMetric":"generativelanguage.googleapis.com/gene
+rate_content_free_tier_requests","quotaId":"GenerateRequestsPerDayPerProjectPer
+Model-FreeTier","quotaDimensions":{"location":"global","model":"gemini-2.5-flas
+h"},"quotaValue":"20"}]},{"@type":"type.googleapis.com/google.rpc.RetryInfo","r
+etryDelay":"47s"}]}}',
+  stack: 'ApiError: {"error":{"code":429,"message":"You exceeded your current 
+quota, please check your plan and billing details. For more information on 
+this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To 
+monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota 
+exceeded for metric: 
+generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 
+20, model: gemini-2.5-flash\\nPlease retry in 47.384915295s.","status":"RESOURC
+E_EXHAUSTED","details":[{"@type":"type.googleapis.com/google.rpc.Help","links":
+[{"description":"Learn more about Gemini API quotas","url":"https://ai.google.d
+ev/gemini-api/docs/rate-limits"}]},{"@type":"type.googleapis.com/google.rpc.Quo
+taFailure","violations":[{"quotaMetric":"generativelanguage.googleapis.com/gene
+rate_content_free_tier_requests","quotaId":"GenerateRequestsPerDayPerProjectPer
+Model-FreeTier","quotaDimensions":{"location":"global","model":"gemini-2.5-flas
+h"},"quotaValue":"20"}]},{"@type":"type.googleapis.com/google.rpc.RetryInfo","r
+etryDelay":"47s"}]}}\n' +
+    '    at throwErrorIfNotOK (C:\\github\\academicuniverse.com\\academicuniver
+se\\backend\\node_modules\\@google\\genai\\dist\\node\\index.cjs:12713:30)\n' +
+    '    at processTicksAndRejections 
+(node:internal/process/task_queues:104:5)\n' +
+    '    at async C:\\github\\academicuniverse.com\\academicuniverse\\backend\\
+node_modules\\@google\\genai\\dist\\node\\index.cjs:12416:13\n' +
+    '    at async Models.generateContent (C:\\github\\academicuniverse.com\\aca
+demicuniverse\\backend\\node_modules\\@google\\genai\\dist\\node\\index.cjs:138
+17:24)\n' +
+    '    at async GeminiAIProvider.generateContent (C:\\github\\academicunivers
+e.com\\academicuniverse\\backend\\src\\core\\ai\\gemini.provider.ts:77:26)\n' +
+    '    at async GeminiAIProvider.generateJSON (C:\\github\\academicuniverse.c
+om\\academicuniverse\\backend\\src\\core\\ai\\gemini.provider.ts:176:24)\n' +
+    '    at async C:\\github\\academicuniverse.com\\academicuniverse\\backend\\
+trace_tmp.ts:13:20'
+}
+[WARN] [GeminiAIProvider] Transient Gemini failure detected; retrying request {
+  provider: 'Google Gemini',
+  model: 'gemini-2.5-flash',
+  requestTimestamp: '2026-07-13T17:53:45.500Z',
+  retryAttempt: 3,
+  delayMs: 1000,
+  httpStatus: 429,
+  errorCode: 'RESOURCE_EXHAUSTED'
+}
+[INFO] [GeminiAIProvider] Gemini request started {
+  provider: 'Google Gemini',
+  model: 'gemini-2.5-flash',
+  requestTimestamp: '2026-07-13T17:53:45.500Z',
+  attempt: 3,
+  maxRetries: 3
+}
+[ERROR] [GeminiAIProvider] Error calling Gemini API: {
+  provider: 'Google Gemini',
+  model: 'gemini-2.5-flash',
+  requestTimestamp: '2026-07-13T17:53:45.500Z',
+  responseTimeMs: 2268,
+  httpStatus: 429,
+  errorCode: 'RESOURCE_EXHAUSTED',
+  attempt: 3,
+  message: '{"error":{"code":429,"message":"You exceeded your current quota, 
+please check your plan and billing details. For more information on this 
+error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor 
+your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded 
+for metric: 
+generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 
+20, model: gemini-2.5-flash\\nPlease retry in 46.113547557s.","status":"RESOURC
+E_EXHAUSTED","details":[{"@type":"type.googleapis.com/google.rpc.Help","links":
+[{"description":"Learn more about Gemini API quotas","url":"https://ai.google.d
+ev/gemini-api/docs/rate-limits"}]},{"@type":"type.googleapis.com/google.rpc.Quo
+taFailure","violations":[{"quotaMetric":"generativelanguage.googleapis.com/gene
+rate_content_free_tier_requests","quotaId":"GenerateRequestsPerDayPerProjectPer
+Model-FreeTier","quotaDimensions":{"location":"global","model":"gemini-2.5-flas
+h"},"quotaValue":"20"}]},{"@type":"type.googleapis.com/google.rpc.RetryInfo","r
+etryDelay":"46s"}]}}',
+  stack: 'ApiError: {"error":{"code":429,"message":"You exceeded your current 
+quota, please check your plan and billing details. For more information on 
+this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To 
+monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota 
+exceeded for metric: 
+generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 
+20, model: gemini-2.5-flash\\nPlease retry in 46.113547557s.","status":"RESOURC
+E_EXHAUSTED","details":[{"@type":"type.googleapis.com/google.rpc.Help","links":
+[{"description":"Learn more about Gemini API quotas","url":"https://ai.google.d
+ev/gemini-api/docs/rate-limits"}]},{"@type":"type.googleapis.com/google.rpc.Quo
+taFailure","violations":[{"quotaMetric":"generativelanguage.googleapis.com/gene
+rate_content_free_tier_requests","quotaId":"GenerateRequestsPerDayPerProjectPer
+Model-FreeTier","quotaDimensions":{"location":"global","model":"gemini-2.5-flas
+h"},"quotaValue":"20"}]},{"@type":"type.googleapis.com/google.rpc.RetryInfo","r
+etryDelay":"46s"}]}}\n' +
+    '    at throwErrorIfNotOK (C:\\github\\academicuniverse.com\\academicuniver
+se\\backend\\node_modules\\@google\\genai\\dist\\node\\index.cjs:12713:30)\n' +
+    '    at processTicksAndRejections 
+(node:internal/process/task_queues:104:5)\n' +
+    '    at async C:\\github\\academicuniverse.com\\academicuniverse\\backend\\
+node_modules\\@google\\genai\\dist\\node\\index.cjs:12416:13\n' +
+    '    at async Models.generateContent (C:\\github\\academicuniverse.com\\aca
+demicuniverse\\backend\\node_modules\\@google\\genai\\dist\\node\\index.cjs:138
+17:24)\n' +
+    '    at async GeminiAIProvider.generateContent (C:\\github\\academicunivers
+e.com\\academicuniverse\\backend\\src\\core\\ai\\gemini.provider.ts:77:26)\n' +
+    '    at async GeminiAIProvider.generateJSON (C:\\github\\academicuniverse.c
+om\\academicuniverse\\backend\\src\\core\\ai\\gemini.provider.ts:176:24)\n' +
+    '    at async C:\\github\\academicuniverse.com\\academicuniverse\\backend\\
+trace_tmp.ts:13:20'
+}
+[WARN] [GeminiAIProvider] Transient Gemini failure detected; retrying request {
+  provider: 'Google Gemini',
+  model: 'gemini-2.5-flash',
+  requestTimestamp: '2026-07-13T17:53:45.500Z',
+  retryAttempt: 4,
+  delayMs: 2000,
+  httpStatus: 429,
+  errorCode: 'RESOURCE_EXHAUSTED'
+}
+[INFO] [GeminiAIProvider] Gemini request started {
+  provider: 'Google Gemini',
+  model: 'gemini-2.5-flash',
+  requestTimestamp: '2026-07-13T17:53:45.500Z',
+  attempt: 4,
+  maxRetries: 3
+}
+[ERROR] [GeminiAIProvider] Error calling Gemini API: {
+  provider: 'Google Gemini',
+  model: 'gemini-2.5-flash',
+  requestTimestamp: '2026-07-13T17:53:45.500Z',
+  responseTimeMs: 4558,
+  httpStatus: 429,
+  errorCode: 'RESOURCE_EXHAUSTED',
+  attempt: 4,
+  message: '{"error":{"code":429,"message":"You exceeded your current quota, 
+please check your plan and billing details. For more information on this 
+error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor 
+your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded 
+for metric: 
+generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 
+20, model: gemini-2.5-flash\\nPlease retry in 43.908472489s.","status":"RESOURC
+E_EXHAUSTED","details":[{"@type":"type.googleapis.com/google.rpc.Help","links":
+[{"description":"Learn more about Gemini API quotas","url":"https://ai.google.d
+ev/gemini-api/docs/rate-limits"}]},{"@type":"type.googleapis.com/google.rpc.Quo
+taFailure","violations":[{"quotaMetric":"generativelanguage.googleapis.com/gene
+rate_content_free_tier_requests","quotaId":"GenerateRequestsPerDayPerProjectPer
+Model-FreeTier","quotaDimensions":{"location":"global","model":"gemini-2.5-flas
+h"},"quotaValue":"20"}]},{"@type":"type.googleapis.com/google.rpc.RetryInfo","r
+etryDelay":"43s"}]}}',
+  stack: 'ApiError: {"error":{"code":429,"message":"You exceeded your current 
+quota, please check your plan and billing details. For more information on 
+this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To 
+monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota 
+exceeded for metric: 
+generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 
+20, model: gemini-2.5-flash\\nPlease retry in 43.908472489s.","status":"RESOURC
+E_EXHAUSTED","details":[{"@type":"type.googleapis.com/google.rpc.Help","links":
+[{"description":"Learn more about Gemini API quotas","url":"https://ai.google.d
+ev/gemini-api/docs/rate-limits"}]},{"@type":"type.googleapis.com/google.rpc.Quo
+taFailure","violations":[{"quotaMetric":"generativelanguage.googleapis.com/gene
+rate_content_free_tier_requests","quotaId":"GenerateRequestsPerDayPerProjectPer
+Model-FreeTier","quotaDimensions":{"location":"global","model":"gemini-2.5-flas
+h"},"quotaValue":"20"}]},{"@type":"type.googleapis.com/google.rpc.RetryInfo","r
+etryDelay":"43s"}]}}\n' +
+    '    at throwErrorIfNotOK (C:\\github\\academicuniverse.com\\academicuniver
+se\\backend\\node_modules\\@google\\genai\\dist\\node\\index.cjs:12713:30)\n' +
+    '    at processTicksAndRejections 
+(node:internal/process/task_queues:104:5)\n' +
+    '    at async C:\\github\\academicuniverse.com\\academicuniverse\\backend\\
+node_modules\\@google\\genai\\dist\\node\\index.cjs:12416:13\n' +
+    '    at async Models.generateContent (C:\\github\\academicuniverse.com\\aca
+demicuniverse\\backend\\node_modules\\@google\\genai\\dist\\node\\index.cjs:138
+17:24)\n' +
+    '    at async GeminiAIProvider.generateContent (C:\\github\\academicunivers
+e.com\\academicuniverse\\backend\\src\\core\\ai\\gemini.provider.ts:77:26)\n' +
+    '    at async GeminiAIProvider.generateJSON (C:\\github\\academicuniverse.c
+om\\academicuniverse\\backend\\src\\core\\ai\\gemini.provider.ts:176:24)\n' +
+    '    at async C:\\github\\academicuniverse.com\\academicuniverse\\backend\\
+trace_tmp.ts:13:20'
+}
+ERR= Error: The AI service has reached its temporary usage limit. Please try 
+again in a few moments.
+    at GeminiAIProvider.generateContent (C:\github\academicuniverse.com\academi
+cuniverse\backend\src\core\ai\gemini.provider.ts:168:11)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async GeminiAIProvider.generateJSON (C:\github\academicuniverse.com\acad
+emicuniverse\backend\src\core\ai\gemini.provider.ts:176:24)
+    at async 
+C:\github\academicuniverse.com\academicuniverse\backend\trace_tmp.ts:13:20
+ERR_MESSAGE= The AI service has reached its temporary usage limit. Please try 
+again in a few moments.
+ERR_STACK= Error: The AI service has reached its temporary usage limit. Please 
+try again in a few moments.
+    at GeminiAIProvider.generateContent (C:\github\academicuniverse.com\academi
+cuniverse\backend\src\core\ai\gemini.provider.ts:168:11)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async GeminiAIProvider.generateJSON (C:\github\academicuniverse.com\acad
+emicuniverse\backend\src\core\ai\gemini.provider.ts:176:24)
+    at async 
+C:\github\academicuniverse.com\academicuniverse\backend\trace_tmp.ts:13:20

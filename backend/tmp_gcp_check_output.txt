@@ -1,0 +1,82 @@
+﻿ENV_GEMINI_API_KEY=AIzaSyDwtZJbp_iSaissW7y82a-UjrW2ZECgiWk
+SERVICE_ACCOUNT_PROJECT=academicuniverse
+SERVICE_ACCOUNT_EMAIL=firebase-adminsdk-fbsvc@academicuniverse.iam.gserviceaccount.com
+TOKEN_STATUS=200
+{"access_token":"ya29.c.c0AZ4bNpa0rL0k1MCwkhZHLXe4yKZ9J-2uTSgArBrtfIDDJhi5wwhV_g225M-r_LQfVvm150qqIms2hQhNsvVpMPwR8FgTEzkKCSwMgtmRK3YFGb533Egz_7JlCMMjGSf75eGEEQ16KAyIMHqWRW36P5Pme5giCOPDp-EbCVqquZCC39fZqgY8m20RrWy01GLOOqlVjwhgA7U0Q_t2j0RZAQx8kfytToYcqbUgNukkqv2OIHWJb9R3dCX4VGJu5VPPvTNrZF4cTh37ZGzehx-JupCalFLjwb6Tt-H-k2XfHU2x0KGmE-QBlDw_Wq6VNbtl9pdp57al0cEyGEepBnBjS2BM3cFFADtvpGxIueuYWhvybD8BVMe_lR8H384DmojYpRqx-of8loeI9Vc5wMMkdud6Foddyyx1cnB0al-nZJttFURqOhvurYMgZfjiJrFw04p08RkQIyVB-xO7I1JlBppXXU2_70chmWoS0h_wnFeW2Bl7FW524WkU11eSfgWq56kIdy09oht0qtWSwveMIdfOrfY9uBQgsap90n90-r1Q10lQyIRrzfxzx31beu1M8dk2adbBkSOJli027j4sBbJ0M8_taZaQYuO37vkS7nm5YpefozXg8F9pVcI3bxdhF6pru_FJiXzpISFpQ1crVyft9XMRZhWQ6Bi76qlmBe4l7cpWselzJZoMY12si1t6abWZx7WdIbbI-3VbwwUot7FMOhS_6vZVklsoeF0g9Oit9XRvisloyOjQtpXByatrUXlldwYrtamRbaa13ufVZlScZoo5_5-q4F93n67Sld04U6ltri4cdJbX7iIislI4odfwi7497wFVi7qv6XSS_hcdwetZOdIxOIO5qvJpaRQ-ecd2Qy1UimvI0znUZ6q2BQqBSqlzlZiYmgax-u0heuJJ8icImOy452qdUtvbzd2XodUXYJIg1FUl7Fy_4FF6fmaYfIYVSncdRUkcm0RMX4iiIBJ3UWOFpFu-IVJUZm1F5R-v7Rb37tn","expires_in":3599,"token_type":"Bearer"}
+SERVICEUSAGE_STATUS=403
+{
+  "error": {
+    "code": 403,
+    "message": "Permission denied to get service [generativelanguage.googleapis.com]\nHelp Token: AfYMUriojaWEPYXk_5JRcstPD7JQ-mC9clpcN789DUlJ3901Tgjc9bNkaNfCney5Hr04jPFZvkUeZ-e0YaOmvyWeaILXGR7Qj7Jw5kXY9gWwbU93",
+    "status": "PERMISSION_DENIED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.PreconditionFailure",
+        "violations": [
+          {
+            "type": "googleapis.com",
+            "subject": "110002"
+          }
+        ]
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "AUTH_PERMISSION_DENIED",
+        "domain": "serviceusage.googleapis.com"
+      }
+    ]
+  }
+}
+
+APIKEYS_LIST_STATUS=403
+{
+  "error": {
+    "code": 403,
+    "message": "API Keys API has not been used in project 851768640115 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/apikeys.googleapis.com/overview?project=851768640115 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.",
+    "status": "PERMISSION_DENIED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "SERVICE_DISABLED",
+        "domain": "googleapis.com",
+        "metadata": {
+          "activationUrl": "https://console.developers.google.com/apis/api/apikeys.googleapis.com/overview?project=851768640115",
+          "consumer": "projects/851768640115",
+          "service": "apikeys.googleapis.com",
+          "containerInfo": "851768640115",
+          "serviceTitle": "API Keys API"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API Keys API has not been used in project 851768640115 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/apikeys.googleapis.com/overview?project=851768640115 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry."
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.Help",
+        "links": [
+          {
+            "description": "Google developers console API activation",
+            "url": "https://console.developers.google.com/apis/api/apikeys.googleapis.com/overview?project=851768640115"
+          }
+        ]
+      }
+    ]
+  }
+}
+BILLING_STATUS=404
+<!DOCTYPE html>
+<html lang=en>
+  <meta charset=utf-8>
+  <meta name=viewport content="initial-scale=1, minimum-scale=1, width=device-width">
+  <title>Error 404 (Not Found)!!1</title>
+  <style>
+    *{margin:0;padding:0}html,code{font:15px/22px arial,sans-serif}html{background:#fff;color:#222;padding:15px}body{margin:7% auto 0;max-width:390px;min-height:180px;padding:30px 0 15px}* > body{background:url(//www.google.com/images/errors/robot.png) 100% 5px no-repeat;padding-right:205px}p{margin:11px 0 22px;overflow:hidden}ins{color:#777;text-decoration:none}a img{border:0}@media screen and (max-width:772px){body{background:none;margin-top:0;max-width:none;padding-right:0}}#logo{background:url(//www.google.com/images/branding/googlelogo/1x/googlelogo_color_150x54dp.png) no-repeat;margin-left:-5px}@media only screen and (min-resolution:192dpi){#logo{background:url(//www.google.com/images/branding/googlelogo/2x/googlelogo_color_150x54dp.png) no-repeat 0% 0%/100% 100%;-moz-border-image:url(//www.google.com/images/branding/googlelogo/2x/googlelogo_color_150x54dp.png) 0}}@media only screen and (-webkit-min-device-pixel-ratio:2){#logo{background:url(//www.google.com/images/branding/googlelogo/2x/googlelogo_color_150x54dp.png) no-repeat;-webkit-background-size:100% 100%}}#logo{display:inline-block;height:54px;width:150px}
+  </style>
+  <a href=//www.google.com/><span id=logo aria-label=Google></span></a>
+  <p><b>404.</b> <ins>ThatÔÇÖs an error.</ins>
+  <p>The requested URL <code>/v1/projects/academicuniverse</code> was not found on this server.  <ins>ThatÔÇÖs all we know.</ins>
+
+GENIE_MODELS_STATUS=200
+{}
+

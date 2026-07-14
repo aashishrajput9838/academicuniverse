@@ -1,0 +1,7 @@
+requirement_id,consolidated_id,current_status,code_paths,evidence_class,notes
+CB-0001,CB-0001,PARTIALLY_COMPLIANT,backend/src/middleware/auth.ts; backend/src/models/User.ts,CURRENT_CODE_REALITY,"`enforceOrgIsolation` sets `req.organizationId` from token and validates incoming orgId in body/params; codebase shows some services reading organizationId directly from token or user document—requires audit of all repository calls to ensure `{_id, organizationId}` lookups (see NC-0003)."
+CB-0004,CB-0004,PARTIALLY_COMPLIANT,backend/src/controllers/*; backend/src/services/*,CURRENT_CODE_REALITY,"Idempotency patterns partially implemented in some services; no uniform Idempotency-Key enforcement found; transactional outbox patterns not implemented across all event emission sites."
+CB-0006,CB-0006,NON_COMPLIANT,backend/src/models/User.ts; backend/src/services/gmailAuthService.ts,CURRENT_CODE_REALITY,"Gmail tokens stored as plaintext fields in `gmailTokens` (backend/src/models/User.ts). OAuth `state` currently passes raw userId (see getGmailAuthUrl state=userId) — state integrity not protected."
+CB-0005,CB-0005,PARTIALLY_COMPLIANT,backend/src/services/*; backend/src/sync/*,CURRENT_CODE_REALITY,"Deletion service (`disconnectGmail`) uses $unset and verifies; projection/index deletion patterns not uniformly represented; event/outbox patterns not present."
+
+# Matrix notes: Rows correspond to CB items; further CB rows will be added as the ledger expands. Each NON_COMPLIANT/PARTIALLY_COMPLIANT entry includes code paths and concise evidence notes.

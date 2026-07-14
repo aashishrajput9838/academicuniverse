@@ -20,14 +20,22 @@ export class ResearchRepository {
       const snapshot = await firebaseFirestore
         .collection(this.collection)
         .where('userId', '==', userId)
-        .orderBy('updatedAt', 'desc')
-        .limit(limit)
         .get();
 
-      return snapshot.docs.map((doc: any) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as ResearchHistoryItem[];
+      const docs = snapshot.docs
+        .map((doc: any) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        .filter((item: any) => item.userId === userId)
+        .sort((a: any, b: any) => {
+          const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+          const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+          return bTime - aTime;
+        })
+        .slice(0, limit);
+
+      return docs as ResearchHistoryItem[];
     } catch (error: any) {
       logger.error('Error fetching research by userId:', error);
       throw new Error(`Failed to fetch research history: ${error.message}`);

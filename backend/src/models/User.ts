@@ -7,10 +7,22 @@ export interface IGithubAccessToken {
   updatedAt: Date;
 }
 
+export interface IGmailTokenEnvelope {
+  encryptedToken: string;
+  iv: string;
+  expiryDate?: number;
+  updatedAt?: Date;
+  version?: number;
+}
+
 export interface IGmailTokens {
-  accessToken: string;
-  refreshToken: string;
-  expiryDate: number;
+  accessToken?: string;
+  refreshToken?: string;
+  expiryDate?: number;
+  encryptedToken?: string;
+  iv?: string;
+  updatedAt?: Date;
+  version?: number;
 }
 
 export interface IUser extends Document {
@@ -83,7 +95,11 @@ const userSchema = new Schema<IUser>(
     gmailTokens: {
       accessToken: String,
       refreshToken: String,
+      encryptedToken: String,
+      iv: String,
       expiryDate: Number,
+      updatedAt: Date,
+      version: Number,
     },
     isActive: {
       type: Boolean,

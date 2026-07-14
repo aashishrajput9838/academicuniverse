@@ -25,11 +25,11 @@ export default function ResearchHistory({ onSelectPaper }: ResearchHistoryProps)
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
-            if (res.history) {
-                setHistory(res.history);
+            const historyItems = res?.data?.history ?? res?.history;
+            if (historyItems) {
+                setHistory(historyItems);
             }
         } catch (error: any) {
-            console.error("Failed to load history:", error);
             toast({
                 title: "Failed to load library",
                 description: error.message || "Could not retrieve your past research.",
@@ -61,10 +61,11 @@ export default function ResearchHistory({ onSelectPaper }: ResearchHistoryProps)
     return (
         <div className="space-y-4">
             {history.map((paper) => (
-                <div 
+                <button
+                    type="button"
                     key={paper.id}
                     onClick={() => onSelectPaper(paper)}
-                    className="flex items-center justify-between p-6 bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700/80 hover:border-emerald-500/50 transition cursor-pointer group"
+                    className="w-full flex items-center justify-between p-6 bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700/80 hover:border-emerald-500/50 transition cursor-pointer group text-left"
                 >
                     <div className="flex items-start gap-4">
                         <div className="w-10 h-10 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center flex-shrink-0 mt-1">
@@ -80,7 +81,7 @@ export default function ResearchHistory({ onSelectPaper }: ResearchHistoryProps)
                         </div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-slate-500 group-hover:text-white transition transform group-hover:translate-x-1" />
-                </div>
+                </button>
             ))}
         </div>
     );

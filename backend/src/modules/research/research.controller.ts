@@ -29,7 +29,8 @@ export class ResearchController {
       sendResponse(res, 200, { topics }, 'Topics generated successfully');
     } catch (error: any) {
       logger.error('Error generating topics:', error);
-      sendError(res, 500, error.message || 'Failed to generate topics');
+      const status = this.getHttpStatus(error);
+      sendError(res, status, error.message || 'Failed to generate topics');
     }
   };
 
@@ -50,7 +51,8 @@ export class ResearchController {
       sendResponse(res, 200, { outline }, 'Outline generated successfully');
     } catch (error: any) {
       logger.error('Error generating outline:', error);
-      sendError(res, 500, error.message || 'Failed to generate outline');
+      const status = this.getHttpStatus(error);
+      sendError(res, status, error.message || 'Failed to generate outline');
     }
   };
 
@@ -71,7 +73,8 @@ export class ResearchController {
       sendResponse(res, 200, { improvedText }, 'Content improved successfully');
     } catch (error: any) {
       logger.error('Error improving content:', error);
-      sendError(res, 500, error.message || 'Failed to improve content');
+      const status = this.getHttpStatus(error);
+      sendError(res, status, error.message || 'Failed to improve content');
     }
   };
 
@@ -92,7 +95,8 @@ export class ResearchController {
       sendResponse(res, 200, { abstract }, 'Abstract generated successfully');
     } catch (error: any) {
       logger.error('Error generating abstract:', error);
-      sendError(res, 500, error.message || 'Failed to generate abstract');
+      const status = this.getHttpStatus(error);
+      sendError(res, status, error.message || 'Failed to generate abstract');
     }
   };
 
@@ -113,7 +117,8 @@ export class ResearchController {
       sendResponse(res, 200, { citations }, 'Citations generated successfully');
     } catch (error: any) {
       logger.error('Error generating citations:', error);
-      sendError(res, 500, error.message || 'Failed to generate citations');
+      const status = this.getHttpStatus(error);
+      sendError(res, status, error.message || 'Failed to generate citations');
     }
   };
 
@@ -138,7 +143,8 @@ export class ResearchController {
       sendResponse(res, 200, { id: docId }, 'Research saved successfully');
     } catch (error: any) {
       logger.error('Error saving research:', error);
-      sendError(res, 500, error.message || 'Failed to save research');
+      const status = this.getHttpStatus(error);
+      sendError(res, status, error.message || 'Failed to save research');
     }
   };
 
@@ -155,7 +161,8 @@ export class ResearchController {
       sendResponse(res, 200, { history }, 'Research history retrieved successfully');
     } catch (error: any) {
       logger.error('Error fetching research history:', error);
-      sendError(res, 500, error.message || 'Failed to fetch history');
+      const status = this.getHttpStatus(error);
+      sendError(res, status, error.message || 'Failed to fetch history');
     }
   };
 
@@ -177,7 +184,8 @@ export class ResearchController {
       sendResponse(res, 200, { research }, 'Research retrieved successfully');
     } catch (error: any) {
       logger.error('Error fetching research:', error);
-      sendError(res, 500, error.message || 'Failed to fetch research');
+      const status = this.getHttpStatus(error);
+      sendError(res, status, error.message || 'Failed to fetch research');
     }
   };
 
@@ -194,7 +202,16 @@ export class ResearchController {
       sendResponse(res, 200, null, 'Research deleted successfully');
     } catch (error: any) {
       logger.error('Error deleting research:', error);
-      sendError(res, error.message.includes('Unauthorized') ? 403 : 500, error.message || 'Failed to delete research');
+      const status = this.getHttpStatus(error);
+      sendError(res, status === 403 ? 403 : status, error.message || 'Failed to delete research');
     }
   };
+
+  private getHttpStatus(error: any): number {
+    const status = Number(error?.status || error?.response?.status || 0);
+    if (status >= 400 && status <= 599) {
+      return status;
+    }
+    return 500;
+  }
 }

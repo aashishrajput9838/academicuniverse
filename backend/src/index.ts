@@ -1,18 +1,58 @@
+// Catch ALL errors before anything else!
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION! 💥');
+  console.error(err);
+  console.error(err.stack);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('UNHANDLED REJECTION! 💥');
+  console.error('Reason:', reason);
+  console.error('Promise:', promise);
+  process.exit(1);
+});
+
+console.log('=== INDEX.TS STARTED ===');
+import fs from 'fs';
+import dotenv from 'dotenv';
+
+// Determine environment mode before loading env files
+const effectiveNodeEnv = process.env.NODE_ENV || 'development';
+process.env.NODE_ENV = effectiveNodeEnv;
+const envPath = effectiveNodeEnv === 'production' ? '.env' : '.env.development';
+
+if (effectiveNodeEnv !== 'production' && !fs.existsSync(envPath)) {
+  console.warn(`[CONFIG_AUDIT] Expected env file '${envPath}' not found. Falling back to '.env' if available.`);
+}
+
+console.log("[CONFIG_AUDIT] Effective NODE_ENV:", process.env.NODE_ENV);
+console.log("[CONFIG_AUDIT] Loading environment from:", envPath);
+dotenv.config({ path: envPath, override: true });
+
+if (process.env.NODE_ENV === 'production' && !process.env.OPENROUTER_API_KEY) {
+  console.error('Required environment variable OPENROUTER_API_KEY is missing in production');
+  process.exit(1);
+}
+
+// Now import all other modules after env is loaded
+console.log("[CONFIG_AUDIT] All env vars containing 'client' or 'google':");
+Object.keys(process.env).forEach(key => {
+    if (key.toLowerCase().includes('client') || key.toLowerCase().includes('google')) {
+        console.log(`  ${key}:`, process.env[key] ? (key.toLowerCase().includes('secret') ? '***REDACTED***' : JSON.stringify(process.env[key])) : 'undefined');
+    }
+});
+console.log("[CONFIG_AUDIT] NODE_ENV:", process.env.NODE_ENV);
+console.log("[CONFIG_AUDIT] GOOGLE_REDIRECT_URI:", JSON.stringify(process.env.GOOGLE_REDIRECT_URI));
+console.log("[CONFIG_AUDIT] GOOGLE_CLIENT_ID (last 8 chars):", process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.slice(-8) : 'undefined');
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
-import dotenv from 'dotenv';
 import { connectDB } from './config';
 import { errorHandler, notFoundHandler, requestIdMiddleware, performanceMonitorMiddleware } from './middleware';
 import schedulerService from './services/schedulerService';
 import logger from './utils/logger';
 import { initSentry, sentryRequestHandler, sentryTracingHandler, sentryErrorHandler } from './config/sentry';
-
-// Load environment variables FIRST, before any other imports that might depend on them
-const envPath = process.env.NODE_ENV === 'development' ? '.env.development' : '.env';
-dotenv.config({ path: envPath, override: true });
-
-// Import routes after environment is loaded
 import routes from './routes';
 
 const app = express();
@@ -81,7 +121,7 @@ app.use(cors({
     } else {
         logger.warn('CORS request blocked', { 
           origin, 
-          allowedOrigins
+          allowedOrigins 
         });
         // Instead of throwing an error, we just return false to the callback
         // This results in a standard CORS rejection without breaking the middleware chain
@@ -141,29 +181,34 @@ app.use(errorHandler);
  */
 const PORT = process.env.PORT || 5000;
 
+console.log('[DEBUG] About to start server...');
 const startServer = async () => {
-  try {
-    // Connect to MongoDB
-    await connectDB();
-    logger.info('Connected to MongoDB');
+    try {
+        console.log('[DEBUG] Connecting to MongoDB...');
+        // Connect to MongoDB
+        await connectDB();
+        console.log('[DEBUG] MongoDB connected');
+        logger.info('Connected to MongoDB');
 
-    // Start Express server unless running tests (tests will use the app directly)
-    if (process.env.NODE_ENV !== 'test') {
-      app.listen(PORT, () => {
-        logger.info(`Server running on port ${PORT}`, {
-          port: PORT,
-          environment: process.env.NODE_ENV || 'development',
-        });
+        // Start Express server unless running tests (tests will use the app directly)
+        if (process.env.NODE_ENV !== 'test') {
+            console.log('[DEBUG] Starting server on port', PORT);
+            app.listen(PORT, () => {
+                logger.info(`Server running on port ${PORT}`, {
+                    port: PORT,
+                    environment: process.env.NODE_ENV || 'development',
+                });
 
-        // Start the scheduler service after server is running
-        schedulerService.start();
-        logger.info('Scheduler service started');
-      });
+                // Start the scheduler service after server is running
+                schedulerService.start();
+                logger.info('Scheduler service started');
+            });
+        }
+    } catch (error) {
+        console.error('[DEBUG] Server startup failed', { error });
+        logger.error('Server startup failed', { error });
+        process.exit(1);
     }
-  } catch (error) {
-    logger.error('Server startup failed', { error });
-    process.exit(1);
-  }
 };
 
 // Handle graceful shutdown
@@ -175,18 +220,6 @@ process.on('SIGTERM', () => {
 process.on('SIGINT', () => {
   logger.info('SIGINT received, shutting down gracefully...');
   process.exit(0);
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  logger.error('Uncaught exception', { error });
-  process.exit(1);
-});
-
-// Handle unhandled rejections
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled rejection', { reason, promise });
-  process.exit(1);
 });
 
 startServer();

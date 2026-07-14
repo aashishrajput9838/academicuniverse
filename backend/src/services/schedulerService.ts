@@ -122,7 +122,10 @@ export class SchedulerService {
 
       // Find all users who have Gmail access tokens
       const users = await User.find({
-        'gmailTokens.accessToken': { $exists: true, $ne: '' }
+        $or: [
+          { 'gmailTokens.accessToken': { $exists: true, $ne: '' } },
+          { 'gmailTokens.encryptedToken': { $exists: true, $ne: null } },
+        ]
       });
 
       logger.info(`Found ${users.length} users with connected Gmail accounts`);

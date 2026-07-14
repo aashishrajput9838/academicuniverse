@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ResearchPaperData } from '@/app/dashboard/student/research/page';
-import { FileText, Download, FileType2 } from 'lucide-react';
+import { FileText, Download, FileType2, Loader2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import { Document, Packer, Paragraph, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
 import { useToast } from '@/hooks/use-toast';
 
@@ -12,37 +12,12 @@ interface FinalExportProps {
 
 export default function FinalExport({ paperData }: FinalExportProps) {
     const { toast } = useToast();
+    const [exportingPdf, setExportingPdf] = useState(false);
+    const [exportingDocx, setExportingDocx] = useState(false);
 
-    // Helper to extract plain text
-    const compilePaperText = () => {
-        let text = `Title: ${paperData.topic}\n\n`;
-        
-        if (paperData.abstract) {
-            text += `Abstract\n${paperData.abstract}\n\n`;
-        }
-
-        // Add sections in order of outline
-        paperData.outline.forEach(section => {
-            text += `${section.title}\n`;
-            if (paperData.content[section.title]) {
-                text += `${paperData.content[section.title]}\n\n`;
-            } else {
-                text += `[Section not written yet]\n\n`;
-            }
-        });
-
-        if (paperData.citations && paperData.citations.length > 0) {
-            text += `References\n`;
-            paperData.citations.forEach((cite: any, i: number) => {
-                text += `[${i + 1}] ${cite.apa || cite.mla || cite.ieee}\n`;
-            });
-        }
-
-        return text;
-    };
-
-    const exportToPDF = () => {
+    const exportToPDF = async () => {
         try {
+            setExportingPdf(true);
             const doc = new jsPDF();
             const margin = 15;
             const maxLineWidth = 180;
@@ -50,9 +25,9 @@ export default function FinalExport({ paperData }: FinalExportProps) {
 
             const addText = (text: string, fontSize: number, isBold: boolean = false) => {
                 doc.setFontSize(fontSize);
-                doc.setFont("helvetica", isBold ? "bold" : "normal");
+                doc.setFont('helvetica', isBold ? 'bold' : 'normal');
                 const lines = doc.splitTextToSize(text, maxLineWidth);
-                
+
                 lines.forEach((line: string) => {
                     if (cursorY > 280) {
                         doc.addPage();
@@ -61,81 +36,82 @@ export default function FinalExport({ paperData }: FinalExportProps) {
                     doc.text(line, margin, cursorY);
                     cursorY += fontSize * 0.5 + 2;
                 });
-                cursorY += 5; // Paragraph spacing
+                cursorY += 5;
             };
 
-            // Title
             addText(paperData.topic || 'Untitled Research Paper', 18, true);
-            cursorY += 10;
+            cursorY += 6;
 
-            // Abstract
             if (paperData.abstract) {
                 addText('Abstract', 14, true);
                 addText(paperData.abstract, 11);
             }
 
-            // Sections
-            paperData.outline.forEach(section => {
+            paperData.outline.forEach((section) => {
                 addText(section.title, 14, true);
                 if (paperData.content[section.title]) {
                     addText(paperData.content[section.title], 11);
                 } else {
-                    addText('[Content missing]', 11);
+                    addText('Section content not yet drafted.', 11);
                 }
             });
 
-            // References
             if (paperData.citations && paperData.citations.length > 0) {
                 addText('References', 14, true);
                 paperData.citations.forEach((cite: any, i: number) => {
-                    addText(`[${i + 1}] ${cite.apa}`, 10);
+                    addText(`[${i + 1}] ${cite.apa || ''}`.trim(), 10);
+                    if (cite.mla) addText(`    MLA: ${cite.mla}`, 9);
+                    if (cite.ieee) addText(`    IEEE: ${cite.ieee}`, 9);
                 });
             }
 
-            doc.save(`${paperData.topic.substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'research_paper'}.pdf`);
-            toast({ title: 'Exported as PDF' });
+            const fileName = `${(paperData.topic || 'research_paper').substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
+            const pdfBlob = doc.output('blob');
+            saveAs(pdfBlob, fileName);
+            toast({ title: 'PDF exported successfully' });
         } catch (error) {
-            console.error(error);
             toast({ title: 'PDF Export Failed', variant: 'destructive' });
+        } finally {
+            setExportingPdf(false);
         }
     };
 
-    const exportToDocx = () => {
+    const exportToDocx = async () => {
         try {
+            setExportingDocx(true);
             const children: any[] = [];
 
-            // Title
             children.push(new Paragraph({
                 text: paperData.topic || 'Untitled Research Paper',
                 heading: HeadingLevel.HEADING_1,
                 spacing: { after: 400 }
             }));
 
-            // Abstract
             if (paperData.abstract) {
                 children.push(new Paragraph({ text: 'Abstract', heading: HeadingLevel.HEADING_2, spacing: { before: 200, after: 120 } }));
                 children.push(new Paragraph({ text: paperData.abstract, spacing: { after: 200 } }));
             }
 
-            // Outline Sections
             paperData.outline.forEach(section => {
                 children.push(new Paragraph({ text: section.title, heading: HeadingLevel.HEADING_2, spacing: { before: 240, after: 120 } }));
-                
+
                 if (paperData.content[section.title]) {
                     const paragraphs = paperData.content[section.title].split('\n').filter(p => p.trim() !== '');
                     paragraphs.forEach(p => {
                         children.push(new Paragraph({ text: p, spacing: { after: 120 } }));
                     });
                 } else {
-                    children.push(new Paragraph({ text: '[Section missing]', spacing: { after: 120 } }));
+                    children.push(new Paragraph({ text: 'Section content not yet drafted.', spacing: { after: 120 } }));
                 }
             });
 
-            // References
             if (paperData.citations && paperData.citations.length > 0) {
                 children.push(new Paragraph({ text: 'References', heading: HeadingLevel.HEADING_2, spacing: { before: 400, after: 120 } }));
                 paperData.citations.forEach((cite: any, i: number) => {
-                    children.push(new Paragraph({ text: `[${i + 1}] ${cite.apa}`, spacing: { after: 120 } }));
+                    children.push(new Paragraph({ text: `[${i + 1}] ${cite.apa || ''}` }));
+                    if (cite.mla) children.push(new Paragraph({ text: `MLA: ${cite.mla}` }));
+                    if (cite.ieee) children.push(new Paragraph({ text: `IEEE: ${cite.ieee}` }));
+                    children.push(new Paragraph({ text: '', spacing: { after: 120 } }));
                 });
             }
 
@@ -143,13 +119,14 @@ export default function FinalExport({ paperData }: FinalExportProps) {
                 sections: [{ properties: {}, children }]
             });
 
-            Packer.toBlob(doc).then((blob) => {
-                saveAs(blob, `${paperData.topic.substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'research_paper'}.docx`);
-                toast({ title: 'Exported as DOCX' });
-            });
+            const blob = await Packer.toBlob(doc);
+            const fileName = `${(paperData.topic || 'research_paper').substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase()}.docx`;
+            saveAs(blob, fileName);
+            toast({ title: 'DOCX exported successfully' });
         } catch (error) {
-            console.error(error);
             toast({ title: 'DOCX Export Failed', variant: 'destructive' });
+        } finally {
+            setExportingDocx(false);
         }
     };
 
@@ -165,17 +142,21 @@ export default function FinalExport({ paperData }: FinalExportProps) {
                 </p>
                 
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
-                    <button 
+                    <button
                         onClick={exportToPDF}
-                        className="flex items-center justify-center gap-3 px-8 py-4 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-400 rounded-xl font-medium transition"
+                        disabled={exportingPdf}
+                        className="flex items-center justify-center gap-3 px-8 py-4 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-400 rounded-xl font-medium transition disabled:opacity-60"
                     >
-                        <FileType2 className="w-5 h-5" /> Download as PDF
+                        {exportingPdf ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileType2 className="w-5 h-5" />}
+                        {exportingPdf ? 'Preparing PDF...' : 'Download as PDF'}
                     </button>
-                    <button 
+                    <button
                         onClick={exportToDocx}
-                        className="flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 border border-blue-500 text-white rounded-xl font-medium transition shadow-lg shadow-blue-500/20"
+                        disabled={exportingDocx}
+                        className="flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 border border-blue-500 text-white rounded-xl font-medium transition shadow-lg shadow-blue-500/20 disabled:opacity-60"
                     >
-                        <Download className="w-5 h-5" /> Download as Word (.docx)
+                        {exportingDocx ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                        {exportingDocx ? 'Preparing DOCX...' : 'Download as Word (.docx)'}
                     </button>
                 </div>
             </div>

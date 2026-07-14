@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import { User } from '../models';
 import { Logger } from '../utils/logger';
-import githubOAuthService from '../services/githubOAuthService';
+import getGithubOAuthService from '../services/githubOAuthService';
 import analyticsService from '../services/analyticsService';
 import { sendResponse, sendError } from '../utils/response';
 
@@ -42,6 +42,7 @@ export const connectGithub = async (req: AuthenticatedRequest, res: Response) =>
     req.session.firebase_uid = req.firebaseUser.firebaseUid;
 
     // Get the GitHub authorization URL
+    const githubOAuthService = getGithubOAuthService();
     const authUrl = githubOAuthService.getAuthorizationUrl(state);
 
     logger.info(`GitHub OAuth initiated for user: ${req.firebaseUser.email}`);
@@ -82,6 +83,7 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
     }
 
     // Exchange the authorization code for an access token
+    const githubOAuthService = getGithubOAuthService();
     const accessToken = await githubOAuthService.exchangeCodeForToken(code, state);
 
     // Store the access token in the user's profile
@@ -176,6 +178,7 @@ export const disconnectGithub = async (req: AuthenticatedRequest, res: Response)
     }
 
     // Remove the GitHub access token from the user's profile
+    const githubOAuthService = getGithubOAuthService();
     await githubOAuthService.removeAccessToken(req.firebaseUser.firebaseUid);
 
     logger.info(`GitHub account disconnected for user: ${req.firebaseUser.email}`);

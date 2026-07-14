@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import crypto from 'crypto';
 import { getGmailAuthUrl, handleGmailCallback, disconnectGmail, getGmailStats } from '../services/gmailAuthService';
 import { syncGmailEvents } from '../services/gmailSyncService';
 import { listGmailMessages, getGmailMessage } from '../services/gmailMessageService';
@@ -6,10 +7,23 @@ import { markMessageAsRead } from '../services/gmailMessageService';
 import { sendResponse, sendError } from '../utils/response';
 import User from '../models/User';
 
+declare module 'express-session' {
+    interface SessionData {
+        gmail_oauth_state?: string;
+        gmail_oauth_user_id?: string;
+    }
+}
+
 export const connectGmail = async (req: any, res: Response) => {
     try {
         const userId = req.user.userId || req.user._id;
-        const authUrl = getGmailAuthUrl(userId.toString());
+        const oauthState = crypto.randomBytes(32).toString('hex');
+
+        req.session = req.session || {};
+        req.session.gmail_oauth_state = oauthState;
+        req.session.gmail_oauth_user_id = String(userId);
+
+        const authUrl = getGmailAuthUrl(userId.toString(), oauthState);
         return sendResponse(res, 200, { authUrl }, 'Auth URL generated successfully');
     } catch (error: any) {
         console.error('Error generating Gmail auth URL:', error);
@@ -38,7 +52,14 @@ export const gmailCallback = async (req: Request, res: Response) => {
             return res.redirect(`${redirectUrl}?gmail_error=missing_params`);
         }
 
-        const userId = state as string;
+        const sessionState = req.session?.gmail_oauth_state;
+        const sessionUserId = req.session?.gmail_oauth_user_id;
+
+        if (!sessionState || !sessionUserId || sessionState !== state) {
+            return res.redirect(`${redirectUrl}?gmail_error=invalid_state`);
+        }
+
+        const userId = sessionUserId;
         await handleGmailCallback(code as string, userId);
 
         // Initial sync right after connecting
@@ -47,6 +68,9 @@ export const gmailCallback = async (req: Request, res: Response) => {
         } catch (syncErr) {
             console.error('Initial sync failed after connecting Gmail:', syncErr);
         }
+
+        delete req.session?.gmail_oauth_state;
+        delete req.session?.gmail_oauth_user_id;
 
         return res.redirect(`${redirectUrl}?gmail_success=true`);
     } catch (error: any) {
@@ -58,6 +82,9 @@ export const gmailCallback = async (req: Request, res: Response) => {
         };
         const frontendUrl = getFrontendUrl();
         
+        delete req.session?.gmail_oauth_state;
+        delete req.session?.gmail_oauth_user_id;
+
         // Map common errors to specific codes for better frontend handling
         let errorCode = 'server_error';
         if (error.message?.includes('invalid_grant')) errorCode = 'invalid_grant';

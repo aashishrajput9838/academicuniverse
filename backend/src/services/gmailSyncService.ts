@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import User from '../models/User';
-import { getOAuth2Client, refreshAccessToken } from './gmailAuthService';
+import { getOAuth2Client, getStoredGmailTokens, refreshAccessToken } from './gmailAuthService';
 import { firebaseFirestore } from '../config/firebaseAdmin';
 
 const TARGET_KEYWORDS = [
@@ -29,14 +29,16 @@ export const syncGmailEvents = async (userId: string) => {
         throw new Error('Gmail account not connected');
     }
 
+    const storedTokens = await getStoredGmailTokens(userId);
+
     // Check if token is expired or about to expire (5 minutes buffer)
     const now = Date.now();
-    const isExpired = !user.gmailTokens.expiryDate || user.gmailTokens.expiryDate < now + 5 * 60 * 1000;
+    const isExpired = !storedTokens.expiryDate || storedTokens.expiryDate < now + 5 * 60 * 1000;
 
     if (isExpired) {
         console.log("[GMAIL_SYNC_TRACE] Refreshing expired Gmail token...");
         try {
-            const newTokens = await refreshAccessToken(userId);
+            await refreshAccessToken(userId);
             // Refresh user object from DB to get new tokens
             user = await User.findById(userId);
             if (!user) throw new Error('User not found after token refresh');
@@ -53,15 +55,13 @@ export const syncGmailEvents = async (userId: string) => {
     }
 
     // Ensure we have tokens
-    if (!user.gmailTokens) {
-        throw new Error('Gmail tokens not available');
-    }
+    const resolvedTokens = await getStoredGmailTokens(userId);
 
     const oauth2Client = getOAuth2Client();
     oauth2Client.setCredentials({
-        access_token: user.gmailTokens.accessToken,
-        refresh_token: user.gmailTokens.refreshToken,
-        expiry_date: user.gmailTokens.expiryDate,
+        access_token: resolvedTokens.accessToken,
+        refresh_token: resolvedTokens.refreshToken,
+        expiry_date: resolvedTokens.expiryDate,
     });
 
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });

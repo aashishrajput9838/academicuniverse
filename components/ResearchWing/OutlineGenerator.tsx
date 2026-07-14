@@ -31,7 +31,7 @@ export default function OutlineGenerator({ topic, outline, onOutlineGenerated }:
         try {
             setLoading(true);
             const token = localStorage.getItem('authToken');
-            
+
             const res = await apiRequest('/api/research/outline', {
                 method: 'POST',
                 headers: {
@@ -41,14 +41,14 @@ export default function OutlineGenerator({ topic, outline, onOutlineGenerated }:
                 body: JSON.stringify({ topic })
             });
 
-            if (res.outline && Array.isArray(res.outline)) {
-                onOutlineGenerated(res.outline);
-                toast({ title: 'Outline Synthesized', description: 'Academic paper structure successfully compiled.' });
+            const outline = res?.data?.outline ?? res?.outline;
+            if (Array.isArray(outline)) {
+                onOutlineGenerated(outline);
+                toast({ title: 'Outline synthesized', description: 'Your academic structure is ready for drafting.' });
             } else {
                 throw new Error("Invalid structure returned by AI");
             }
         } catch (error: any) {
-            console.error("Failed to generate outline:", error);
             toast({
                 title: "Generation Failed",
                 description: error.message || "Failed to generate outline structure",
@@ -73,7 +73,7 @@ export default function OutlineGenerator({ topic, outline, onOutlineGenerated }:
                 <div className="relative">
                     <div className="w-16 h-16 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin"></div>
                     <div className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-emerald-500">
-                        {/* Placeholder icon inside spinner */}
+                        ✦
                     </div>
                 </div>
                 <div className="text-center">

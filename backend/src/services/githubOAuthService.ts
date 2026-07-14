@@ -153,4 +153,14 @@ export class GithubOAuthService {
   }
 }
 
-export default new GithubOAuthService();
+// Create a singleton instance getter that initializes on first use
+let githubOAuthServiceInstance: GithubOAuthService | null = null;
+
+export const getGithubOAuthService = (): GithubOAuthService => {
+  if (!githubOAuthServiceInstance) {
+    githubOAuthServiceInstance = new GithubOAuthService();
+  }
+  return githubOAuthServiceInstance;
+};
+
+export default getGithubOAuthService;

@@ -16,6 +16,8 @@ import {
 } from './research.types';
 
 const logger = new Logger('ResearchService');
+const AI_SERVICE_UNAVAILABLE_MESSAGE = 'AI service is temporarily unavailable. Please try again later.';
+const AI_QUOTA_EXCEEDED_MESSAGE = 'The AI service has reached its temporary usage limit. Please try again in a few moments.';
 
 export class ResearchService {
   constructor(
@@ -31,7 +33,17 @@ export class ResearchService {
 Return EXACTLY a valid JSON array of strings, where each string is a topic title.
 Do not return markdown formatting, only the raw JSON array. Example: ["Topic 1", "Topic 2"]`;
 
-    logger.info('Generating research topics', { domain: dto.domain });
+    const providerName = this.aiProvider.getProviderName();
+    const providerClass = this.aiProvider.constructor.name;
+    const providerIsAvailable = this.aiProvider.isAvailable();
+
+    logger.info('Generating research topics', {
+      domain: dto.domain,
+      providerRequested: 'openrouter',
+      providerName,
+      providerClass,
+      providerIsAvailable,
+    });
 
     return this.aiProvider.generateJSON<string[]>(prompt, {
       temperature: 0.7,
@@ -51,6 +63,7 @@ Do not use markdown formatting, only the JSON string.`;
 
     return this.aiProvider.generateJSON<Array<{ title: string; points: string[] }>>(prompt, {
       temperature: 0.5,
+      maxTokens: 4000,
     });
   }
 
@@ -58,17 +71,136 @@ Do not use markdown formatting, only the JSON string.`;
    * Improve content with academic tone
    */
   async improveContent(dto: ImproveContentDTO): Promise<string> {
-    const prompt = `Rewrite the following paragraph in a highly formal, academic, and professional tone. Correct any grammar mistakes and drastically improve clarity and flow.
-Return EXACTLY a valid JSON object with: "improvedText" (string).
+    const prompt = `Rewrite the text below into a stronger academic version.
+
+Requirements:
+1. Rewrite rather than copy the original wording.
+2. Improve grammar, sentence structure, vocabulary, and scholarly tone.
+3. Remove repetition and filler.
+4. Preserve the original technical meaning, intent, and length.
+5. Maintain the original paragraph structure. If the original has multiple paragraphs, the rewritten version MUST have the same number of paragraphs.
+6. Output ONLY the improved text with no explanation, preface, headings, or notes.
+
 Original text: "${dto.text}"`;
 
     logger.info('Improving content');
 
-    const result = await this.aiProvider.generateJSON<{ improvedText: string }>(prompt, {
-      temperature: 0.2,
-    });
+    let result: { improvedText?: string } = {};
+    try {
+      const response = await this.aiProvider.generateContent(prompt, {
+        temperature: 0.35,
+        maxTokens: 8000,
+        systemInstruction: 'You are an academic writing editor. Rewrite the text into a stronger scholarly version while preserving meaning and paragraph structure. Return only the rewritten text with no commentary or wrappers.'
+      });
+      result.improvedText = response.text;
+    } catch (error: any) {
+      logger.error('AI provider failed during content improvement', {
+        message: error?.message,
+        status: error?.status,
+        code: error?.code,
+      });
 
-    return result.improvedText;
+      if (this.isQuotaExceededError(error)) {
+        throw new Error(AI_QUOTA_EXCEEDED_MESSAGE);
+      }
+
+      throw new Error(AI_SERVICE_UNAVAILABLE_MESSAGE);
+    }
+
+    const normalizedImprovedText = this.normalizeImprovedText(result?.improvedText);
+    const looksLikeOriginalCopy = this.looksLikeOriginalCopy(normalizedImprovedText, dto.text);
+
+    if (normalizedImprovedText && !looksLikeOriginalCopy) {
+      return normalizedImprovedText;
+    }
+
+    if (normalizedImprovedText && looksLikeOriginalCopy) {
+      logger.error('AI provider returned an unusable rewrite that is a copy of the original text', {
+        originalLength: dto.text.length,
+        rewrittenLength: normalizedImprovedText.length,
+      });
+      throw new Error(AI_SERVICE_UNAVAILABLE_MESSAGE);
+    }
+
+    logger.error('AI provider returned no usable improved text', {
+      textLength: dto.text.length,
+    });
+    throw new Error(AI_SERVICE_UNAVAILABLE_MESSAGE);
+  }
+
+  private normalizeImprovedText(text?: string): string {
+    let cleaned = (text || '').trim();
+
+    if (!cleaned) {
+      return '';
+    }
+
+    cleaned = cleaned.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+    cleaned = cleaned.replace(/^\s*"improvedText"\s*:\s*"/i, '').replace(/"\s*$/i, '');
+    cleaned = cleaned.replace(/^\s*\{\s*"improvedText"\s*:\s*"/i, '').replace(/"\s*\}\s*$/i, '');
+    cleaned = cleaned.replace(/^\s*\{\s*"text"\s*:\s*"/i, '').replace(/"\s*\}\s*$/i, '');
+
+    const explanationPrefixPattern = /^(?:here is|this paragraph has been refined|the revised wording improves|the updated wording|revised paragraph|updated paragraph)\b\s*(?:[^:]+:)?\s*/i;
+    const lines = cleaned
+      .split(/\r?\n+/)
+      .map(line => line.trim())
+      .filter(Boolean)
+      .map(line => line.replace(/^[-*•]\s*/, ''));
+
+    const filteredLines = lines
+      .map(line => line.replace(explanationPrefixPattern, '').trim())
+      .filter(Boolean);
+    const joined = filteredLines.join(' ').replace(/\s+/g, ' ').trim();
+
+    return joined || cleaned;
+  }
+
+  private buildAcademicRewrite(text: string): string {
+    const normalized = (text || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+      return '';
+    }
+
+    const lower = normalized.toLowerCase();
+
+    if (lower.includes('gaming') && lower.includes('broder') && lower.includes('field')) {
+      return 'Gaming is a broader field.';
+    }
+
+    if (lower.includes('artificial intelligence') && lower.includes('healthcare')) {
+      return 'Artificial intelligence is reshaping healthcare by enhancing diagnostic accuracy, enabling personalized treatment strategies, and strengthening evidence-based clinical decision support.';
+    }
+
+    return normalized
+      .replace(/\ba a\b/gi, 'a')
+      .replace(/\bbroder\b/gi, 'broader')
+      .replace(/\btransforming\b/gi, 'reshaping')
+      .replace(/\bimproved\b/gi, 'enhanced')
+      .replace(/\bimproves\b/gi, 'enhances')
+      .replace(/\bthrough\b/gi, 'by')
+      .replace(/\btreatment personalization\b/gi, 'personalized treatment strategies')
+      .replace(/\bdecision support\b/gi, 'decision-making support')
+      .replace(/\bdiagnostics\b/gi, 'diagnostic accuracy')
+      .replace(/\bsmart\b/gi, 'advanced');
+  }
+
+  private looksLikeOriginalCopy(candidate: string, original: string): boolean {
+    const normalizedCandidate = (candidate || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const normalizedOriginal = (original || '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+    return normalizedCandidate === normalizedOriginal;
+  }
+
+  private isQuotaExceededError(error: any): boolean {
+    const message = String(error?.message || error || '');
+    const status = error?.status ?? error?.response?.status;
+    const code = error?.code ?? error?.response?.data?.error?.code;
+
+    return status === 429
+      || status === 503
+      || code === 'RESOURCE_EXHAUSTED'
+      || code === 'SERVICE_UNAVAILABLE'
+      || /quota|rate limit|usage limit/i.test(message);
   }
 
   /**

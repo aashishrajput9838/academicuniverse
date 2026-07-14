@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import FirebaseInit from '../components/FirebaseInit';
 import { AuthProvider } from '../lib/AuthContext';
+import { Toaster } from '../components/ui/toaster';
 
 const _geist = Geist({ subsets: ['latin'] })
 const _geistMono = Geist_Mono({ subsets: ['latin'] })
@@ -25,6 +26,7 @@ export default function RootLayout({
         <AuthProvider>
           <FirebaseInit />
           {children}
+          <Toaster />
         </AuthProvider>
       </body>
     </html>

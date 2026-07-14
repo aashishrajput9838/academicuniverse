@@ -46,8 +46,9 @@ export default function FinalizePaper({ content, abstract, citations, onAbstract
                 body: JSON.stringify({ content: fullContent })
             });
 
-            if (res.abstract) {
-                onAbstractGenerated(res.abstract);
+            const abstractText = res?.data?.abstract ?? res?.abstract;
+            if (abstractText) {
+                onAbstractGenerated(abstractText);
                 toast({ title: 'Abstract Generated' });
             }
         } catch (error: any) {
@@ -69,7 +70,7 @@ export default function FinalizePaper({ content, abstract, citations, onAbstract
             
             const detailsText = `Title: ${citeTitle}, Author: ${citeAuthor}, Year: ${citeYear}`;
             
-            const res = await apiRequest('/api/research/citation', {
+            const res = await apiRequest('/api/research/citations', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -78,8 +79,9 @@ export default function FinalizePaper({ content, abstract, citations, onAbstract
                 body: JSON.stringify({ details: detailsText })
             });
 
-            if (res.citations) {
-                const newCitations = [...(citations || []), res.citations];
+            const citationPayload = res?.data?.citations ?? res?.citations;
+            if (citationPayload) {
+                const newCitations = [...(citations || []), citationPayload];
                 onCitationsGenerated(newCitations);
                 
                 // Clear inputs
@@ -112,11 +114,12 @@ export default function FinalizePaper({ content, abstract, citations, onAbstract
                     </button>
                 </div>
                 
+                <div className="mb-3 text-xs text-slate-500">Draft or revise your executive summary directly in this panel.</div>
                 <textarea
+                    aria-label="Academic abstract"
                     value={abstract}
                     onChange={(e) => onAbstractGenerated(e.target.value)}
-                    placeholder="Your academic abstract will appear here. You can manually edit it as well."
-                    className="flex-1 w-full bg-transparent text-slate-300 placeholder-slate-600 resize-none focus:outline-none leading-relaxed"
+                    className="flex-1 w-full bg-transparent text-slate-300 resize-none focus:outline-none leading-relaxed"
                 />
             </div>
 
@@ -128,24 +131,40 @@ export default function FinalizePaper({ content, abstract, citations, onAbstract
                 
                 {/* Citation Input Form */}
                 <div className="bg-slate-800/50 p-4 rounded-xl mb-6 space-y-3">
-                    <input 
-                        className="w-full bg-slate-900 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg focus:ring-1 focus:ring-emerald-500" 
-                        placeholder="Book / Paper Title"
-                        value={citeTitle} onChange={(e) => setCiteTitle(e.target.value)}
+                    <label className="block text-xs font-medium text-slate-300 uppercase tracking-wide">
+                        Reference title
+                    </label>
+                    <input
+                        aria-label="Reference title"
+                        className="w-full bg-slate-900 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg focus:ring-1 focus:ring-emerald-500"
+                        value={citeTitle}
+                        onChange={(e) => setCiteTitle(e.target.value)}
                     />
-                    <div className="flex gap-3">
-                        <input 
-                            className="flex-1 bg-slate-900 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg focus:ring-1 focus:ring-emerald-500" 
-                            placeholder="Author(s)"
-                            value={citeAuthor} onChange={(e) => setCiteAuthor(e.target.value)}
-                        />
-                        <input 
-                            className="w-24 bg-slate-900 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg focus:ring-1 focus:ring-emerald-500" 
-                            placeholder="Year"
-                            value={citeYear} onChange={(e) => setCiteYear(e.target.value)}
-                        />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-medium text-slate-300 uppercase tracking-wide mb-1">
+                                Authors
+                            </label>
+                            <input
+                                aria-label="Reference authors"
+                                className="w-full bg-slate-900 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg focus:ring-1 focus:ring-emerald-500"
+                                value={citeAuthor}
+                                onChange={(e) => setCiteAuthor(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-slate-300 uppercase tracking-wide mb-1">
+                                Year
+                            </label>
+                            <input
+                                aria-label="Reference year"
+                                className="w-full bg-slate-900 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg focus:ring-1 focus:ring-emerald-500"
+                                value={citeYear}
+                                onChange={(e) => setCiteYear(e.target.value)}
+                            />
+                        </div>
                     </div>
-                    <button 
+                    <button
                         onClick={handleGenerateCitation}
                         disabled={generatingCitations}
                         className="w-full mt-2 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition disabled:bg-slate-700 flex justify-center items-center gap-2"

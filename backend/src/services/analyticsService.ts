@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { User } from '../models';
 import { Logger } from '../utils/logger';
-import githubOAuthService from './githubOAuthService';
+import getGithubOAuthService from './githubOAuthService';
 
 const logger = new Logger('analyticsService');
 
@@ -55,6 +55,7 @@ export class AnalyticsService {
       logger.info(`Processing developer analytics for user: ${firebaseUid}`);
 
       // Get the user's GitHub access token
+      const githubOAuthService = getGithubOAuthService();
       const accessToken = await githubOAuthService.getAccessToken(firebaseUid);
 
       // Fetch user's repositories

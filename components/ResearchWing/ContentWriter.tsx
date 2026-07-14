@@ -20,12 +20,15 @@ export default function ContentWriter({ outline, content, onContentChange }: Con
     const [improving, setImproving] = useState(false);
     const { toast } = useToast();
 
-    // Sync selected section data to editor
+    React.useEffect(() => {
+        setSelectedSection(outline[0]?.title || '');
+    }, [outline]);
+
     React.useEffect(() => {
         if (selectedSection) {
             setCurrentText(content[selectedSection] || '');
         }
-    }, [selectedSection]);
+    }, [selectedSection, content]);
 
     const handleSaveSection = (text: string) => {
         setCurrentText(text);
@@ -54,15 +57,20 @@ export default function ContentWriter({ outline, content, onContentChange }: Con
                 body: JSON.stringify({ text: currentText })
             });
 
-            if (res.improvedText) {
-                handleSaveSection(res.improvedText);
-                toast({ title: 'Content Enhanced', description: 'Academic tone and clarity improved successfully.' });
+            const improvedText = res?.data?.improvedText ?? res?.improvedText;
+            if (improvedText) {
+                handleSaveSection(improvedText);
+                toast({ title: 'Content enhanced', description: 'The academic tone has been refined and saved.' });
             }
         } catch (error: any) {
-            console.error("Failed to improve text:", error);
+            const message = (error?.message || '').toLowerCase();
+            const friendlyMessage = message.includes('quota') || message.includes('resource_exhausted') || message.includes('rate limit') || message.includes('usage limit')
+                ? 'The AI service has reached its temporary usage limit. Please try again in a few moments.'
+                : error.message || 'Could not improve the text';
+
             toast({
                 title: "Improvement Failed",
-                description: error.message || "Could not improve the text",
+                description: friendlyMessage,
                 variant: 'destructive'
             });
         } finally {
@@ -120,11 +128,14 @@ export default function ContentWriter({ outline, content, onContentChange }: Con
                     </div>
                 </div>
                 
+                <div className="px-6 pt-4 text-xs text-slate-400">
+                    Draft this section in your own voice. Use the AI enhance action to tighten the tone and structure.
+                </div>
                 <textarea
+                    aria-label={`Draft content for ${selectedSection}`}
                     value={currentText}
                     onChange={(e) => handleSaveSection(e.target.value)}
-                    placeholder="Start drafting this section here..."
-                    className="flex-1 w-full bg-transparent p-6 text-slate-200 placeholder-slate-600 resize-none focus:outline-none leading-relaxed"
+                    className="flex-1 w-full bg-transparent p-6 text-slate-200 resize-none focus:outline-none leading-relaxed"
                 />
 
                 <div className="bg-slate-800/50 p-4 border-t border-slate-700 flex justify-between items-center">

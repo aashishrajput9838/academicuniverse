@@ -60,17 +60,20 @@ export default function ResearchWingPage() {
                 body: JSON.stringify(dataToSave)
             });
 
-            if (res.id && !paperData.id) {
-                setPaperData(prev => ({ ...prev, id: res.id }));
+            const savedId = res?.data?.id ?? res?.id;
+            if (savedId && !paperData.id) {
+                setPaperData(prev => ({ ...prev, id: savedId }));
             }
-            
-            toast({ title: 'Saved successfully' });
+
+            toast({
+                title: 'Draft saved',
+                description: 'Your paper progress is now available in the history library.'
+            });
         } catch (error: any) {
-            console.error("Save error:", error);
-            toast({ 
-                title: 'Save Failed', 
+            toast({
+                title: 'Save Failed',
                 description: error.message || 'Could not save research progress',
-                variant: 'destructive' 
+                variant: 'destructive'
             });
         } finally {
             setSaving(false);
@@ -80,7 +83,6 @@ export default function ResearchWingPage() {
     const nextStep = () => {
         if (currentStep < STEPS.length - 1) {
             setCurrentStep(s => s + 1);
-            if (paperData.topic) handleSave(); // Auto-save on next step
         }
     };
 
@@ -121,8 +123,9 @@ export default function ResearchWingPage() {
                     {/* Stepper Navigation */}
                     <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center overflow-x-auto">
                         {STEPS.map((step, idx) => (
-                            <div 
-                                key={step.id} 
+                            <button
+                                type="button"
+                                key={step.id}
                                 className={`flex items-center gap-2 whitespace-nowrap px-4 py-2 rounded-lg cursor-pointer ${currentStep === idx ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : currentStep > idx ? 'text-emerald-400' : 'text-slate-500'}`}
                                 onClick={() => setCurrentStep(idx)}
                             >
@@ -130,7 +133,7 @@ export default function ResearchWingPage() {
                                     {currentStep > idx ? '✓' : idx + 1}
                                 </div>
                                 {step.title}
-                            </div>
+                            </button>
                         ))}
                     </div>
 

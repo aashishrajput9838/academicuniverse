@@ -1,5 +1,65 @@
+import crypto from 'crypto';
 import { google } from 'googleapis';
 import User, { IGmailTokens } from '../models/User';
+import { EncryptionUtil } from '../utils/encryption';
+
+const normalizeResolvedGmailTokens = (tokens: IGmailTokens): { accessToken: string; refreshToken: string; expiryDate: number } => {
+    if (!tokens || typeof tokens !== 'object') {
+        throw new Error('Gmail token payload is malformed');
+    }
+
+    if (tokens.accessToken && tokens.refreshToken) {
+        return {
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            expiryDate: tokens.expiryDate || 0,
+        };
+    }
+
+    if (tokens.encryptedToken && tokens.iv) {
+        const decrypted = EncryptionUtil.decrypt(tokens.encryptedToken, tokens.iv);
+        const parsed = JSON.parse(decrypted) as { accessToken?: string; refreshToken?: string; expiryDate?: number };
+
+        if (!parsed.accessToken || !parsed.refreshToken) {
+            throw new Error('Encrypted Gmail token payload is malformed');
+        }
+
+        return {
+            accessToken: parsed.accessToken,
+            refreshToken: parsed.refreshToken,
+            expiryDate: parsed.expiryDate || tokens.expiryDate || 0,
+        };
+    }
+
+    throw new Error('Gmail token payload is malformed');
+};
+
+const persistEncryptedGmailTokens = async (user: any, tokens: { accessToken: string; refreshToken: string; expiryDate: number }) => {
+    const payload = JSON.stringify({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiryDate: tokens.expiryDate,
+    });
+
+    const { iv, encryptedData } = EncryptionUtil.encrypt(payload);
+    user.gmailTokens = {
+        encryptedToken: encryptedData,
+        iv,
+        expiryDate: tokens.expiryDate,
+        updatedAt: new Date(),
+        version: 1,
+    };
+    await user.save();
+};
+
+export const getStoredGmailTokens = async (userId: string): Promise<{ accessToken: string; refreshToken: string; expiryDate: number }> => {
+    const user = await User.findById(userId);
+    if (!user || !user.gmailTokens) {
+        throw new Error('User not found or Gmail tokens missing');
+    }
+
+    return normalizeResolvedGmailTokens(user.gmailTokens as IGmailTokens);
+};
 
 export const getOAuth2Client = () => {
     const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -22,44 +82,49 @@ export const getOAuth2Client = () => {
     );
 };
 
-export const refreshAccessToken = async (userId: string): Promise<IGmailTokens> => {
+export const refreshAccessToken = async (userId: string): Promise<{ accessToken: string; refreshToken: string; expiryDate: number }> => {
     const user = await User.findById(userId);
-    if (!user || !user.gmailTokens?.refreshToken) {
-        throw new Error('User not found or no refresh token available');
+    if (!user || !user.gmailTokens) {
+        throw new Error('User not found or Gmail tokens missing');
+    }
+
+    const storedTokens = normalizeResolvedGmailTokens(user.gmailTokens as IGmailTokens);
+    if (!storedTokens.refreshToken) {
+        throw new Error('No refresh token available');
     }
 
     const oauth2Client = getOAuth2Client();
     oauth2Client.setCredentials({
-        refresh_token: user.gmailTokens.refreshToken
+        refresh_token: storedTokens.refreshToken
     });
 
     const credentials = await oauth2Client.refreshAccessToken();
     const newTokens = credentials.credentials;
 
-    const updatedTokens: IGmailTokens = {
-        accessToken: newTokens.access_token || '',
-        refreshToken: newTokens.refresh_token || user.gmailTokens.refreshToken,
-        expiryDate: newTokens.expiry_date || 0,
+    const updatedTokens = {
+        accessToken: newTokens.access_token || storedTokens.accessToken,
+        refreshToken: newTokens.refresh_token || storedTokens.refreshToken,
+        expiryDate: newTokens.expiry_date || storedTokens.expiryDate,
     };
 
-    user.gmailTokens = updatedTokens;
-    await user.save();
+    await persistEncryptedGmailTokens(user, updatedTokens);
 
     return updatedTokens;
 };
 
-export const getGmailAuthUrl = (userId: string) => {
+export const getGmailAuthUrl = (userId: string, state?: string) => {
     const oauth2Client = getOAuth2Client();
     const scopes = [
         'https://www.googleapis.com/auth/gmail.readonly',
         'https://www.googleapis.com/auth/gmail.modify'
     ];
+    const nonce = state || crypto.randomBytes(32).toString('hex');
 
     const authUrl = oauth2Client.generateAuthUrl({
         access_type: 'offline',
         prompt: 'consent',
         scope: scopes,
-        state: userId, // Pass userId in state to identify user on callback
+        state: nonce,
     });
 
     console.log("[CONFIG_AUDIT] Generated auth URL:", authUrl);
@@ -70,6 +135,7 @@ export const getGmailAuthUrl = (userId: string) => {
     console.log("[CONFIG_AUDIT] URL param redirect_uri:", JSON.stringify(urlObj.searchParams.get('redirect_uri')));
     console.log("[CONFIG_AUDIT] URL param response_type:", urlObj.searchParams.get('response_type'));
     console.log("[CONFIG_AUDIT] URL param scope:", urlObj.searchParams.get('scope'));
+    console.log("[CONFIG_AUDIT] URL param state:", urlObj.searchParams.get('state'));
     
     return authUrl;
 };
@@ -85,18 +151,23 @@ export const handleGmailCallback = async (code: string, userId: string) => {
     const user = await User.findById(userId);
     if (!user) throw new Error(`User not found with ID: ${userId}`);
 
+    const existingTokens = user.gmailTokens ? normalizeResolvedGmailTokens(user.gmailTokens as IGmailTokens) : null;
+
     // Update the user's gmail tokens
     // CRITICAL: Google only sends refresh_token on the first consent.
     // We must preserve the existing one if the new tokens don't include it.
     const updatedTokens: IGmailTokens = {
         accessToken: tokens.access_token || '',
-        refreshToken: tokens.refresh_token || user.gmailTokens?.refreshToken || '',
-        expiryDate: tokens.expiry_date || 0,
+        refreshToken: tokens.refresh_token || existingTokens?.refreshToken || '',
+        expiryDate: tokens.expiry_date || existingTokens?.expiryDate || 0,
     };
 
-    user.gmailTokens = updatedTokens;
+    await persistEncryptedGmailTokens(user, {
+        accessToken: updatedTokens.accessToken || '',
+        refreshToken: updatedTokens.refreshToken || '',
+        expiryDate: updatedTokens.expiryDate || 0,
+    });
 
-    await user.save();
     return tokens;
 };
 
@@ -139,21 +210,24 @@ export const getGmailStats = async (userId: string) => {
   if (!user) throw new Error('User not found');
   if (!user.gmailTokens) throw new Error('Gmail not connected');
 
+  const storedTokens = normalizeResolvedGmailTokens(user.gmailTokens as IGmailTokens);
+
   // Check and refresh token if needed
   const now = Date.now();
-  const isExpired = !user.gmailTokens.expiryDate || user.gmailTokens.expiryDate < now + 5 * 60 * 1000;
+  const isExpired = !storedTokens.expiryDate || storedTokens.expiryDate < now + 5 * 60 * 1000;
   if (isExpired) {
     await refreshAccessToken(userId);
     const refreshedUser = await User.findById(userId);
     if (!refreshedUser || !refreshedUser.gmailTokens) throw new Error('Token refresh failed');
-    user.gmailTokens = refreshedUser.gmailTokens;
+    const refreshedTokens = normalizeResolvedGmailTokens(refreshedUser.gmailTokens as IGmailTokens);
+    Object.assign(storedTokens, refreshedTokens);
   }
 
   const oauth2Client = getOAuth2Client();
   oauth2Client.setCredentials({
-    access_token: user.gmailTokens.accessToken,
-    refresh_token: user.gmailTokens.refreshToken,
-    expiry_date: user.gmailTokens.expiryDate,
+    access_token: storedTokens.accessToken,
+    refresh_token: storedTokens.refreshToken,
+    expiry_date: storedTokens.expiryDate,
   });
 
   const gmail = google.gmail({ version: 'v1', auth: oauth2Client });

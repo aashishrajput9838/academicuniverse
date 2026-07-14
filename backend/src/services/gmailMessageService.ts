@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import User from '../models/User';
-import { getOAuth2Client, refreshAccessToken } from './gmailAuthService';
+import { getOAuth2Client, getStoredGmailTokens, refreshAccessToken } from './gmailAuthService';
 import { AuthenticationError, NotFoundError } from '../utils/errors';
 
 interface GmailMessageSummary {
@@ -173,10 +173,11 @@ const getAuthenticatedGmailClient = async (userId: string) => {
     throw new AuthenticationError('Gmail account not connected');
   }
 
+  const storedTokens = await getStoredGmailTokens(userId);
   const now = Date.now();
-  const isExpired = !user.gmailTokens.expiryDate || user.gmailTokens.expiryDate < now + 5 * 60 * 1000;
+  const isExpired = !storedTokens.expiryDate || storedTokens.expiryDate < now + 5 * 60 * 1000;
 
-  let tokens = user.gmailTokens;
+  let tokens = storedTokens;
 
   if (isExpired) {
     try {

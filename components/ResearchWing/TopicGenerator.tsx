@@ -22,9 +22,10 @@ export default function TopicGenerator({ onTopicSelected, currentTopic }: TopicG
 
         try {
             setLoading(true);
+            setTopics([]);
             const token = localStorage.getItem('authToken');
-            
-            const res = await apiRequest('/api/research/topic', {
+
+            const res = await apiRequest('/api/research/topics', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -33,16 +34,25 @@ export default function TopicGenerator({ onTopicSelected, currentTopic }: TopicG
                 body: JSON.stringify({ domain })
             });
 
-            if (res.topics && Array.isArray(res.topics)) {
-                setTopics(res.topics);
+            const topics = res?.data?.topics ?? res?.topics;
+            if (Array.isArray(topics)) {
+                setTopics(topics);
+                toast({
+                    title: 'Topics generated',
+                    description: 'Select the strongest direction to move into the outline step.'
+                });
             } else {
                 throw new Error("Invalid format received from server");
             }
         } catch (error: any) {
-            console.error("Failed to generate topics:", error);
+            const message = (error?.message || '').toLowerCase();
+            const friendlyMessage = message.includes('quota') || message.includes('resource_exhausted') || message.includes('rate limit') || message.includes('usage limit')
+                ? 'The AI service has reached its temporary usage limit. Please try again in a few moments.'
+                : error.message || 'Failed to generate topics';
+
             toast({
                 title: "Generation Failed",
-                description: error.message || "Failed to generate topics",
+                description: friendlyMessage,
                 variant: 'destructive'
             });
         } finally {
@@ -57,20 +67,25 @@ export default function TopicGenerator({ onTopicSelected, currentTopic }: TopicG
                 <p className="text-slate-400">Enter a broad domain (e.g., "Artificial Intelligence in Healthcare" or "Renewable Energy Economics") and our AI will generate highly specific, academic paper topics for you to explore.</p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
-                <input
-                    type="text"
-                    value={domain}
-                    onChange={(e) => setDomain(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && generateTopics()}
-                    placeholder="Enter your field of interest..."
-                    className="flex-1 bg-slate-900 border border-slate-700 text-white placeholder-slate-500 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                    onClick={generateTopics}
-                    disabled={loading || !domain.trim()}
-                    className="bg-blue-600 hover:bg-blue-500 text-white font-medium px-8 py-3 rounded-xl transition flex items-center justify-center min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+            <div className="space-y-2">
+                <label htmlFor="research-domain" className="block text-sm font-medium text-slate-300">
+                    Research domain
+                </label>
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <input
+                        id="research-domain"
+                        type="text"
+                        value={domain}
+                        aria-label="Research domain or field of interest"
+                        onChange={(e) => setDomain(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && generateTopics()}
+                        className="flex-1 bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                        onClick={generateTopics}
+                        disabled={loading || !domain.trim()}
+                        className="bg-blue-600 hover:bg-blue-500 text-white font-medium px-8 py-3 rounded-xl transition flex items-center justify-center min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                     {loading ? (
                         <div className="flex gap-2 items-center">
                             <Loader2 className="w-5 h-5 animate-spin"/> Generating...
@@ -78,7 +93,9 @@ export default function TopicGenerator({ onTopicSelected, currentTopic }: TopicG
                     ) : (
                         'Generate Topics'
                     )}
-                </button>
+                    </button>
+                </div>
+                <p className="text-xs text-slate-500">Describe a broad subject area and the wizard will return tailored paper directions.</p>
             </div>
 
             {currentTopic && !topics.length && (
@@ -92,12 +109,13 @@ export default function TopicGenerator({ onTopicSelected, currentTopic }: TopicG
                 <div className="space-y-4 mt-8">
                     <h3 className="text-lg font-semibold text-slate-300 mb-4">Select a Topic to Continue:</h3>
                     {topics.map((t, idx) => (
-                        <div 
+                        <button
+                            type="button"
                             key={idx}
                             onClick={() => onTopicSelected(t)}
-                            className={`p-5 rounded-xl border transition-all cursor-pointer hover:-translate-y-1 ${
-                                currentTopic === t 
-                                ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300' 
+                            className={`w-full text-left p-5 rounded-xl border transition-all hover:-translate-y-1 ${
+                                currentTopic === t
+                                ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300'
                                 : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:border-slate-500'
                             }`}
                         >
@@ -107,7 +125,7 @@ export default function TopicGenerator({ onTopicSelected, currentTopic }: TopicG
                                 </span>
                                 <p className="text-lg leading-relaxed pt-0.5">{t}</p>
                             </div>
-                        </div>
+                        </button>
                     ))}
                 </div>
             )}

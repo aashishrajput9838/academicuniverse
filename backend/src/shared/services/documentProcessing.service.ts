@@ -5,6 +5,7 @@ import { IDocument } from '../../models/Document';
 import { Logger } from '../../utils/logger';
 import { aiProvider } from '../../core/ai'; // uses factory and failover internally
 import { OCRService } from './ocr.service';
+import { DocumentRegistryRepository } from '../repositories/documentRegistry.repository';
 
 const logger = new Logger('DocumentProcessingService');
 
@@ -16,10 +17,12 @@ const logger = new Logger('DocumentProcessingService');
 export class DocumentProcessingService {
   private storageService = new DocumentStorageService();
   private repo = new DocumentRepository();
+  private registryRepo = new DocumentRegistryRepository();
   private ocrService = new OCRService();
 
   /**
    * Entry point for an uploaded document.
+   * After successful AI processing, updates the document type registry.
    * Stores the raw file, runs AI analysis (with OCR fallback), and persists results.
    */
   async handleUpload(dto: UploadDocumentDTO): Promise<ProcessedDocumentDTO> {
@@ -47,6 +50,16 @@ export class DocumentProcessingService {
       finalResult.confidenceScore ?? 0,
       finalResult.status as IDocument['status'],
     );
+
+    // Update registry if processing succeeded and document type identified
+    if (finalResult.status === 'SUCCESS' && finalResult.documentType) {
+      await this.registryRepo.upsert({
+        organizationId: dto.organizationId,
+        userId: dto.userId,
+        documentType: finalResult.documentType,
+        sourceExample: dto.file.originalname,
+      });
+    }
 
     return {
       documentId: docId,

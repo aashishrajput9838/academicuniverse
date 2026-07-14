@@ -14,7 +14,7 @@ import aiRoutes from './aiRoutes';
 import logRoutes from './logRoutes';
 import gmailRoutes from './gmailRoutes';
 import softSkillsRoutes from './softSkillsRoutes';
-// import researchRoutes from './researchRoutes'; // Old - using modular version
+import documentRegistryRoutes from './documentRegistryRoutes';
 import exportRoutes from './exportRoutes';
 import growthRoutes from './growthRoutes';
 
@@ -41,6 +41,7 @@ router.use('/softskills', softSkillsRoutes);
 router.use('/research', researchRoutes); // New modular route
 router.use('/ezone', ezoneRoutes);
 router.use('/growth', growthRoutes);
+router.use('/document-registry', documentRegistryRoutes);
 router.use('/export', exportRoutes);
 
 export default router;

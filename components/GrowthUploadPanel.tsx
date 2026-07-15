@@ -3,6 +3,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useGrowthUploadStore } from '@/app/dashboard/student/growth/store/growthUploadStore';
 import {
+  getCandidateState,
+  saveDraft,
+  rejectDocument,
+  approveDocument,
+  getReviewHistory,
+} from '@/app/dashboard/student/growth/reviewApi';
+import type { CandidateState, ReviewHistoryEntry } from '@/app/dashboard/student/growth/reviewApi';
+import {
   deriveTimelineSteps,
   formatDocumentCategory,
   formatFileSize,
@@ -32,6 +40,43 @@ const ACCEPTED_MIME_TYPES = new Set([
 const ACCEPT_STRING = ['.pdf', '.txt', '.csv', '.xls', '.xlsx', '.png', '.jpg', '.jpeg'].join(',');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+export function getNestedValue(obj: any, path: string): any {
+  if (!obj) return undefined;
+  const keys = path.split('.');
+  let current = obj;
+  for (const key of keys) {
+    if (current === null || current === undefined || !(key in current)) {
+      return undefined;
+    }
+    current = current[key];
+  }
+  return current;
+}
+
+export function setNestedValue(obj: any, path: string, value: any) {
+  const keys = path.split('.');
+  let current = obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    if (!(key in current)) {
+      const nextKey = keys[i + 1];
+      current[key] = /^\d+$/.test(nextKey) ? [] : {};
+    }
+    current = current[key];
+  }
+  const lastKey = keys[keys.length - 1];
+  const originalType = typeof current[lastKey];
+  if (originalType === 'number') {
+    const parsed = parseFloat(value);
+    current[lastKey] = isNaN(parsed) ? value : parsed;
+  } else if (originalType === 'boolean') {
+    current[lastKey] = value === 'true' || value === true;
+  } else {
+    current[lastKey] = value;
+  }
+}
+
 
 function formatRelativeTime(isoString: string): string {
   const diff = Date.now() - new Date(isoString).getTime();
@@ -329,6 +374,363 @@ function GenericKeyValueView({ data }: { data: Record<string, unknown> }) {
       ))}
     </div>
   );
+}
+
+// ── Editable Spreadsheet Table ─────────────────────────────────────────────
+
+interface EditableCell {
+  path: string;
+  header: string;
+  aiValue: string;
+  isReadOnly?: boolean;
+}
+
+function EditableSpreadsheetTable({
+  headers,
+  rows,
+  candidateFields,
+  onCellChange,
+  onCellUndo,
+  onCellReset,
+  undoStacks,
+}: {
+  headers: string[];
+  rows: EditableCell[][];
+  candidateFields: Record<string, unknown>;
+  onCellChange: (path: string, val: string) => void;
+  onCellUndo: (path: string) => void;
+  onCellReset: (path: string) => void;
+  undoStacks: Record<string, string[]>;
+}) {
+  const [search, setSearch] = useState('');
+  const [sortCol, setSortCol] = useState<number | null>(null);
+  const [sortAsc, setSortAsc] = useState(true);
+
+  const getCellValue = (cell: EditableCell) => {
+    if (cell.isReadOnly) return cell.aiValue;
+    const current = getNestedValue(candidateFields, cell.path);
+    return current !== undefined && current !== null ? String(current) : '';
+  };
+
+  const getColLetter = (index: number) => String.fromCharCode(65 + index);
+
+  const filteredRows = rows.filter(row =>
+    row.some(cell => {
+      const val = getCellValue(cell);
+      return val.toLowerCase().includes(search.toLowerCase());
+    })
+  );
+
+  const sortedRows = [...filteredRows];
+  if (sortCol !== null) {
+    sortedRows.sort((a, b) => {
+      const cellA = a[sortCol];
+      const cellB = b[sortCol];
+      const valA = getCellValue(cellA);
+      const valB = getCellValue(cellB);
+      const numA = parseFloat(valA);
+      const numB = parseFloat(valB);
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return sortAsc ? numA - numB : numB - numA;
+      }
+      return sortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    });
+  }
+
+  return (
+    <div className="space-y-2 border border-slate-700/50 rounded-xl bg-slate-900/60 p-4">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-800/40 p-2 rounded-lg border border-slate-700/40">
+        <div className="relative w-full sm:max-w-xs">
+          <input
+            type="text"
+            placeholder="Search spreadsheet cells..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-slate-950/80 border border-slate-700/85 rounded-md py-1.5 pl-8 pr-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
+          />
+          <svg className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <div className="text-[11px] font-mono text-slate-500">
+          Showing {sortedRows.length} of {rows.length} rows
+        </div>
+      </div>
+
+      <div className="overflow-x-auto border border-slate-700/80 rounded-lg max-h-[400px] overflow-y-auto">
+        <table className="w-full border-collapse text-xs select-none">
+          <thead className="sticky top-0 z-20 bg-slate-800 shadow-md">
+            <tr className="divide-x divide-slate-700 border-b border-slate-700">
+              <th className="w-10 bg-slate-950 text-slate-600 font-mono text-[10px] text-center select-none py-1 sticky left-0 z-30">
+                #
+              </th>
+              {headers.map((_, i) => (
+                <th key={i} className="bg-slate-950/80 text-slate-500 font-mono text-[10px] text-center py-1 select-none">
+                  {getColLetter(i)}
+                </th>
+              ))}
+            </tr>
+            <tr className="divide-x divide-slate-700 border-b border-slate-700 bg-slate-900">
+              <th className="w-10 bg-slate-950 text-slate-600 font-mono text-[10px] text-center select-none py-2 sticky left-0 z-30"></th>
+              {headers.map((header, i) => (
+                <th
+                  key={i}
+                  onClick={() => {
+                    if (sortCol === i) {
+                      setSortAsc(!sortAsc);
+                    } else {
+                      setSortCol(i);
+                      setSortAsc(true);
+                    }
+                  }}
+                  className="px-3 py-2 text-left font-bold text-slate-300 hover:bg-slate-800 hover:text-white cursor-pointer select-none transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>{header}</span>
+                    <span className="text-[9px] text-slate-500">
+                      {sortCol === i ? (sortAsc ? '▲' : '▼') : '↕'}
+                    </span>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody className="divide-y divide-slate-800 bg-slate-950/40">
+            {sortedRows.map((row, rIdx) => (
+              <tr key={rIdx} className="divide-x divide-slate-800 hover:bg-slate-900/30 transition-colors">
+                <td className="w-10 text-center font-mono text-[10px] text-slate-600 bg-slate-950 py-1.5 sticky left-0 z-10 border-r border-slate-800">
+                  {rIdx + 1}
+                </td>
+                {row.map((cell, cIdx) => {
+                  const currentValue = getCellValue(cell);
+                  const isEdited = !cell.isReadOnly && currentValue !== cell.aiValue;
+                  const hasUndo = (undoStacks[cell.path]?.length ?? 0) > 0;
+
+                  return (
+                    <td key={cIdx} className="p-1 min-w-[120px] align-middle">
+                      {cell.isReadOnly ? (
+                        <div className="px-2 py-1 text-slate-400 font-medium bg-slate-900/20 rounded">
+                          {currentValue || '—'}
+                        </div>
+                      ) : (
+                        <div className="relative group flex items-center w-full">
+                          <input
+                            type="text"
+                            value={currentValue}
+                            onChange={(e) => onCellChange(cell.path, e.target.value)}
+                            title={isEdited ? `Original AI Value: ${cell.aiValue || '—'}` : undefined}
+                            className={`w-full bg-slate-900/80 border text-xs px-2 py-1 rounded outline-none transition-all focus:ring-1 focus:ring-violet-500/25 ${
+                              isEdited
+                                ? 'border-amber-500/50 bg-amber-500/5 text-amber-200 focus:border-amber-400'
+                                : 'border-slate-700/60 text-slate-200 focus:border-violet-500'
+                            }`}
+                            placeholder="—"
+                          />
+                          {isEdited && (
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-slate-950 border border-slate-700 text-[10px] text-slate-300 rounded px-2 py-1 shadow-xl z-50 whitespace-nowrap">
+                              Original AI: <span className="text-amber-400 font-semibold">{cell.aiValue || '—'}</span>
+                            </div>
+                          )}
+                          {isEdited && (
+                            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity bg-slate-950 border border-slate-700 rounded px-1 py-0.5 z-10 shadow-lg">
+                              {hasUndo && (
+                                <button
+                                  type="button"
+                                  onClick={() => onCellUndo(cell.path)}
+                                  title="Undo last change"
+                                  className="text-[10px] text-slate-400 hover:text-amber-300 transition-colors"
+                                >
+                                  ↩
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => onCellReset(cell.path)}
+                                title="Reset to AI value"
+                                className="text-[10px] text-slate-400 hover:text-violet-300 transition-colors"
+                              >
+                                ⟳
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Editable Grid Builder ──────────────────────────────────────────────────
+
+function buildEditableGrid(
+  category: string,
+  candidateFields: Record<string, unknown>,
+  originalFields: Record<string, unknown>
+): { sheets: { name: string; headers: string[]; rows: EditableCell[][] }[] } {
+  // 1. ACADEMIC_TIMETABLE
+  if (category === 'ACADEMIC_TIMETABLE') {
+    const schedule = (candidateFields.schedule as any[]) ?? [];
+    const headers = ['Date', 'Time', 'Course', 'Code', 'Room', 'Instructor'];
+    const rows: EditableCell[][] = [];
+
+    schedule.forEach((day: any, dIdx: number) => {
+      const dateStr = day.date || '';
+      const events = day.events || [];
+      events.forEach((ev: any, eIdx: number) => {
+        rows.push([
+          { path: `schedule.${dIdx}.date`, header: 'Date', aiValue: getNestedValue(originalFields, `schedule.${dIdx}.date`) || '' },
+          { path: `schedule.${dIdx}.events.${eIdx}.timeSlot`, header: 'Time', aiValue: getNestedValue(originalFields, `schedule.${dIdx}.events.${eIdx}.timeSlot`) || '' },
+          { path: `schedule.${dIdx}.events.${eIdx}.courseName`, header: 'Course', aiValue: getNestedValue(originalFields, `schedule.${dIdx}.events.${eIdx}.courseName`) || '' },
+          { path: `schedule.${dIdx}.events.${eIdx}.courseCode`, header: 'Code', aiValue: getNestedValue(originalFields, `schedule.${dIdx}.events.${eIdx}.courseCode`) || '' },
+          { path: `schedule.${dIdx}.events.${eIdx}.room`, header: 'Room', aiValue: getNestedValue(originalFields, `schedule.${dIdx}.events.${eIdx}.room`) || '' },
+          { path: `schedule.${dIdx}.events.${eIdx}.instructor`, header: 'Instructor', aiValue: getNestedValue(originalFields, `schedule.${dIdx}.events.${eIdx}.instructor`) || '' },
+        ]);
+      });
+    });
+
+    return { sheets: [{ name: 'Timetable', headers, rows }] };
+  }
+
+  // 2. TRANSCRIPT or MARKSHEET
+  if (category === 'TRANSCRIPT' || category === 'MARKSHEET') {
+    const subjects = (candidateFields.subjects as any[]) ?? [];
+    const headers = ['Subject', 'Credits', 'Marks', 'Grade'];
+    const rows = subjects.map((sub: any, sIdx: number) => [
+      { path: `subjects.${sIdx}.name`, header: 'Subject', aiValue: getNestedValue(originalFields, `subjects.${sIdx}.name`) || '' },
+      { path: `subjects.${sIdx}.credits`, header: 'Credits', aiValue: String(getNestedValue(originalFields, `subjects.${sIdx}.credits`) ?? '') },
+      { path: `subjects.${sIdx}.marks`, header: 'Marks', aiValue: String(getNestedValue(originalFields, `subjects.${sIdx}.marks`) ?? '') },
+      { path: `subjects.${sIdx}.grade`, header: 'Grade', aiValue: getNestedValue(originalFields, `subjects.${sIdx}.grade`) || '' },
+    ]);
+
+    return { sheets: [{ name: 'Marks', headers, rows }] };
+  }
+
+  // 3. CERTIFICATE
+  if (category === 'CERTIFICATE') {
+    const headers = ['Field', 'Value'];
+    const rows = Object.entries(candidateFields)
+      .filter(([_, v]) => v !== null && v !== undefined && typeof v !== 'object')
+      .map(([k, _]) => [
+        { path: `field-name-${k}`, header: 'Field', aiValue: k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), isReadOnly: true },
+        { path: k, header: 'Value', aiValue: String(getNestedValue(originalFields, k) ?? '') }
+      ]);
+
+    return { sheets: [{ name: 'Certificate', headers, rows }] };
+  }
+
+  // 4. RESUME
+  if (category === 'RESUME') {
+    const sheets = [];
+
+    if (candidateFields.education && Array.isArray(candidateFields.education)) {
+      sheets.push({
+        name: 'Education',
+        headers: ['Institution', 'Degree', 'Major', 'Graduation', 'GPA'],
+        rows: (candidateFields.education as any[]).map((edu: any, eIdx: number) => [
+          { path: `education.${eIdx}.institution`, header: 'Institution', aiValue: getNestedValue(originalFields, `education.${eIdx}.institution`) || '' },
+          { path: `education.${eIdx}.degree`, header: 'Degree', aiValue: getNestedValue(originalFields, `education.${eIdx}.degree`) || '' },
+          { path: `education.${eIdx}.fieldOfStudy`, header: 'Major', aiValue: getNestedValue(originalFields, `education.${eIdx}.fieldOfStudy`) || '' },
+          { path: `education.${eIdx}.graduationDate`, header: 'Graduation', aiValue: getNestedValue(originalFields, `education.${eIdx}.graduationDate`) || '' },
+          { path: `education.${eIdx}.gpa`, header: 'GPA', aiValue: String(getNestedValue(originalFields, `education.${eIdx}.gpa`) ?? '') },
+        ])
+      });
+    }
+
+    if (candidateFields.experience && Array.isArray(candidateFields.experience)) {
+      sheets.push({
+        name: 'Experience',
+        headers: ['Company', 'Role', 'Location', 'Start Date', 'End Date', 'Description'],
+        rows: (candidateFields.experience as any[]).map((exp: any, eIdx: number) => [
+          { path: `experience.${eIdx}.company`, header: 'Company', aiValue: getNestedValue(originalFields, `experience.${eIdx}.company`) || '' },
+          { path: `experience.${eIdx}.role`, header: 'Role', aiValue: getNestedValue(originalFields, `experience.${eIdx}.role`) || '' },
+          { path: `experience.${eIdx}.location`, header: 'Location', aiValue: getNestedValue(originalFields, `experience.${eIdx}.location`) || '' },
+          { path: `experience.${eIdx}.startDate`, header: 'Start Date', aiValue: getNestedValue(originalFields, `experience.${eIdx}.startDate`) || '' },
+          { path: `experience.${eIdx}.endDate`, header: 'End Date', aiValue: getNestedValue(originalFields, `experience.${eIdx}.endDate`) || '' },
+          { path: `experience.${eIdx}.description`, header: 'Description', aiValue: Array.isArray(getNestedValue(originalFields, `experience.${eIdx}.description`)) ? (getNestedValue(originalFields, `experience.${eIdx}.description`) as string[]).join('; ') : String(getNestedValue(originalFields, `experience.${eIdx}.description`) ?? '') },
+        ])
+      });
+    }
+
+    if (candidateFields.projects && Array.isArray(candidateFields.projects)) {
+      sheets.push({
+        name: 'Projects',
+        headers: ['Project Name', 'Technologies', 'Description', 'Link'],
+        rows: (candidateFields.projects as any[]).map((p: any, pIdx: number) => [
+          { path: `projects.${pIdx}.name`, header: 'Project Name', aiValue: getNestedValue(originalFields, `projects.${pIdx}.name`) || '' },
+          { path: `projects.${pIdx}.technologies`, header: 'Technologies', aiValue: Array.isArray(getNestedValue(originalFields, `projects.${pIdx}.technologies`)) ? (getNestedValue(originalFields, `projects.${pIdx}.technologies`) as string[]).join(', ') : String(getNestedValue(originalFields, `projects.${pIdx}.technologies`) ?? '') },
+          { path: `projects.${pIdx}.description`, header: 'Description', aiValue: getNestedValue(originalFields, `projects.${pIdx}.description`) || '' },
+          { path: `projects.${pIdx}.link`, header: 'Link', aiValue: getNestedValue(originalFields, `projects.${pIdx}.link`) || '' },
+        ])
+      });
+    }
+
+    if (candidateFields.skills) {
+      if (Array.isArray(candidateFields.skills)) {
+        sheets.push({
+          name: 'Skills',
+          headers: ['Skill'],
+          rows: (candidateFields.skills as any[]).map((s: any, sIdx: number) => [
+            { path: `skills.${sIdx}`, header: 'Skill', aiValue: String(getNestedValue(originalFields, `skills.${sIdx}`) ?? '') }
+          ])
+        });
+      } else if (typeof candidateFields.skills === 'object') {
+        sheets.push({
+          name: 'Skills',
+          headers: ['Category', 'Skills'],
+          rows: Object.entries(candidateFields.skills).map(([cat, val]) => [
+            { path: `skills-cat-${cat}`, header: 'Category', aiValue: cat, isReadOnly: true },
+            { path: `skills.${cat}`, header: 'Skills', aiValue: Array.isArray(getNestedValue(originalFields, `skills.${cat}`)) ? (getNestedValue(originalFields, `skills.${cat}`) as string[]).join(', ') : String(getNestedValue(originalFields, `skills.${cat}`) ?? '') }
+          ])
+        });
+      }
+    }
+
+    return { sheets };
+  }
+
+  // 5. Fallback/Unknown
+  const arrayEntry = Object.entries(candidateFields).find(([_, val]) => Array.isArray(val) && val.length > 0 && typeof val[0] === 'object');
+  if (arrayEntry) {
+    const [arrayKey, arrayData] = arrayEntry;
+    const uniqueKeys = Array.from(new Set((arrayData as any[]).flatMap(obj => Object.keys(obj || {}))));
+    const rows = (arrayData as any[]).map((obj: any, rIdx: number) =>
+      uniqueKeys.map(k => ({
+        path: `${arrayKey}.${rIdx}.${k}`,
+        header: k,
+        aiValue: String(getNestedValue(originalFields, `${arrayKey}.${rIdx}.${k}`) ?? '')
+      }))
+    );
+    return { sheets: [{ name: arrayKey.replace(/_/g, ' '), headers: uniqueKeys, rows }] };
+  }
+
+  const flattenPaths = (obj: any, prefix = '', res: string[] = []) => {
+    if (!obj) return res;
+    Object.entries(obj).forEach(([key, val]) => {
+      const fullKey = prefix ? `${prefix}.${key}` : key;
+      if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+        flattenPaths(val, fullKey, res);
+      } else {
+        res.push(fullKey);
+      }
+    });
+    return res;
+  };
+
+  const paths = flattenPaths(candidateFields);
+  const rows = paths.map(path => [
+    { path: `field-name-${path}`, header: 'Field Path', aiValue: path.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), isReadOnly: true },
+    { path, header: 'Value', aiValue: String(getNestedValue(originalFields, path) ?? '') }
+  ]);
+
+  return { sheets: [{ name: 'Candidate Data', headers: ['Field Path', 'Value'], rows }] };
 }
 
 // ── Spreadsheet Table ───────────────────────────────────────────────────────
@@ -964,18 +1366,621 @@ function EntitySection({ entities }: { entities: Record<string, unknown> }) {
   );
 }
 
+// ── Toast ──────────────────────────────────────────────────────────────────
+
+type ToastType = 'success' | 'error' | 'info';
+interface Toast { id: number; type: ToastType; message: string; }
+
+function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }) {
+  return (
+    <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 pointer-events-none">
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className={`pointer-events-auto flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium shadow-2xl backdrop-blur-sm animate-in slide-in-from-bottom-4 duration-300 ${
+            t.type === 'success' ? 'border-emerald-500/40 bg-emerald-900/80 text-emerald-200' :
+            t.type === 'error'   ? 'border-red-500/40 bg-red-900/80 text-red-200' :
+                                   'border-violet-500/40 bg-violet-900/80 text-violet-200'
+          }`}
+        >
+          {t.type === 'success' ? (
+            <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+          ) : t.type === 'error' ? (
+            <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          ) : (
+            <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          )}
+          {t.message}
+          <button type="button" onClick={() => onDismiss(t.id)} className="ml-2 text-current opacity-60 hover:opacity-100">
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Confirmation Dialog ──────────────────────────────────────────────────────
+
+function ConfirmDialog({
+  open, title, message, confirmLabel, confirmClass, onConfirm, onCancel, children,
+}: {
+  open: boolean;
+  title: string;
+  message?: string;
+  confirmLabel: string;
+  confirmClass?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  children?: React.ReactNode;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-slate-700/60 bg-slate-900 shadow-2xl p-6 space-y-4">
+        <h3 className="text-base font-bold text-white">{title}</h3>
+        {message && <p className="text-sm text-slate-400 leading-relaxed">{message}</p>}
+        {children}
+        <div className="flex gap-3 pt-2">
+          <button type="button" onClick={onCancel}
+            className="flex-1 rounded-xl border border-slate-700/50 bg-slate-800/50 py-2.5 text-sm font-semibold text-slate-300 hover:text-white transition-colors">
+            Cancel
+          </button>
+          <button type="button" onClick={onConfirm}
+            className={`flex-1 rounded-xl py-2.5 text-sm font-bold text-white transition-colors ${
+              confirmClass ?? 'bg-violet-600 hover:bg-violet-500'
+            }`}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Field-level Edit Row ─────────────────────────────────────────────────────
+
+function EditField({
+  label, fieldKey, aiValue, value, required, error, edited, onChange, onUndo, onReset,
+}: {
+  label: string;
+  fieldKey: string;
+  aiValue: string;
+  value: string;
+  required?: boolean;
+  error?: string;
+  edited: boolean;
+  onChange: (key: string, val: string) => void;
+  onUndo: (key: string) => void;
+  onReset: (key: string) => void;
+}) {
+  return (
+    <div className={`rounded-xl border p-3 transition-all duration-200 ${
+      edited ? 'border-violet-500/50 bg-violet-500/5' : 'border-slate-700/40 bg-slate-800/20'
+    }`}>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+          {label}
+          {required && <span className="text-red-400 text-xs">*</span>}
+          {edited && (
+            <span className="rounded-full bg-violet-500/20 border border-violet-500/30 px-1.5 py-0.5 text-[9px] font-bold text-violet-300 uppercase">Edited</span>
+          )}
+        </label>
+        {edited && (
+          <div className="flex gap-1">
+            <button type="button" onClick={() => onUndo(fieldKey)}
+              title="Undo last change"
+              className="rounded-md px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-amber-300 hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 transition-colors">
+              ↩ Undo
+            </button>
+            <button type="button" onClick={() => onReset(fieldKey)}
+              title="Reset to AI value"
+              className="rounded-md px-1.5 py-0.5 text-[10px] text-slate-400 hover:text-violet-300 hover:bg-violet-500/10 border border-transparent hover:border-violet-500/20 transition-colors">
+              ⟳ AI Value
+            </button>
+          </div>
+        )}
+      </div>
+      {edited && aiValue !== value && (
+        <div className="mb-1.5 rounded-md bg-slate-900/60 border border-slate-700/40 px-2.5 py-1.5">
+          <p className="text-[10px] text-slate-600 uppercase tracking-wide mb-0.5">Original AI</p>
+          <p className="text-xs text-slate-400 line-through opacity-70">{aiValue || '—'}</p>
+        </div>
+      )}
+      <input
+        type="text"
+        id={`field-${fieldKey}`}
+        value={value}
+        onChange={(e) => onChange(fieldKey, e.target.value)}
+        className={`w-full rounded-lg border px-3 py-2 text-sm text-white bg-slate-900/60 outline-none transition-colors focus:ring-1 ${
+          error
+            ? 'border-red-500/60 focus:border-red-400 focus:ring-red-400/20'
+            : edited
+            ? 'border-violet-500/40 focus:border-violet-400 focus:ring-violet-400/20'
+            : 'border-slate-700/40 focus:border-slate-500 focus:ring-slate-500/20'
+        }`}
+        placeholder={aiValue || `Enter ${label.toLowerCase()}…`}
+      />
+      {error && <p className="mt-1 text-[11px] text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+// ── Dynamic Review Form (category-aware) ─────────────────────────────────────
+
+type FieldDef = { key: string; label: string; required?: boolean };
+
+function getFieldSchema(category: string): FieldDef[] {
+  switch (category) {
+    case 'TRANSCRIPT':
+    case 'MARKSHEET':
+      // Flat fields (not per-subject arrays — those use the array editor below)
+      return [
+        { key: 'studentName', label: 'Student Name' },
+        { key: 'rollNumber', label: 'Roll / Enrollment No.' },
+        { key: 'semester', label: 'Semester' },
+        { key: 'programme', label: 'Programme' },
+        { key: 'cgpa', label: 'CGPA / GPA' },
+      ];
+    case 'CERTIFICATE':
+      return [
+        { key: 'title', label: 'Certificate Name', required: true },
+        { key: 'issuer', label: 'Issuing Organization', required: true },
+        { key: 'issueDate', label: 'Issue Date', required: true },
+        { key: 'credentialId', label: 'Credential ID' },
+        { key: 'description', label: 'Description' },
+      ];
+    case 'RESUME':
+      return [
+        { key: 'fullName', label: 'Full Name' },
+        { key: 'email', label: 'Email' },
+        { key: 'phone', label: 'Phone' },
+        { key: 'location', label: 'Location' },
+        { key: 'summary', label: 'Professional Summary' },
+      ];
+    case 'ACADEMIC_TIMETABLE':
+      return [
+        { key: 'academicYear', label: 'Academic Year' },
+        { key: 'semester', label: 'Semester' },
+        { key: 'branch', label: 'Branch / Department' },
+        { key: 'section', label: 'Section' },
+      ];
+    default:
+      return [];
+  }
+}
+
+// ── Review History Panel ──────────────────────────────────────────────────────
+
+function ReviewHistoryPanel({ entries }: { entries: ReviewHistoryEntry[] }) {
+  const actionColors: Record<string, string> = {
+    DRAFT_SAVED: 'border-blue-500/40 bg-blue-500/10 text-blue-300',
+    SUBMITTED:   'border-cyan-500/40 bg-cyan-500/10 text-cyan-300',
+    APPROVED:    'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
+    REJECTED:    'border-red-500/40 bg-red-500/10 text-red-300',
+    ROLLBACK:    'border-amber-500/40 bg-amber-500/10 text-amber-300',
+  };
+
+  if (entries.length === 0) {
+    return (
+      <div className="py-8 text-center">
+        <p className="text-sm text-slate-500">No review history yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {entries.map((e) => (
+        <div key={e._id} className="rounded-xl border border-slate-700/40 bg-slate-800/20 p-3 space-y-1">
+          <div className="flex items-center gap-2">
+            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+              actionColors[e.action] ?? 'border-slate-700/40 bg-slate-700/20 text-slate-400'
+            }`}>
+              {e.action.replace('_', ' ')}
+            </span>
+            <span className="text-[11px] text-slate-500">v{e.version}</span>
+            <span className="ml-auto text-[10px] text-slate-600">
+              {new Date(e.timestamp).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+            <span>By: <span className="text-slate-300 font-mono text-[10px]">{e.reviewerId.slice(0, 12)}…</span></span>
+            <span>·</span>
+            <span>{e.reviewerRole}</span>
+          </div>
+          {e.rejectionReason && (
+            <p className="text-xs text-red-300 italic mt-1">Reason: {e.rejectionReason}</p>
+          )}
+          {e.canonicalCollection && e.canonicalCollection !== 'NONE' && (
+            <p className="text-[11px] text-emerald-400">→ Written to <span className="font-mono">{e.canonicalCollection}</span> ({e.canonicalRecordIds?.length ?? 0} record{(e.canonicalRecordIds?.length ?? 0) !== 1 ? 's' : ''})</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Review Tab ─────────────────────────────────────────────────────────────────
+
+function ReviewTab({
+  processingId,
+  backendToken,
+  initialCandidateFields,
+  category,
+  onApproved,
+  onRejected,
+}: {
+  processingId: string;
+  backendToken: string;
+  initialCandidateFields: Record<string, unknown>;
+  category: string;
+  onApproved: () => void;
+  onRejected: () => void;
+}) {
+  // ── State ──
+  const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [historyEntries, setHistoryEntries] = useState<ReviewHistoryEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [reviewStatus, setReviewStatus] = useState<string>('');
+
+  // Editable candidateFields and originalFields states
+  const [candidateFields, setCandidateFields] = useState<Record<string, any>>(() => {
+    return JSON.parse(JSON.stringify(initialCandidateFields));
+  });
+  const [originalFields, setOriginalFields] = useState<Record<string, any>>(() => {
+    return JSON.parse(JSON.stringify(initialCandidateFields));
+  });
+
+  const [undoStacks, setUndoStacks] = useState<Record<string, string[]>>({});
+
+  // Dialogs
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+
+  const toastIdRef = useRef(0);
+
+  // ── Toast helpers ──
+  const addToast = (type: ToastType, message: string) => {
+    const id = ++toastIdRef.current;
+    setToasts((prev) => [...prev, { id, type, message }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  };
+  const dismissToast = (id: number) => setToasts((prev) => prev.filter((t) => t.id !== id));
+
+  // ── Load status + history ──
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const state = await getCandidateState(backendToken, processingId);
+        if (!cancelled) {
+          setReviewStatus(state.reviewStatus);
+          if (state.candidateFields) {
+            setCandidateFields(JSON.parse(JSON.stringify(state.candidateFields)));
+            setOriginalFields(JSON.parse(JSON.stringify(state.candidateFields)));
+          }
+        }
+      } catch { /* silent */ }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [processingId, backendToken]);
+
+  const loadHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const h = await getReviewHistory(backendToken, processingId);
+      setHistoryEntries(h.entries);
+    } catch {
+      addToast('error', 'Failed to load review history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // ── Cell edit handlers ──
+  const handleCellChange = (path: string, val: string) => {
+    const currentVal = getNestedValue(candidateFields, path);
+    setUndoStacks((prev) => ({
+      ...prev,
+      [path]: [...(prev[path] ?? []), currentVal !== undefined && currentVal !== null ? String(currentVal) : ''],
+    }));
+
+    setCandidateFields((prev) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      setNestedValue(next, path, val);
+      return next;
+    });
+  };
+
+  const handleCellUndo = (path: string) => {
+    const stack = undoStacks[path] ?? [];
+    if (stack.length === 0) return;
+    const prevVal = stack[stack.length - 1];
+    setUndoStacks((prev) => ({
+      ...prev,
+      [path]: stack.slice(0, -1),
+    }));
+    setCandidateFields((prev) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      setNestedValue(next, path, prevVal);
+      return next;
+    });
+  };
+
+  const handleCellReset = (path: string) => {
+    const aiVal = getNestedValue(originalFields, path);
+    setUndoStacks((prev) => ({
+      ...prev,
+      [path]: [],
+    }));
+    setCandidateFields((prev) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      setNestedValue(next, path, aiVal);
+      return next;
+    });
+  };
+
+  const hasEdits = JSON.stringify(candidateFields) !== JSON.stringify(originalFields);
+
+  // ── Actions ──
+  const handleSaveDraft = async () => {
+    setLoading(true);
+    try {
+      const result = await saveDraft(backendToken, processingId, candidateFields);
+      setOriginalFields(JSON.parse(JSON.stringify(candidateFields)));
+      setUndoStacks({}); // clear undo history
+      addToast('success', `Draft saved successfully (v${result.version})`);
+    } catch (err: any) {
+      addToast('error', err.message ?? 'Failed to save draft');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRejectConfirm = async () => {
+    if (!rejectReason.trim()) return;
+    setShowRejectDialog(false);
+    setLoading(true);
+    try {
+      await rejectDocument(backendToken, processingId, rejectReason.trim());
+      setReviewStatus('REJECTED');
+      addToast('success', 'Document rejected');
+      setTimeout(() => onRejected(), 1200);
+    } catch (err: any) {
+      addToast('error', err.message ?? 'Failed to reject document');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApproveConfirm = async () => {
+    setShowApproveDialog(false);
+    setLoading(true);
+    try {
+      const result = await approveDocument(backendToken, processingId, candidateFields);
+      setReviewStatus('APPROVED');
+      addToast('success', `✓ Approved! Written to ${result.canonicalCollection} (${result.canonicalRecordIds?.length ?? 0} records)`);
+      setTimeout(() => onApproved(), 1500);
+    } catch (err: any) {
+      addToast('error', err.message ?? 'Approval failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isApproved = reviewStatus === 'APPROVED';
+  const isRejected = reviewStatus === 'REJECTED';
+  const isTerminal = isApproved || isRejected;
+
+  // Build grid data dynamically based on category
+  const { sheets } = buildEditableGrid(category, candidateFields, originalFields);
+  const [activeSheetIdx, setActiveSheetIdx] = useState(0);
+  const currentSheet = sheets?.[activeSheetIdx] || sheets?.[0];
+
+  return (
+    <div className="flex flex-col h-full">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Reject dialog */}
+      <ConfirmDialog
+        open={showRejectDialog}
+        title="Reject Document"
+        message="Please provide a reason for rejection. This will be recorded in the audit log."
+        confirmLabel="Reject"
+        confirmClass="bg-red-600 hover:bg-red-500"
+        onConfirm={handleRejectConfirm}
+        onCancel={() => setShowRejectDialog(false)}
+      >
+        <textarea
+          autoFocus
+          rows={3}
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          placeholder="e.g. Subject codes are incorrect, please re-upload the original document."
+          className="w-full rounded-xl border border-slate-700/50 bg-slate-800/60 px-3 py-2.5 text-sm text-white placeholder-slate-600 outline-none focus:border-red-400/60 focus:ring-1 focus:ring-red-400/20 resize-none"
+        />
+      </ConfirmDialog>
+
+      {/* Approve dialog */}
+      <ConfirmDialog
+        open={showApproveDialog}
+        title="Approve & Write to Canonical Collections"
+        message="This will permanently commit the reviewed data to the canonical database and trigger a Growth Hub refresh. This action cannot be undone without admin rollback."
+        confirmLabel="Approve"
+        confirmClass="bg-emerald-600 hover:bg-emerald-500"
+        onConfirm={handleApproveConfirm}
+        onCancel={() => setShowApproveDialog(false)}
+      />
+
+      {/* Terminal state banners */}
+      {isApproved && (
+        <div className="mx-6 mt-4 flex items-center gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+          <svg className="h-5 w-5 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <div>
+            <p className="text-sm font-bold text-emerald-300">Document Approved</p>
+            <p className="text-xs text-emerald-400/70">Canonical records have been written. Growth Hub will refresh automatically.</p>
+          </div>
+        </div>
+      )}
+      {isRejected && (
+        <div className="mx-6 mt-4 flex items-center gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3">
+          <svg className="h-5 w-5 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <div>
+            <p className="text-sm font-bold text-red-300">Document Rejected</p>
+            <p className="text-xs text-red-400/70">No data was written to canonical collections.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Main editable spreadsheet area */}
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        {!isTerminal && (
+          <div className="space-y-4">
+            {/* Multi-sheet Tabs if applicable */}
+            {sheets && sheets.length > 1 && (
+              <div className="flex flex-wrap gap-1 bg-slate-800/40 p-1 rounded-lg border border-slate-700/40 w-fit">
+                {sheets.map((sheet, idx) => (
+                  <button
+                    key={sheet.name}
+                    type="button"
+                    onClick={() => setActiveSheetIdx(idx)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                      activeSheetIdx === idx
+                        ? 'bg-violet-600 text-white shadow'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {sheet.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Editable Spreadsheet Table */}
+            {currentSheet ? (
+              <EditableSpreadsheetTable
+                headers={currentSheet.headers}
+                rows={currentSheet.rows}
+                candidateFields={candidateFields}
+                onCellChange={handleCellChange}
+                onCellUndo={handleCellUndo}
+                onCellReset={handleCellReset}
+                undoStacks={undoStacks}
+              />
+            ) : (
+              <div className="rounded-xl border border-slate-700/45 bg-slate-800/20 p-8 text-center text-slate-500">
+                <p className="text-sm font-mono">candidateFields: {'{}'}</p>
+                <p className="text-xs mt-1 text-slate-650">No candidate fields available to edit in spreadsheet view.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Review History */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => { setShowHistory((v) => !v); if (!showHistory) loadHistory(); }}
+            className="w-full flex items-center justify-between rounded-xl border border-slate-700/40 bg-slate-800/20 px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white hover:border-slate-600 transition-colors"
+          >
+            <span>Review History</span>
+            <svg className={`h-4 w-4 transition-transform ${showHistory ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          {showHistory && (
+            <div className="mt-2">
+              {historyLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+                </div>
+              ) : (
+                <ReviewHistoryPanel entries={historyEntries} />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom Action Bar */}
+      {!isTerminal && (
+        <div className="shrink-0 border-t border-slate-700/40 bg-slate-900/90 px-6 py-3">
+          {hasEdits && (
+            <p className="text-[11px] text-amber-400/70 mb-2 flex items-center gap-1">
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+              You have unsaved changes
+            </p>
+          )}
+          <div className="flex gap-2">
+            {/* Save Draft */}
+            <button
+              type="button"
+              id={`review-draft-${processingId}`}
+              onClick={handleSaveDraft}
+              disabled={loading || !hasEdits}
+              className="flex items-center gap-1.5 rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {loading ? <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" /> : (
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 16v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2m12 0V8m0 8l-5 5m0 0l-5-5" /></svg>
+              )}
+              Save Draft
+            </button>
+
+            {/* Reject */}
+            <button
+              type="button"
+              id={`review-reject-${processingId}`}
+              onClick={() => setShowRejectDialog(true)}
+              disabled={loading}
+              className="flex items-center gap-1.5 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              Reject
+            </button>
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Approve */}
+            <button
+              type="button"
+              id={`review-approve-${processingId}`}
+              onClick={() => setShowApproveDialog(true)}
+              disabled={loading}
+              className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {loading ? <div className="h-3 w-3 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" /> : (
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              )}
+              Approve
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // ── Extracted Data Modal ───────────────────────────────────────────────────
 
 function ExtractedDataModal({
   item,
   status,
+  backendToken,
   onClose,
+  onReviewComplete,
 }: {
   item: GrowthUploadHistoryItem;
   status: GrowthProcessingStatus | undefined;
+  backendToken: string;
   onClose: () => void;
+  onReviewComplete?: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<'summary' | 'metadata' | 'entities' | 'excel' | 'raw'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary' | 'metadata' | 'entities' | 'excel' | 'raw' | 'review'>('summary');
   const classification = status?.classification;
   const candidateFields = (classification?.candidateFields ?? {}) as Record<string, unknown>;
   const extractedEntities = (classification?.extractedEntities ?? {}) as Record<string, unknown>;
@@ -990,12 +1995,13 @@ function ExtractedDataModal({
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const tabs: { id: 'summary' | 'metadata' | 'entities' | 'excel' | 'raw'; label: string }[] = [
+  const tabs: { id: 'summary' | 'metadata' | 'entities' | 'excel' | 'raw' | 'review'; label: string }[] = [
     { id: 'summary',  label: '✦ AI Summary' },
     { id: 'metadata', label: '⊡ Metadata' },
     { id: 'entities', label: '≡ Entities' },
     { id: 'excel',    label: '田 Excel' },
     { id: 'raw',      label: '</> Raw Data' },
+    { id: 'review',   label: '✎ Review' },
   ];
 
   const metadataRows: { label: string; value: React.ReactNode }[] = [
@@ -1049,7 +2055,7 @@ function ExtractedDataModal({
       className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:pt-10 bg-black/75 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl border border-slate-700/60 bg-slate-900 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl border border-slate-700/60 bg-slate-900 shadow-2xl overflow-hidden" style={{ minHeight: '600px' }}>
 
         {/* ── Header ── */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-700/60 bg-gradient-to-r from-slate-800/80 to-slate-900/80 shrink-0">
@@ -1061,11 +2067,18 @@ function ExtractedDataModal({
             <p className="text-sm font-semibold text-white truncate">{item.fileName}</p>
             <p className="text-xs text-slate-500">Document Intelligence Review</p>
           </div>
-          <span className="hidden sm:flex items-center gap-1 rounded-full border border-slate-700/50 bg-slate-800/60 px-2.5 py-1 text-[11px] text-slate-500 shrink-0">
+          <span className={`hidden sm:flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] shrink-0 ${
+            activeTab === 'review'
+              ? 'border-violet-500/40 bg-violet-500/10 text-violet-300'
+              : 'border-slate-700/50 bg-slate-800/60 text-slate-500'
+          }`}>
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+              {activeTab === 'review'
+                ? <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                : <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+              }
             </svg>
-            Read-only
+            {activeTab === 'review' ? 'Edit Mode' : 'Read-only'}
           </span>
           <button type="button" onClick={onClose} id="close-extracted-data-modal"
             className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors shrink-0">
@@ -1082,13 +2095,15 @@ function ExtractedDataModal({
 
         {/* ── Tab Bar ── */}
         <div className="px-6 shrink-0 border-b border-slate-700/40">
-          <div className="flex gap-0.5 -mb-px">
+          <div className="flex gap-0.5 -mb-px overflow-x-auto">
             {tabs.map((tab) => (
               <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
                 id={`modal-tab-${tab.id}`}
-                className={`px-3 py-2.5 text-xs font-semibold border-b-2 transition-all duration-150 ${
+                className={`whitespace-nowrap px-3 py-2.5 text-xs font-semibold border-b-2 transition-all duration-150 ${
                   activeTab === tab.id
-                    ? 'border-violet-500 text-violet-300'
+                    ? tab.id === 'review'
+                      ? 'border-emerald-500 text-emerald-300'
+                      : 'border-violet-500 text-violet-300'
                     : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-600'
                 }`}>
                 {tab.label}
@@ -1250,18 +2265,32 @@ function ExtractedDataModal({
               )}
             </div>
           )}
+
+          {/* Tab 6: Human-in-the-Loop Review */}
+          {activeTab === 'review' && (
+            <ReviewTab
+              processingId={item.processingId}
+              backendToken={backendToken}
+              initialCandidateFields={candidateFields}
+              category={category}
+              onApproved={() => { onReviewComplete?.(); onClose(); }}
+              onRejected={() => { onReviewComplete?.(); onClose(); }}
+            />
+          )}
         </div>
 
-        {/* ── Footer ── */}
-        <div className="shrink-0 flex items-center justify-between border-t border-slate-700/40 bg-slate-900/80 px-6 py-3">
-          <p className="text-[11px] text-slate-600 font-mono truncate">
-            {item.processingId.slice(0, 20)}…
-          </p>
-          <button type="button" onClick={onClose}
-            className="rounded-lg border border-slate-700/50 bg-slate-800/50 px-4 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:border-slate-600 transition-colors">
-            Close
-          </button>
-        </div>
+        {/* ── Footer (hidden on Review tab — it has its own action bar) ── */}
+        {activeTab !== 'review' && (
+          <div className="shrink-0 flex items-center justify-between border-t border-slate-700/40 bg-slate-900/80 px-6 py-3">
+            <p className="text-[11px] text-slate-600 font-mono truncate">
+              {item.processingId.slice(0, 20)}…
+            </p>
+            <button type="button" onClick={onClose}
+              className="rounded-lg border border-slate-700/50 bg-slate-800/50 px-4 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:border-slate-600 transition-colors">
+              Close
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1339,7 +2368,7 @@ function UploadHistoryItemCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const { processingStatuses, startPolling, fetchStatusDetail } = useGrowthUploadStore();
+  const { processingStatuses, startPolling, fetchStatusDetail, refreshItem } = useGrowthUploadStore();
   const status = processingStatuses[item.processingId];
   const isActive = !TERMINAL_STATUSES.has(item.status);
 
@@ -1358,7 +2387,9 @@ function UploadHistoryItemCard({
   const steps = deriveTimelineSteps(item.status, errorMessage);
   const hasExtractedData = !!(
     status?.candidateSummary?.available ||
-    (item.reviewStatus === 'PENDING_REVIEW' && item.documentCategory)
+    (item.reviewStatus === 'PENDING_REVIEW' && item.documentCategory) ||
+    item.reviewStatus === 'APPROVED' ||
+    item.reviewStatus === 'REJECTED'
   );
   const category = status?.classification?.documentCategory ?? item.documentCategory;
   const confidence = status?.classification?.confidenceScore ?? item.confidenceScore;
@@ -1546,10 +2577,67 @@ function UploadHistoryItemCard({
         <ExtractedDataModal
           item={item}
           status={status}
+          backendToken={backendToken}
           onClose={() => setShowModal(false)}
+          onReviewComplete={async () => {
+            // Force-refresh this item from KnowledgeRecord (bypasses cache guard)
+            // so reviewStatus transitions from PENDING_REVIEW → APPROVED/REJECTED immediately
+            await refreshItem(backendToken, item.processingId);
+          }}
         />
       )}
     </>
+  );
+}
+
+// ── Grouped History Item ───────────────────────────────────────────────────
+
+function GroupedHistoryItem({
+  latestItem,
+  versions,
+  backendToken,
+}: {
+  latestItem: GrowthUploadHistoryItem;
+  versions: GrowthUploadHistoryItem[];
+  backendToken: string;
+}) {
+  const [showVersions, setShowVersions] = useState(false);
+
+  return (
+    <div className="space-y-2 border border-slate-800 bg-slate-900/10 p-3 rounded-xl">
+      <UploadHistoryItemCard item={latestItem} backendToken={backendToken} />
+      {versions.length > 0 && (
+        <div className="pl-4 mt-2">
+          <button
+            type="button"
+            onClick={() => setShowVersions(!showVersions)}
+            className="flex items-center gap-1.5 text-[11px] text-violet-400 hover:text-violet-300 font-bold transition-colors outline-none focus:ring-1 focus:ring-violet-500/30 rounded px-1"
+          >
+            <svg
+              className={`h-3 w-3 transform transition-transform ${showVersions ? 'rotate-90' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            {showVersions ? 'Hide' : 'Show'} older version{versions.length > 1 ? 's' : ''} ({versions.length})
+          </button>
+
+          {showVersions && (
+            <div className="space-y-2 border-l border-slate-800 pl-3 mt-2">
+              {versions.map((v) => (
+                <div key={v.processingId} className="relative">
+                  <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-3 border-t border-slate-800" />
+                  <UploadHistoryItemCard item={v} backendToken={backendToken} compact />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1572,6 +2660,7 @@ export function GrowthUploadPanel({ backendToken }: GrowthUploadPanelProps) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showAllVersions, setShowAllVersions] = useState(false);
   const dragCounter = useRef(0);
 
   useEffect(() => {
@@ -1727,9 +2816,22 @@ export function GrowthUploadPanel({ backendToken }: GrowthUploadPanelProps) {
         <div className="rounded-2xl border border-slate-700/70 bg-slate-900/50 backdrop-blur-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-bold text-white">Document History</h3>
-            {uploads.length > 0 && (
-              <span className="text-xs text-slate-500">{uploads.length} document{uploads.length !== 1 ? 's' : ''}</span>
-            )}
+            <div className="flex items-center gap-3">
+              {uploads.length > 0 && (
+                <span className="text-xs text-slate-500">
+                  {uploads.length} document{uploads.length !== 1 ? 's' : ''}
+                </span>
+              )}
+              {otherUploads.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllVersions(!showAllVersions)}
+                  className="rounded-lg border border-slate-700/50 bg-slate-850 px-2.5 py-1.5 text-[11px] font-semibold text-slate-350 hover:text-white transition-colors"
+                >
+                  {showAllVersions ? 'Show Latest Only' : 'Show All Versions'}
+                </button>
+              )}
+            </div>
           </div>
 
           {historyLoading && !hasUploads ? (
@@ -1748,9 +2850,35 @@ export function GrowthUploadPanel({ backendToken }: GrowthUploadPanelProps) {
             </div>
           ) : otherUploads.length > 0 ? (
             <div className="space-y-3">
-              {otherUploads.map((item) => (
-                <UploadHistoryItemCard key={item.processingId} item={item} backendToken={backendToken} />
-              ))}
+              {showAllVersions ? (
+                otherUploads.map((item) => (
+                  <UploadHistoryItemCard key={item.processingId} item={item} backendToken={backendToken} />
+                ))
+              ) : (
+                (() => {
+                  const groupedList: { latestItem: GrowthUploadHistoryItem; versions: GrowthUploadHistoryItem[] }[] = [];
+                  const groupsSeen = new Set<string>();
+
+                  otherUploads.forEach((u) => {
+                    const key = u.fileHash || u.fileName;
+                    if (!groupsSeen.has(key)) {
+                      groupsSeen.add(key);
+                      const matches = otherUploads.filter((m) => (m.fileHash || m.fileName) === key);
+                      const [latestItem, ...versions] = matches;
+                      groupedList.push({ latestItem, versions });
+                    }
+                  });
+
+                  return groupedList.map(({ latestItem, versions }) => (
+                    <GroupedHistoryItem
+                      key={latestItem.processingId}
+                      latestItem={latestItem}
+                      versions={versions}
+                      backendToken={backendToken}
+                    />
+                  ));
+                })()
+              )}
             </div>
           ) : (
             <p className="text-sm text-slate-500 text-center py-6">

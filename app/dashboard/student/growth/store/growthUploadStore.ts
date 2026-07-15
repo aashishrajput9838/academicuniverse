@@ -36,6 +36,8 @@ interface GrowthUploadState {
   stopPolling: (processingId: string) => void;
   stopAllPolling: () => void;
   fetchStatusDetail: (token: string, processingId: string) => Promise<void>;
+  /** Force-refresh a single item's full state (including reviewStatus from KnowledgeRecord). Used after approve/reject. */
+  refreshItem: (token: string, processingId: string) => Promise<void>;
 }
 
 export const useGrowthUploadStore = create<GrowthUploadState>()(
@@ -163,8 +165,14 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
 
     fetchStatusDetail: async (token: string, processingId: string) => {
       const currentStatus = get().processingStatuses[processingId];
-      // If we already have the detailed status cache, avoid making duplicate calls
-      if (currentStatus && TERMINAL_STATUSES.has(currentStatus.status)) {
+      // Only skip if we already have a detailed status AND it is not yet a review-terminal state.
+      // IMPORTANT: Do NOT use TERMINAL_STATUSES here — that set covers pipeline statuses (SUCCESS/FAILED),
+      // not review outcomes. A document with status=SUCCESS may still transition from PENDING_REVIEW → APPROVED/REJECTED.
+      if (
+        currentStatus &&
+        TERMINAL_STATUSES.has(currentStatus.status) &&
+        (currentStatus.reviewStatus === 'APPROVED' || currentStatus.reviewStatus === 'REJECTED')
+      ) {
         return;
       }
 
@@ -173,7 +181,7 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
         set((state) => {
           state.processingStatuses[processingId] = status;
 
-          // Also sync category+confidence to the uploads list item if needed
+          // Sync all relevant fields to the uploads list item
           const index = state.uploads.findIndex((u) => u.processingId === processingId);
           if (index !== -1) {
             state.uploads[index].status = status.status as GrowthUploadStatus;
@@ -187,6 +195,29 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
         });
       } catch {
         // Suppress on-demand fetch errors
+      }
+    },
+
+    refreshItem: async (token: string, processingId: string) => {
+      // Unconditionally re-fetch — called after approve/reject to bust any cached state
+      try {
+        const status = await fetchProcessingStatus(token, processingId);
+        set((state) => {
+          state.processingStatuses[processingId] = status;
+
+          const index = state.uploads.findIndex((u) => u.processingId === processingId);
+          if (index !== -1) {
+            state.uploads[index].status = status.status as GrowthUploadStatus;
+            state.uploads[index].reviewStatus = status.reviewStatus;
+            state.uploads[index].completedAt = status.completedAt;
+            if (status.classification) {
+              state.uploads[index].documentCategory = status.classification.documentCategory;
+              state.uploads[index].confidenceScore = status.classification.confidenceScore;
+            }
+          }
+        });
+      } catch {
+        // Suppress errors — stale state is better than a crash
       }
     },
   }))

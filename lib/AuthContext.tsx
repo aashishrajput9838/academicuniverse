@@ -51,12 +51,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const idToken = await currentUser.getIdToken(true); // Force refresh to be safe
 
         // Send the Firebase ID token to our backend to exchange for a JWT token
-        const response = await fetch(`${API_BASE_URL}/api/auth/firebase-login`, {
+        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ idToken }),
+          body: JSON.stringify({ provider: 'google', idToken }),
         });
 
         // Check if response is actually HTML (error page)
@@ -70,9 +70,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const data = await response.json();
           // Store the backend JWT token in localStorage for API calls
           if (typeof window !== 'undefined') {
-            localStorage.setItem('authToken', data.data.token);
+            localStorage.setItem('authToken', data.data.accessToken);
           }
-          setBackendToken(data.data.token);
+          setBackendToken(data.data.accessToken);
           // Update the backend user state
           setBackendUser(data.data.user);
           return true;
@@ -225,12 +225,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const idToken = await result.user.getIdToken();
 
       // Send the Firebase ID token to our backend to exchange for a JWT token
-      const response = await fetch(`${API_BASE_URL}/api/auth/firebase-login`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ provider: 'google', idToken }),
       });
 
       // Check if response is actually HTML (error page)
@@ -256,9 +256,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Store the backend JWT token in localStorage/sessionStorage for API calls
       if (typeof window !== 'undefined') {
-        localStorage.setItem('authToken', data.data.token);
+        localStorage.setItem('authToken', data.data.accessToken);
       }
-      setBackendToken(data.data.token);
+      setBackendToken(data.data.accessToken);
 
       // Update the backend user state
       setBackendUser(data.data.user);
@@ -307,7 +307,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ provider: 'password', email, password }),
       });
 
       // Check if response is actually HTML (error page)
@@ -333,9 +333,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Store the backend JWT token in localStorage for API calls
       if (typeof window !== 'undefined') {
-        localStorage.setItem('authToken', data.data.token);
+        localStorage.setItem('authToken', data.data.accessToken);
       }
-      setBackendToken(data.data.token);
+      setBackendToken(data.data.accessToken);
 
       // Update the backend user state
       setBackendUser(data.data.user);
@@ -343,9 +343,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Since we're using email/password login, we won't have a Firebase user
       // So we'll create a mock user object for the frontend
       const mockUser: User = {
-        uid: data.data.id,
-        email: data.data.email,
-        displayName: data.data.name,
+        uid: data.data.user.id,
+        email: data.data.user.email,
+        displayName: data.data.user.name,
         photoURL: null,
         emailVerified: true,
         isAnonymous: false,
@@ -360,7 +360,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           throw new Error('Backend JWT is not a Firebase ID token');
         },
         getIdTokenResult: async () => ({
-          token: data.data.token,
+          token: data.data.accessToken,
           expirationTime: new Date(Date.now() + 3600 * 1000).toISOString(),
           authTime: new Date().toISOString(),
           issuedAtTime: new Date().toISOString(),

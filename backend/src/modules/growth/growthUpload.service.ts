@@ -65,8 +65,20 @@ const toIso = (value: Date | string | undefined | null): string | null => {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
 
-const getReviewStatus = (status: string): GrowthReviewStatus => {
-  if (status === 'SUCCESS') return 'PENDING_REVIEW';
+/**
+ * Derives the review status from the canonical KnowledgeRecord.reviewStatus field.
+ * Falls back to inferring from uploadStatus only when no KnowledgeRecord exists yet.
+ * NEVER derive from UaipUpload.status alone — that field never changes after review actions.
+ */
+const resolveReviewStatus = (
+  uploadStatus: string,
+  krReviewStatus?: string | null
+): GrowthReviewStatus => {
+  // If the KnowledgeRecord has an explicit reviewStatus set by the review service, use it
+  if (krReviewStatus === 'APPROVED') return 'APPROVED';
+  if (krReviewStatus === 'REJECTED') return 'REJECTED';
+  // KR exists but no explicit terminal status yet → still pending
+  if (uploadStatus === 'SUCCESS') return 'PENDING_REVIEW';
   return 'NOT_READY';
 };
 
@@ -115,6 +127,9 @@ export class GrowthUploadService {
         ? new Date(upload.completedAt).getTime() - new Date(upload.createdAt).getTime()
         : null;
 
+      // Read reviewStatus from KnowledgeRecord (the canonical source set by review.service.ts)
+      const krReviewStatus = kr ? String(kr.reviewStatus ?? '') : null;
+
       return {
         processingId: String(upload.processingId),
         fileName: String(upload.fileName),
@@ -124,11 +139,12 @@ export class GrowthUploadService {
         createdAt,
         completedAt,
         durationMs,
-        reviewStatus: getReviewStatus(uploadStatus),
+        reviewStatus: resolveReviewStatus(uploadStatus, krReviewStatus),
         documentCategory: kr ? String(kr.documentCategory ?? '') : null,
         confidenceScore: kr ? Number(kr.confidenceScore ?? 0) : null,
         parserStrategy: kr ? String(kr.parserStrategy ?? '') : null,
         errorMessage: upload.errorMessage ?? null,
+        fileHash: upload.fileHash ?? null,
       };
     });
 
@@ -159,7 +175,9 @@ export class GrowthUploadService {
     }).lean();
 
     const status = String((upload as any).status);
-    const reviewStatus = getReviewStatus(status);
+    // Read reviewStatus from KnowledgeRecord — the canonical source
+    const krReviewStatus = knowledgeRecord ? String((knowledgeRecord as any).reviewStatus ?? '') : null;
+    const reviewStatus = resolveReviewStatus(status, krReviewStatus);
 
     return {
       processingId: String((upload as any).processingId),

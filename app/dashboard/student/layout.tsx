@@ -54,6 +54,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: 'Events from Gmail', href: '/dashboard/student/events', icon: '📧', badge: eventsCount },
     { label: 'Mail Explorer', href: '/dashboard/student/mail', icon: '✉️' },
     { label: 'Growth Hub', href: '/dashboard/student/growth', icon: '📈' },
+    { label: 'Document Intelligence', href: '/dashboard/student/document-intelligence', icon: '🧠' },
     { label: 'Career Profile', href: '/dashboard/student/career', icon: '💼' },
     { label: 'AI Chatbot', href: '/dashboard/student/chatbot', icon: '🤖' },
     { label: 'Research Wing', href: '/dashboard/student/research', icon: '🔬' },

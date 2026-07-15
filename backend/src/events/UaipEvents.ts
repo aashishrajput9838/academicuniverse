@@ -6,7 +6,14 @@ export enum UaipEvent {
   ParseFailed = "PARSE_FAILED",
   OCR_COMPLETED = "OCR_COMPLETED",
   OCR_FAILED = "OCR_FAILED",
-  // future events can be added here
+  // Human-in-the-Loop review workflow events
+  CandidateDraftSaved = "CANDIDATE_DRAFT_SAVED",
+  CandidateSubmitted = "CANDIDATE_SUBMITTED",
+  CandidateApproved = "CANDIDATE_APPROVED",
+  CandidateRejected = "CANDIDATE_REJECTED",
+  CanonicalUpdated = "CANONICAL_UPDATED",
+  GrowthProjectionUpdated = "GROWTH_PROJECTION_UPDATED",
+  ModuleUpdated = "MODULE_UPDATED",
 }
 
 export interface UaipEventPayload {
@@ -29,5 +36,12 @@ export interface UaipEventPayload {
   storageId?: string; // to locate file for OCR
   userId?: string;
   organizationId?: string;
-  // other fields may be added by future stages
+  // Review workflow fields
+  reviewerId?: string;
+  reviewAction?: 'draft' | 'submit' | 'approve' | 'reject' | 'rollback';
+  rejectionReason?: string;
+  targetModule?: string;
+  version?: number;
+  canonicalCollection?: string;
+  canonicalRecordId?: string;
 }

@@ -28,6 +28,7 @@ export interface GrowthUploadHistoryItem {
   confidenceScore: number | null;
   parserStrategy: string | null;
   errorMessage: string | null;
+  fileHash?: string;
 }
 
 /** Paginated upload history response */

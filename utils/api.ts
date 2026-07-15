@@ -1,5 +1,5 @@
 // API utility functions for consistent error handling
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:10000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5003';
 
 export const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
   const fullUrl = `${API_BASE_URL}${endpoint}`;
@@ -59,9 +59,9 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
 
 // Wrapper functions for common API calls
 export const loginWithFirebaseToken = async (idToken: string) => {
-  return apiRequest('/api/auth/firebase-login', {
+  return apiRequest('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ idToken }),
+    body: JSON.stringify({ provider: 'google', idToken }),
   });
 };
 

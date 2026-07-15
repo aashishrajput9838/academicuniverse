@@ -26,6 +26,7 @@ export interface KnowledgeRecord extends Document {
   candidateFields?: Record<string, any>; // structured entities for human-in-the-loop review
   rawAiOutput?: string; // raw JSON string from AI for debugging
   reviewStatus?: 'NOT_READY' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+  version?: number;
   createdAt: Date;
 }
 
@@ -49,6 +50,7 @@ const KnowledgeRecordSchema = new Schema<KnowledgeRecord>({
   candidateFields: { type: Schema.Types.Mixed },
   rawAiOutput: { type: String },
   reviewStatus: { type: String, enum: ['NOT_READY', 'PENDING_REVIEW', 'APPROVED', 'REJECTED'], default: 'PENDING_REVIEW' },
+  version: { type: Number, default: 1 },
   createdAt: { type: Date, default: Date.now },
 });
 

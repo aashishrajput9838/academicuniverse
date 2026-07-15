@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import * as crypto from 'crypto';
 import { GridFSProvider } from '../storage/GridFSProvider';
 import { UaipUpload } from '../models/UaipUpload';
 import { eventBus } from '../events/EventBus';
@@ -67,6 +68,15 @@ export class UploadService {
       throw new Error(`Unsupported file type: ${mimeType}`);
     }
 
+    // ---- Generate SHA-256 file hash and check for duplicate ----
+    const fileHash = crypto.createHash('sha256').update(buffer).digest('hex');
+    const existingUpload = await UaipUpload.findOne({ organizationId, fileHash });
+
+    if (existingUpload) {
+      console.log(`[UploadService] Duplicate upload detected for hash ${fileHash}. Returning existing processingId: ${existingUpload.processingId}`);
+      return existingUpload.processingId;
+    }
+
     // ---- Generate processingId ----
     const processingId = uuidv4();
 
@@ -88,6 +98,7 @@ export class UploadService {
       mimeType,
       size,
       status: 'PENDING',
+      fileHash,
       createdAt: new Date(),
     });
     await uploadDoc.save();

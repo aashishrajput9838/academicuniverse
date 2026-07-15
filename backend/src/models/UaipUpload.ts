@@ -24,6 +24,8 @@ export interface IUaipUpload {
   status: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'VALIDATION_ERROR';
   /** Optional error message when status is FAILED or VALIDATION_ERROR. */
   errorMessage?: string;
+  /** SHA-256 hash of the physical file content. */
+  fileHash?: string;
   /** Timestamp when the upload request was created. */
   createdAt: Date;
   /** Timestamp when the pipeline completed (success or failure). */
@@ -44,6 +46,7 @@ const UaipUploadSchema = new Schema(
       default: 'PENDING',
     },
     errorMessage: { type: String, default: undefined },
+    fileHash: { type: String, required: false },
     createdAt: { type: Date, default: Date.now },
     completedAt: { type: Date },
   },
@@ -53,5 +56,6 @@ const UaipUploadSchema = new Schema(
 // Index for quick lookup by processingId and organization scoped queries.
 UaipUploadSchema.index({ processingId: 1 }, { unique: true } as any );
 UaipUploadSchema.index({ organizationId: 1, userId: 1, createdAt: -1 });
+UaipUploadSchema.index({ organizationId: 1, fileHash: 1 }, { unique: true, sparse: true } as any);
 
 export const UaipUpload = models.UaipUpload || model<IUaipUpload>('UaipUpload', UaipUploadSchema);

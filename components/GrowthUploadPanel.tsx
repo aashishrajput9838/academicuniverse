@@ -331,7 +331,520 @@ function GenericKeyValueView({ data }: { data: Record<string, unknown> }) {
   );
 }
 
+// ── Spreadsheet Table ───────────────────────────────────────────────────────
+
+function SpreadsheetTable({
+  headers,
+  rows,
+  onCopyCell,
+  onCopyRow,
+  copiedCell,
+  copiedRowIndex,
+  tableId,
+}: {
+  headers: string[];
+  rows: string[][];
+  onCopyCell: (text: string, rowIdx: number, colIdx: number) => void;
+  onCopyRow: (text: string, rowIdx: number) => void;
+  copiedCell: { row: number; col: number } | null;
+  copiedRowIndex: number | null;
+  tableId: string;
+}) {
+  const [search, setSearch] = useState('');
+  const [sortCol, setSortCol] = useState<number | null>(null);
+  const [sortAsc, setSortAsc] = useState(true);
+
+  // Filter rows based on search
+  const filteredRows = rows.filter(row =>
+    row.some(val => val.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  // Sort rows based on column index
+  const sortedRows = [...filteredRows];
+  if (sortCol !== null) {
+    sortedRows.sort((a, b) => {
+      const valA = a[sortCol] || '';
+      const valB = b[sortCol] || '';
+      const numA = parseFloat(valA);
+      const numB = parseFloat(valB);
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return sortAsc ? numA - numB : numB - numA;
+      }
+      return sortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    });
+  }
+
+  // Get Excel letter for column: A, B, C, D...
+  const getColLetter = (index: number) => {
+    return String.fromCharCode(65 + index); // 65 is 'A'
+  };
+
+  return (
+    <div className="space-y-2 border border-slate-700/50 rounded-xl bg-slate-900/60 p-4">
+      {/* Table Actions / Search */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-800/40 p-2 rounded-lg border border-slate-700/40">
+        <div className="relative w-full sm:max-w-xs">
+          <input
+            type="text"
+            placeholder="Search spreadsheet..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-slate-950/80 border border-slate-700/85 rounded-md py-1.5 pl-8 pr-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
+          />
+          <svg className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <div className="text-[11px] font-mono text-slate-500">
+          Showing {sortedRows.length} of {rows.length} rows
+        </div>
+      </div>
+
+      {/* Grid container with sticky header and horizontal scroll */}
+      <div className="overflow-x-auto border border-slate-700/80 rounded-lg max-h-[300px] overflow-y-auto">
+        <table className="w-full border-collapse text-xs select-none">
+          {/* Excel Header Coordinate row: A, B, C, D... */}
+          <thead className="sticky top-0 z-20 bg-slate-800 shadow-md">
+            <tr className="divide-x divide-slate-700 border-b border-slate-700">
+              <th className="w-10 bg-slate-950 text-slate-600 font-mono text-[10px] text-center select-none py-1 sticky left-0 z-30">
+                #
+              </th>
+              {headers.map((_, i) => (
+                <th key={i} className="bg-slate-950/80 text-slate-500 font-mono text-[10px] text-center py-1 select-none">
+                  {getColLetter(i)}
+                </th>
+              ))}
+            </tr>
+            {/* Actual Field Names */}
+            <tr className="divide-x divide-slate-700 border-b border-slate-700 bg-slate-900">
+              <th className="w-10 bg-slate-950 text-slate-600 font-mono text-[10px] text-center select-none py-2 sticky left-0 z-30">
+                
+              </th>
+              {headers.map((header, i) => (
+                <th
+                  key={i}
+                  onClick={() => {
+                    if (sortCol === i) {
+                      setSortAsc(!sortAsc);
+                    } else {
+                      setSortCol(i);
+                      setSortAsc(true);
+                    }
+                  }}
+                  className="px-3 py-2 text-left font-bold text-slate-300 hover:bg-slate-800 hover:text-white cursor-pointer select-none transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>{header}</span>
+                    <span className="text-[9px] text-slate-500">
+                      {sortCol === i ? (sortAsc ? '▲' : '▼') : '↕'}
+                    </span>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/60">
+            {sortedRows.length > 0 ? (
+              sortedRows.map((row, rowIdx) => (
+                <tr
+                  key={rowIdx}
+                  className="group hover:bg-slate-800/30 divide-x divide-slate-800/60 transition-colors"
+                >
+                  {/* Left row index column */}
+                  <td className="sticky left-0 z-10 bg-slate-950 text-slate-500 font-mono text-[10px] text-center py-2 border-r border-slate-800 w-10 flex-shrink-0 flex items-center justify-center gap-1">
+                    <span>{rowIdx + 1}</span>
+                    {/* Copy Row Action on Hover */}
+                    <button
+                      type="button"
+                      onClick={() => onCopyRow(row.join(', '), rowIdx)}
+                      className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white transition-opacity p-0.5"
+                      title="Copy Row as CSV"
+                    >
+                      {copiedRowIndex === rowIdx ? (
+                        <svg className="h-3 w-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      )}
+                    </button>
+                  </td>
+                  {/* Row Cells */}
+                  {row.map((cellText, colIdx) => (
+                    <td
+                      key={colIdx}
+                      className="px-3 py-2 text-slate-300 font-mono relative group/cell hover:bg-slate-800/60 break-words max-w-[200px]"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate" title={cellText}>{cellText}</span>
+                        {/* Copy Cell button on hover */}
+                        <button
+                          type="button"
+                          onClick={() => onCopyCell(cellText, rowIdx, colIdx)}
+                          className="opacity-0 group-hover/cell:opacity-100 text-slate-500 hover:text-white transition-opacity p-0.5 shrink-0"
+                          title="Copy cell value"
+                        >
+                          {copiedCell?.row === rowIdx && copiedCell?.col === colIdx ? (
+                            <svg className="h-3.5 w-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={headers.length + 1} className="py-8 text-center text-slate-500 font-mono">
+                  No matching rows found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Excel View ─────────────────────────────────────────────────────────────
+
+function ExcelView({
+  candidateFields,
+  category,
+}: {
+  candidateFields: Record<string, unknown>;
+  category: string;
+}) {
+  const [copiedCell, setCopiedCell] = useState<{ row: number; col: number } | null>(null);
+  const [copiedRowIndex, setCopiedRowIndex] = useState<number | null>(null);
+
+  const handleCopyCell = async (text: string, rowIdx: number, colIdx: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedCell({ row: rowIdx, col: colIdx });
+      setTimeout(() => setCopiedCell(null), 1500);
+    } catch { /* ignore */ }
+  };
+
+  const handleCopyRow = async (text: string, rowIdx: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedRowIndex(rowIdx);
+      setTimeout(() => setCopiedRowIndex(null), 1500);
+    } catch { /* ignore */ }
+  };
+
+  // 1. Timetable View
+  if (category === 'ACADEMIC_TIMETABLE') {
+    const schedule = (candidateFields.schedule as any[]) ?? [];
+    const headers = ['Date', 'Time', 'Course', 'Code', 'Room', 'Instructor'];
+    const rows: string[][] = [];
+
+    schedule.forEach((day: any) => {
+      const dateStr = day.date || '';
+      if (day.events && Array.isArray(day.events)) {
+        day.events.forEach((ev: any) => {
+          rows.push([
+            dateStr,
+            ev.timeSlot || '—',
+            ev.courseName || (ev.type === 'Holiday' ? '🏖️ Holiday' : '—'),
+            ev.courseCode || '—',
+            ev.room || '—',
+            ev.instructor || '—',
+          ]);
+        });
+      }
+    });
+
+    return (
+      <div className="space-y-4">
+        <SpreadsheetTable
+          headers={headers}
+          rows={rows}
+          onCopyCell={handleCopyCell}
+          onCopyRow={handleCopyRow}
+          copiedCell={copiedCell}
+          copiedRowIndex={copiedRowIndex}
+          tableId="timetable"
+        />
+      </div>
+    );
+  }
+
+  // 2. Transcript or Marksheet View
+  if (category === 'TRANSCRIPT' || category === 'MARKSHEET') {
+    const subjects = (candidateFields.subjects as any[]) ?? [];
+    const headers = ['Subject', 'Credits', 'Marks', 'Grade'];
+    const rows: string[][] = subjects.map((sub: any) => [
+      sub.name || (sub.code ? `Subject ${sub.code}` : '—'),
+      sub.credits !== undefined ? String(sub.credits) : '—',
+      sub.marks !== undefined ? `${sub.marks}${sub.maxMarks ? `/${sub.maxMarks}` : ''}` : '—',
+      sub.grade || '—',
+    ]);
+
+    return (
+      <div className="space-y-4">
+        <SpreadsheetTable
+          headers={headers}
+          rows={rows}
+          onCopyCell={handleCopyCell}
+          onCopyRow={handleCopyRow}
+          copiedCell={copiedCell}
+          copiedRowIndex={copiedRowIndex}
+          tableId="transcript"
+        />
+      </div>
+    );
+  }
+
+  // 3. Certificate View
+  if (category === 'CERTIFICATE') {
+    const headers = ['Field', 'Value'];
+    const rows: string[][] = Object.entries(candidateFields)
+      .filter(([_, v]) => v !== null && v !== undefined && typeof v !== 'object')
+      .map(([k, v]) => [
+        k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        String(v),
+      ]);
+
+    return (
+      <div className="space-y-4">
+        <SpreadsheetTable
+          headers={headers}
+          rows={rows}
+          onCopyCell={handleCopyCell}
+          onCopyRow={handleCopyRow}
+          copiedCell={copiedCell}
+          copiedRowIndex={copiedRowIndex}
+          tableId="certificate"
+        />
+      </div>
+    );
+  }
+
+  // 4. Resume View
+  if (category === 'RESUME') {
+    const sections = ['education', 'experience', 'projects', 'skills'];
+    const hasAnySection = sections.some(s => candidateFields[s]);
+
+    if (!hasAnySection) {
+      return (
+        <FallbackExcelView
+          candidateFields={candidateFields}
+          onCopyCell={handleCopyCell}
+          onCopyRow={handleCopyRow}
+          copiedCell={copiedCell}
+          copiedRowIndex={copiedRowIndex}
+        />
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        {!!candidateFields.education && Array.isArray(candidateFields.education) && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-violet-400">Sheet: Education</h4>
+            <SpreadsheetTable
+              headers={['Institution', 'Degree', 'Major', 'Graduation', 'GPA']}
+              rows={(candidateFields.education as any[]).map((edu: any) => [
+                edu.institution || edu.school || edu.university || '—',
+                edu.degree || '—',
+                edu.fieldOfStudy || edu.major || '—',
+                edu.graduationDate || edu.date || edu.endDate || '—',
+                edu.gpa ? String(edu.gpa) : '—',
+              ])}
+              onCopyCell={handleCopyCell}
+              onCopyRow={handleCopyRow}
+              copiedCell={copiedCell}
+              copiedRowIndex={copiedRowIndex}
+              tableId="education"
+            />
+          </div>
+        )}
+
+        {!!candidateFields.experience && Array.isArray(candidateFields.experience) && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-violet-400">Sheet: Experience</h4>
+            <SpreadsheetTable
+              headers={['Company', 'Role', 'Location', 'Start Date', 'End Date', 'Description']}
+              rows={(candidateFields.experience as any[]).map((exp: any) => [
+                exp.company || exp.organization || '—',
+                exp.role || exp.title || '—',
+                exp.location || '—',
+                exp.startDate || '—',
+                exp.endDate || '—',
+                Array.isArray(exp.description) ? exp.description.join('; ') : String(exp.description || '—'),
+              ])}
+              onCopyCell={handleCopyCell}
+              onCopyRow={handleCopyRow}
+              copiedCell={copiedCell}
+              copiedRowIndex={copiedRowIndex}
+              tableId="experience"
+            />
+          </div>
+        )}
+
+        {!!candidateFields.projects && Array.isArray(candidateFields.projects) && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-violet-400">Sheet: Projects</h4>
+            <SpreadsheetTable
+              headers={['Project Name', 'Technologies', 'Description', 'Link']}
+              rows={(candidateFields.projects as any[]).map((p: any) => [
+                p.name || p.title || '—',
+                Array.isArray(p.technologies) ? p.technologies.join(', ') : String(p.technologies || '—'),
+                p.description || '—',
+                p.link || p.url || '—',
+              ])}
+              onCopyCell={handleCopyCell}
+              onCopyRow={handleCopyRow}
+              copiedCell={copiedCell}
+              copiedRowIndex={copiedRowIndex}
+              tableId="projects"
+            />
+          </div>
+        )}
+
+        {!!candidateFields.skills && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-violet-400">Sheet: Skills</h4>
+            {Array.isArray(candidateFields.skills) ? (
+              <SpreadsheetTable
+                headers={['Skill']}
+                rows={(candidateFields.skills as any[]).map((s: any) => [String(s)])}
+                onCopyCell={handleCopyCell}
+                onCopyRow={handleCopyRow}
+                copiedCell={copiedCell}
+                copiedRowIndex={copiedRowIndex}
+                tableId="skills-list"
+              />
+            ) : typeof candidateFields.skills === 'object' ? (
+              <SpreadsheetTable
+                headers={['Category', 'Skills']}
+                rows={Object.entries(candidateFields.skills as Record<string, unknown>).map(([cat, val]) => [
+                  cat,
+                  Array.isArray(val) ? val.join(', ') : String(val || '—'),
+                ])}
+                onCopyCell={handleCopyCell}
+                onCopyRow={handleCopyRow}
+                copiedCell={copiedCell}
+                copiedRowIndex={copiedRowIndex}
+                tableId="skills-obj"
+              />
+            ) : (
+              <div className="p-4 border border-slate-700 bg-slate-900/40 rounded-lg text-slate-300 font-mono text-xs">
+                {String(candidateFields.skills)}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 5. Fallback for Unknown structures
+  return (
+    <FallbackExcelView
+      candidateFields={candidateFields}
+      onCopyCell={handleCopyCell}
+      onCopyRow={handleCopyRow}
+      copiedCell={copiedCell}
+      copiedRowIndex={copiedRowIndex}
+    />
+  );
+}
+
+// Fallback spreadsheet generator: flattens arbitrary JSON into table rows
+function FallbackExcelView({
+  candidateFields,
+  onCopyCell,
+  onCopyRow,
+  copiedCell,
+  copiedRowIndex,
+}: {
+  candidateFields: Record<string, unknown>;
+  onCopyCell: (text: string, rowIdx: number, colIdx: number) => void;
+  onCopyRow: (text: string, rowIdx: number) => void;
+  copiedCell: { row: number; col: number } | null;
+  copiedRowIndex: number | null;
+}) {
+  // Check if there is an array of objects we can render as a table
+  const arrayEntry = Object.entries(candidateFields).find(([_, val]) => Array.isArray(val) && val.length > 0 && typeof val[0] === 'object');
+  
+  if (arrayEntry) {
+    const [arrayKey, arrayData] = arrayEntry;
+    const uniqueKeys = Array.from(new Set((arrayData as any[]).flatMap(obj => Object.keys(obj || {}))));
+    
+    const rows = (arrayData as any[]).map((obj: any) =>
+      uniqueKeys.map(k => {
+        const val = obj[k];
+        return val !== null && val !== undefined ? (typeof val === 'object' ? JSON.stringify(val) : String(val)) : '—';
+      })
+    );
+
+    return (
+      <div className="space-y-4">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-violet-400">Sheet: {arrayKey.replace(/_/g, ' ')}</h4>
+        <SpreadsheetTable
+          headers={uniqueKeys.map(k => k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))}
+          rows={rows}
+          onCopyCell={onCopyCell}
+          onCopyRow={onCopyRow}
+          copiedCell={copiedCell}
+          copiedRowIndex={copiedRowIndex}
+          tableId={`dynamic-${arrayKey}`}
+        />
+      </div>
+    );
+  }
+
+  // Fallback to simple flattened key-value table
+  const headers = ['Field Path', 'Value'];
+  const rows: string[][] = [];
+
+  const flatten = (obj: any, prefix = '') => {
+    if (obj === null || obj === undefined) return;
+    Object.entries(obj).forEach(([key, val]) => {
+      const fullKey = prefix ? `${prefix}.${key}` : key;
+      if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+        flatten(val, fullKey);
+      } else {
+        rows.push([
+          fullKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          Array.isArray(val) ? val.join(', ') : String(val),
+        ]);
+      }
+    });
+  };
+
+  flatten(candidateFields);
+
+  return (
+    <div className="space-y-4">
+      <SpreadsheetTable
+        headers={headers}
+        rows={rows}
+        onCopyCell={onCopyCell}
+        onCopyRow={onCopyRow}
+        copiedCell={copiedCell}
+        copiedRowIndex={copiedRowIndex}
+        tableId="fallback"
+      />
+    </div>
+  );
+}
+
 // ── JSON Viewer ───────────────────────────────────────────────────────────
+
+
 
 function JsonViewer({ data }: { data: Record<string, unknown> }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -462,7 +975,7 @@ function ExtractedDataModal({
   status: GrowthProcessingStatus | undefined;
   onClose: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<'summary' | 'metadata' | 'entities' | 'raw'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary' | 'metadata' | 'entities' | 'excel' | 'raw'>('summary');
   const classification = status?.classification;
   const candidateFields = (classification?.candidateFields ?? {}) as Record<string, unknown>;
   const extractedEntities = (classification?.extractedEntities ?? {}) as Record<string, unknown>;
@@ -477,10 +990,11 @@ function ExtractedDataModal({
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const tabs: { id: 'summary' | 'metadata' | 'entities' | 'raw'; label: string }[] = [
+  const tabs: { id: 'summary' | 'metadata' | 'entities' | 'excel' | 'raw'; label: string }[] = [
     { id: 'summary',  label: '✦ AI Summary' },
     { id: 'metadata', label: '⊡ Metadata' },
     { id: 'entities', label: '≡ Entities' },
+    { id: 'excel',    label: '田 Excel' },
     { id: 'raw',      label: '</> Raw Data' },
   ];
 
@@ -703,7 +1217,24 @@ function ExtractedDataModal({
             </div>
           )}
 
-          {/* Tab 4: Raw Candidate Data */}
+          {/* Tab 4: Excel Spreadsheet View */}
+          {activeTab === 'excel' && (
+            <div className="px-6 py-5 space-y-3">
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Spreadsheet visualization of the extracted candidate fields for user-friendly review.
+              </p>
+              {Object.keys(candidateFields).length > 0 ? (
+                <ExcelView candidateFields={candidateFields} category={category} />
+              ) : (
+                <div className="rounded-xl border border-slate-700/50 bg-slate-800/20 p-8 text-center text-slate-500">
+                  <p className="text-sm font-mono">candidateFields: {'{}'}</p>
+                  <p className="text-xs mt-1 text-slate-600">No candidate fields available to display in spreadsheet view.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 5: Raw Candidate Data */}
           {activeTab === 'raw' && (
             <div className="px-6 py-5 space-y-3">
               <p className="text-xs text-slate-500 leading-relaxed">

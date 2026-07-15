@@ -38,12 +38,12 @@
 │   (Being Migrated)   │  │  (Modular)     │  │   (Being Migrated)   │
 │                      │  │                │  │                      │
 │  • auth/             │  │  ✅ research/  │  │  • marks/            │
-│  • marks/            │  │                │  │  • github/           │
-│  • users/            │  │  ⏳ Pending:   │  │  • timetable/        │
-│  • timetable/        │  │  • auth        │  │  • resume/           │
-│  • github/           │  │  • marks       │  │  • soft-skills       │
-│  • resume/           │  │  • user        │  │  • gmail             │
-│  • overlap/          │  │                │  │                      │
+│  • marks/            │  │  ✅ growth/    │  │  • github/           │
+│  • users/            │  │                │  │  • timetable/        │
+│  • timetable/        │  │  ⏳ Pending:   │  │  • resume/           │
+│  • github/           │  │  • auth        │  │  • soft-skills       │
+│  • resume/           │  │  • marks       │  │  • gmail             │
+│  • overlap/          │  │  • user        │  │                      │
 └──────────────────────┘  └────────────────┘  └──────────────────────┘
                                 │
                                 ▼
@@ -345,6 +345,29 @@ Client → Controller → Service → Repository
 Example: User Login → Audit Log + Notification + Analytics
 ```
 
+### Pattern 5: Application Facade (UAIP Boundary)
+```
+Client → Routes → Controller → Facade → Internal Services
+         (HTTP)   (HTTP only)  (App)    (hidden: GridFS, EventBus,
+                                         PipelineOrchestrator, OCR,
+                                         Parser, Classification)
+
+The Facade is the ONLY object that crosses the module boundary.
+The Controller never imports any internal service directly.
+
+Example: Growth upload
+  growthRoutes.ts      → new UaipFacade()  → new GrowthController(uaipFacade)
+  GrowthController     → uaip.submitDocument(...)  → processingId
+  UaipFacade (hidden)  → UploadService → GridFSProvider + EventBus
+                       → PipelineOrchestrator → Classify → Parse
+
+Public contract (UaipFacade.types.ts):
+  submitDocument(params)      → { processingId }
+  getDocumentStatus(id)       → UaipDocument | null
+  getUploadHistory(params)    → GrowthUploadHistory
+  getProcessingStatus(params) → GrowthProcessingStatus | null
+```
+
 ---
 
 ## Testing Strategy
@@ -398,7 +421,12 @@ Phase 2: Core Modules ⏳ IN PROGRESS
 ├── Marks Module
 └── Dashboard Module
 
-Phase 3: Feature Modules ⏳ PENDING
+Phase 3: Feature Modules ⏳ IN PROGRESS
+├── ✅ Growth Module
+│   ├── GrowthController (depends only on UaipFacade)
+│   ├── GrowthUploadService (history + status)
+│   ├── GrowthProjectionService
+│   └── shared/application/UaipFacade (UAIP boundary)
 ├── Timetable Module
 ├── Overlap Module
 ├── Resume Module
@@ -434,6 +462,10 @@ Phase 6: Testing & Docs ⏳ PENDING
 4. **Single Responsibility** - Each layer does ONE thing well
 5. **Shared Code Goes in `/shared`** - Avoid duplication
 6. **Infrastructure Goes in `/core`** - Centralized providers
+7. **Cross-boundary Subsystems Use a Facade** - Module consumers never import internal classes.
+   Place the facade in `shared/application/`. The facade owns all internal wiring;
+   the consumer only receives the facade's public contract (`*.types.ts`).
+   Current example: `UaipFacade` consumed by `GrowthController`.
 
 ---
 

@@ -117,3 +117,51 @@ ALL RUNTIME VERIFICATION CHECKS PASSED
 [Verifier][Temp] REMOVED C:\github\academicuniverse.com\academicuniverse\backend\tmp\runtime-verification-runtime-1784068422337\sample-runtime.xlsx removed=true
 OCRFactory: Overriding existing provider for TESSERACT
 ```
+
+---
+
+## Post-Module-3 Architectural Refactor: UAIP Application Facade
+
+**Commit:** `refactor: introduce UAIP facade for Growth upload integration`
+**Branch:** `backup-sprint-003`
+**Date:** 2026-07-15
+
+### Motivation
+
+After Module-3 landed, `GrowthController` directly instantiated `UploadService`
+(a UAIP-internal class) and `growthRoutes.ts` directly instantiated
+`DocumentProcessingService`. This created a hard dependency from the Growth
+module into UAIP pipeline internals, violating the intended module boundary.
+
+### Change
+
+A two-file application facade was introduced at
+`backend/src/shared/application/`:
+
+| File | Role |
+|------|------|
+| `UaipFacade.types.ts` | Public contract — only types Growth is permitted to import from UAIP |
+| `UaipFacade.ts` | Facade implementation — wraps `UploadService`, `DocumentProcessingService`, `GrowthUploadService` |
+
+`GrowthController` now accepts `UaipFacade` as its sole dependency.
+`growthRoutes.ts` instantiates `new UaipFacade()` and passes it in.
+
+### Dependency flow after refactor
+
+```
+growthRoutes.ts
+  └─ new UaipFacade()
+  └─ new GrowthController(uaipFacade)
+       └─ uaip.submitDocument(...)        [hides: UploadService → GridFS + EventBus]
+       └─ uaip.getDocumentStatus(...)     [hides: DocumentProcessingService]
+       └─ uaip.getUploadHistory(...)      [hides: GrowthUploadService]
+       └─ uaip.getProcessingStatus(...)   [hides: GrowthUploadService]
+```
+
+### Invariants preserved
+
+- Zero runtime behaviour changed
+- All 27 tests pass (10 suites) — no test modifications required
+- `npm run lint` → 0 errors
+- `npx tsc --noEmit` → 0 type errors
+- Module-3 processing logic (Classification, Parser, OCR, PipelineOrchestrator) untouched

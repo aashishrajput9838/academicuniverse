@@ -29,6 +29,6 @@ const rolePermissionSchema = new Schema<IRolePermission>(
 );
 
 // Compound unique index: each role-permission mapping should be unique
-rolePermissionSchema.index({ roleId: 1, permissionId: 1 }, { unique: true });
+rolePermissionSchema.index({ roleId: 1, permissionId: 1 }, { unique: true } as any);
 
 export default mongoose.model<IRolePermission>('RolePermission', rolePermissionSchema);

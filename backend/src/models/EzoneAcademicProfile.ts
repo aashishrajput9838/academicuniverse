@@ -157,6 +157,6 @@ const ezoneAcademicProfileSchema = new Schema<IEzoneAcademicProfile>(
 );
 
 // Enforce organizationId isolation
-ezoneAcademicProfileSchema.index({ organizationId: 1, userId: 1 }, { unique: true });
+ezoneAcademicProfileSchema.index({ organizationId: 1, userId: 1 }, { unique: true } as any);
 
 export const EzoneAcademicProfile = mongoose.model<IEzoneAcademicProfile>('EzoneAcademicProfile', ezoneAcademicProfileSchema);

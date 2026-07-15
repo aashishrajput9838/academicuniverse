@@ -44,6 +44,6 @@ const roleSchema = new Schema<IRole>(
 );
 
 // Compound unique index: role name must be unique per organization
-roleSchema.index({ name: 1, organizationId: 1 }, { unique: true });
+roleSchema.index({ name: 1, organizationId: 1 }, { unique: true } as any);
 
 export default mongoose.model<IRole>('Role', roleSchema);

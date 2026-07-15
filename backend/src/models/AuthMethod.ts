@@ -33,7 +33,7 @@ const AuthMethodSchema = new Schema<IAuthMethod>(
 );
 
 // Unique index for provider + providerUserId
-AuthMethodSchema.index({ provider: 1, providerUserId: 1 }, { unique: true });
+AuthMethodSchema.index({ provider: 1, providerUserId: 1 }, { unique: true } as any);
 // Unique index for verified email per provider (sparse, only when emailVerified is true)
 AuthMethodSchema.index({ email: 1, provider: 1 }, { unique: true, partialFilterExpression: { emailVerified: true } } as any);
 

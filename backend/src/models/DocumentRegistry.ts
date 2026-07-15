@@ -21,6 +21,6 @@ const DocumentRegistrySchema = new Schema<IDocumentRegistry>({
 } as any);
 
 // Ensure unique combination to avoid duplicates
-DocumentRegistrySchema.index({ organizationId: 1, userId: 1, documentType: 1 }, { unique: true });
+DocumentRegistrySchema.index({ organizationId: 1, userId: 1, documentType: 1 }, { unique: true } as any);
 
 export const DocumentRegistry = model<IDocumentRegistry>('DocumentRegistry', DocumentRegistrySchema);

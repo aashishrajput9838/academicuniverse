@@ -36,6 +36,6 @@ const sectionSchema = new Schema<ISection>(
 );
 
 // Ensure that a section name is unique within an organization
-sectionSchema.index({ name: 1, organizationId: 1 }, { unique: true });
+sectionSchema.index({ name: 1, organizationId: 1 }, { unique: true } as any);
 
 export default mongoose.model<ISection>('Section', sectionSchema);

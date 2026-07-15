@@ -133,6 +133,6 @@ userSchema.methods.comparePassword = async function (password: string): Promise<
 };
 
 // Compound index for organization and email uniqueness
-userSchema.index({ organizationId: 1, email: 1 }, { unique: true });
+userSchema.index({ organizationId: 1, email: 1 }, { unique: true } as any);
 
 export default mongoose.model<IUser>('User', userSchema);

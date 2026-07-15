@@ -1,4 +1,4 @@
-import { KnowledgeRecordModel } from '../../models/KnowledgeRecord';
+import { KnowledgeRecordModel, TargetModuleRecommendation } from '../../models/KnowledgeRecord';
 import { UaipUpload } from '../../models/UaipUpload';
 
 export type GrowthReviewStatus =
@@ -45,6 +45,8 @@ export interface GrowthProcessingStatus {
     createdAt: string;
     summary?: string;
     suggestedModule?: string;
+    primaryTargetModule?: TargetModuleRecommendation | null;
+    secondaryTargetModules?: TargetModuleRecommendation[];
     extractedEntities?: Record<string, any>;
     candidateFields?: Record<string, any>;
     rawAiOutput?: string;
@@ -177,6 +179,8 @@ export class GrowthUploadService {
           createdAt: toIso((knowledgeRecord as any).createdAt) ?? new Date(0).toISOString(),
           summary: (knowledgeRecord as any).summary,
           suggestedModule: (knowledgeRecord as any).suggestedModule,
+          primaryTargetModule: (knowledgeRecord as any).primaryTargetModule ?? null,
+          secondaryTargetModules: (knowledgeRecord as any).secondaryTargetModules ?? [],
           extractedEntities: (knowledgeRecord as any).extractedEntities,
           candidateFields: (knowledgeRecord as any).candidateFields,
           rawAiOutput: (knowledgeRecord as any).rawAiOutput,

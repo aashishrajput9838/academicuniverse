@@ -36,6 +36,14 @@ export interface GrowthUploadHistory {
   nextCursor: string | null;
 }
 
+/** AI module routing recommendation */
+export interface TargetModuleRecommendation {
+  id: string;
+  name?: string;
+  confidence: number;
+  reason?: string;
+}
+
 /** Classification detail from KnowledgeRecord */
 export interface GrowthClassificationDetail {
   documentCategory: string;
@@ -47,6 +55,8 @@ export interface GrowthClassificationDetail {
   createdAt: string;
   summary?: string;
   suggestedModule?: string;
+  primaryTargetModule?: TargetModuleRecommendation | null;
+  secondaryTargetModules?: TargetModuleRecommendation[];
   extractedEntities?: Record<string, unknown>;
   candidateFields?: Record<string, unknown>;
 }

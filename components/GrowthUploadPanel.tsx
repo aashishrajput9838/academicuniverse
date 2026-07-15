@@ -331,6 +331,126 @@ function GenericKeyValueView({ data }: { data: Record<string, unknown> }) {
   );
 }
 
+// ── JSON Viewer ───────────────────────────────────────────────────────────
+
+function JsonViewer({ data }: { data: Record<string, unknown> }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const json = JSON.stringify(data, null, 2);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(json);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  };
+
+  return (
+    <div className="rounded-xl border border-slate-700/50 overflow-hidden">
+      <div className="flex items-center justify-between bg-slate-800/80 px-4 py-2.5 border-b border-slate-700/50">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1">
+            <div className="h-2.5 w-2.5 rounded-full bg-red-500/60" />
+            <div className="h-2.5 w-2.5 rounded-full bg-amber-500/60" />
+            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500/60" />
+          </div>
+          <span className="text-xs font-mono text-slate-500">candidateFields.json</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setCollapsed(!collapsed)}
+            className="flex items-center gap-1 rounded-md border border-slate-700/50 bg-slate-700/30 px-2 py-1 text-xs text-slate-400 hover:text-white hover:border-slate-600 transition-colors">
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              {collapsed
+                ? <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                : <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />}
+            </svg>
+            {collapsed ? 'Expand' : 'Collapse'}
+          </button>
+          <button type="button" onClick={handleCopy}
+            className="flex items-center gap-1 rounded-md border border-slate-700/50 bg-slate-700/30 px-2 py-1 text-xs text-slate-400 hover:text-white hover:border-slate-600 transition-colors">
+            {copied ? (
+              <><svg className="h-3 w-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg><span className="text-emerald-400">Copied!</span></>
+            ) : (
+              <><svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>Copy JSON</>
+            )}
+          </button>
+        </div>
+      </div>
+      {!collapsed && (
+        <div className="max-h-72 overflow-y-auto p-4 bg-slate-950/60">
+          <pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-all">
+            {json.split('\n').map((line, i) => {
+              const isKey = /^\s+"[^"]+":/.test(line);
+              const isNumber = /:\s+[\d.]+/.test(line) && !/:\s+"/.test(line) && !/:\s+\{/.test(line) && !/:\s+\[/.test(line);
+              const isBool = /:\s+(true|false|null)[,]?$/.test(line);
+              const isString = /:\s+"/.test(line);
+              return (
+                <span key={i} className="block">
+                  {isKey ? (
+                    <>
+                      <span className="text-slate-500">{line.match(/^\s+/)?.[0] ?? ''}</span>
+                      <span className="text-blue-300">{line.match(/"[^"]+"/)?.[0] ?? ''}</span>
+                      <span className="text-slate-400">: </span>
+                      <span className={isNumber ? 'text-amber-300' : isBool ? 'text-purple-300' : 'text-emerald-300'}>
+                        {line.replace(/^\s+"[^"]+"\s*:\s*/, '')}
+                      </span>
+                    </>
+                  ) : (
+                    <span className={isNumber ? 'text-amber-300' : isBool ? 'text-purple-300' : isString ? 'text-emerald-300' : 'text-slate-400'}>
+                      {line}
+                    </span>
+                  )}
+                </span>
+              );
+            })}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Entity Section (type-aware key-value grid) ─────────────────────────────
+
+function EntitySection({ entities }: { entities: Record<string, unknown> }) {
+  const fieldLabels: Record<string, string> = {
+    startDate: 'Start Date', endDate: 'End Date', weekStartDate: 'Week Start',
+    weekEndDate: 'Week End', courses: 'Courses', courseCodes: 'Course Codes',
+    instructors: 'Instructors', roomNumbers: 'Rooms', timeSlots: 'Time Slots',
+    documentType: 'Document Type', subjects: 'Subjects', gpa: 'GPA', cgpa: 'CGPA',
+    semester: 'Semester', skills: 'Skills', education: 'Education',
+    experience: 'Experience', projects: 'Projects', title: 'Title',
+    issuer: 'Issuing Organization', date: 'Issue Date',
+  };
+  const entries = Object.entries(entities).filter(([, v]) => v !== null && v !== undefined);
+  if (entries.length === 0) return null;
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {entries.map(([key, value]) => (
+        <div key={key} className="rounded-lg border border-slate-700/40 bg-slate-800/20 px-4 py-3 hover:border-slate-600/50 transition-colors">
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-1.5">
+            {fieldLabels[key] ?? key.replace(/_/g, ' ')}
+          </p>
+          {Array.isArray(value) ? (
+            <div className="flex flex-wrap gap-1.5">
+              {(value as unknown[]).map((item, i) => (
+                <span key={i} className="rounded-full border border-slate-700/50 bg-slate-700/30 px-2.5 py-0.5 text-xs text-slate-200">
+                  {String(item)}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm font-medium text-white break-words leading-snug">
+              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Extracted Data Modal ───────────────────────────────────────────────────
 
 function ExtractedDataModal({
@@ -342,106 +462,280 @@ function ExtractedDataModal({
   status: GrowthProcessingStatus | undefined;
   onClose: () => void;
 }) {
+  const [activeTab, setActiveTab] = useState<'summary' | 'metadata' | 'entities' | 'raw'>('summary');
   const classification = status?.classification;
   const candidateFields = (classification?.candidateFields ?? {}) as Record<string, unknown>;
   const extractedEntities = (classification?.extractedEntities ?? {}) as Record<string, unknown>;
   const category = classification?.documentCategory ?? item.documentCategory ?? 'OTHER';
+  const primaryModule = classification?.primaryTargetModule;
+  const secondaryModules = classification?.secondaryTargetModules ?? [];
+  const hasData = Object.keys(candidateFields).length > 0 || Object.keys(extractedEntities).length > 0;
 
-  // Trap focus / close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  function renderContent() {
-    if (Object.keys(candidateFields).length === 0 && Object.keys(extractedEntities).length === 0) {
-      return (
-        <div className="py-12 text-center text-slate-400">
-          <svg className="mx-auto h-10 w-10 mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25" />
-          </svg>
-          <p className="text-sm">No extracted data available yet.</p>
-          <p className="text-xs mt-1 text-slate-500">Check back after processing completes.</p>
-        </div>
-      );
-    }
+  const tabs: { id: 'summary' | 'metadata' | 'entities' | 'raw'; label: string }[] = [
+    { id: 'summary',  label: '✦ AI Summary' },
+    { id: 'metadata', label: '⊡ Metadata' },
+    { id: 'entities', label: '≡ Entities' },
+    { id: 'raw',      label: '</> Raw Data' },
+  ];
 
-    switch (category) {
-      case 'ACADEMIC_TIMETABLE':
-        return <TimetableView candidateFields={candidateFields} />;
-      case 'MARKSHEET':
-      case 'TRANSCRIPT':
-        return <MarksheetView extractedEntities={extractedEntities} candidateFields={candidateFields} />;
-      case 'CERTIFICATE':
-        return <CertificateView extractedEntities={extractedEntities} candidateFields={candidateFields} />;
-      case 'RESUME':
-        return <ResumeView candidateFields={candidateFields} />;
-      default:
-        return <GenericKeyValueView data={{ ...extractedEntities, ...candidateFields }} />;
-    }
-  }
+  const metadataRows: { label: string; value: React.ReactNode }[] = [
+    { label: 'Category', value: (
+      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getCategoryColor(category)}`}>
+        {getCategoryIcon(category)}{formatDocumentCategory(category)}
+      </span>
+    )},
+    { label: 'AI Confidence', value: (
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-1.5 rounded-full bg-slate-700/50 max-w-[120px]">
+          <div className="h-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+            style={{ width: `${Math.round((classification?.confidenceScore ?? 0) * 100)}%` }} />
+        </div>
+        <span className="text-sm font-bold text-emerald-400">{Math.round((classification?.confidenceScore ?? 0) * 100)}%</span>
+      </div>
+    )},
+    { label: 'Parser Strategy', value: <span className="font-mono text-xs text-cyan-300">{classification?.parserStrategy ?? '—'}</span> },
+    { label: 'Language',       value: <span className="uppercase text-xs font-semibold text-white">{classification?.language ?? '—'}</span> },
+    { label: 'Review Status',  value: (
+      <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-300">
+        {item.reviewStatus ?? '—'}
+      </span>
+    )},
+    { label: 'Upload Time',    value: <span className="text-sm text-slate-300">{formatTimestamp(item.createdAt)}</span> },
+    ...(item.durationMs != null ? [{ label: 'Processing Time', value: <span className="text-sm text-slate-300">{formatDuration(item.durationMs)}</span> }] : []),
+    { label: 'AI Target Module', value: primaryModule ? (
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-bold text-violet-300">
+            {primaryModule.name ?? primaryModule.id}
+          </span>
+          <span className="text-xs text-emerald-400 font-semibold">{Math.round(primaryModule.confidence * 100)}%</span>
+        </div>
+        {primaryModule.reason && <p className="text-xs text-slate-500 italic">{primaryModule.reason}</p>}
+        {secondaryModules.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {secondaryModules.map((m) => (
+              <span key={m.id} className="rounded-full border border-slate-700/40 bg-slate-700/20 px-2 py-0.5 text-[11px] text-slate-400">
+                {m.name ?? m.id} · {Math.round(m.confidence * 100)}%
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    ) : <span className="text-slate-500 text-sm">Not determined</span> },
+  ];
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:pt-16 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:pt-10 bg-black/75 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl border border-slate-700/60 bg-slate-900 shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-700/60 bg-slate-800/60 shrink-0">
-          <div className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 ${getCategoryColor(category)}`}>
+      <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl border border-slate-700/60 bg-slate-900 shadow-2xl overflow-hidden">
+
+        {/* ── Header ── */}
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-700/60 bg-gradient-to-r from-slate-800/80 to-slate-900/80 shrink-0">
+          <div className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 shrink-0 ${getCategoryColor(category)}`}>
             {getCategoryIcon(category)}
-            <span className="text-xs font-semibold">{formatDocumentCategory(category)}</span>
+            <span className="text-xs font-bold">{formatDocumentCategory(category)}</span>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-white truncate">{item.fileName}</p>
-            {classification?.confidenceScore !== undefined && (
-              <p className="text-xs text-slate-400">
-                AI Confidence: <span className="text-emerald-400 font-medium">{Math.round(classification.confidenceScore * 100)}%</span>
-              </p>
-            )}
+            <p className="text-xs text-slate-500">Document Intelligence Review</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
-            id="close-extracted-data-modal"
-          >
+          <span className="hidden sm:flex items-center gap-1 rounded-full border border-slate-700/50 bg-slate-800/60 px-2.5 py-1 text-[11px] text-slate-500 shrink-0">
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+            </svg>
+            Read-only
+          </span>
+          <button type="button" onClick={onClose} id="close-extracted-data-modal"
+            className="rounded-lg p-1.5 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors shrink-0">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        {/* AI Summary */}
-        {classification?.summary && (
-          <div className="px-6 pt-4 shrink-0">
-            <div className="rounded-lg border border-slate-700/40 bg-slate-800/30 px-4 py-3">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">AI Summary</p>
-              <p className="text-sm text-slate-200 leading-relaxed">{classification.summary}</p>
-              {classification.suggestedModule && classification.suggestedModule !== 'None' && (
-                <p className="mt-2 text-xs text-slate-500">
-                  Suggested module: <span className="text-emerald-400">{classification.suggestedModule}</span>
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Disclaimer */}
+        {/* ── AI Disclaimer ── */}
         <div className="px-6 pt-4 shrink-0">
           <AiDisclaimerBanner />
         </div>
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-6 pb-6">
-          {renderContent()}
+        {/* ── Tab Bar ── */}
+        <div className="px-6 shrink-0 border-b border-slate-700/40">
+          <div className="flex gap-0.5 -mb-px">
+            {tabs.map((tab) => (
+              <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
+                id={`modal-tab-${tab.id}`}
+                className={`px-3 py-2.5 text-xs font-semibold border-b-2 transition-all duration-150 ${
+                  activeTab === tab.id
+                    ? 'border-violet-500 text-violet-300'
+                    : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-600'
+                }`}>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Tab Content ── */}
+        <div className="flex-1 overflow-y-auto">
+
+          {/* Tab 1: AI Summary */}
+          {activeTab === 'summary' && (
+            <div className="px-6 py-5 space-y-4">
+              {classification?.summary ? (
+                <>
+                  <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/15 border border-violet-500/20">
+                        <svg className="h-4 w-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.347A3.75 3.75 0 0113.5 21h-3a3.75 3.75 0 01-2.652-1.098l-.347-.347z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-violet-400 mb-2">Gemini AI Summary</p>
+                        <p className="text-sm text-slate-200 leading-relaxed">{classification.summary}</p>
+                      </div>
+                    </div>
+                  </div>
+                  {primaryModule && (
+                    <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
+                      <p className="text-xs font-bold uppercase tracking-widest text-violet-400 mb-3">AI Suggested Destination</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 border border-violet-500/20 shrink-0">
+                          <svg className="h-5 w-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-base font-bold text-white">{primaryModule.name ?? primaryModule.id}</p>
+                          {primaryModule.reason && <p className="text-xs text-slate-400 mt-0.5">{primaryModule.reason}</p>}
+                        </div>
+                        <span className="text-xl font-black text-emerald-400">{Math.round(primaryModule.confidence * 100)}%</span>
+                      </div>
+                      {secondaryModules.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-violet-500/10">
+                          <p className="text-[11px] text-slate-500 uppercase tracking-wide mb-2">Also relevant to</p>
+                          <div className="flex flex-wrap gap-2">
+                            {secondaryModules.map((m) => (
+                              <span key={m.id} className="flex items-center gap-1.5 rounded-lg border border-slate-700/40 bg-slate-800/40 px-2.5 py-1 text-xs text-slate-300">
+                                {m.name ?? m.id}
+                                <span className="text-slate-500">·</span>
+                                <span className="text-emerald-400/80">{Math.round(m.confidence * 100)}%</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="py-12 text-center text-slate-500">
+                  <p className="text-sm">No AI summary available yet.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 2: Document Metadata */}
+          {activeTab === 'metadata' && (
+            <div className="px-6 py-5">
+              <div className="rounded-xl border border-slate-700/50 overflow-hidden divide-y divide-slate-700/40">
+                {metadataRows.map(({ label, value }) => (
+                  <div key={label} className="flex items-start gap-4 px-5 py-3.5 hover:bg-slate-800/20 transition-colors">
+                    <span className="min-w-[148px] text-xs font-semibold text-slate-500 uppercase tracking-wide pt-0.5 shrink-0">
+                      {label}
+                    </span>
+                    <div className="flex-1">{value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tab 3: Extracted Entities */}
+          {activeTab === 'entities' && (
+            <div className="px-6 py-5 space-y-5">
+              {hasData ? (
+                <>
+                  {Object.keys(candidateFields).length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                        <span className="h-px flex-1 bg-slate-700/50" />Structured Candidate Data<span className="h-px flex-1 bg-slate-700/50" />
+                      </p>
+                      {(() => {
+                        switch (category) {
+                          case 'ACADEMIC_TIMETABLE': return <TimetableView candidateFields={candidateFields} />;
+                          case 'MARKSHEET':
+                          case 'TRANSCRIPT': return <MarksheetView extractedEntities={extractedEntities} candidateFields={candidateFields} />;
+                          case 'CERTIFICATE': return <CertificateView extractedEntities={extractedEntities} candidateFields={candidateFields} />;
+                          case 'RESUME': return <ResumeView candidateFields={candidateFields} />;
+                          default: return <GenericKeyValueView data={candidateFields} />;
+                        }
+                      })()}
+                    </div>
+                  )}
+                  {Object.keys(extractedEntities).length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                        <span className="h-px flex-1 bg-slate-700/50" />AI-Extracted Entities<span className="h-px flex-1 bg-slate-700/50" />
+                      </p>
+                      <EntitySection entities={extractedEntities} />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="py-12 text-center text-slate-500">
+                  <svg className="mx-auto h-10 w-10 mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25" />
+                  </svg>
+                  <p className="text-sm">No extracted data available yet.</p>
+                  <p className="text-xs mt-1 text-slate-600">Check back after processing completes.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 4: Raw Candidate Data */}
+          {activeTab === 'raw' && (
+            <div className="px-6 py-5 space-y-3">
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Exact contents of <span className="font-mono text-violet-400">KnowledgeRecord.candidateFields</span> as stored in MongoDB — no filtering or transformation.
+              </p>
+              {Object.keys(candidateFields).length > 0 ? (
+                <JsonViewer data={candidateFields} />
+              ) : (
+                <div className="rounded-xl border border-slate-700/50 bg-slate-800/20 p-8 text-center text-slate-500">
+                  <p className="text-sm font-mono">candidateFields: {'{}'}</p>
+                  <p className="text-xs mt-1 text-slate-600">The AI may not have structured this document type yet.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Footer ── */}
+        <div className="shrink-0 flex items-center justify-between border-t border-slate-700/40 bg-slate-900/80 px-6 py-3">
+          <p className="text-[11px] text-slate-600 font-mono truncate">
+            {item.processingId.slice(0, 20)}…
+          </p>
+          <button type="button" onClick={onClose}
+            className="rounded-lg border border-slate-700/50 bg-slate-800/50 px-4 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:border-slate-600 transition-colors">
+            Close
+          </button>
         </div>
       </div>
     </div>
   );
 }
+
 
 // ── Timeline ───────────────────────────────────────────────────────────────
 
@@ -651,7 +945,14 @@ function UploadHistoryItemCard({
                   <span className="text-slate-300">{status.classification.parserStrategy}</span>
                   <span className="text-slate-500">Language</span>
                   <span className="text-slate-300">{status.classification.language?.toUpperCase()}</span>
-                  {status.classification.suggestedModule && (
+                  {status.classification.primaryTargetModule ? (
+                    <>
+                      <span className="text-slate-500">Target Module</span>
+                      <span className="text-violet-400 font-semibold">
+                        {status.classification.primaryTargetModule.name ?? status.classification.primaryTargetModule.id}
+                      </span>
+                    </>
+                  ) : status.classification.suggestedModule && (
                     <>
                       <span className="text-slate-500">Module</span>
                       <span className="text-emerald-400">{status.classification.suggestedModule}</span>

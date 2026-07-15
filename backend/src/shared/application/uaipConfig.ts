@@ -31,3 +31,22 @@ export const SEMANTIC_DOCUMENT_TYPES = [
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'text/csv',
 ];
+
+/** All Academic Universe modules available for AI module-routing recommendations. */
+export const ACADEMIC_UNIVERSE_MODULES = [
+  { id: 'growth_hub',       name: 'Growth Hub' },
+  { id: 'academic_records', name: 'Academic Records' },
+  { id: 'career_profile',   name: 'Career Profile' },
+  { id: 'certificates',     name: 'Certificates' },
+  { id: 'experience',       name: 'Experience' },
+  { id: 'research_wing',    name: 'Research Wing' },
+  { id: 'code_arena',       name: 'Code Arena' },
+  { id: 'skills_tracker',   name: 'Skills Tracker' },
+  { id: 'resume_builder',   name: 'Resume Builder' },
+  { id: 'academic_schedule',name: 'Academic Schedule' },
+  { id: 'faculty_cabin',    name: 'Faculty Cabin' },
+  { id: 'mail_explorer',    name: 'Mail Explorer' },
+  { id: 'emotional_support',name: 'Emotional Support' },
+] as const;
+
+export type AcademicUniverseModuleId = typeof ACADEMIC_UNIVERSE_MODULES[number]['id'];

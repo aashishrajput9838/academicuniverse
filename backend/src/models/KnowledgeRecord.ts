@@ -1,5 +1,12 @@
 import { Schema, model, Document } from 'mongoose';
 
+export interface TargetModuleRecommendation {
+  id: string;
+  name?: string;
+  confidence: number;
+  reason?: string;
+}
+
 export interface KnowledgeRecord extends Document {
   processingId: string; // reference to UaipUpload
   documentCategory: string; // e.g., TRANSCRIPT, SYLLABUS, CERTIFICATE, MARKSHEET, etc.
@@ -12,13 +19,16 @@ export interface KnowledgeRecord extends Document {
   extractedFields?: Record<string, any>; // optional snapshot of extracted data
   rawContent?: string; // raw parsed text or tables JSON string
   summary?: string; // AI generated human-readable summary
-  suggestedModule?: string; // e.g., 'AcademicRecord', 'CertificateRecord', etc.
+  suggestedModule?: string; // legacy: e.g., 'AcademicRecord', 'CertificateRecord', etc.
+  primaryTargetModule?: TargetModuleRecommendation; // AI-driven primary module recommendation
+  secondaryTargetModules?: TargetModuleRecommendation[]; // AI-driven secondary module recommendations
   extractedEntities?: Record<string, any>; // raw unstructured entities from AI
   candidateFields?: Record<string, any>; // structured entities for human-in-the-loop review
   rawAiOutput?: string; // raw JSON string from AI for debugging
   reviewStatus?: 'NOT_READY' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
   createdAt: Date;
 }
+
 
 const KnowledgeRecordSchema = new Schema<KnowledgeRecord>({
   processingId: { type: String, required: true, index: true },
@@ -33,6 +43,8 @@ const KnowledgeRecordSchema = new Schema<KnowledgeRecord>({
   rawContent: { type: String },
   summary: { type: String },
   suggestedModule: { type: String },
+  primaryTargetModule: { type: Schema.Types.Mixed },
+  secondaryTargetModules: [Schema.Types.Mixed],
   extractedEntities: { type: Schema.Types.Mixed },
   candidateFields: { type: Schema.Types.Mixed },
   rawAiOutput: { type: String },
@@ -41,3 +53,4 @@ const KnowledgeRecordSchema = new Schema<KnowledgeRecord>({
 });
 
 export const KnowledgeRecordModel = model<KnowledgeRecord>('KnowledgeRecord', KnowledgeRecordSchema);
+

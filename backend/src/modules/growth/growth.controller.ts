@@ -1,40 +1,138 @@
 import { Request, Response, NextFunction } from 'express';
-import { DocumentProcessingService } from '../../shared/services/documentProcessing.service';
-import { UploadDocumentDTO } from '../../shared/document/document.types';
+import { sendResponse } from '../../utils/response';
+import { GrowthProjectionService } from './growthProjection.service';
+import { UaipFacade } from '../../shared/application/UaipFacade';
 
 export class GrowthController {
-  constructor(private readonly documentProcessingService: DocumentProcessingService) {}
+  constructor(
+    private readonly uaip: UaipFacade,
+    private readonly projectionService = new GrowthProjectionService(),
+  ) {}
 
-  /**
-   * POST /documents – universal upload endpoint.
-   */
+  public getMyGrowthHub = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const organizationId = (req as any).organizationId;
+      const userId = (req as any).user?.userId;
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Authentication required' });
+      }
+
+      if (!organizationId) {
+        return res.status(403).json({ success: false, message: 'Organization context is required' });
+      }
+
+      const projection = await this.projectionService.buildProjection(userId, organizationId);
+      return sendResponse(res, 200, projection, 'Growth Hub metrics retrieved successfully');
+    } catch (err) {
+      next(err);
+    }
+  };
+
   public handleUpload = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const file = req.file;
       if (!file) {
         return res.status(400).json({ status: 'error', message: 'No file provided' });
       }
-      const organizationId = (req as any).organizationId; // set by auth middleware
-      const userId = (req as any).userId;
-      const dto: UploadDocumentDTO = { file, organizationId, userId };
-      const result = await this.documentProcessingService.handleUpload(dto);
-      return res.status(202).json({ status: 'success', data: result });
+
+      const organizationId = (req as any).organizationId;
+      const userId = (req as any).user?.userId;
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Authentication required' });
+      }
+
+      if (!organizationId) {
+        return res.status(403).json({ success: false, message: 'Organization context is required' });
+      }
+
+      // Delegate entirely to the UAIP facade — no pipeline internals visible here.
+      const { processingId } = await this.uaip.submitDocument({
+        buffer: file.buffer,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+        userId,
+        organizationId,
+      });
+
+      return sendResponse(res, 202, { processingId }, 'Document upload accepted');
     } catch (err) {
       next(err);
     }
   };
 
-  /**
-   * GET /documents/:id – retrieve processing status and result.
-   */
   public getDocumentStatus = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id = req.params.id;
-      const doc = await this.documentProcessingService.getDocumentStatus(id);
-      if (!doc) {
+      const organizationId = (req as any).organizationId;
+      const userId = (req as any).user?.userId;
+      const doc = await this.uaip.getDocumentStatus(req.params.id);
+
+      if (!doc || doc.organizationId !== organizationId || doc.userId !== userId) {
         return res.status(404).json({ status: 'error', message: 'Document not found' });
       }
-      return res.json({ status: 'success', data: doc });
+
+      return sendResponse(res, 200, doc, 'Document status retrieved successfully');
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public getUploadHistory = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const organizationId = (req as any).organizationId;
+      const userId = (req as any).user?.userId;
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Authentication required' });
+      }
+
+      if (!organizationId) {
+        return res.status(403).json({ success: false, message: 'Organization context is required' });
+      }
+
+      const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
+      const limit = rawLimit ? Number(rawLimit) : undefined;
+      const cursor = Array.isArray(req.query.cursor) ? req.query.cursor[0] : req.query.cursor;
+
+      const history = await this.uaip.getUploadHistory({
+        userId,
+        organizationId,
+        limit: Number.isFinite(limit) ? limit : undefined,
+        cursor: typeof cursor === 'string' ? cursor : undefined,
+      });
+
+      return sendResponse(res, 200, history, 'Growth upload history retrieved successfully');
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public getProcessingStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const organizationId = (req as any).organizationId;
+      const userId = (req as any).user?.userId;
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Authentication required' });
+      }
+
+      if (!organizationId) {
+        return res.status(403).json({ success: false, message: 'Organization context is required' });
+      }
+
+      const status = await this.uaip.getProcessingStatus({
+        userId,
+        organizationId,
+        processingId: req.params.processingId,
+      });
+
+      if (!status) {
+        return res.status(404).json({ status: 'error', message: 'Upload not found' });
+      }
+
+      return sendResponse(res, 200, status, 'Growth upload status retrieved successfully');
     } catch (err) {
       next(err);
     }

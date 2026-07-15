@@ -3,7 +3,7 @@ import { execSync } from 'child_process';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import app from '../src';
-import { disconnectDB } from '../src/config';
+import { connectDB, disconnectDB } from '../src/config';
 import Mark from '../src/models/Mark';
 import { EzoneAcademicProfile } from '../src/models/EzoneAcademicProfile';
 import User from '../src/models/User';
@@ -14,7 +14,7 @@ jest.setTimeout(120000);
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 const login = async (email: string, password: string) => {
-  const loginRes = await request(app).post('/api/auth/login').send({ email, password }).expect(200);
+  const loginRes = await request(app).post('/api/auth/login').send({ provider: 'password', email, password }).expect(200);
   return loginRes.body.data;
 };
 
@@ -22,7 +22,7 @@ const getStudentContext = async (email: string, password: string) => {
   const auth = await login(email, password);
   const userDoc = await User.findById(auth.user.id).lean();
   return {
-    token: auth.token,
+    token: auth.accessToken,
     userId: auth.user.id.toString(),
     organizationId: userDoc?.organizationId?.toString(),
   };
@@ -34,7 +34,9 @@ const clearGrowthArtifacts = async (userId: string, organizationId: string) => {
   await User.findByIdAndUpdate(userId, { $unset: { githubUsername: 1 } });
 };
 
-beforeAll(() => {
+beforeAll(async () => {
+  await connectDB();
+  await mongoose.connection.dropDatabase();
   execSync('npm run seed', { cwd: __dirname + '/../', stdio: 'inherit' });
 });
 

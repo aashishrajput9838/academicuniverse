@@ -8,12 +8,15 @@ import { AttendanceCard } from '@/components/AttendanceCard';
 import { AcademicProfileCard } from '@/components/AcademicProfileCard';
 import { GithubActivityCard } from '@/components/GithubActivityCard';
 import { SubjectPerformanceCard } from '@/components/SubjectPerformanceCard';
+import { GrowthUploadPanel } from '@/components/GrowthUploadPanel';
 import { useGrowthStore } from './store/growthStore';
+import { useGrowthUploadStore } from './store/growthUploadStore';
 
 export default function StudentGrowthHub() {
   const { user, backendUser, backendToken, loading } = useAuth();
   const router = useRouter();
   const { growthData, loading: isLoadingData, error, lastFetchedAt, refresh, reset } = useGrowthStore();
+  const stopAllPolling = useGrowthUploadStore((s) => s.stopAllPolling);
 
   useEffect(() => {
     if (!loading && (!user || !backendUser)) {
@@ -39,6 +42,13 @@ export default function StudentGrowthHub() {
     // refresh is handled by GrowthStore; cleanup handled internally
   }, [backendToken, backendUser, loading, refresh, reset, user]);
 
+  // Cleanup upload polling on unmount
+  useEffect(() => {
+    return () => {
+      stopAllPolling();
+    };
+  }, [stopAllPolling]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 flex items-center justify-center">
@@ -57,6 +67,13 @@ export default function StudentGrowthHub() {
         <h1 className="text-3xl font-bold text-white mb-2">Growth Hub</h1>
         <p className="text-slate-400">A secure summary of your verified marks, attendance, and connected learning activity.</p>
       </div>
+
+      {/* Upload Academic Documents — primary CTA section */}
+      {backendToken && (
+        <div className="mb-8">
+          <GrowthUploadPanel backendToken={backendToken} />
+        </div>
+      )}
 
       {isLoadingData ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

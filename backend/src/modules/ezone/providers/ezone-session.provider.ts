@@ -22,7 +22,8 @@ export class EzoneSessionProvider {
         logger.info('EzoneSessionProvider initialized - Session Map cleared.');
         
         // Background task to clean up old sessions every minute
-        setInterval(() => this.cleanupExpiredSessions(), 60 * 1000);
+        const cleanupTimer = setInterval(() => this.cleanupExpiredSessions(), 60 * 1000);
+        cleanupTimer.unref?.();
     }
 
     public static getInstance(): EzoneSessionProvider {

@@ -243,6 +243,8 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-startServer();
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
 
 export default app;

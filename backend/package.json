@@ -12,6 +12,7 @@
     "populate-overlap": "ts-node -r tsconfig-paths/register scripts/populateOverlapData.ts",
     "test-firestore": "ts-node -r tsconfig-paths/register scripts/testFirestoreConnection.ts",
     "test": "jest --runInBand",
+    "test:growth": "jest --runInBand --testMatch \"**/tests/growth.test.ts\"",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts"
   },

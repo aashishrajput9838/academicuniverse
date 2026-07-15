@@ -9,6 +9,7 @@
     "build": "node scripts/build.js",
     "start": "next start",
     "test": "npm --prefix backend test -- --runInBand",
+    "test:growth": "npm --prefix backend run test:growth",
     "lint": "eslint ."
   },
   "dependencies": {

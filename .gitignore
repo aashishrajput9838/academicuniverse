@@ -6,6 +6,7 @@ __v0_jsx-dev-runtime.ts
 # Common ignores
 node_modules/
 .next/
+.venv/
 .env
 .env.local
 .env.development
@@ -37,3 +38,4 @@ serviceAccountKey.json.json
 
 # Sentry Config File
 .env.sentry-build-plugin
+.aider*

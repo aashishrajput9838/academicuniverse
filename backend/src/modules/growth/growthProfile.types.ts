@@ -1,3 +1,5 @@
+import { GrowthProjection } from './growthProjection.types';
+
 export interface AcademicRecordDTO {
   id: string;
   sourceDocumentId: string;
@@ -45,8 +47,14 @@ export interface ExperienceDTO {
 }
 
 export interface GrowthProfileDTO {
-  person: PersonDTO;
+  person: PersonDTO | null;
   academicRecords: AcademicRecordDTO[];
   certificates: CertificateDTO[];
   experiences: ExperienceDTO[];
+  projection: {
+    projectionVersion: GrowthProjection['projectionVersion'];
+    generatedAt: GrowthProjection['generatedAt'];
+    stale: GrowthProjection['stale'];
+    sourceVersions: GrowthProjection['sourceVersions'];
+  };
 }

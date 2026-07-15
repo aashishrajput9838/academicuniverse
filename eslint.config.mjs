@@ -13,6 +13,7 @@ export default [
       'backend/**',
       'log-analyzer/**',
       'node_modules/**',
+      '.venv/**',
       'analysis/**',
       'audit/**',
       'scripts/**',

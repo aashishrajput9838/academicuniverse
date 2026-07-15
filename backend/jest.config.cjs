@@ -15,7 +15,8 @@ module.exports = {
     ],
   },
   moduleNameMapper: {
-    '^uuid$': require.resolve('uuid'),
+    '^uuid$': '<rootDir>/tests/mocks/uuid.cjs',
+    '^dotenv$': '<rootDir>/tests/mocks/dotenv.cjs',
+    '^pdf-parse$': '<rootDir>/tests/mocks/pdf-parse.cjs',
   },
 };
-

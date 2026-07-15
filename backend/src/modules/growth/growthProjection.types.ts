@@ -16,45 +16,45 @@ export type GrowthMetricReasonCode =
   | 'SOURCE_ERROR'
   | 'UNKNOWN';
 
-export type GrowthMetric<T> = {
+export interface GrowthMetric<T> {
   state: GrowthMetricState;
   value: T | null;
   updatedAt: string | null;
   stale: boolean | null;
   reasonCode: GrowthMetricReasonCode | null;
-};
+}
 
-export type GrowthSourceState = {
+export interface GrowthSourceState {
   state: GrowthMetricState;
   updatedAt: string | null;
   stale: boolean;
   reasonCode: GrowthMetricReasonCode | null;
-};
+}
 
-export type SubjectPerformance = {
+export interface SubjectPerformance {
   subjectId: string;
   averageMarks: number;
   count: number;
-};
+}
 
-export type GrowthResponse = {
-  projectionVersion?: number;
-  generatedAt?: string;
-  stale?: boolean;
-  profileId?: string;
+export interface GrowthProjection {
+  projectionVersion: number;
+  generatedAt: string;
+  stale: boolean;
+  profileId: string;
   metrics: {
     marksSummary: GrowthMetric<number>;
     averageMarks: GrowthMetric<number>;
+    subjectWisePerformance: GrowthMetric<SubjectPerformance[]>;
     attendance: GrowthMetric<number>;
     academicProfileStatus: GrowthMetric<string>;
     githubRepositoryCount: GrowthMetric<number>;
     completedProjects: GrowthMetric<number>;
-    subjectWisePerformance: GrowthMetric<SubjectPerformance[]>;
-    academicRecordsCount?: GrowthMetric<number>;
-    certificatesCount?: GrowthMetric<number>;
-    experienceCount?: GrowthMetric<number>;
+    academicRecordsCount: GrowthMetric<number>;
+    certificatesCount: GrowthMetric<number>;
+    experienceCount: GrowthMetric<number>;
   };
-  sources?: {
+  sources: {
     academicRecords: GrowthSourceState;
     marks: GrowthSourceState;
     ezone: GrowthSourceState;
@@ -62,5 +62,5 @@ export type GrowthResponse = {
     certificates: GrowthSourceState;
     experience: GrowthSourceState;
   };
-  sourceVersions?: Record<string, string | null>;
-};
+  sourceVersions: Record<string, string | null>;
+}

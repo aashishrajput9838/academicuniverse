@@ -18,10 +18,16 @@ export interface GrowthUploadHistoryItem {
   processingId: string;
   fileName: string;
   mimeType: string;
+  size: number | null;
   status: GrowthUploadStatus;
   createdAt: string;
   completedAt: string | null;
+  durationMs: number | null;
   reviewStatus: GrowthReviewStatus;
+  documentCategory: string | null;
+  confidenceScore: number | null;
+  parserStrategy: string | null;
+  errorMessage: string | null;
 }
 
 /** Paginated upload history response */
@@ -39,9 +45,13 @@ export interface GrowthClassificationDetail {
   parserStrategy: string;
   confidenceScore: number;
   createdAt: string;
+  summary?: string;
+  suggestedModule?: string;
+  extractedEntities?: Record<string, unknown>;
+  candidateFields?: Record<string, unknown>;
 }
 
-/** Candidate data summary — Phase-2 only, always unavailable in Phase-1 */
+/** Candidate data summary */
 export interface GrowthCandidateSummary {
   available: boolean;
   reasonCode: 'REVIEW_WORKFLOW_PENDING' | 'NOT_READY';
@@ -90,44 +100,68 @@ export function deriveTimelineSteps(status: GrowthUploadStatus, errorMessage: st
     case 'PENDING':
       return [
         { label: 'Stored', state: 'completed' },
-        { label: 'Processing', state: 'waiting' },
-        { label: 'Extraction', state: 'waiting' },
-        { label: 'Review', state: 'waiting' },
+        { label: 'Classifying', state: 'waiting' },
+        { label: 'AI Extraction', state: 'waiting' },
+        { label: 'Pending Review', state: 'waiting' },
       ];
     case 'PROCESSING':
       return [
         { label: 'Stored', state: 'completed' },
-        { label: 'Processing', state: 'running' },
-        { label: 'Extraction', state: 'waiting' },
-        { label: 'Review', state: 'waiting' },
+        { label: 'Classifying', state: 'running' },
+        { label: 'AI Extraction', state: 'waiting' },
+        { label: 'Pending Review', state: 'waiting' },
       ];
     case 'SUCCESS':
       return [
         { label: 'Stored', state: 'completed' },
-        { label: 'Processing', state: 'completed' },
-        { label: 'Extraction', state: 'completed' },
-        { label: 'Review', state: 'completed' },
+        { label: 'Classifying', state: 'completed' },
+        { label: 'AI Extraction', state: 'completed' },
+        { label: 'Pending Review', state: 'completed' },
       ];
     case 'FAILED':
       return [
         { label: 'Stored', state: 'completed' },
-        { label: 'Processing', state: 'failed' },
-        { label: 'Extraction', state: 'waiting' },
-        { label: 'Review', state: 'waiting' },
+        { label: 'Classifying', state: 'failed' },
+        { label: 'AI Extraction', state: 'waiting' },
+        { label: 'Pending Review', state: 'waiting' },
       ];
     case 'VALIDATION_ERROR':
       return [
         { label: 'Validation', state: 'failed' },
-        { label: 'Processing', state: 'waiting' },
-        { label: 'Extraction', state: 'waiting' },
-        { label: 'Review', state: 'waiting' },
+        { label: 'Classifying', state: 'waiting' },
+        { label: 'AI Extraction', state: 'waiting' },
+        { label: 'Pending Review', state: 'waiting' },
       ];
     default:
       return [
         { label: 'Stored', state: 'waiting' },
-        { label: 'Processing', state: 'waiting' },
-        { label: 'Extraction', state: 'waiting' },
-        { label: 'Review', state: 'waiting' },
+        { label: 'Classifying', state: 'waiting' },
+        { label: 'AI Extraction', state: 'waiting' },
+        { label: 'Pending Review', state: 'waiting' },
       ];
   }
+}
+
+/** Format document category for display */
+export function formatDocumentCategory(category: string | null): string {
+  if (!category) return 'Unknown';
+  return category
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Format file size for display */
+export function formatFileSize(bytes: number | null): string {
+  if (bytes === null || bytes === 0) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** Format duration in ms to a human readable string */
+export function formatDuration(ms: number | null): string {
+  if (ms === null) return '—';
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
 }

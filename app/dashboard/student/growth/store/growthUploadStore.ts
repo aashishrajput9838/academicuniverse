@@ -104,6 +104,11 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
             state.uploads[index].status = status.status as GrowthUploadStatus;
             state.uploads[index].reviewStatus = status.reviewStatus;
             state.uploads[index].completedAt = status.completedAt;
+            // Sync category+confidence from classification if available
+            if (status.classification) {
+              state.uploads[index].documentCategory = status.classification.documentCategory;
+              state.uploads[index].confidenceScore = status.classification.confidenceScore;
+            }
           }
         });
 

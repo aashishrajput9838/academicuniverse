@@ -3,6 +3,7 @@ import { UaipEvent, UaipEventPayload } from '../../events/UaipEvents';
 import { OCRFactory } from './OCRFactory';
 import { logger } from '../../utils/logger';
 import { MongoOcrIdempotencyRepository } from './repositories/MongoOcrIdempotencyRepository';
+import { KnowledgeRecordModel } from '../../models/KnowledgeRecord';
 
 export class OCRService {
   private static idempotencyRepo = new MongoOcrIdempotencyRepository();
@@ -59,6 +60,13 @@ export class OCRService {
       logger.info(`OCRService: Starting OCR processing for ${processingId} using default TESSERACT provider`);
       const provider = OCRFactory.getProvider('TESSERACT');
       const ocrText = await provider.process(storageId, mimeType || '');
+      
+      // Save raw OCR content to KnowledgeRecord
+      await KnowledgeRecordModel.updateOne(
+        { processingId },
+        { $set: { rawContent: ocrText } }
+      );
+
       logger.info(`OCRService: OCR completed for ${processingId}`);
       await eventBus.publish(UaipEvent.OCR_COMPLETED, { processingId, ocrText, timestamp: new Date() });
     } catch (err: any) {

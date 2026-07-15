@@ -11,10 +11,16 @@ export interface GrowthUploadHistoryItem {
   processingId: string;
   fileName: string;
   mimeType: string;
+  size: number | null;
   status: string;
   createdAt: string;
   completedAt: string | null;
+  durationMs: number | null;
   reviewStatus: GrowthReviewStatus;
+  documentCategory: string | null;
+  confidenceScore: number | null;
+  parserStrategy: string | null;
+  errorMessage: string | null;
 }
 
 export interface GrowthUploadHistory {
@@ -37,6 +43,11 @@ export interface GrowthProcessingStatus {
     parserStrategy: string;
     confidenceScore: number;
     createdAt: string;
+    summary?: string;
+    suggestedModule?: string;
+    extractedEntities?: Record<string, any>;
+    candidateFields?: Record<string, any>;
+    rawAiOutput?: string;
   } | null;
   candidateSummary: {
     available: boolean;
@@ -83,15 +94,41 @@ export class GrowthUploadService {
       .lean();
 
     const page = uploads.slice(0, limit);
-    const items = page.map((upload: any) => ({
-      processingId: String(upload.processingId),
-      fileName: String(upload.fileName),
-      mimeType: String(upload.mimeType),
-      status: String(upload.status),
-      createdAt: toIso(upload.createdAt) ?? new Date(0).toISOString(),
-      completedAt: toIso(upload.completedAt),
-      reviewStatus: getReviewStatus(String(upload.status)),
-    }));
+
+    // Batch-fetch KnowledgeRecords for all processingIds in this page
+    const processingIds = page.map((u: any) => String(u.processingId));
+    const knowledgeRecords = await KnowledgeRecordModel.find({
+      processingId: { $in: processingIds },
+    }).lean();
+    const krByProcessingId = new Map(
+      knowledgeRecords.map((kr: any) => [String(kr.processingId), kr])
+    );
+
+    const items: GrowthUploadHistoryItem[] = page.map((upload: any) => {
+      const kr: any = krByProcessingId.get(String(upload.processingId));
+      const uploadStatus = String(upload.status);
+      const completedAt = toIso(upload.completedAt) ?? null;
+      const createdAt = toIso(upload.createdAt) ?? new Date(0).toISOString();
+      const durationMs = (upload.createdAt && upload.completedAt)
+        ? new Date(upload.completedAt).getTime() - new Date(upload.createdAt).getTime()
+        : null;
+
+      return {
+        processingId: String(upload.processingId),
+        fileName: String(upload.fileName),
+        mimeType: String(upload.mimeType),
+        size: typeof upload.size === 'number' ? upload.size : null,
+        status: uploadStatus,
+        createdAt,
+        completedAt,
+        durationMs,
+        reviewStatus: getReviewStatus(uploadStatus),
+        documentCategory: kr ? String(kr.documentCategory ?? '') : null,
+        confidenceScore: kr ? Number(kr.confidenceScore ?? 0) : null,
+        parserStrategy: kr ? String(kr.parserStrategy ?? '') : null,
+        errorMessage: upload.errorMessage ?? null,
+      };
+    });
 
     const nextCursor = uploads.length > limit
       ? toIso((uploads[limit] as any).createdAt)
@@ -138,10 +175,15 @@ export class GrowthUploadService {
           parserStrategy: String((knowledgeRecord as any).parserStrategy),
           confidenceScore: Number((knowledgeRecord as any).confidenceScore),
           createdAt: toIso((knowledgeRecord as any).createdAt) ?? new Date(0).toISOString(),
+          summary: (knowledgeRecord as any).summary,
+          suggestedModule: (knowledgeRecord as any).suggestedModule,
+          extractedEntities: (knowledgeRecord as any).extractedEntities,
+          candidateFields: (knowledgeRecord as any).candidateFields,
+          rawAiOutput: (knowledgeRecord as any).rawAiOutput,
         }
         : null,
       candidateSummary: {
-        available: false,
+        available: !!(knowledgeRecord && (knowledgeRecord as any).candidateFields && Object.keys((knowledgeRecord as any).candidateFields).length > 0),
         reasonCode: reviewStatus === 'PENDING_REVIEW' ? 'REVIEW_WORKFLOW_PENDING' : 'NOT_READY',
       },
       reviewStatus,

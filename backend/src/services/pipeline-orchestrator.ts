@@ -4,6 +4,8 @@ import { UaipUpload } from '../models/UaipUpload';
 import { GridFSProvider } from '../storage/GridFSProvider';
 import { documentClassifier } from './classification/DocumentClassifier';
 import { ParserService } from './parsing/ParserService';
+import { UaipDocumentAiService } from '../shared/application/UaipDocumentAi.service';
+import { CONFIDENCE_THRESHOLD, SEMANTIC_DOCUMENT_TYPES } from '../shared/application/uaipConfig';
 import './ocr';
 
 type UploadedPayload = UaipEventPayload & {
@@ -23,7 +25,8 @@ export class PipelineOrchestrator {
   constructor(
     private readonly storageProvider = new GridFSProvider(),
     private readonly classifier: Classifier = documentClassifier,
-    private readonly parserRunner: ParserRunner = ParserService
+    private readonly parserRunner: ParserRunner = ParserService,
+    private readonly aiService = new UaipDocumentAiService()
   ) {
     this.initializeSubscriptions();
   }
@@ -75,6 +78,23 @@ export class PipelineOrchestrator {
         storageId,
         isScanned: classification.isScanned,
       });
+
+      // Determine if Stage 2 Gemini AI classification is required
+      const isUnknownCategory = classification.documentCategory === 'UNKNOWN';
+      const isLowConfidence = classification.confidenceScore < CONFIDENCE_THRESHOLD;
+      const isSemanticDoc =
+        SEMANTIC_DOCUMENT_TYPES.includes(classification.parserStrategy) ||
+        SEMANTIC_DOCUMENT_TYPES.includes(mimeType);
+
+      if (isUnknownCategory || isLowConfidence || isSemanticDoc) {
+        console.log(`[Pipeline] Stage 2 AI processing required for ${processingId}`);
+        await this.aiService.processDocument({
+          processingId,
+          fileName,
+          mimeType,
+          fileSize,
+        });
+      }
 
       await UaipUpload.findOneAndUpdate(
         { processingId },

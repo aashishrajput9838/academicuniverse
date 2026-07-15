@@ -4,6 +4,7 @@ import { UaipEvent, UaipEventPayload } from '../../events/UaipEvents';
 import { ParserFactory } from './ParserFactory';
 import { IParser } from './ParserInterface';
 import { logger } from '../../utils/logger';
+import { KnowledgeRecordModel } from '../../models/KnowledgeRecord';
 
 /**
  * Service that orchestrates document parsing.
@@ -49,6 +50,13 @@ export class ParserService {
 
     try {
       const rawContent = await parser.parse(buffer);
+
+      // Save raw parsed content to KnowledgeRecord
+      await KnowledgeRecordModel.updateOne(
+        { processingId },
+        { $set: { rawContent } }
+      );
+
       const payload: UaipEventPayload = {
         processingId,
         parserStrategy,

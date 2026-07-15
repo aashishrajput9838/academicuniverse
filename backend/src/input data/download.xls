@@ -1,0 +1,239 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Excel Report</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>
+				 					<tbody><tr>
+						<th align="center" width="200px"> <strong> Hours<br>Week</strong>  	
+												</th><th> 09:00:00 - 09:50:00 </th>
+												<th> 09:55:00 - 10:45:00 </th>
+												<th> 10:50:00 - 11:40:00 </th>
+												<th> 11:45:00 - 12:35:00 </th>
+												<th> 12:35:00 - 13:25:00 </th>
+												<th> 13:25:00 - 14:15:00 </th>
+												<th> 14:20:00 - 15:10:00 </th>
+												<th> 15:15:00 - 16:05:00 </th>
+												<th> 16:05:00 - 16:55:00 </th>
+												<th> 17:00:00 - 17:50:00 </th>
+											</tr>    
+														<tr>
+									<th>Mon, July 13, 2026</th>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+										
+								</tr>
+				 								<tr>
+									<th>Tue, July 14, 2026</th>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+										
+								</tr>
+				 								<tr>
+									<th>Wed, July 15, 2026</th>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										<div class="tableshaddow">
+																	<p>CSE062 - Mobile Computing</p>
+																	<span class="badge badge-primary" data-toggle="tooltip" data-placement="top" title="Room Number">Room No 207 Block  1</span>
+																	<span class="badge badge-danger" data-toggle="tooltip" data-placement="top" title="PI">Mekhala .</span>
+																  </div>
+									</td>
+																		<td>
+										<div class="tableshaddow">
+																	<p>CSE473 - Machine Learning</p>
+																	<span class="badge badge-primary" data-toggle="tooltip" data-placement="top" title="Room Number">Room No 207 Block  1</span>
+																	<span class="badge badge-danger" data-toggle="tooltip" data-placement="top" title="PI">Mr Gouri Shankar Mishra</span>
+																  </div>
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+										
+								</tr>
+				 								<tr>
+									<th>Thu, July 16, 2026</th>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										<div class="tableshaddow">
+																	<p>CSE062 - Mobile Computing</p>
+																	<span class="badge badge-primary" data-toggle="tooltip" data-placement="top" title="Room Number">Room 117 Block 1  Class Room  SET</span>
+																	<span class="badge badge-danger" data-toggle="tooltip" data-placement="top" title="PI">Mekhala .</span>
+																  </div>
+									</td>
+																		<td>
+										<div class="tableshaddow">
+																	<p>CSE473 - Machine Learning</p>
+																	<span class="badge badge-primary" data-toggle="tooltip" data-placement="top" title="Room Number">Room 117 Block 1  Class Room  SET</span>
+																	<span class="badge badge-danger" data-toggle="tooltip" data-placement="top" title="PI">Mr Gouri Shankar Mishra</span>
+																  </div>
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										<div class="tableshaddow">
+																	<p>NV62010 - Quantam Computing with AI</p>
+																	<span class="badge badge-primary" data-toggle="tooltip" data-placement="top" title="Room Number">Room 117 Block 1  Class Room  SET</span>
+																	<span class="badge badge-danger" data-toggle="tooltip" data-placement="top" title="PI">Kanamala Suresh</span>
+																  </div>
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+										
+								</tr>
+				 								<tr>
+									<th>Fri, July 17, 2026</th>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+										
+								</tr>
+				 								<tr>
+									<th>Sat, July 18, 2026</th>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+																		<td>
+										
+									</td>
+										
+								</tr>
+				 <tr><th>Sun , July 19, 2026</th><td colspan="9"><div class="alert alert-warning badgeholiday1">Holiday </div></td></tr>				  </tbody></table></body></html>

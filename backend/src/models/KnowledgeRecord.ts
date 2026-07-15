@@ -2,7 +2,7 @@ import { Schema, model, Document } from 'mongoose';
 
 export interface KnowledgeRecord extends Document {
   processingId: string; // reference to UaipUpload
-  documentCategory: string; // e.g., TRANSCRIPT, SYLLABUS, CERTIFICATE
+  documentCategory: string; // e.g., TRANSCRIPT, SYLLABUS, CERTIFICATE, MARKSHEET, etc.
   documentSubtype?: string; // optional finer grain
   language: string; // ISO code, e.g., 'en'
   isScanned: boolean;
@@ -10,6 +10,13 @@ export interface KnowledgeRecord extends Document {
   confidenceScore: number; // 0.0 - 1.0
   inferredSchemaVersion?: string; // reference to SchemaTemplate version
   extractedFields?: Record<string, any>; // optional snapshot of extracted data
+  rawContent?: string; // raw parsed text or tables JSON string
+  summary?: string; // AI generated human-readable summary
+  suggestedModule?: string; // e.g., 'AcademicRecord', 'CertificateRecord', etc.
+  extractedEntities?: Record<string, any>; // raw unstructured entities from AI
+  candidateFields?: Record<string, any>; // structured entities for human-in-the-loop review
+  rawAiOutput?: string; // raw JSON string from AI for debugging
+  reviewStatus?: 'NOT_READY' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
   createdAt: Date;
 }
 
@@ -23,6 +30,13 @@ const KnowledgeRecordSchema = new Schema<KnowledgeRecord>({
   confidenceScore: { type: Number, required: true },
   inferredSchemaVersion: { type: String },
   extractedFields: { type: Schema.Types.Mixed },
+  rawContent: { type: String },
+  summary: { type: String },
+  suggestedModule: { type: String },
+  extractedEntities: { type: Schema.Types.Mixed },
+  candidateFields: { type: Schema.Types.Mixed },
+  rawAiOutput: { type: String },
+  reviewStatus: { type: String, enum: ['NOT_READY', 'PENDING_REVIEW', 'APPROVED', 'REJECTED'], default: 'PENDING_REVIEW' },
   createdAt: { type: Date, default: Date.now },
 });
 

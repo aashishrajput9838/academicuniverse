@@ -3,9 +3,10 @@ import { eventBus } from '../../events/EventBus';
 import { UaipEvent } from '../../events/UaipEvents';
 import { KnowledgeRecordModel } from '../../models/KnowledgeRecord';
 import { logStage } from '../../utils/stageLogger';
+import { SupportedCategory } from '../../shared/application/uaipConfig';
 import { v4 as uuidv4 } from 'uuid';
 
-export type DocumentCategory = 'TRANSCRIPT' | 'SYLLABUS' | 'CERTIFICATE' | 'UNKNOWN';
+export type DocumentCategory = SupportedCategory | 'UNKNOWN';
 export type DocumentSubtype = string | undefined;
 export type DocumentType = 'PDF' | 'IMAGE' | 'EXCEL' | 'CSV' | 'TXT' | 'UNKNOWN';
 

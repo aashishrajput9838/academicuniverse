@@ -35,6 +35,7 @@ interface GrowthUploadState {
   startPolling: (token: string, processingId: string) => void;
   stopPolling: (processingId: string) => void;
   stopAllPolling: () => void;
+  fetchStatusDetail: (token: string, processingId: string) => Promise<void>;
 }
 
 export const useGrowthUploadStore = create<GrowthUploadState>()(
@@ -158,6 +159,35 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
       set((state) => {
         state._pollingIntervals = {};
       });
+    },
+
+    fetchStatusDetail: async (token: string, processingId: string) => {
+      const currentStatus = get().processingStatuses[processingId];
+      // If we already have the detailed status cache, avoid making duplicate calls
+      if (currentStatus && TERMINAL_STATUSES.has(currentStatus.status)) {
+        return;
+      }
+
+      try {
+        const status = await fetchProcessingStatus(token, processingId);
+        set((state) => {
+          state.processingStatuses[processingId] = status;
+
+          // Also sync category+confidence to the uploads list item if needed
+          const index = state.uploads.findIndex((u) => u.processingId === processingId);
+          if (index !== -1) {
+            state.uploads[index].status = status.status as GrowthUploadStatus;
+            state.uploads[index].reviewStatus = status.reviewStatus;
+            state.uploads[index].completedAt = status.completedAt;
+            if (status.classification) {
+              state.uploads[index].documentCategory = status.classification.documentCategory;
+              state.uploads[index].confidenceScore = status.classification.confidenceScore;
+            }
+          }
+        });
+      } catch {
+        // Suppress on-demand fetch errors
+      }
     },
   }))
 );

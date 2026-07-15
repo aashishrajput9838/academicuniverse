@@ -514,13 +514,20 @@ function UploadHistoryItemCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const { processingStatuses, startPolling } = useGrowthUploadStore();
+  const { processingStatuses, startPolling, fetchStatusDetail } = useGrowthUploadStore();
   const status = processingStatuses[item.processingId];
   const isActive = !TERMINAL_STATUSES.has(item.status);
 
   useEffect(() => {
     if (isActive) startPolling(backendToken, item.processingId);
   }, [isActive, backendToken, item.processingId, startPolling]);
+
+  // Lazy fetch details on expand or when modal is opened
+  useEffect(() => {
+    if (expanded || showModal) {
+      fetchStatusDetail(backendToken, item.processingId);
+    }
+  }, [expanded, showModal, backendToken, item.processingId, fetchStatusDetail]);
 
   const errorMessage = status?.errorMessage ?? item.errorMessage ?? null;
   const steps = deriveTimelineSteps(item.status, errorMessage);

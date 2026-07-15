@@ -1,5 +1,6 @@
 import { CertificateRecord, ICertificateRecord } from '../../models/CertificateRecord';
 import { Types } from 'mongoose';
+import { toObjectId } from '../../utils/mongooseHelpers';
 
 export class CertificateRecordRepository {
   /**
@@ -7,7 +8,7 @@ export class CertificateRecordRepository {
    */
   async upsert(record: Partial<ICertificateRecord>, organizationId: string): Promise<{doc: ICertificateRecord; action: 'create' | 'update'}> {
     const filter = {
-      organizationId: new Types.ObjectId(organizationId),
+      organizationId: toObjectId(organizationId),
       personId: record.personId,
       title: record.title,
       issuer: record.issuer,
@@ -24,6 +25,6 @@ export class CertificateRecordRepository {
   }
 
   async findByPerson(personId: string) {
-    return CertificateRecord.find({ personId: new Types.ObjectId(personId) });
+    return CertificateRecord.find({ personId: toObjectId(personId) });
   }
 }

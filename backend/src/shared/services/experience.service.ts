@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import { ExperienceRecordRepository } from '../repositories/experienceRecord.repository';
 import { AuditEntry } from '../../models/AuditEntry';
 import { IExperienceRecord } from '../../models/ExperienceRecord';
+import { toObjectId } from '../../utils/mongooseHelpers';
 
 export class ExperienceService {
   private repo = new ExperienceRecordRepository();
@@ -22,9 +23,9 @@ export class ExperienceService {
 
     const { doc, action } = await this.repo.upsert(
       {
-        organizationId: new Types.ObjectId(organizationId),
-        personId: new Types.ObjectId(personId),
-        sourceDocumentId: new Types.ObjectId(sourceDocumentId),
+        organizationId: toObjectId(organizationId),
+        personId: toObjectId(personId),
+        sourceDocumentId: toObjectId(sourceDocumentId),
         rawConfidence,
         title,
         company,

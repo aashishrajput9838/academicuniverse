@@ -23,14 +23,14 @@ const ExperienceRecordSchema = new Schema<IExperienceRecord>(
     company: { type: String, required: true },
     startDate: { type: Date, required: true },
     endDate: { type: Date },
-  },
+  } as any,
   { timestamps: true }
 );
 
 // Ensure a person cannot have duplicate experience entries with same title and company
 ExperienceRecordSchema.index(
   { organizationId: 1, personId: 1, title: 1, company: 1 },
-  { unique: true, name: 'uniqueExperience' }
+  { unique: true, name: 'uniqueExperience' } as any
 );
 
 export const ExperienceRecord = model<IExperienceRecord>('ExperienceRecord', ExperienceRecordSchema);

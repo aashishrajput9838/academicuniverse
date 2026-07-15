@@ -18,7 +18,7 @@ const DocumentRegistrySchema = new Schema<IDocumentRegistry>({
   uploadCount: { type: Number, default: 1 },
   lastSeen: { type: Date, default: Date.now },
   sourceExamples: { type: [String], default: [] },
-});
+} as any);
 
 // Ensure unique combination to avoid duplicates
 DocumentRegistrySchema.index({ organizationId: 1, userId: 1, documentType: 1 }, { unique: true });

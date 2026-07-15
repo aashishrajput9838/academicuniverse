@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 import { Person, IPerson } from '../../models/Person';
+import { toObjectId } from '../../utils/mongooseHelpers';
 
 /**
  * Resolves a canonical Person for the given authenticated user within an organization.
@@ -25,7 +26,7 @@ export class PersonResolver {
     name?: string
   ): Promise<string> {
     // 1️⃣ Try to find by linked authUserId
-    const byUser = await Person.find({ organizationId, userIds: new Types.ObjectId(authUserId) });
+    const byUser = await Person.find({ organizationId, userIds: toObjectId(authUserId) });
     if (byUser.length === 1) {
       return byUser[0]._id.toString();
     }
@@ -39,7 +40,7 @@ export class PersonResolver {
       if (byEmail.length === 1) {
         const person = byEmail[0] as IPerson;
         // Attach authUserId if not already present
-        const objId = new Types.ObjectId(authUserId);
+        const objId = toObjectId(authUserId);
         if (!person.userIds.some(id => id.equals(objId))) {
           person.userIds.push(objId);
           await person.save();
@@ -54,10 +55,10 @@ export class PersonResolver {
     // 3️⃣ Create a placeholder when we have enough info (email + name)
     if (email && name) {
       const newPerson = await Person.create({
-        organizationId: new Types.ObjectId(organizationId),
+        organizationId: toObjectId(organizationId),
         primaryName: name,
         primaryEmail: email,
-        userIds: [new Types.ObjectId(authUserId)],
+        userIds: [toObjectId(authUserId)],
       } as IPerson);
       return newPerson._id.toString();
     }

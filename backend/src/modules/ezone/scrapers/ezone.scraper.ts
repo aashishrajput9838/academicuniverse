@@ -113,7 +113,7 @@ export class EzoneScraper {
                 };
 
                 const extractTable = (options: string | { headers: string[] }, colMap: Record<string, number>) => {
-                    let table;
+                    let table: Element | null | undefined;
                     if (typeof options === 'string') {
                         table = document.querySelector(options);
                     } else {

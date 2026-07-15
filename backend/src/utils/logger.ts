@@ -1,5 +1,5 @@
-import winston from 'winston';
-import { v4 as uuidv4 } from 'uuid';
+import * as winston from 'winston';
+import { randomUUID } from 'crypto';
 
 const levels = {
   error: 0,
@@ -104,10 +104,11 @@ export class Logger {
 export const createChildLogger = (service: string, metadata: Record<string, any> = {}) => {
   return baseLogger.child({
     service,
-    requestId: uuidv4(),
+    requestId: randomUUID(),
     ...metadata,
   });
 };
 
 const defaultLogger = new Logger('app');
+export const logger = defaultLogger;
 export default defaultLogger;

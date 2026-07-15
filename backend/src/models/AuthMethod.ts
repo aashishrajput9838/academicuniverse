@@ -28,13 +28,13 @@ const AuthMethodSchema = new Schema<IAuthMethod>(
     lastLoginAt: { type: Date },
     linkedAt: { type: Date },
     failedLoginCount: { type: Number, default: 0 },
-  },
+  } as any,
   { timestamps: true }
 );
 
 // Unique index for provider + providerUserId
 AuthMethodSchema.index({ provider: 1, providerUserId: 1 }, { unique: true });
 // Unique index for verified email per provider (sparse, only when emailVerified is true)
-AuthMethodSchema.index({ email: 1, provider: 1 }, { unique: true, partialFilterExpression: { emailVerified: true } });
+AuthMethodSchema.index({ email: 1, provider: 1 }, { unique: true, partialFilterExpression: { emailVerified: true } } as any);
 
 export const AuthMethod = model<IAuthMethod>('AuthMethod', AuthMethodSchema);

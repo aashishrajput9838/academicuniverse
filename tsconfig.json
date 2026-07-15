@@ -24,10 +24,31 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "global.d.ts",
+    "instrumentation.ts",
+    "instrumentation-client.ts",
+    "sentry.*.config.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "hooks/**/*.ts",
+    "hooks/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "utils/**/*.ts",
+    "utils/**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "backend",
+    "log-analyzer",
+    "scripts",
+    "test",
+    "tmp",
+    "analysis",
+    "audit"
+  ]
 }

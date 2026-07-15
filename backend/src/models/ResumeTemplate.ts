@@ -55,7 +55,7 @@ const ResumeTemplateSchema = new Schema<IResumeTemplate>(
       type: { type: String, enum: ['text', 'textarea'], default: 'text' },
       aiEnhanceable: { type: Boolean, default: false }
     }],
-  },
+  } as any,
   { timestamps: true }
 );
 

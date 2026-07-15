@@ -37,7 +37,6 @@ export const connectGithub = async (req: AuthenticatedRequest, res: Response) =>
     const state = crypto.randomBytes(32).toString('hex');
 
     // Store the Firebase UID in session for verification after callback
-    req.session = req.session || {};
     req.session.github_oauth_state = state;
     req.session.firebase_uid = req.firebaseUser.firebaseUid;
 
@@ -71,7 +70,6 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
     }
 
     // Verify the state parameter to prevent CSRF attacks
-    req.session = req.session || {};
     if (state !== req.session.github_oauth_state) {
       return sendError(res, 400, 'Invalid state parameter');
     }

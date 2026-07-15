@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import { CertificateRecordRepository } from '../repositories/certificateRecord.repository';
 import { AuditEntry } from '../../models/AuditEntry';
 import { ICertificateRecord } from '../../models/CertificateRecord';
+import { toObjectId } from '../../utils/mongooseHelpers';
 
 export class CertificateService {
   private repo = new CertificateRecordRepository();
@@ -21,9 +22,9 @@ export class CertificateService {
 
     const { doc, action } = await this.repo.upsert(
       {
-        organizationId: new Types.ObjectId(organizationId),
-        personId: new Types.ObjectId(personId),
-        sourceDocumentId: new Types.ObjectId(sourceDocumentId),
+        organizationId: toObjectId(organizationId),
+        personId: toObjectId(personId),
+        sourceDocumentId: toObjectId(sourceDocumentId),
         rawConfidence,
         title,
         issuer,

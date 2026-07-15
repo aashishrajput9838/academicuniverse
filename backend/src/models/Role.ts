@@ -37,7 +37,7 @@ const roleSchema = new Schema<IRole>(
       default: false,
       description: 'System roles cannot be deleted',
     },
-  },
+  } as any,
   {
     timestamps: true,
   }

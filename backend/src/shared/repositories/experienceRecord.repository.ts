@@ -1,5 +1,6 @@
 import { ExperienceRecord, IExperienceRecord } from '../../models/ExperienceRecord';
 import { Types } from 'mongoose';
+import { toObjectId } from '../../utils/mongooseHelpers';
 
 export class ExperienceRecordRepository {
   /**
@@ -7,7 +8,7 @@ export class ExperienceRecordRepository {
    */
   async upsert(record: Partial<IExperienceRecord>, organizationId: string): Promise<{doc: IExperienceRecord; action: 'create' | 'update'}> {
     const filter = {
-      organizationId: new Types.ObjectId(organizationId),
+      organizationId: toObjectId(organizationId),
       personId: record.personId,
       title: record.title,
       company: record.company,
@@ -24,6 +25,6 @@ export class ExperienceRecordRepository {
   }
 
   async findByPerson(personId: string) {
-    return ExperienceRecord.find({ personId: new Types.ObjectId(personId) });
+    return ExperienceRecord.find({ personId: toObjectId(personId) });
   }
 }

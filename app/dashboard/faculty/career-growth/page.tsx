@@ -2,15 +2,15 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { FiDownload, FiUsers, FiTrendingUp } from 'react-icons/fi';
+import { FiDownload, FiTrendingUp } from 'react-icons/fi';
 
 export default function FacultyCareerGrowthPage() {
-    const { token } = useAuth();
+    const { backendToken } = useAuth();
     const [isDownloading, setIsDownloading] = useState(false);
     const [downloadError, setDownloadError] = useState('');
 
     const handleDownloadExcel = async () => {
-        if (!token) {
+        if (!backendToken) {
             setDownloadError('You must be logged in to download student data.');
             return;
         }
@@ -24,7 +24,7 @@ export default function FacultyCareerGrowthPage() {
             const response = await fetch(`${API_BASE_URL}/export/students`, {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${backendToken}`
                 }
             });
 

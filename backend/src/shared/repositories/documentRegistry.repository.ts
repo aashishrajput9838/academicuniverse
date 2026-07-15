@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 import { DocumentRegistry, IDocumentRegistry } from '../../models/DocumentRegistry';
+import { toObjectId } from '../../utils/mongooseHelpers';
 
 export interface RegistryUpsertDTO {
   organizationId: string; // ObjectId as string
@@ -15,11 +16,11 @@ export class DocumentRegistryRepository {
    */
   async upsert(dto: RegistryUpsertDTO): Promise<IDocumentRegistry> {
     const filter: any = {
-      organizationId: new Types.ObjectId(dto.organizationId),
+      organizationId: toObjectId(dto.organizationId),
       documentType: dto.documentType,
     };
     if (dto.userId) {
-      filter.userId = new Types.ObjectId(dto.userId);
+      filter.userId = toObjectId(dto.userId);
     } else {
       filter.userId = null;
     }
@@ -45,9 +46,9 @@ export class DocumentRegistryRepository {
     organizationId: string,
     userId?: string,
   ): Promise<IDocumentRegistry[]> {
-    const filter: any = { organizationId: new Types.ObjectId(organizationId) };
+    const filter: any = { organizationId: toObjectId(organizationId) };
     if (userId) {
-      filter.userId = new Types.ObjectId(userId);
+      filter.userId = toObjectId(userId);
     } else {
       filter.userId = null;
     }

@@ -21,14 +21,14 @@ const CertificateRecordSchema = new Schema<ICertificateRecord>(
     title: { type: String, required: true },
     issuer: { type: String, required: true },
     issuedDate: { type: Date, required: true },
-  },
+  } as any,
   { timestamps: true }
 );
 
 // Ensure a person cannot have duplicate certificates with same title and issuer
 CertificateRecordSchema.index(
   { organizationId: 1, personId: 1, title: 1, issuer: 1 },
-  { unique: true, name: 'uniqueCertificate' }
+  { unique: true, name: 'uniqueCertificate' } as any
 );
 
 export const CertificateRecord = model<ICertificateRecord>('CertificateRecord', CertificateRecordSchema);

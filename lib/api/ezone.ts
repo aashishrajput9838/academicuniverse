@@ -3,13 +3,19 @@ import { apiRequest } from '@/utils/api';
 /**
  * Helper to get authentication headers
  */
-const getAuthHeaders = () => {
-    if (typeof window === 'undefined') return {};
-    const token = localStorage.getItem('authToken');
-    return {
-        'Authorization': `Bearer ${token}`,
+const getAuthHeaders = (): HeadersInit => {
+    const headers: Record<string, string> = {
         'Content-Type': 'application/json'
     };
+
+    if (typeof window === 'undefined') return headers;
+
+    const token = localStorage.getItem('authToken');
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+
+    return headers;
 };
 
 export const ezoneApi = {

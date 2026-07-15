@@ -31,7 +31,7 @@ const sectionSchema = new Schema<ISection>(
             ref: 'User',
             default: null,
         },
-    },
+    } as any,
     { timestamps: true }
 );
 

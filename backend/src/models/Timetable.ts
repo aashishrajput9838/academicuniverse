@@ -67,7 +67,7 @@ const timetableSchema = new Schema<ITimetable>(
             ref: 'User',
             required: true,
         },
-    },
+    } as any,
     { timestamps: true }
 );
 

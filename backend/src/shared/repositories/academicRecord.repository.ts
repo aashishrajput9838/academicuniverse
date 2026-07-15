@@ -1,6 +1,7 @@
 import { AcademicRecord, IAcademicRecord } from '../../models/AcademicRecord';
 import { AuditEntry } from '../../models/AuditEntry';
 import { Types } from 'mongoose';
+import { toObjectId } from '../../utils/mongooseHelpers';
 
 export class AcademicRecordRepository {
   /**
@@ -9,7 +10,7 @@ export class AcademicRecordRepository {
    */
   async upsert(record: Partial<IAcademicRecord>, organizationId: string): Promise<{doc: IAcademicRecord; action: 'create' | 'update'}> {
     const filter = {
-      organizationId: new Types.ObjectId(organizationId),
+      organizationId: toObjectId(organizationId),
       personId: record.personId,
       subjectCode: record.subjectCode,
       semester: record.semester,
@@ -27,6 +28,6 @@ export class AcademicRecordRepository {
   }
 
   async findByPerson(personId: string) {
-    return AcademicRecord.find({ personId: new Types.ObjectId(personId) });
+    return AcademicRecord.find({ personId: toObjectId(personId) });
   }
 }

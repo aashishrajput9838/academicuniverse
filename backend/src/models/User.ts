@@ -108,7 +108,7 @@ const userSchema = new Schema<IUser>(
     lastLogin: {
       type: Date,
     },
-  },
+  } as any,
   {
     timestamps: true,
   }
@@ -118,9 +118,9 @@ const userSchema = new Schema<IUser>(
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
 
-  if (this.password) {
+  if ((this as any).password) {
     const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+    (this as any).password = await bcrypt.hash((this as any).password, salt);
   }
 
   next();
@@ -128,8 +128,8 @@ userSchema.pre('save', async function (next) {
 
 // Method to compare passwords
 userSchema.methods.comparePassword = async function (password: string): Promise<boolean> {
-  if (!this.password) return false;
-  return await bcrypt.compare(password, this.password);
+  if (!(this as any).password) return false;
+  return await bcrypt.compare(password, (this as any).password);
 };
 
 // Compound index for organization and email uniqueness

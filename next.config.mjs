@@ -4,6 +4,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  serverExternalPackages: ["mongodb", "mongoose", "uuid", "jsonwebtoken"],
   images: {
     remotePatterns: [
       {

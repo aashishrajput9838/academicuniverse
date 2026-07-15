@@ -4,6 +4,7 @@ import { EzoneAcademicProfile } from '../models/EzoneAcademicProfile';
 import User from '../models/User';
 import githubService from './githubService';
 import { ConfigurationError, ExternalAPIError } from '../utils/errors';
+import { toObjectId } from '../utils/mongooseHelpers';
 
 export type GrowthMetricState =
   | 'AVAILABLE'
@@ -73,8 +74,8 @@ const toTimestamp = (value: Date | string | undefined | null): string | null => 
 const getMarksMetrics = async (userId: string, organizationId: string) => {
   try {
     const marks = await Mark.find({
-      studentId: new mongoose.Types.ObjectId(userId),
-      organizationId: new mongoose.Types.ObjectId(organizationId),
+      studentId: toObjectId(userId),
+      organizationId: toObjectId(organizationId),
     })
       .sort({ updatedAt: -1 })
       .lean();
@@ -125,8 +126,8 @@ const getMarksMetrics = async (userId: string, organizationId: string) => {
 const getEzoneMetrics = async (userId: string, organizationId: string) => {
   try {
     const profile = await EzoneAcademicProfile.findOne({
-      userId: new mongoose.Types.ObjectId(userId),
-      organizationId: new mongoose.Types.ObjectId(organizationId),
+      userId: toObjectId(userId),
+      organizationId: toObjectId(organizationId),
     }).lean();
 
     if (!profile) {

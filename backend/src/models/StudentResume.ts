@@ -30,7 +30,7 @@ const StudentResumeSchema = new Schema<IStudentResume>(
       type: String,
       default: '',
     },
-  },
+  } as any,
   { timestamps: true }
 );
 

@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import { AcademicRecordRepository } from '../repositories/academicRecord.repository';
 import { AuditEntry } from '../../models/AuditEntry';
 import { IAcademicRecord } from '../../models/AcademicRecord';
+import { toObjectId } from '../../utils/mongooseHelpers';
 
 /**
  * Service that encapsulates the AcademicRecord merge logic.
@@ -46,9 +47,9 @@ export class AcademicRecordService {
 
     const { doc, action } = await this.repo.upsert(
       {
-        organizationId: new Types.ObjectId(organizationId),
-        personId: new Types.ObjectId(personId),
-        sourceDocumentId: new Types.ObjectId(sourceDocumentId),
+        organizationId: toObjectId(organizationId),
+        personId: toObjectId(personId),
+        sourceDocumentId: toObjectId(sourceDocumentId),
         rawConfidence,
         subjectCode,
         subjectName,

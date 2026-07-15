@@ -38,7 +38,7 @@ const markSchema = new Schema<IMark>(
             ref: 'User',
             required: true,
         },
-    },
+    } as any,
     { timestamps: true }
 );
 

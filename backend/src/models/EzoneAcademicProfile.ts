@@ -150,7 +150,7 @@ const ezoneAcademicProfileSchema = new Schema<IEzoneAcademicProfile>(
             type: Date,
             default: Date.now,
         },
-    },
+    } as any,
     {
         timestamps: true,
     }

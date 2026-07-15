@@ -22,7 +22,7 @@ const rolePermissionSchema = new Schema<IRolePermission>(
       required: [true, 'Permission ID is required'],
       index: true,
     },
-  },
+  } as any,
   {
     timestamps: true,
   }

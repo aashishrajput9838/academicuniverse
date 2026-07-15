@@ -16,7 +16,7 @@ const PersonSchema = new Schema<IPerson>(
     primaryName: { type: String, required: true },
     primaryEmail: { type: String, required: true },
     userIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-  },
+  } as any,
   { timestamps: true }
 );
 

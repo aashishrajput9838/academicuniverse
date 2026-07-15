@@ -48,4 +48,13 @@ export class DocumentIntelligenceService {
   ): Promise<DicDocument | null> {
     return this.repo.getDocumentDetail(organizationId, processingId);
   }
+
+  /** Soft-delete an eligible non-canonical document workflow. */
+  async softDeleteDocument(
+    organizationId: string,
+    processingId: string,
+    deletedBy: string
+  ) {
+    return this.repo.softDeleteDocument(organizationId, processingId, deletedBy);
+  }
 }

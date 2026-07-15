@@ -93,6 +93,7 @@ export class GrowthUploadService {
     const filter: any = {
       userId: params.userId,
       organizationId: params.organizationId,
+      status: { $ne: 'DELETED' },
     };
 
     if (params.cursor) {
@@ -113,6 +114,7 @@ export class GrowthUploadService {
     const processingIds = page.map((u: any) => String(u.processingId));
     const knowledgeRecords = await KnowledgeRecordModel.find({
       processingId: { $in: processingIds },
+      status: { $ne: 'DELETED' },
     }).lean();
     const krByProcessingId = new Map(
       knowledgeRecords.map((kr: any) => [String(kr.processingId), kr])
@@ -164,6 +166,7 @@ export class GrowthUploadService {
       processingId: params.processingId,
       userId: params.userId,
       organizationId: params.organizationId,
+      status: { $ne: 'DELETED' },
     }).lean();
 
     if (!upload) {
@@ -172,6 +175,7 @@ export class GrowthUploadService {
 
     const knowledgeRecord = await KnowledgeRecordModel.findOne({
       processingId: params.processingId,
+      status: { $ne: 'DELETED' },
     }).lean();
 
     const status = String((upload as any).status);

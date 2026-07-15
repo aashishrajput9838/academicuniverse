@@ -6,7 +6,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { sendResponse } from '../../utils/response';
+import { sendError, sendResponse } from '../../utils/response';
 import { DocumentIntelligenceService } from './documentIntelligence.service';
 import type { DicListQueryParams, DicReviewStatus, DicSortField, DicSortOrder } from './documentIntelligence.types';
 
@@ -154,6 +154,62 @@ export class DocumentIntelligenceController {
       }
 
       sendResponse(res, 200, doc, 'Document detail retrieved successfully');
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /**
+   * DELETE /api/document-intelligence/documents/:processingId
+   * Soft-deletes workflow records only. Canonical collections are never touched.
+   */
+  public deleteDocument = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const organizationId = (req as any).organizationId as string;
+      const deletedBy = (req as any).user?.userId as string;
+      const { processingId } = req.params;
+
+      if (!organizationId) {
+        sendError(res, 403, 'Organization context required');
+        return;
+      }
+      if (!deletedBy) {
+        sendError(res, 401, 'Authentication required');
+        return;
+      }
+      if (!processingId) {
+        sendError(res, 400, 'processingId is required');
+        return;
+      }
+
+      const result = await this.service.softDeleteDocument(
+        organizationId,
+        processingId,
+        deletedBy
+      );
+
+      if (result.outcome === 'NOT_FOUND') {
+        sendError(res, 404, 'Document not found');
+        return;
+      }
+      if (result.outcome === 'APPROVED') {
+        sendError(
+          res,
+          409,
+          'This document has already produced canonical records. Perform a rollback before deletion.'
+        );
+        return;
+      }
+      if (result.outcome === 'NOT_DELETABLE') {
+        sendError(res, 409, 'Only documents in PENDING_REVIEW, DRAFT, or REJECTED status can be deleted.');
+        return;
+      }
+
+      sendResponse(res, 200, result, 'Document deleted successfully');
     } catch (err) {
       next(err);
     }

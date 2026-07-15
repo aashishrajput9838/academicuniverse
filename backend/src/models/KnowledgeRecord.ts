@@ -25,6 +25,10 @@ export interface KnowledgeRecord extends Document {
   extractedEntities?: Record<string, any>; // raw unstructured entities from AI
   candidateFields?: Record<string, any>; // structured entities for human-in-the-loop review
   rawAiOutput?: string; // raw JSON string from AI for debugging
+  /** Lifecycle status for retention without physically deleting the record. */
+  status?: 'ACTIVE' | 'DELETED';
+  deletedAt?: Date;
+  deletedBy?: string;
   reviewStatus?: 'NOT_READY' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
   version?: number;
   createdAt: Date;
@@ -49,6 +53,9 @@ const KnowledgeRecordSchema = new Schema<KnowledgeRecord>({
   extractedEntities: { type: Schema.Types.Mixed },
   candidateFields: { type: Schema.Types.Mixed },
   rawAiOutput: { type: String },
+  status: { type: String, enum: ['ACTIVE', 'DELETED'], default: 'ACTIVE', index: true },
+  deletedAt: { type: Date },
+  deletedBy: { type: String },
   reviewStatus: { type: String, enum: ['NOT_READY', 'PENDING_REVIEW', 'APPROVED', 'REJECTED'], default: 'PENDING_REVIEW' },
   version: { type: Number, default: 1 },
   createdAt: { type: Date, default: Date.now },

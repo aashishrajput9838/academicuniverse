@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useGrowthUploadStore } from '@/app/dashboard/student/growth/store/growthUploadStore';
 import {
   getCandidateState,
@@ -8,6 +9,7 @@ import {
   rejectDocument,
   approveDocument,
   getReviewHistory,
+  softDeleteDocument,
 } from '@/app/dashboard/student/growth/reviewApi';
 import type { CandidateState, ReviewHistoryEntry } from '@/app/dashboard/student/growth/reviewApi';
 import {
@@ -1995,6 +1997,15 @@ function ExtractedDataModal({
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
   const tabs: { id: 'summary' | 'metadata' | 'entities' | 'excel' | 'raw' | 'review'; label: string }[] = [
     { id: 'summary',  label: '✦ AI Summary' },
     { id: 'metadata', label: '⊡ Metadata' },
@@ -2050,12 +2061,16 @@ function ExtractedDataModal({
     ) : <span className="text-slate-500 text-sm">Not determined</span> },
   ];
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:pt-10 bg-black/75 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl border border-slate-700/60 bg-slate-900 shadow-2xl overflow-hidden" style={{ minHeight: '600px' }}>
+  return createPortal(
+    <>
+      {/* Backdrop — z-9000 */}
+      <div
+        className="fixed inset-0 z-[9000] bg-black/75 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      {/* Modal Container — z-9001, fixed + centered via translate */}
+      <div className="fixed z-[9001] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-3xl max-h-[80vh] flex flex-col rounded-2xl border border-slate-700/60 bg-slate-900 shadow-2xl overflow-hidden">
 
         {/* ── Header ── */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-700/60 bg-gradient-to-r from-slate-800/80 to-slate-900/80 shrink-0">
@@ -2292,7 +2307,8 @@ function ExtractedDataModal({
           </div>
         )}
       </div>
-    </div>
+    </>,
+    document.body
   );
 }
 
@@ -2368,7 +2384,10 @@ function UploadHistoryItemCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const { processingStatuses, startPolling, fetchStatusDetail, refreshItem } = useGrowthUploadStore();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { processingStatuses, startPolling, fetchStatusDetail, refreshItem, removeUpload } = useGrowthUploadStore();
   const status = processingStatuses[item.processingId];
   const isActive = !TERMINAL_STATUSES.has(item.status);
 
@@ -2393,10 +2412,28 @@ function UploadHistoryItemCard({
   );
   const category = status?.classification?.documentCategory ?? item.documentCategory;
   const confidence = status?.classification?.confidenceScore ?? item.confidenceScore;
+  // A saved draft remains PENDING_REVIEW in the established workflow.
+  const canDelete = item.reviewStatus === 'PENDING_REVIEW' || item.reviewStatus === 'REJECTED';
 
   const handleViewExtractedData = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (deleting) return;
+
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await softDeleteDocument(backendToken, item.processingId);
+      removeUpload(item.processingId);
+      setShowDeleteConfirm(false);
+    } catch (err: any) {
+      setDeleteError(err?.message || 'Failed to delete document');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -2567,10 +2604,54 @@ function UploadHistoryItemCard({
                 </svg>
                 Reprocess
               </button>
+              {canDelete && (
+                <button
+                  type="button"
+                  id={`delete-document-${item.processingId}`}
+                  onClick={() => {
+                    setDeleteError(null);
+                    setShowDeleteConfirm(true);
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-500/20"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.165m-1.022-.165L18.16 19.673A2.25 2.25 0 0115.916 21H8.084a2.25 2.25 0 01-2.244-1.327L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.058.68-.113 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.032-2.172a48.666 48.666 0 00-3.736 0C8.91 2.043 8 2.997 8 4.177v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                  </svg>
+                  Delete Document
+                </button>
+              )}
             </div>
+            {item.reviewStatus === 'APPROVED' && (
+              <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-amber-200">
+                This document has already produced canonical records. Perform a rollback before deletion.
+              </p>
+            )}
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Delete this document?"
+        message={`This will remove “${item.fileName}” from active document workflows. The original MongoDB documents are retained as soft-deleted records.`}
+        confirmLabel={deleting ? 'Deleting…' : 'Delete document'}
+        confirmClass="bg-red-600 hover:bg-red-500"
+        onConfirm={handleDelete}
+        onCancel={() => {
+          if (!deleting) setShowDeleteConfirm(false);
+        }}
+      >
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-xs leading-relaxed text-slate-300">
+          <p className="font-semibold text-red-200">This soft-deletes:</p>
+          <ul className="mt-1 list-disc space-y-1 pl-4">
+            <li>the uploaded document record (UaipUpload);</li>
+            <li>its AI-extracted KnowledgeRecord; and</li>
+            <li>any saved review drafts.</li>
+          </ul>
+          <p className="mt-2 text-emerald-200">Canonical collections and records will not be changed.</p>
+        </div>
+        {deleteError && <p className="text-xs text-red-300">{deleteError}</p>}
+      </ConfirmDialog>
 
       {/* Extracted Data Modal */}
       {showModal && (

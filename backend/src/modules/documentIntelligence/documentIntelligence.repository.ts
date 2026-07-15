@@ -6,6 +6,7 @@
  * Never exposes documents from a different organization.
  */
 
+import mongoose from 'mongoose';
 import { UaipUpload } from '../../models/UaipUpload';
 import { KnowledgeRecordModel } from '../../models/KnowledgeRecord';
 import { ReviewHistory } from '../../models/ReviewHistory';
@@ -13,6 +14,7 @@ import type {
   DicDocument,
   DicDocumentListResponse,
   DicAnalytics,
+  DicDeleteDocumentResult,
   DicListQueryParams,
   DicReviewStatus,
 } from './documentIntelligence.types';
@@ -45,7 +47,10 @@ export class DocumentIntelligenceRepository {
     const limit = Math.min(Math.max(params.limit ?? 25, 1), 100);
 
     // Build UaipUpload query filter
-    const uploadFilter: Record<string, any> = { organizationId };
+    const uploadFilter: Record<string, any> = {
+      organizationId,
+      status: { $ne: 'DELETED' },
+    };
 
     if (params.cursor) {
       const cursorDate = new Date(params.cursor);
@@ -69,6 +74,7 @@ export class DocumentIntelligenceRepository {
     const processingIds = page.map((u: any) => String(u.processingId));
     const knowledgeRecords = await KnowledgeRecordModel.find({
       processingId: { $in: processingIds },
+      status: { $ne: 'DELETED' },
     }).lean();
 
     const krByPid = new Map(
@@ -78,6 +84,7 @@ export class DocumentIntelligenceRepository {
     // Batch-fetch last ReviewHistory entries for these processingIds
     const reviewHistories = await ReviewHistory.find({
       processingId: { $in: processingIds },
+      status: { $ne: 'DELETED' },
     })
       .sort({ timestamp: -1 })
       .lean();
@@ -165,7 +172,10 @@ export class DocumentIntelligenceRepository {
     }
 
     // Total count for this org (without pagination)
-    const total = await UaipUpload.countDocuments({ organizationId });
+    const total = await UaipUpload.countDocuments({
+      organizationId,
+      status: { $ne: 'DELETED' },
+    });
 
     const nextCursor =
       uploads.length > limit
@@ -180,11 +190,15 @@ export class DocumentIntelligenceRepository {
    */
   async getAnalytics(organizationId: string): Promise<DicAnalytics> {
     // All uploads for this org
-    const allUploads = await UaipUpload.find({ organizationId }).lean();
+    const allUploads = await UaipUpload.find({
+      organizationId,
+      status: { $ne: 'DELETED' },
+    }).lean();
     const processingIds = allUploads.map((u: any) => String(u.processingId));
 
     const knowledgeRecords = await KnowledgeRecordModel.find({
       processingId: { $in: processingIds },
+      status: { $ne: 'DELETED' },
     }).lean();
 
     const krByPid = new Map(
@@ -228,6 +242,7 @@ export class DocumentIntelligenceRepository {
     // Recent review activity (last 10 review actions for this org)
     const recentReviews = await ReviewHistory.find({
       processingId: { $in: processingIds },
+      status: { $ne: 'DELETED' },
     })
       .sort({ timestamp: -1 })
       .limit(10)
@@ -267,12 +282,19 @@ export class DocumentIntelligenceRepository {
     const upload = await UaipUpload.findOne({
       processingId,
       organizationId,
+      status: { $ne: 'DELETED' },
     }).lean();
 
     if (!upload) return null;
 
-    const kr: any = await KnowledgeRecordModel.findOne({ processingId }).lean();
-    const latestReview: any = await ReviewHistory.findOne({ processingId })
+    const kr: any = await KnowledgeRecordModel.findOne({
+      processingId,
+      status: { $ne: 'DELETED' },
+    }).lean();
+    const latestReview: any = await ReviewHistory.findOne({
+      processingId,
+      status: { $ne: 'DELETED' },
+    })
       .sort({ timestamp: -1 })
       .lean();
 
@@ -322,5 +344,102 @@ export class DocumentIntelligenceRepository {
           ? (latestReview.rejectionReason ?? null)
           : null,
     };
+  }
+
+  /**
+   * Soft-delete an eligible document and its non-canonical workflow records.
+   * A saved review draft is represented by ReviewHistory.action === DRAFT_SAVED.
+   */
+  async softDeleteDocument(
+    organizationId: string,
+    processingId: string,
+    deletedBy: string
+  ): Promise<DicDeleteDocumentResult> {
+    const session = await mongoose.startSession();
+    let result: DicDeleteDocumentResult;
+
+    try {
+      session.startTransaction();
+
+      const upload: any = await UaipUpload.findOne({
+        processingId,
+        organizationId,
+        status: { $ne: 'DELETED' },
+      }).session(session);
+
+      if (!upload) {
+        result = { outcome: 'NOT_FOUND', processingId };
+      } else {
+        const knowledgeRecord: any = await KnowledgeRecordModel.findOne({
+          processingId,
+          status: { $ne: 'DELETED' },
+        }).session(session);
+        const reviewStatus = resolveReviewStatus(
+          String(upload.status),
+          knowledgeRecord ? String(knowledgeRecord.reviewStatus ?? '') : null
+        );
+
+        if (reviewStatus === 'APPROVED') {
+          result = { outcome: 'APPROVED', processingId };
+        } else if (reviewStatus !== 'PENDING_REVIEW' && reviewStatus !== 'REJECTED') {
+          result = { outcome: 'NOT_DELETABLE', processingId };
+        } else {
+          const deletedAt = new Date();
+
+          // Keep the original hash for audit, while releasing the sparse unique hash
+          // so a user may upload the same file again after it has been deleted.
+          if (upload.fileHash) {
+            upload.deletedFileHash = upload.fileHash;
+            upload.fileHash = undefined;
+          }
+          upload.status = 'DELETED';
+          upload.deletedAt = deletedAt;
+          upload.deletedBy = deletedBy;
+          await upload.save({ session });
+
+          await KnowledgeRecordModel.updateMany(
+            { processingId, status: { $ne: 'DELETED' } },
+            {
+              $set: {
+                status: 'DELETED',
+                deletedAt,
+                deletedBy,
+              },
+            },
+            { session }
+          );
+
+          await ReviewHistory.updateMany(
+            {
+              processingId,
+              action: 'DRAFT_SAVED',
+              status: { $ne: 'DELETED' },
+            },
+            {
+              $set: {
+                status: 'DELETED',
+                deletedAt,
+                deletedBy,
+              },
+            },
+            { session }
+          );
+
+          result = {
+            outcome: 'DELETED',
+            processingId,
+            deletedAt: deletedAt.toISOString(),
+          };
+        }
+      }
+
+      await session.commitTransaction();
+      return result;
+    } catch (err) {
+      await session.abortTransaction();
+      throw err;
+    } finally {
+      await session.endSession();
+    }
   }
 }

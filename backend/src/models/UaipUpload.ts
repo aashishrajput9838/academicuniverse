@@ -21,7 +21,7 @@ export interface IUaipUpload {
   /** Size in bytes. */
   size: number;
   /** Current pipeline status. */
-  status: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'VALIDATION_ERROR';
+  status: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'VALIDATION_ERROR' | 'DELETED';
   /** Optional error message when status is FAILED or VALIDATION_ERROR. */
   errorMessage?: string;
   /** SHA-256 hash of the physical file content. */
@@ -30,6 +30,12 @@ export interface IUaipUpload {
   createdAt: Date;
   /** Timestamp when the pipeline completed (success or failure). */
   completedAt?: Date;
+  /** Timestamp when the document was soft-deleted. */
+  deletedAt?: Date;
+  /** User who soft-deleted the document. */
+  deletedBy?: string;
+  /** Original hash retained for audit after fileHash is released for a re-upload. */
+  deletedFileHash?: string;
 }
 
 const UaipUploadSchema = new Schema(
@@ -42,13 +48,16 @@ const UaipUploadSchema = new Schema(
     size: { type: Number, required: true },
     status: {
       type: String,
-      enum: ['PENDING', 'PROCESSING', 'SUCCESS', 'FAILED', 'VALIDATION_ERROR'],
+      enum: ['PENDING', 'PROCESSING', 'SUCCESS', 'FAILED', 'VALIDATION_ERROR', 'DELETED'],
       default: 'PENDING',
     },
     errorMessage: { type: String, default: undefined },
     fileHash: { type: String, required: false },
     createdAt: { type: Date, default: Date.now },
     completedAt: { type: Date },
+    deletedAt: { type: Date },
+    deletedBy: { type: String },
+    deletedFileHash: { type: String },
   },
   { timestamps: false }
 );

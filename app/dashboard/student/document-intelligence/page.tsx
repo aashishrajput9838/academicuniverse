@@ -241,13 +241,39 @@ function DocumentRow({
 function DetailDrawer({
   doc,
   onClose,
+  onDelete,
 }: {
   doc: DicDocument | null;
   onClose: () => void;
+  onDelete: (document: DicDocument) => Promise<void>;
 }) {
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   if (!doc) return null;
 
+  // DRAFT_SAVED stays PENDING_REVIEW in the existing review-status contract.
+  const canDelete = doc.reviewStatus === 'PENDING_REVIEW' || doc.reviewStatus === 'REJECTED';
+
+  const handleDelete = async () => {
+    if (deleting) return;
+
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete(doc);
+      setShowDeleteConfirmation(false);
+      onClose();
+    } catch (err: any) {
+      setDeleteError(err?.message || 'Failed to delete document');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
+    <>
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
@@ -398,9 +424,74 @@ function DetailDrawer({
               </p>
             </div>
           )}
+
+          {canDelete && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4">
+              <p className="text-sm font-semibold text-red-200">Delete document</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                Remove this document and its non-canonical workflow records from active views.
+              </p>
+              <button
+                type="button"
+                id={`dic-delete-${doc.processingId}`}
+                onClick={() => {
+                  setDeleteError(null);
+                  setShowDeleteConfirmation(true);
+                }}
+                className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20"
+              >
+                Delete document
+              </button>
+            </div>
+          )}
+
+          {doc.reviewStatus === 'APPROVED' && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm leading-relaxed text-amber-200">
+              This document has already produced canonical records. Perform a rollback before deletion.
+            </div>
+          )}
         </div>
       </div>
     </div>
+    {showDeleteConfirmation && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+        <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+          <h3 className="text-base font-semibold text-white">Delete this document?</h3>
+          <p className="mt-2 text-sm leading-relaxed text-slate-400">
+            This will remove &quot;{doc.fileName}&quot; from active document workflows. MongoDB documents are retained as soft-deleted records.
+          </p>
+          <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-xs leading-relaxed text-slate-300">
+            <p className="font-semibold text-red-200">This soft-deletes:</p>
+            <ul className="mt-1 list-disc space-y-1 pl-4">
+              <li>the uploaded document record (UaipUpload);</li>
+              <li>its AI-extracted KnowledgeRecord; and</li>
+              <li>any saved review drafts.</li>
+            </ul>
+            <p className="mt-2 text-emerald-200">Canonical collections and records will not be changed.</p>
+          </div>
+          {deleteError && <p className="mt-3 text-xs text-red-300">{deleteError}</p>}
+          <div className="mt-5 flex gap-3">
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => setShowDeleteConfirmation(false)}
+              className="flex-1 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:text-white disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={handleDelete}
+              className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
+            >
+              {deleting ? 'Deleting...' : 'Delete document'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -485,6 +576,28 @@ export default function DocumentIntelligencePage() {
       }
     },
     [fetchToken, statusFilter, search]
+  );
+
+  const handleDeleteDocument = useCallback(
+    async (document: DicDocument) => {
+      const token = await fetchToken();
+      const res = await fetch(
+        `${API_BASE}/api/document-intelligence/documents/${encodeURIComponent(document.processingId)}`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(payload?.message || 'Failed to delete document');
+      }
+
+      setDocuments((current) => current.filter((item) => item.processingId !== document.processingId));
+      setTotal((current) => Math.max(0, current - 1));
+      await loadAnalytics();
+    },
+    [fetchToken, loadAnalytics]
   );
 
   // Auth guard
@@ -874,7 +987,11 @@ export default function DocumentIntelligencePage() {
       )}
 
       {/* ─── Detail Drawer ─── */}
-      <DetailDrawer doc={selectedDoc} onClose={() => setSelectedDoc(null)} />
+      <DetailDrawer
+        doc={selectedDoc}
+        onClose={() => setSelectedDoc(null)}
+        onDelete={handleDeleteDocument}
+      />
     </div>
   );
 }

@@ -46,6 +46,15 @@ export interface DicDocumentListResponse {
   nextCursor: string | null;
 }
 
+export type DicDeleteDocumentOutcome = 'DELETED' | 'NOT_FOUND' | 'APPROVED' | 'NOT_DELETABLE';
+
+/** Result of a soft-delete attempt. No canonical collection is ever modified. */
+export interface DicDeleteDocumentResult {
+  outcome: DicDeleteDocumentOutcome;
+  processingId: string;
+  deletedAt?: string;
+}
+
 /** Analytics summary */
 export interface DicAnalytics {
   totalDocuments: number;

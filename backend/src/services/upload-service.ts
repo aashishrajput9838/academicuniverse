@@ -70,7 +70,11 @@ export class UploadService {
 
     // ---- Generate SHA-256 file hash and check for duplicate ----
     const fileHash = crypto.createHash('sha256').update(buffer).digest('hex');
-    const existingUpload = await UaipUpload.findOne({ organizationId, fileHash });
+    const existingUpload = await UaipUpload.findOne({
+      organizationId,
+      fileHash,
+      status: { $ne: 'DELETED' },
+    });
 
     if (existingUpload) {
       console.log(`[UploadService] Duplicate upload detected for hash ${fileHash}. Returning existing processingId: ${existingUpload.processingId}`);

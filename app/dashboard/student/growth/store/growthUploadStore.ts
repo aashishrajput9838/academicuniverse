@@ -38,6 +38,8 @@ interface GrowthUploadState {
   fetchStatusDetail: (token: string, processingId: string) => Promise<void>;
   /** Force-refresh a single item's full state (including reviewStatus from KnowledgeRecord). Used after approve/reject. */
   refreshItem: (token: string, processingId: string) => Promise<void>;
+  /** Remove a soft-deleted item immediately from all Growth Hub sections. */
+  removeUpload: (processingId: string) => void;
 }
 
 export const useGrowthUploadStore = create<GrowthUploadState>()(
@@ -219,6 +221,14 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
       } catch {
         // Suppress errors — stale state is better than a crash
       }
+    },
+
+    removeUpload: (processingId: string) => {
+      get().stopPolling(processingId);
+      set((state) => {
+        state.uploads = state.uploads.filter((upload) => upload.processingId !== processingId);
+        delete state.processingStatuses[processingId];
+      });
     },
   }))
 );

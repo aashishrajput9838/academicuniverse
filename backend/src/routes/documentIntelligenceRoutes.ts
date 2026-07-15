@@ -33,4 +33,10 @@ router.get('/documents', controller.listDocuments);
  */
 router.get('/documents/:processingId', controller.getDocumentDetail);
 
+/**
+ * DELETE /api/document-intelligence/documents/:processingId
+ * Soft-deletes the upload, KnowledgeRecord, and saved review drafts only.
+ */
+router.delete('/documents/:processingId', controller.deleteDocument);
+
 export default router;

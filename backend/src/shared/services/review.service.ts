@@ -79,7 +79,7 @@ export interface ReviewHistoryResult {
 
 async function assertOwnership(processingId: string, organizationId: string) {
   const upload = await UaipUpload.findOne({ processingId }).lean();
-  if (!upload) throw new Error('Document not found');
+  if (!upload || (upload as any).status === 'DELETED') throw new Error('Document not found');
   if ((upload as any).organizationId !== organizationId) {
     throw new Error('Forbidden: cross-tenant access denied');
   }
@@ -346,14 +346,20 @@ export class ReviewService {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      const kr = await KnowledgeRecordModel.findOne({ processingId }).session(session);
+      const kr = await KnowledgeRecordModel.findOne({
+        processingId,
+        status: { $ne: 'DELETED' },
+      }).session(session);
       if (!kr) throw new Error('KnowledgeRecord not found');
 
       if ((kr as any).reviewStatus === 'APPROVED') {
         throw new Error('Document is already approved');
       }
 
-      const upload = await UaipUpload.findOne({ processingId }).session(session);
+      const upload = await UaipUpload.findOne({
+        processingId,
+        status: { $ne: 'DELETED' },
+      }).session(session);
       if (!upload) throw new Error('UaipUpload not found');
 
       finalFields = {

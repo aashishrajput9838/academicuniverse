@@ -106,6 +106,25 @@ export async function rollbackDocument(
   await reviewRequest('POST', `/${encodeURIComponent(processingId)}/rollback`, token);
 }
 
+/** Soft-delete an eligible document workflow and its non-canonical records. */
+export async function softDeleteDocument(
+  token: string,
+  processingId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/document-intelligence/documents/${encodeURIComponent(processingId)}`,
+    {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  const payload = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(payload?.message || `Request failed with status ${res.status}`);
+  }
+}
+
 export async function getReviewHistory(
   token: string,
   processingId: string,

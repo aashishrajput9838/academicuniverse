@@ -17,6 +17,10 @@ export interface IReviewHistory extends Document {
   rejectionReason?: string;
   canonicalCollection?: string; // populated on APPROVED
   canonicalRecordIds?: string[]; // populated on APPROVED
+  /** Draft lifecycle status; DRAFT_SAVED entries can be soft-deleted with their document. */
+  status?: 'ACTIVE' | 'DELETED';
+  deletedAt?: Date;
+  deletedBy?: string;
   timestamp: Date;
 }
 
@@ -37,6 +41,9 @@ const ReviewHistorySchema = new Schema<IReviewHistory>(
     rejectionReason: { type: String },
     canonicalCollection: { type: String },
     canonicalRecordIds: [{ type: String }],
+    status: { type: String, enum: ['ACTIVE', 'DELETED'], default: 'ACTIVE' },
+    deletedAt: { type: Date },
+    deletedBy: { type: String },
     timestamp: { type: Date, default: Date.now },
   },
   { timestamps: false }

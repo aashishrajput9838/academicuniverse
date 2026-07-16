@@ -17,17 +17,34 @@ export class TesseractProvider implements IOcrProvider {
     }
 
     if (mimeType === 'application/pdf') {
-      logger.info(`TesseractProvider: Parsing scanned PDF to extract embedded JPEGs`);
+      logger.info(`TesseractProvider: Parsing scanned PDF to extract embedded images`);
       const jpegs = this.extractJpegsFromPdf(buffer);
       if (jpegs.length === 0) {
         logger.warn(`TesseractProvider: No embedded JPEGs found in scanned PDF. Returning empty text.`);
         return '';
       }
-      logger.info(`TesseractProvider: Found ${jpegs.length} embedded images. Running OCR on the first one.`);
-      return this.runTesseract(jpegs[0]);
+      logger.info(`TesseractProvider: Found ${jpegs.length} embedded images. Running OCR on all images.`);
+      const ocrResults: string[] = [];
+      for (let i = 0; i < jpegs.length; i++) {
+        const text = await this.runTesseract(jpegs[i]);
+        if (text && text.trim().length > 0) {
+          ocrResults.push(text.trim());
+        }
+      }
+      const combinedText = ocrResults.join('\n\n--- PAGE BREAK ---\n\n');
+      logger.info(`TesseractProvider: OCR completed for ${jpegs.length} pages/images. Total text length: ${combinedText.length} chars`);
+      if (combinedText.length > 0) {
+        logger.debug(`TesseractProvider: First 1000 chars of OCR output:\n${combinedText.slice(0, 1000)}`);
+      }
+      return combinedText;
     } else {
       logger.info(`TesseractProvider: Processing image file`);
-      return this.runTesseract(buffer);
+      const text = await this.runTesseract(buffer);
+      logger.info(`TesseractProvider: OCR completed for image. Text length: ${text.length} chars`);
+      if (text.length > 0) {
+        logger.debug(`TesseractProvider: First 1000 chars of OCR output:\n${text.slice(0, 1000)}`);
+      }
+      return text;
     }
   }
 

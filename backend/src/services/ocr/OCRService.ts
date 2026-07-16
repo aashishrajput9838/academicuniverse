@@ -7,6 +7,48 @@ import { KnowledgeRecordModel } from '../../models/KnowledgeRecord';
 
 export class OCRService {
   private static idempotencyRepo = new MongoOcrIdempotencyRepository();
+  private static completedOcr = new Map<string, string>();
+  private static pendingOcr = new Map<string, { resolve: (text: string) => void; reject: (err: any) => void }>();
+
+  public static async waitForOcr(processingId: string, timeoutMs: number = 300000): Promise<string> {
+    if (OCRService.completedOcr.has(processingId)) {
+      return OCRService.completedOcr.get(processingId)!;
+    }
+
+    if (OCRService.pendingOcr.has(processingId)) {
+      return new Promise((resolve, reject) => {
+        const entry = OCRService.pendingOcr.get(processingId)!;
+        entry.resolve = resolve;
+        entry.reject = reject;
+        setTimeout(() => {
+          if (OCRService.pendingOcr.has(processingId) && OCRService.pendingOcr.get(processingId)!.resolve === resolve) {
+            OCRService.pendingOcr.delete(processingId);
+            reject(new Error(`OCR wait timeout for ${processingId}`));
+          }
+        }, timeoutMs);
+      });
+    }
+
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        if (OCRService.pendingOcr.has(processingId) && OCRService.pendingOcr.get(processingId)!.resolve === resolve) {
+          OCRService.pendingOcr.delete(processingId);
+          reject(new Error(`OCR wait timeout for ${processingId}`));
+        }
+      }, timeoutMs);
+      OCRService.pendingOcr.set(processingId, {
+        resolve: (text: string) => {
+          clearTimeout(timer);
+          resolve(text);
+        },
+        reject: (err: any) => {
+          clearTimeout(timer);
+          reject(err);
+        },
+      });
+    });
+  }
+
   // Static method for test cleanup to clear idempotency records
   public static async clearCache(): Promise<void> {
     await MongoOcrIdempotencyRepository.clearAll();
@@ -60,17 +102,36 @@ export class OCRService {
       logger.info(`OCRService: Starting OCR processing for ${processingId} using default TESSERACT provider`);
       const provider = OCRFactory.getProvider('TESSERACT');
       const ocrText = await provider.process(storageId, mimeType || '');
-      
+
+      logger.info(`OCRService: OCR completed for ${processingId}. Text length: ${ocrText.length} chars`);
+      if (ocrText.length > 0) {
+        logger.debug(`OCRService: First 1000 chars of OCR output for ${processingId}:\n${ocrText.slice(0, 1000)}`);
+      }
+
       // Save raw OCR content to KnowledgeRecord
       await KnowledgeRecordModel.updateOne(
         { processingId },
         { $set: { rawContent: ocrText } }
       );
 
-      logger.info(`OCRService: OCR completed for ${processingId}`);
+      OCRService.completedOcr.set(processingId, ocrText);
+      if (OCRService.pendingOcr.has(processingId)) {
+        const entry = OCRService.pendingOcr.get(processingId)!;
+        OCRService.pendingOcr.delete(processingId);
+        entry.resolve(ocrText);
+      }
+
       await eventBus.publish(UaipEvent.OCR_COMPLETED, { processingId, ocrText, timestamp: new Date() });
     } catch (err: any) {
       logger.error(`OCRService: OCR processing failed for ${processingId}`, { error: err });
+      
+      OCRService.completedOcr.set(processingId, '');
+      if (OCRService.pendingOcr.has(processingId)) {
+        const entry = OCRService.pendingOcr.get(processingId)!;
+        OCRService.pendingOcr.delete(processingId);
+        entry.reject(err);
+      }
+
       await eventBus.publish(UaipEvent.OCR_FAILED, {
         processingId,
         ocrErrorMessage: err.message || 'Unknown OCR error',

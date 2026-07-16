@@ -7,6 +7,7 @@ import { documentClassifier } from './classification/DocumentClassifier';
 import { ParserService } from './parsing/ParserService';
 import { UaipDocumentAiService } from '../shared/application/UaipDocumentAi.service';
 import { CONFIDENCE_THRESHOLD, SEMANTIC_DOCUMENT_TYPES } from '../shared/application/uaipConfig';
+import { OCRService } from './ocr/OCRService';
 import './ocr';
 
 type UploadedPayload = UaipEventPayload & {
@@ -79,6 +80,22 @@ export class PipelineOrchestrator {
         storageId,
         isScanned: classification.isScanned,
       });
+
+      const isImage = mimeType?.startsWith('image/');
+      const needsOcr = isImage || classification.isScanned === true;
+
+      if (needsOcr) {
+        console.log(`[Pipeline] Waiting for OCR to complete before AI processing for ${processingId}`);
+        try {
+          const ocrText = await OCRService.waitForOcr(processingId);
+          console.log(`[Pipeline] OCR completed for ${processingId}. Text length: ${ocrText.length} chars`);
+          if (ocrText.length > 0) {
+            console.log(`[Pipeline] First 1000 chars of OCR output for ${processingId}:\n${ocrText.slice(0, 1000)}`);
+          }
+        } catch (err: any) {
+          console.warn(`[Pipeline] OCR failed or timed out for ${processingId}:`, err.message);
+        }
+      }
 
       // Determine if Stage 2 Gemini AI classification is required
       const isUnknownCategory = classification.documentCategory === 'UNKNOWN';

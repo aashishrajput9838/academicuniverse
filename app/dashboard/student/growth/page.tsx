@@ -11,12 +11,17 @@ import { SubjectPerformanceCard } from '@/components/SubjectPerformanceCard';
 import { GrowthUploadPanel } from '@/components/GrowthUploadPanel';
 import { useGrowthStore } from './store/growthStore';
 import { useGrowthUploadStore } from './store/growthUploadStore';
+import { useModuleRefresh } from '@/hooks/useModuleRefresh';
 
 export default function StudentGrowthHub() {
   const { user, backendUser, backendToken, loading } = useAuth();
   const router = useRouter();
   const { growthData, loading: isLoadingData, error, lastFetchedAt, refresh, reset } = useGrowthStore();
   const stopAllPolling = useGrowthUploadStore((s) => s.stopAllPolling);
+
+  useModuleRefresh(['growth_hub', 'academic_records', 'academic_schedule', 'certificates', 'career_profile'], () => {
+    if (backendToken) refresh(backendToken);
+  });
 
   useEffect(() => {
     if (!loading && (!user || !backendUser)) {
@@ -32,7 +37,6 @@ export default function StudentGrowthHub() {
     }
 
     if (!backendToken) {
-      // No token – clear store and show auth error
       reset('Your session is no longer authenticated. Please sign in again to view your growth summary.');
       return;
     }

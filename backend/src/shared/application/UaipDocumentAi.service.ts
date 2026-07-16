@@ -4,8 +4,8 @@ import { Logger } from '../../shared/utils';
 import {
   SUPPORTED_CATEGORIES,
   SupportedCategory,
-  ACADEMIC_UNIVERSE_MODULES,
 } from './uaipConfig';
+import { ModuleRegistry } from './moduleRegistry';
 
 const logger = new Logger('UaipDocumentAiService');
 
@@ -43,9 +43,9 @@ export class UaipDocumentAiService {
       logger.warn('UaipDocumentAiService: rawContent is empty. Processing with file metadata only.', { processingId });
     }
 
-    // 2️⃣ Build module list for the prompt
-    const moduleList = ACADEMIC_UNIVERSE_MODULES
-      .map(m => `- id: "${m.id}", name: "${m.name}"`)
+    // 2️⃣ Build module list for the prompt from dynamic registry
+    const moduleList = ModuleRegistry.getInstance().getAll()
+      .map(m => `- id: "${m.moduleId}", name: "${m.moduleName}"`)
       .join('\n');
 
     // 3️⃣ Build prompt and call Gemini AI
@@ -198,7 +198,7 @@ ${contentToAnalyze.slice(0, 50000)} // safety limit for token size
     }
 
     // Validate primaryTargetModule
-    const allowedIds = ACADEMIC_UNIVERSE_MODULES.map(m => m.id);
+    const allowedIds = ModuleRegistry.getInstance().getAll().map(m => m.moduleId);
     let validatedPrimary: TargetModuleRecommendation | null = null;
     if (primaryTargetModule && typeof primaryTargetModule === 'object' && primaryTargetModule.id) {
       if (allowedIds.includes(primaryTargetModule.id)) {

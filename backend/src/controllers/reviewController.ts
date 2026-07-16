@@ -9,7 +9,7 @@
  *   POST   /review/:processingId/draft    → saveDraft
  *   POST   /review/:processingId/reject   → reject
  *   POST   /review/:processingId/approve  → approve
- *   POST   /review/:processingId/rollback → rollback  (ADMIN only)
+ *   POST   /review/:processingId/rollback → rollback  (ADMIN or document owner)
  *   GET    /review/:processingId/history  → getHistory
  */
 
@@ -114,6 +114,23 @@ export const rollbackDocument = async (req: any, res: Response, next: NextFuncti
 
     await reviewService.rollback({ processingId, reviewer });
     return sendResponse(res, 200, { processingId, status: 'PENDING_REVIEW' }, 'Approval rolled back');
+  } catch (err: any) {
+    if (err.message?.includes('Forbidden')) return sendError(res, 403, err.message);
+    if (err.message?.includes('not found')) return sendError(res, 404, err.message);
+    next(err);
+  }
+};
+
+export const canRollback = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const { processingId } = req.params;
+    const reviewer = getReviewerContext(req);
+
+    if (!reviewer.userId) return sendError(res, 401, 'Authentication required');
+    if (!reviewer.organizationId) return sendError(res, 403, 'Organization context required');
+
+    const result = await reviewService.canRollback(processingId, reviewer);
+    return sendResponse(res, 200, result, 'Rollback eligibility checked');
   } catch (err: any) {
     if (err.message?.includes('Forbidden')) return sendError(res, 403, err.message);
     if (err.message?.includes('not found')) return sendError(res, 404, err.message);

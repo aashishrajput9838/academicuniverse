@@ -337,7 +337,7 @@ export class ReviewService {
     });
   }
 
-  async approve(params: ApproveParams): Promise<{ canonicalCollection: string; canonicalRecordIds: string[] }> {
+  async approve(params: ApproveParams): Promise<{ canonicalCollection: string; canonicalRecordIds: string[]; affectedModules: string[] }> {
     const { processingId, editedFields, reviewer, routingDecisionOverride } = params;
 
     await assertOwnership(processingId, reviewer.organizationId);
@@ -683,17 +683,20 @@ export class ReviewService {
       });
     }
 
-    return { canonicalCollection, canonicalRecordIds };
+    return { canonicalCollection, canonicalRecordIds, affectedModules: affectedModuleIds };
   }
 
   async rollback(params: RollbackParams): Promise<void> {
     const { processingId, reviewer } = params;
 
-    if (reviewer.role !== 'ADMIN' && reviewer.role !== 'SUPER_ADMIN') {
-      throw new Error('Forbidden: only admins can rollback approvals');
-    }
+    const upload = await assertOwnership(processingId, reviewer.organizationId);
 
-    await assertOwnership(processingId, reviewer.organizationId);
+    const isAdmin = reviewer.role === 'ADMIN' || reviewer.role === 'SUPER_ADMIN';
+    const isOwner = upload.userId === reviewer.userId;
+
+    if (!isAdmin && !isOwner) {
+      throw new Error('Forbidden: you can only rollback documents that you uploaded');
+    }
 
     const kr = await KnowledgeRecordModel.findOne({ processingId });
     if (!kr) throw new Error('KnowledgeRecord not found');
@@ -847,6 +850,28 @@ export class ReviewService {
       userId: reviewer.userId,
       organizationId: reviewer.organizationId,
     });
+  }
+
+  async canRollback(processingId: string, reviewer: ReviewerContext): Promise<{ canRollback: boolean; reason?: string }> {
+    const upload = await assertOwnership(processingId, reviewer.organizationId);
+
+    const kr = await KnowledgeRecordModel.findOne({ processingId });
+    if (!kr) {
+      return { canRollback: false, reason: 'Document not found' };
+    }
+
+    if ((kr as any).reviewStatus !== 'APPROVED') {
+      return { canRollback: false, reason: 'Only approved documents can be rolled back' };
+    }
+
+    const isAdmin = reviewer.role === 'ADMIN' || reviewer.role === 'SUPER_ADMIN';
+    const isOwner = upload.userId === reviewer.userId;
+
+    if (isAdmin || isOwner) {
+      return { canRollback: true };
+    }
+
+    return { canRollback: false, reason: 'You can only rollback documents that you uploaded' };
   }
 
   async getHistory(processingId: string, organizationId: string): Promise<ReviewHistoryResult> {

@@ -41,6 +41,35 @@ export interface CandidateState {
   extractedEntities: Record<string, unknown>;
   summary?: string;
   primaryTargetModule?: { id: string; name?: string; confidence: number; reason?: string };
+  routingDecision?: {
+    documentType: string;
+    primaryModule: string;
+    secondaryModules: string[];
+    routingConfidence: number;
+    reasoning: string;
+  };
+  routingStatus?: string;
+}
+
+export interface RoutingInfo {
+  processingId: string;
+  routingDecision: {
+    documentType: string;
+    primaryModule: string;
+    secondaryModules: string[];
+    routingConfidence: number;
+    reasoning: string;
+  };
+  routingStatus: string;
+  documentCategory: string;
+  moduleRegistry: Array<{
+    moduleId: string;
+    moduleName: string;
+    description: string;
+    acceptedDocumentCategories: string[];
+    canonicalCollection: string;
+    priority: number;
+  }>;
 }
 
 export interface ApproveResult {
@@ -48,6 +77,7 @@ export interface ApproveResult {
   status: 'APPROVED';
   canonicalCollection: string;
   canonicalRecordIds: string[];
+  affectedModules?: string[];
 }
 
 export interface ReviewHistoryEntry {
@@ -62,6 +92,7 @@ export interface ReviewHistoryEntry {
   canonicalRecordIds?: string[];
   candidateFieldsBefore?: Record<string, unknown>;
   candidateFieldsAfter?: Record<string, unknown>;
+  canonicalWrites?: any[];
 }
 
 // ── API Functions ─────────────────────────────────────────────────────────────
@@ -92,9 +123,11 @@ export async function approveDocument(
   token: string,
   processingId: string,
   editedFields?: Record<string, unknown>,
+  routingDecisionOverride?: { primaryModule: string; secondaryModules: string[] },
 ): Promise<ApproveResult> {
   const body: Record<string, unknown> = {};
   if (editedFields) body.editedFields = editedFields;
+  if (routingDecisionOverride) body.routingDecisionOverride = routingDecisionOverride;
   const res = await reviewRequest('POST', `/${encodeURIComponent(processingId)}/approve`, token, body);
   return res.data as ApproveResult;
 }
@@ -104,6 +137,14 @@ export async function rollbackDocument(
   processingId: string,
 ): Promise<void> {
   await reviewRequest('POST', `/${encodeURIComponent(processingId)}/rollback`, token);
+}
+
+export async function canRollback(
+  token: string,
+  processingId: string,
+): Promise<{ canRollback: boolean; reason?: string }> {
+  const res = await reviewRequest('GET', `/${encodeURIComponent(processingId)}/can-rollback`, token);
+  return res.data as { canRollback: boolean; reason?: string };
 }
 
 /** Soft-delete an eligible document workflow and its non-canonical records. */
@@ -131,4 +172,12 @@ export async function getReviewHistory(
 ): Promise<{ entries: ReviewHistoryEntry[] }> {
   const res = await reviewRequest('GET', `/${encodeURIComponent(processingId)}/history`, token);
   return res.data as { entries: ReviewHistoryEntry[] };
+}
+
+export async function getRoutingInfo(
+  token: string,
+  processingId: string,
+): Promise<RoutingInfo> {
+  const res = await reviewRequest('GET', `/${encodeURIComponent(processingId)}/routing`, token);
+  return res.data as RoutingInfo;
 }

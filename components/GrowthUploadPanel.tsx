@@ -9,9 +9,10 @@ import {
   rejectDocument,
   approveDocument,
   getReviewHistory,
+  getRoutingInfo,
   softDeleteDocument,
 } from '@/app/dashboard/student/growth/reviewApi';
-import type { CandidateState, ReviewHistoryEntry } from '@/app/dashboard/student/growth/reviewApi';
+import type { CandidateState, ReviewHistoryEntry, RoutingInfo } from '@/app/dashboard/student/growth/reviewApi';
 import {
   deriveTimelineSteps,
   formatDocumentCategory,
@@ -1608,6 +1609,7 @@ function ReviewTab({
   backendToken,
   initialCandidateFields,
   category,
+  routingDecision,
   onApproved,
   onRejected,
 }: {
@@ -1615,8 +1617,9 @@ function ReviewTab({
   backendToken: string;
   initialCandidateFields: Record<string, unknown>;
   category: string;
-  onApproved: () => void;
-  onRejected: () => void;
+  routingDecision?: { primaryModule: string; secondaryModules: string[]; reasoning: string };
+  onApproved?: (result?: { affectedModules?: string[] }) => void;
+  onRejected?: () => void;
 }) {
   // ── State ──
   const [loading, setLoading] = useState(false);
@@ -1624,6 +1627,7 @@ function ReviewTab({
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [historyEntries, setHistoryEntries] = useState<ReviewHistoryEntry[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [showRoutingOverride, setShowRoutingOverride] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<string>('');
 
   // Editable candidateFields and originalFields states
@@ -1640,6 +1644,25 @@ function ReviewTab({
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [showApproveDialog, setShowApproveDialog] = useState(false);
+
+  const [routingOverride, setRoutingOverride] = useState<{ primaryModule: string; secondaryModules: string[] } | null>(null);
+  const [localRoutingDecision, setLocalRoutingDecision] = useState<{ primaryModule: string; secondaryModules: string[]; reasoning: string } | undefined>(routingDecision);
+
+  useEffect(() => {
+    if (!localRoutingDecision && backendToken) {
+      getRoutingInfo(backendToken, processingId)
+        .then(info => {
+          if (info?.routingDecision) {
+            setLocalRoutingDecision({
+              primaryModule: info.routingDecision.primaryModule,
+              secondaryModules: info.routingDecision.secondaryModules,
+              reasoning: info.routingDecision.reasoning,
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [backendToken, processingId, localRoutingDecision]);
 
   const toastIdRef = useRef(0);
 
@@ -1750,7 +1773,7 @@ function ReviewTab({
       await rejectDocument(backendToken, processingId, rejectReason.trim());
       setReviewStatus('REJECTED');
       addToast('success', 'Document rejected');
-      setTimeout(() => onRejected(), 1200);
+      setTimeout(() => { onRejected?.(); }, 1200);
     } catch (err: any) {
       addToast('error', err.message ?? 'Failed to reject document');
     } finally {
@@ -1762,10 +1785,17 @@ function ReviewTab({
     setShowApproveDialog(false);
     setLoading(true);
     try {
-      const result = await approveDocument(backendToken, processingId, candidateFields);
+      const result = await approveDocument(backendToken, processingId, candidateFields, routingOverride || undefined);
       setReviewStatus('APPROVED');
       addToast('success', `✓ Approved! Written to ${result.canonicalCollection} (${result.canonicalRecordIds?.length ?? 0} records)`);
-      setTimeout(() => onApproved(), 1500);
+      setTimeout(() => {
+        onApproved?.(result);
+        if (result.affectedModules && result.affectedModules.length > 0) {
+          window.dispatchEvent(new CustomEvent('au-module-updated', {
+            detail: { modules: result.affectedModules, processingId },
+          }));
+        }
+      }, 1500);
     } catch (err: any) {
       addToast('error', err.message ?? 'Approval failed');
     } finally {
@@ -1903,6 +1933,65 @@ function ReviewTab({
             </div>
           )}
         </div>
+
+        {/* Routing Override */}
+        {routingDecision && !isTerminal && (
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setShowRoutingOverride((v) => !v)}
+              className="w-full flex items-center justify-between rounded-xl border border-violet-500/30 bg-violet-500/5 px-4 py-2.5 text-xs font-semibold text-violet-300 hover:text-white hover:border-violet-400 transition-colors"
+            >
+              <span>◆ Routing Override</span>
+              <svg className={`h-4 w-4 transition-transform ${showRoutingOverride ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            {showRoutingOverride && (
+            <div className="mt-2 rounded-xl border border-violet-500/20 bg-slate-800/20 p-4 space-y-3">
+              <p className="text-[11px] text-slate-500">Override the AI routing decision before approval. Changes apply only to this approval.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1 block">Primary Module</label>
+                  <select
+                    value={routingOverride?.primaryModule ?? routingDecision.primaryModule}
+                    onChange={(e) => setRoutingOverride(prev => prev ? { ...prev, primaryModule: e.target.value } : { primaryModule: e.target.value, secondaryModules: routingDecision.secondaryModules })}
+                    className="w-full rounded-lg border border-slate-700/50 bg-slate-800/60 px-3 py-2 text-xs text-white outline-none focus:border-violet-400/60 focus:ring-1 focus:ring-violet-400/20"
+                  >
+                    <option value="">-- Select --</option>
+                    <option value={routingDecision.primaryModule}>{routingDecision.primaryModule} (current)</option>
+                    {routingDecision.secondaryModules.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1 block">Secondary Modules</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {routingDecision.secondaryModules.map(m => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setRoutingOverride(prev => {
+                          const current = prev?.secondaryModules ?? routingDecision.secondaryModules;
+                          const next = current.includes(m) ? current.filter(x => x !== m) : [...current, m];
+                          return prev ? { ...prev, secondaryModules: next } : { primaryModule: routingDecision.primaryModule, secondaryModules: next };
+                        })}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                          (routingOverride?.secondaryModules ?? routingDecision.secondaryModules).includes(m)
+                            ? 'border-violet-500/40 bg-violet-500/10 text-violet-300'
+                            : 'border-slate-700/40 bg-slate-800/40 text-slate-500'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-600 italic">{routingDecision.reasoning}</p>
+            </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Bottom Action Bar */}
@@ -1980,7 +2069,7 @@ function ExtractedDataModal({
   onClose: () => void;
   onReviewComplete?: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<'summary' | 'metadata' | 'entities' | 'excel' | 'raw' | 'review'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary' | 'metadata' | 'entities' | 'excel' | 'raw' | 'review' | 'routing'>('summary');
   const classification = status?.classification;
   const candidateFields = (classification?.candidateFields ?? {}) as Record<string, unknown>;
   const extractedEntities = (classification?.extractedEntities ?? {}) as Record<string, unknown>;
@@ -1989,11 +2078,24 @@ function ExtractedDataModal({
   const secondaryModules = classification?.secondaryTargetModules ?? [];
   const hasData = Object.keys(candidateFields).length > 0 || Object.keys(extractedEntities).length > 0;
 
+  const [routingInfo, setRoutingInfo] = useState<RoutingInfo | null>(null);
+  const [routingLoading, setRoutingLoading] = useState(false);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
+
+  useEffect(() => {
+    if (activeTab === 'routing' && !routingInfo && !routingLoading) {
+      setRoutingLoading(true);
+      getRoutingInfo(backendToken, item.processingId)
+        .then(setRoutingInfo)
+        .catch(() => setRoutingInfo(null))
+        .finally(() => setRoutingLoading(false));
+    }
+  }, [activeTab, routingInfo, routingLoading, backendToken, item.processingId]);
 
   // Lock body scroll while modal is open
   useEffect(() => {
@@ -2004,12 +2106,13 @@ function ExtractedDataModal({
     };
   }, []);
 
-  const tabs: { id: 'summary' | 'metadata' | 'entities' | 'excel' | 'raw' | 'review'; label: string }[] = [
+  const tabs: { id: 'summary' | 'metadata' | 'entities' | 'excel' | 'raw' | 'review' | 'routing'; label: string }[] = [
     { id: 'summary',  label: '✦ AI Summary' },
     { id: 'metadata', label: '⊡ Metadata' },
     { id: 'entities', label: '≡ Entities' },
     { id: 'excel',    label: '田 Excel' },
     { id: 'raw',      label: '</> Raw Data' },
+    { id: 'routing',  label: '◆ Routing' },
     { id: 'review',   label: '✎ Review' },
   ];
 
@@ -2279,6 +2382,106 @@ function ExtractedDataModal({
             </div>
           )}
 
+          {/* Tab 6: Routing */}
+          {activeTab === 'routing' && (
+            <div className="px-6 py-5 space-y-4">
+              {routingLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+                </div>
+              ) : routingInfo ? (
+                <>
+                  <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-violet-400 mb-3">AI Routing Decision</p>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Document Type</span>
+                        <span className="text-xs font-mono font-bold text-white">{routingInfo.routingDecision.documentType}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Routing Confidence</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-24 h-1.5 rounded-full bg-slate-700/50">
+                            <div className="h-1.5 rounded-full bg-gradient-to-r from-violet-500 to-violet-400"
+                              style={{ width: `${Math.round(routingInfo.routingDecision.routingConfidence * 100)}%` }} />
+                          </div>
+                          <span className="text-xs font-bold text-violet-300">{Math.round(routingInfo.routingDecision.routingConfidence * 100)}%</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Routing Status</span>
+                        <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${
+                          routingInfo.routingStatus === 'ROUTED'
+                            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                            : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                        }`}>
+                          {routingInfo.routingStatus}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                      <p className="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-2">Primary Destination</p>
+                      {routingInfo.routingDecision.primaryModule ? (
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-300">
+                            {routingInfo.routingDecision.primaryModule}
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500">No primary module determined</p>
+                      )}
+                    </div>
+                    <div className="rounded-xl border border-slate-700/40 bg-slate-800/20 p-4">
+                      <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Secondary Destinations</p>
+                      {routingInfo.routingDecision.secondaryModules.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {routingInfo.routingDecision.secondaryModules.map((m) => (
+                            <span key={m} className="rounded-full border border-slate-700/40 bg-slate-700/20 px-2.5 py-1 text-[11px] text-slate-300">
+                              {m}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500">No secondary modules</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-700/40 bg-slate-800/20 p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Reasoning</p>
+                    <p className="text-xs text-slate-300 leading-relaxed">{routingInfo.routingDecision.reasoning || 'No reasoning provided.'}</p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-700/40 bg-slate-800/20 p-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Available Modules in Registry</p>
+                    <div className="space-y-1.5">
+                      {routingInfo.moduleRegistry.map((m) => (
+                        <div key={m.moduleId} className="flex items-center justify-between rounded-lg border border-slate-700/30 bg-slate-800/40 px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-white">{m.moduleName}</span>
+                            <span className="text-[10px] font-mono text-slate-500">{m.moduleId}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-slate-500">Priority {m.priority}</span>
+                            <span className="text-[10px] font-mono text-violet-300">{m.canonicalCollection}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="py-12 text-center text-slate-500">
+                  <p className="text-sm">No routing information available.</p>
+                  <p className="text-xs mt-1 text-slate-600">The AI has not generated a routing recommendation yet.</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Tab 6: Human-in-the-Loop Review */}
           {activeTab === 'review' && (
             <ReviewTab
@@ -2286,7 +2489,12 @@ function ExtractedDataModal({
               backendToken={backendToken}
               initialCandidateFields={candidateFields}
               category={category}
-              onApproved={() => { onReviewComplete?.(); onClose(); }}
+              routingDecision={routingInfo?.routingDecision ? {
+                primaryModule: routingInfo.routingDecision.primaryModule,
+                secondaryModules: routingInfo.routingDecision.secondaryModules,
+                reasoning: routingInfo.routingDecision.reasoning,
+              } : undefined}
+              onApproved={(result) => { onReviewComplete?.(); onClose(); }}
               onRejected={() => { onReviewComplete?.(); onClose(); }}
             />
           )}

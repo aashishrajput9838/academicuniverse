@@ -6,6 +6,7 @@ import {
   rejectDocument,
   approveDocument,
   rollbackDocument,
+  canRollback,
   getReviewHistory,
   getRoutingInfo,
 } from '../controllers/reviewController';
@@ -50,10 +51,17 @@ router.post('/:processingId/approve', approveDocument);
 /**
  * POST /review/:processingId/rollback
  * No body required.
- * Admin-only: deletes canonical records created by the approval, reverts status to PENDING_REVIEW.
- * Accessible by: ADMIN only (enforced inside ReviewService)
+ * Admin or document owner: deletes canonical records created by the approval, reverts status to PENDING_REVIEW.
+ * Accessible by: ADMIN, SUPER_ADMIN, or document owner
  */
 router.post('/:processingId/rollback', rollbackDocument);
+
+/**
+ * GET /review/:processingId/can-rollback
+ * Returns whether the current user can rollback this document.
+ * Accessible by: STUDENT (own), FACULTY, ADMIN
+ */
+router.get('/:processingId/can-rollback', canRollback);
 
 /**
  * GET /review/:processingId/history

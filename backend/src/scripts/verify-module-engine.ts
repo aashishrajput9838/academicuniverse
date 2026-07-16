@@ -4,7 +4,7 @@
  */
 
 import { ModuleRegistry } from '../shared/application/moduleRegistry';
-import { ModuleRoutingEngine, RoutingExecutor } from '../shared/application/routingEngine';
+import { RoutingExecutor } from '../shared/application/routingEngine';
 
 async function main() {
   console.log('=== Module Population Engine Verification ===\n');
@@ -17,10 +17,13 @@ async function main() {
     console.log(`    - ${m.moduleId} (${m.moduleName}) → ${m.canonicalCollection} [priority ${m.priority}]`);
   }
 
-  // 2. Verify ModuleRoutingEngine can format registry
-  const formatted = ModuleRoutingEngine.getFormattedModuleRegistry();
-  console.log(`\n[2] ModuleRoutingEngine formatted registry (${formatted.length} chars)`);
-  console.log('    First 200 chars:', formatted.slice(0, 200));
+  // 2. Verify RoutingExecutor health check
+  console.log('\n[2] RoutingExecutor health check...');
+  const health = await RoutingExecutor.healthCheck();
+  console.log(`    Healthy modules: ${Object.values(health).filter(h => h.healthy).length}/${Object.keys(health).length}`);
+  for (const [moduleId, status] of Object.entries(health)) {
+    console.log(`    - ${moduleId}: ${status.healthy ? 'OK' : 'FAIL: ' + status.message}`);
+  }
 
   // 3. Verify adapters are registered
   const routingEngine = require('../shared/application/routingEngine');

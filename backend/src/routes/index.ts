@@ -23,6 +23,7 @@ import documentIntelligenceRoutes from './documentIntelligenceRoutes';
 // Import modular routes (new architecture)
 import { researchRoutes } from '../modules/research';
 import { ezoneRoutes } from '../modules/ezone';
+import moduleHealthRoutes from './moduleHealthRoutes';
 
 const router = express.Router();
 
@@ -47,5 +48,6 @@ router.use('/document-registry', documentRegistryRoutes);
 router.use('/export', exportRoutes);
 router.use('/review', reviewRoutes);
 router.use('/document-intelligence', documentIntelligenceRoutes);
+router.use('/module-health', moduleHealthRoutes);
 
 export default router;

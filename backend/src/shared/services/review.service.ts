@@ -27,6 +27,7 @@ import { UaipUpload } from '../../models/UaipUpload';
 import { eventBus } from '../../events/EventBus';
 import { UaipEvent } from '../../events/UaipEvents';
 import { toObjectId } from '../../utils/mongooseHelpers';
+import { RoutingExecutor, RoutingExecutionWrite } from '../../shared/application/routingEngine';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -394,11 +395,9 @@ export class ReviewService {
         const storedRouting = (kr as any).routingDecision;
         const hasRoutingDecision = storedRouting && storedRouting.primaryModule;
 
+        let effectiveRouting: any = null;
         if (hasRoutingDecision || routingDecisionOverride) {
-          // ── NEW PATH: RoutingExecutor ──
-          const { RoutingExecutor } = require('../application/routingEngine');
-
-          const effectiveRouting = {
+          effectiveRouting = {
             ...(storedRouting ?? {}),
             ...(routingDecisionOverride
               ? {
@@ -407,6 +406,8 @@ export class ReviewService {
                 }
               : {}),
           };
+
+          const { RoutingExecutor } = require('../application/routingEngine');
 
           const result = await RoutingExecutor.execute({
             kr,
@@ -460,6 +461,9 @@ export class ReviewService {
         kr.candidateFields = finalFields;
         (kr as any).reviewStatus = 'APPROVED';
         (kr as any).version = newVersion;
+        if (effectiveRouting) {
+          (kr as any).routingDecision = effectiveRouting;
+        }
         await kr.save({ session });
 
         await ReviewHistory.create(
@@ -519,19 +523,22 @@ export class ReviewService {
       const storedRouting = (kr as any).routingDecision;
       const hasRoutingDecision = storedRouting && storedRouting.primaryModule;
 
-      try {
-        if (hasRoutingDecision || routingDecisionOverride) {
-          const { RoutingExecutor } = require('../application/routingEngine');
+      let effectiveRouting: any = null;
+      if (hasRoutingDecision || routingDecisionOverride) {
+        effectiveRouting = {
+          ...(storedRouting ?? {}),
+          ...(routingDecisionOverride
+            ? {
+                primaryModule: routingDecisionOverride.primaryModule,
+                secondaryModules: routingDecisionOverride.secondaryModules,
+              }
+            : {}),
+        };
+      }
 
-          const effectiveRouting = {
-            ...(storedRouting ?? {}),
-            ...(routingDecisionOverride
-              ? {
-                  primaryModule: routingDecisionOverride.primaryModule,
-                  secondaryModules: routingDecisionOverride.secondaryModules,
-                }
-              : {}),
-          };
+      try {
+        if (effectiveRouting) {
+          const { RoutingExecutor } = require('../application/routingEngine');
 
           const result = await RoutingExecutor.execute({
             kr,
@@ -586,6 +593,9 @@ export class ReviewService {
           kr.candidateFields = finalFields;
           (kr as any).reviewStatus = 'APPROVED';
           (kr as any).version = newVersion;
+          if (effectiveRouting) {
+            (kr as any).routingDecision = effectiveRouting;
+          }
           await kr.save();
 
           await ReviewHistory.create({
@@ -710,6 +720,9 @@ export class ReviewService {
       action: 'APPROVED',
     }).sort({ timestamp: -1 }).lean() as any;
 
+    const storedRouting = (kr as any).routingDecision;
+    const hasRoutingDecision = storedRouting && storedRouting.primaryModule;
+
     // Detect replica set support for transactions
     let supportsTransactions = false;
     try {
@@ -726,45 +739,62 @@ export class ReviewService {
       const session = await mongoose.startSession();
       session.startTransaction();
       try {
-        // Handle multi-collection rollback from canonicalWrites
-        if (lastApproval?.canonicalWrites?.length) {
-          const { GrowthHubRecord } = require('../../models/GrowthHubRecord');
-          const { CareerRecord } = require('../../models/CareerRecord');
-          const { ResearchPaperRecord } = require('../../models/ResearchPaperRecord');
-          const { GithubRecord } = require('../../models/GithubRecord');
-          const StudentResume = require('../../models/StudentResume').default;
+        if (hasRoutingDecision) {
+          const routingWrites = await RoutingExecutor.rollback({
+            processingId,
+            organizationId: reviewer.organizationId,
+            personId: String((kr as any).personId ?? (kr as any)._id),
+            session,
+            routingDecision: storedRouting,
+          });
 
-          const modelMap: Record<string, any> = {
-            AcademicRecord,
-            CertificateRecord,
-            ExperienceRecord,
-            AcademicSchedule,
-            GrowthHubRecord,
-            CareerRecord,
-            ResearchPaperRecord,
-            GithubRecord,
-            StudentResume,
-          };
-
-          for (const write of lastApproval.canonicalWrites) {
-            const model = modelMap[write.canonicalCollection];
-            if (model && write.recordIds?.length) {
-              const ids = write.recordIds.map((id: string) => toObjectId(id));
-              await model.deleteMany({ _id: { $in: ids } }, { session });
-            }
+          if (lastApproval) {
+            lastApproval.canonicalWrites = routingWrites.map((w: RoutingExecutionWrite) => ({
+              moduleId: w.moduleId,
+              canonicalCollection: w.canonicalCollection,
+              recordIds: w.recordIds,
+            }));
           }
-        } else if (lastApproval?.canonicalRecordIds?.length) {
-          // Legacy single-collection rollback
-          const col = lastApproval.canonicalCollection;
-          const ids = lastApproval.canonicalRecordIds.map((id: string) => toObjectId(id));
-          const modelMap: Record<string, any> = {
-            AcademicRecord,
-            CertificateRecord,
-            ExperienceRecord,
-            AcademicSchedule,
-          };
-          if (modelMap[col]) {
-            await modelMap[col].deleteMany({ _id: { $in: ids } }, { session });
+        } else {
+          // Legacy rollback for non-routing approvals
+          if (lastApproval?.canonicalWrites?.length) {
+            const { GrowthHubRecord } = require('../../models/GrowthHubRecord');
+            const { CareerRecord } = require('../../models/CareerRecord');
+            const { ResearchPaperRecord } = require('../../models/ResearchPaperRecord');
+            const { GithubRecord } = require('../../models/GithubRecord');
+            const StudentResume = require('../../models/StudentResume').default;
+
+            const modelMap: Record<string, any> = {
+              AcademicRecord,
+              CertificateRecord,
+              ExperienceRecord,
+              AcademicSchedule,
+              GrowthHubRecord,
+              CareerRecord,
+              ResearchPaperRecord,
+              GithubRecord,
+              StudentResume,
+            };
+
+            for (const write of lastApproval.canonicalWrites) {
+              const model = modelMap[write.canonicalCollection];
+              if (model && write.recordIds?.length) {
+                const ids = write.recordIds.map((id: string) => toObjectId(id));
+                await model.deleteMany({ _id: { $in: ids } }, { session });
+              }
+            }
+          } else if (lastApproval?.canonicalRecordIds?.length) {
+            const col = lastApproval.canonicalCollection;
+            const ids = lastApproval.canonicalRecordIds.map((id: string) => toObjectId(id));
+            const modelMap: Record<string, any> = {
+              AcademicRecord,
+              CertificateRecord,
+              ExperienceRecord,
+              AcademicSchedule,
+            };
+            if (modelMap[col]) {
+              await modelMap[col].deleteMany({ _id: { $in: ids } }, { session });
+            }
           }
         }
 
@@ -784,43 +814,62 @@ export class ReviewService {
       console.log('[ReviewService] MongoDB standalone fallback mode for rollback');
       // Standalone path: execute sequentially without session
       try {
-        if (lastApproval?.canonicalWrites?.length) {
-          const { GrowthHubRecord } = require('../../models/GrowthHubRecord');
-          const { CareerRecord } = require('../../models/CareerRecord');
-          const { ResearchPaperRecord } = require('../../models/ResearchPaperRecord');
-          const { GithubRecord } = require('../../models/GithubRecord');
-          const StudentResume = require('../../models/StudentResume').default;
+        if (hasRoutingDecision) {
+          const routingWrites = await RoutingExecutor.rollback({
+            processingId,
+            organizationId: reviewer.organizationId,
+            personId: String((kr as any).personId ?? (kr as any)._id),
+            session: undefined as any,
+            routingDecision: storedRouting,
+          });
 
-          const modelMap: Record<string, any> = {
-            AcademicRecord,
-            CertificateRecord,
-            ExperienceRecord,
-            AcademicSchedule,
-            GrowthHubRecord,
-            CareerRecord,
-            ResearchPaperRecord,
-            GithubRecord,
-            StudentResume,
-          };
-
-          for (const write of lastApproval.canonicalWrites) {
-            const model = modelMap[write.canonicalCollection];
-            if (model && write.recordIds?.length) {
-              const ids = write.recordIds.map((id: string) => toObjectId(id));
-              await model.deleteMany({ _id: { $in: ids } });
-            }
+          if (lastApproval) {
+            lastApproval.canonicalWrites = routingWrites.map((w: RoutingExecutionWrite) => ({
+              moduleId: w.moduleId,
+              canonicalCollection: w.canonicalCollection,
+              recordIds: w.recordIds,
+            }));
           }
-        } else if (lastApproval?.canonicalRecordIds?.length) {
-          const col = lastApproval.canonicalCollection;
-          const ids = lastApproval.canonicalRecordIds.map((id: string) => toObjectId(id));
-          const modelMap: Record<string, any> = {
-            AcademicRecord,
-            CertificateRecord,
-            ExperienceRecord,
-            AcademicSchedule,
-          };
-          if (modelMap[col]) {
-            await modelMap[col].deleteMany({ _id: { $in: ids } });
+        } else {
+          // Legacy rollback for non-routing approvals
+          if (lastApproval?.canonicalWrites?.length) {
+            const { GrowthHubRecord } = require('../../models/GrowthHubRecord');
+            const { CareerRecord } = require('../../models/CareerRecord');
+            const { ResearchPaperRecord } = require('../../models/ResearchPaperRecord');
+            const { GithubRecord } = require('../../models/GithubRecord');
+            const StudentResume = require('../../models/StudentResume').default;
+
+            const modelMap: Record<string, any> = {
+              AcademicRecord,
+              CertificateRecord,
+              ExperienceRecord,
+              AcademicSchedule,
+              GrowthHubRecord,
+              CareerRecord,
+              ResearchPaperRecord,
+              GithubRecord,
+              StudentResume,
+            };
+
+            for (const write of lastApproval.canonicalWrites) {
+              const model = modelMap[write.canonicalCollection];
+              if (model && write.recordIds?.length) {
+                const ids = write.recordIds.map((id: string) => toObjectId(id));
+                await model.deleteMany({ _id: { $in: ids } });
+              }
+            }
+          } else if (lastApproval?.canonicalRecordIds?.length) {
+            const col = lastApproval.canonicalCollection;
+            const ids = lastApproval.canonicalRecordIds.map((id: string) => toObjectId(id));
+            const modelMap: Record<string, any> = {
+              AcademicRecord,
+              CertificateRecord,
+              ExperienceRecord,
+              AcademicSchedule,
+            };
+            if (modelMap[col]) {
+              await modelMap[col].deleteMany({ _id: { $in: ids } });
+            }
           }
         }
 

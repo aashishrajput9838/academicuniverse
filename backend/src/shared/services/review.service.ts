@@ -26,7 +26,7 @@ import { AcademicSchedule } from '../../models/AcademicSchedule';
 import { UaipUpload } from '../../models/UaipUpload';
 import { eventBus } from '../../events/EventBus';
 import { UaipEvent } from '../../events/UaipEvents';
-import { normalizeScheduleDates } from '../utils/dateNormalizer';
+import { normalizeScheduleDates, normalizeDate } from '../utils/dateNormalizer';
 import { toObjectId } from '../../utils/mongooseHelpers';
 import { RoutingExecutor, RoutingExecutionWrite } from '../../shared/application/routingEngine';
 
@@ -182,7 +182,7 @@ async function writeCertificateRecord(
   };
   const update = {
     $set: {
-      issuedDate: fields.issueDate ? new Date(fields.issueDate) : new Date(),
+      issuedDate: fields.issueDate ? new Date(normalizeDate(fields.issueDate).isoDateTime) : new Date(),
       rawConfidence: Number(kr.confidenceScore ?? 0),
       sourceDocumentId: sourceOid,
     },
@@ -217,8 +217,8 @@ async function writeExperienceRecords(
     };
     const update = {
       $set: {
-        startDate: exp.startDate ? new Date(exp.startDate) : new Date(0),
-        endDate: exp.endDate ? new Date(exp.endDate) : undefined,
+        startDate: exp.startDate ? new Date(normalizeDate(exp.startDate).isoDateTime) : new Date(0),
+        endDate: exp.endDate ? new Date(normalizeDate(exp.endDate).isoDateTime) : undefined,
         rawConfidence: Number(kr.confidenceScore ?? 0),
         sourceDocumentId: sourceOid,
       },

@@ -32,9 +32,20 @@ export function normalizeDate(value: DateInput): NormalizedDate {
       console.warn('[DateNormalizer] Invalid Date object received', { raw });
       return { iso: null, isoDateTime: null, isValid: false, raw };
     }
+
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    const hours = String(value.getHours()).padStart(2, '0');
+    const minutes = String(value.getMinutes()).padStart(2, '0');
+    const seconds = String(value.getSeconds()).padStart(2, '0');
+    const ms = String(value.getMilliseconds()).padStart(3, '0');
+    const iso = `${year}-${month}-${day}`;
+    const isoDateTime = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${ms}`;
+
     return {
-      iso: value.toISOString().split('T')[0],
-      isoDateTime: value.toISOString(),
+      iso,
+      isoDateTime,
       isValid: true,
       raw,
     };

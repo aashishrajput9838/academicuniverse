@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import { ExperienceRecordRepository } from '../repositories/experienceRecord.repository';
 import { AuditEntry } from '../../models/AuditEntry';
 import { IExperienceRecord } from '../../models/ExperienceRecord';
+import { normalizeDate } from '../../shared/utils/dateNormalizer';
 import { toObjectId } from '../../utils/mongooseHelpers';
 
 export class ExperienceService {
@@ -29,8 +30,8 @@ export class ExperienceService {
         rawConfidence,
         title,
         company,
-        startDate: new Date(startDate),
-        ...(endDate && { endDate: new Date(endDate) }),
+        startDate: new Date(normalizeDate(startDate).isoDateTime),
+        ...(endDate && { endDate: new Date(normalizeDate(endDate).isoDateTime) }),
       },
       organizationId,
     );

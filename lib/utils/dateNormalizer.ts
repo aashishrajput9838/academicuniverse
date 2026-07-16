@@ -225,9 +225,18 @@ export function normalizeDate(value: DateInput): NormalizedDate {
       console.warn('[DateNormalizer] Invalid Date object received', { raw: value });
       return { iso: null, isoDateTime: null, isValid: false, raw: value };
     }
+
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    const hours = String(value.getHours()).padStart(2, '0');
+    const minutes = String(value.getMinutes()).padStart(2, '0');
+    const seconds = String(value.getSeconds()).padStart(2, '0');
+    const ms = String(value.getMilliseconds()).padStart(3, '0');
+
     return {
-      iso: value.toISOString().split('T')[0],
-      isoDateTime: value.toISOString(),
+      iso: `${year}-${month}-${day}`,
+      isoDateTime: `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${ms}`,
       isValid: true,
       raw: value,
     };
@@ -306,7 +315,8 @@ export function formatDateForDisplay(value: DateInput): string {
     return 'Unknown Date';
   }
 
-  const date = new Date(normalized.iso + 'T00:00:00');
+  const [year, month, day] = normalized.iso.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
   if (isNaN(date.getTime())) {
     return normalized.iso;
   }
@@ -316,5 +326,6 @@ export function formatDateForDisplay(value: DateInput): string {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: 'UTC',
   });
 }

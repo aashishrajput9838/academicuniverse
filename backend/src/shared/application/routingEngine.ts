@@ -14,7 +14,7 @@ import { Logger } from '../../shared/utils';
 import { toObjectId } from '../../utils/mongooseHelpers';
 import { ModuleRegistry, ModuleDescriptor } from './moduleRegistry';
 import { ModulePopulationLog } from '../../models/ModulePopulationLog';
-import { normalizeScheduleDates } from '../../shared/utils/dateNormalizer';
+import { normalizeScheduleDates, normalizeDate } from '../../shared/utils/dateNormalizer';
 
 const logger = new Logger('RoutingEngine');
 
@@ -389,7 +389,7 @@ class CertificatesAdapter extends BaseAdapter {
       },
       {
         $set: {
-          issuedDate: fields.issueDate ? new Date(fields.issueDate) : new Date(),
+          issuedDate: fields.issueDate ? new Date(normalizeDate(fields.issueDate).isoDateTime) : new Date(),
           rawConfidence: Number(kr.confidenceScore ?? 0),
           sourceDocumentId: upload._id,
         }

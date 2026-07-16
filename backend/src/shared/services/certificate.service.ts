@@ -2,6 +2,7 @@ import { Types } from 'mongoose';
 import { CertificateRecordRepository } from '../repositories/certificateRecord.repository';
 import { AuditEntry } from '../../models/AuditEntry';
 import { ICertificateRecord } from '../../models/CertificateRecord';
+import { normalizeDate } from '../../shared/utils/dateNormalizer';
 import { toObjectId } from '../../utils/mongooseHelpers';
 
 export class CertificateService {
@@ -28,7 +29,7 @@ export class CertificateService {
         rawConfidence,
         title,
         issuer,
-        issuedDate: new Date(issuedDate),
+        issuedDate: new Date(normalizeDate(issuedDate).isoDateTime),
       },
       organizationId,
     );

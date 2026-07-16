@@ -109,6 +109,17 @@ ${contentToAnalyze.slice(0, 50000)} // safety limit for token size
       // 4️⃣ Validate response format
       const validatedResult = this.validateAiResponse(aiResponse);
 
+      // Determine routing decision
+      const { ModuleRoutingEngine } = require('./routingEngine');
+      const routingDecision = await ModuleRoutingEngine.determineRouting({
+        processingId,
+        rawContent: contentToAnalyze,
+        extractedEntities: validatedResult.extractedEntities,
+        candidateFields: validatedResult.candidateFields,
+      });
+
+      const routingStatus = (routingDecision.primaryModule && routingDecision.routingConfidence >= 0.8) ? 'ROUTED' : 'UNKNOWN';
+
       // 5️⃣ Update the KnowledgeRecord with AI analysis results
       await KnowledgeRecordModel.updateOne(
         { processingId },
@@ -123,6 +134,8 @@ ${contentToAnalyze.slice(0, 50000)} // safety limit for token size
             extractedEntities: validatedResult.extractedEntities,
             candidateFields: validatedResult.candidateFields,
             rawAiOutput: JSON.stringify(aiResponse),
+            routingDecision,
+            routingStatus,
             reviewStatus: 'PENDING_REVIEW',
           },
         }

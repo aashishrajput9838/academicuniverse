@@ -355,48 +355,153 @@ export class DocumentIntelligenceRepository {
     processingId: string,
     deletedBy: string
   ): Promise<DicDeleteDocumentResult> {
-    const session = await mongoose.startSession();
     let result: DicDeleteDocumentResult;
 
+    // Detect replica set support for transactions
+    let supportsTransactions = false;
     try {
-      session.startTransaction();
+      if (mongoose.connection && mongoose.connection.db) {
+        const isMasterResult = await mongoose.connection.db.admin().command({ isMaster: 1 });
+        supportsTransactions = !!(isMasterResult.setName || isMasterResult.hosts);
+      }
+    } catch (err) {
+      console.warn('[DIC] Failed to query MongoDB isMaster command; assuming standalone mode', err);
+    }
 
+    if (supportsTransactions) {
+      console.log('[DIC] MongoDB transaction mode');
+      const session = await mongoose.startSession();
+      try {
+        session.startTransaction();
+
+        const upload: any = await UaipUpload.findOne({
+          processingId,
+          organizationId,
+          status: { $ne: 'DELETED' },
+        }).session(session);
+
+        if (!upload) {
+          result = { outcome: 'NOT_FOUND', processingId };
+        } else {
+          const knowledgeRecord: any = await KnowledgeRecordModel.findOne({
+            processingId,
+            status: { $ne: 'DELETED' },
+          }).session(session);
+          const reviewStatus = resolveReviewStatus(
+            String(upload.status),
+            knowledgeRecord ? String(knowledgeRecord.reviewStatus ?? '') : null
+          );
+
+          if (reviewStatus === 'APPROVED') {
+            result = { outcome: 'APPROVED', processingId };
+          } else if (reviewStatus !== 'PENDING_REVIEW' && reviewStatus !== 'REJECTED') {
+            result = { outcome: 'NOT_DELETABLE', processingId };
+          } else {
+            const deletedAt = new Date();
+
+            if (upload.fileHash) {
+              upload.deletedFileHash = upload.fileHash;
+            }
+            upload.fileHash = `deleted-${processingId}`;
+            upload.status = 'DELETED';
+            upload.deletedAt = deletedAt;
+            upload.deletedBy = deletedBy;
+            await upload.save({ session });
+
+            await KnowledgeRecordModel.updateMany(
+              { processingId, status: { $ne: 'DELETED' } },
+              {
+                $set: {
+                  status: 'DELETED',
+                  deletedAt,
+                  deletedBy,
+                },
+              },
+              { session }
+            );
+
+            await ReviewHistory.updateMany(
+              {
+                processingId,
+                action: 'DRAFT_SAVED',
+                status: { $ne: 'DELETED' },
+              },
+              {
+                $set: {
+                  status: 'DELETED',
+                  deletedAt,
+                  deletedBy,
+                },
+              },
+              { session }
+            );
+
+            result = {
+              outcome: 'DELETED',
+              processingId,
+              deletedAt: deletedAt.toISOString(),
+            };
+          }
+        }
+
+        await session.commitTransaction();
+        return result;
+      } catch (err) {
+        await session.abortTransaction();
+        throw err;
+      } finally {
+        await session.endSession();
+      }
+    } else {
+      console.log('[DIC] MongoDB standalone fallback mode');
+      // Sequential soft deletes with manual rollbacks if fails midway
       const upload: any = await UaipUpload.findOne({
         processingId,
         organizationId,
         status: { $ne: 'DELETED' },
-      }).session(session);
+      });
 
       if (!upload) {
-        result = { outcome: 'NOT_FOUND', processingId };
-      } else {
-        const knowledgeRecord: any = await KnowledgeRecordModel.findOne({
-          processingId,
-          status: { $ne: 'DELETED' },
-        }).session(session);
-        const reviewStatus = resolveReviewStatus(
-          String(upload.status),
-          knowledgeRecord ? String(knowledgeRecord.reviewStatus ?? '') : null
+        return { outcome: 'NOT_FOUND', processingId };
+      }
+
+      const knowledgeRecord: any = await KnowledgeRecordModel.findOne({
+        processingId,
+        status: { $ne: 'DELETED' },
+      });
+      const reviewStatus = resolveReviewStatus(
+        String(upload.status),
+        knowledgeRecord ? String(knowledgeRecord.reviewStatus ?? '') : null
+      );
+
+      if (reviewStatus === 'APPROVED') {
+        return { outcome: 'APPROVED', processingId };
+      }
+      if (reviewStatus !== 'PENDING_REVIEW' && reviewStatus !== 'REJECTED') {
+        return { outcome: 'NOT_DELETABLE', processingId };
+      }
+
+      const deletedAt = new Date();
+
+      try {
+        // Step 1: Update ReviewHistory (DRAFT_SAVED entries)
+        await ReviewHistory.updateMany(
+          {
+            processingId,
+            action: 'DRAFT_SAVED',
+            status: { $ne: 'DELETED' },
+          },
+          {
+            $set: {
+              status: 'DELETED',
+              deletedAt,
+              deletedBy,
+            },
+          }
         );
 
-        if (reviewStatus === 'APPROVED') {
-          result = { outcome: 'APPROVED', processingId };
-        } else if (reviewStatus !== 'PENDING_REVIEW' && reviewStatus !== 'REJECTED') {
-          result = { outcome: 'NOT_DELETABLE', processingId };
-        } else {
-          const deletedAt = new Date();
-
-          // Keep the original hash for audit, while releasing the sparse unique hash
-          // so a user may upload the same file again after it has been deleted.
-          if (upload.fileHash) {
-            upload.deletedFileHash = upload.fileHash;
-            upload.fileHash = undefined;
-          }
-          upload.status = 'DELETED';
-          upload.deletedAt = deletedAt;
-          upload.deletedBy = deletedBy;
-          await upload.save({ session });
-
+        // Step 2: Update KnowledgeRecord(s)
+        try {
           await KnowledgeRecordModel.updateMany(
             { processingId, status: { $ne: 'DELETED' } },
             {
@@ -405,41 +510,71 @@ export class DocumentIntelligenceRepository {
                 deletedAt,
                 deletedBy,
               },
-            },
-            { session }
+            }
           );
 
-          await ReviewHistory.updateMany(
-            {
-              processingId,
-              action: 'DRAFT_SAVED',
-              status: { $ne: 'DELETED' },
-            },
-            {
-              $set: {
+          // Step 3: Update UaipUpload (Final persistence step, keeping fileHash untouched in memory until here)
+          try {
+            const updateFields: any = {
+              status: 'DELETED',
+              deletedAt,
+              deletedBy,
+              fileHash: `deleted-${processingId}`,
+            };
+            if (upload.fileHash) {
+              updateFields.deletedFileHash = upload.fileHash;
+            }
+
+            await UaipUpload.updateOne({ _id: upload._id }, updateFields);
+          } catch (uploadErr) {
+            // Rollback KnowledgeRecord
+            await KnowledgeRecordModel.updateMany(
+              { processingId, status: 'DELETED', deletedAt, deletedBy },
+              {
+                $set: { status: 'ACTIVE' },
+                $unset: { deletedAt: 1, deletedBy: 1 },
+              }
+            );
+            // Rollback ReviewHistory
+            await ReviewHistory.updateMany(
+              {
+                processingId,
+                action: 'DRAFT_SAVED',
                 status: 'DELETED',
                 deletedAt,
                 deletedBy,
               },
+              {
+                $unset: { status: 1, deletedAt: 1, deletedBy: 1 },
+              }
+            );
+            throw uploadErr;
+          }
+        } catch (krErr) {
+          // Rollback ReviewHistory
+          await ReviewHistory.updateMany(
+            {
+              processingId,
+              action: 'DRAFT_SAVED',
+              status: 'DELETED',
+              deletedAt,
+              deletedBy,
             },
-            { session }
+            {
+              $unset: { status: 1, deletedAt: 1, deletedBy: 1 },
+            }
           );
-
-          result = {
-            outcome: 'DELETED',
-            processingId,
-            deletedAt: deletedAt.toISOString(),
-          };
+          throw krErr;
         }
-      }
 
-      await session.commitTransaction();
-      return result;
-    } catch (err) {
-      await session.abortTransaction();
-      throw err;
-    } finally {
-      await session.endSession();
+        return {
+          outcome: 'DELETED',
+          processingId,
+          deletedAt: deletedAt.toISOString(),
+        };
+      } catch (err: any) {
+        throw new Error(`Sequential soft delete failed midway. Rollback performed. Error: ${err.message}`);
+      }
     }
   }
 }

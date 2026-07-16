@@ -88,13 +88,13 @@ export const rejectDocument = async (req: any, res: Response, next: NextFunction
 export const approveDocument = async (req: any, res: Response, next: NextFunction) => {
   try {
     const { processingId } = req.params;
-    const { editedFields } = req.body;
+    const { editedFields, routingDecisionOverride } = req.body;
     const reviewer = getReviewerContext(req);
 
     if (!reviewer.userId) return sendError(res, 401, 'Authentication required');
     if (!reviewer.organizationId) return sendError(res, 403, 'Organization context required');
 
-    const result = await reviewService.approve({ processingId, editedFields, reviewer });
+    const result = await reviewService.approve({ processingId, editedFields, reviewer, routingDecisionOverride });
     return sendResponse(res, 200, { processingId, status: 'APPROVED', ...result }, 'Document approved successfully');
   } catch (err: any) {
     if (err.message?.includes('Forbidden')) return sendError(res, 403, err.message);
@@ -137,3 +137,41 @@ export const getReviewHistory = async (req: any, res: Response, next: NextFuncti
     next(err);
   }
 };
+
+/**
+ * GET /review/:processingId/routing
+ * Returns the AI routing decision and module registry for this document.
+ * Allows the review UI to display routing recommendations and offer manual override.
+ */
+export const getRoutingInfo = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const { processingId } = req.params;
+    const { userId, organizationId } = getReviewerContext(req);
+
+    if (!userId) return sendError(res, 401, 'Authentication required');
+    if (!organizationId) return sendError(res, 403, 'Organization context required');
+
+    const state = await reviewService.getCandidateState(processingId, organizationId);
+    const { moduleRegistry } = require('../shared/application/routingEngine');
+
+    return sendResponse(res, 200, {
+      processingId,
+      routingDecision: state.routingDecision,
+      routingStatus: state.routingStatus,
+      documentCategory: state.documentCategory,
+      moduleRegistry: moduleRegistry.map((m: any) => ({
+        moduleId: m.moduleId,
+        moduleName: m.moduleName,
+        description: m.description,
+        acceptedDocumentCategories: m.acceptedDocumentCategories,
+        canonicalCollection: m.canonicalCollection,
+        priority: m.priority,
+      })),
+    }, 'Routing info retrieved');
+  } catch (err: any) {
+    if (err.message?.includes('Forbidden')) return sendError(res, 403, err.message);
+    if (err.message?.includes('not found')) return sendError(res, 404, err.message);
+    next(err);
+  }
+};
+

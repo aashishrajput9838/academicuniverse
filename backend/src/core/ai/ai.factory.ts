@@ -105,34 +105,36 @@ export class AIProviderFactory {
     return this.mockProvider;
   }
 
-  /**
-   * Get the default provider for general use
-   */
   getDefaultProvider(): IAIProvider {
     const gemini = this.providers.get('gemini');
     const openrouter = this.providers.get('openrouter');
 
+    let baseProvider: IAIProvider;
     if (gemini && openrouter) {
-      return new FailoverAIProvider(gemini, openrouter);
+      baseProvider = new FailoverAIProvider(gemini, openrouter);
+    } else if (gemini) {
+      baseProvider = gemini;
+    } else if (openrouter) {
+      baseProvider = openrouter;
+    } else {
+      if (this.isProduction) {
+        logger.error('No real AI providers available in production; refusing to start without a provider');
+        throw new Error('No AI provider is currently available. Please try again later.');
+      }
+      if (!this.mockProvider) {
+        this.mockProvider = new MockAIProvider();
+      }
+      return this.mockProvider;
     }
 
-    if (gemini) {
-      return gemini;
+    if (!this.isProduction) {
+      if (!this.mockProvider) {
+        this.mockProvider = new MockAIProvider();
+      }
+      return new FailoverAIProvider(baseProvider, this.mockProvider);
     }
 
-    if (openrouter) {
-      return openrouter;
-    }
-
-    if (this.isProduction) {
-      logger.error('No real AI providers available in production; refusing to start without a provider');
-      throw new Error('No AI provider is currently available. Please try again later.');
-    }
-
-    if (!this.mockProvider) {
-      this.mockProvider = new MockAIProvider();
-    }
-    return this.mockProvider;
+    return baseProvider;
   }
 
   /**

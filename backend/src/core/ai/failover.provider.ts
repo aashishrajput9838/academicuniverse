@@ -19,9 +19,10 @@ function isAvailabilityError(error: any): boolean {
   const status = extractHttpStatus(err);
   const code = extractErrorCode(err);
 
+  if (process.env.NODE_ENV !== 'production') return true;
   if (status === 429 || status === 503) return true;
   if (code === 'RESOURCE_EXHAUSTED' || code === 'SERVICE_UNAVAILABLE') return true;
-  if (/quota|usage limit|rate limit|temporarily unavailable|service unavailable|exceeded your current quota|temporary usage limit/i.test(msg)) return true;
+  if (/quota|usage limit|rate limit|temporarily unavailable|service unavailable|exceeded your current quota|temporary usage limit|fetch failed/i.test(msg)) return true;
 
   return false;
 }

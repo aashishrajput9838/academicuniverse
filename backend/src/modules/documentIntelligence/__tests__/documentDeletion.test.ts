@@ -2,6 +2,13 @@ jest.mock('mongoose', () => ({
   __esModule: true,
   default: {
     startSession: jest.fn(),
+    connection: {
+      db: {
+        admin: () => ({
+          command: jest.fn().mockResolvedValue({ setName: 'rs0' }),
+        }),
+      },
+    },
   },
 }));
 
@@ -85,7 +92,7 @@ describe('Document Intelligence soft deletion', () => {
     expect(upload.deletedBy).toBe(deletedBy);
     expect(upload.deletedAt).toBeInstanceOf(Date);
     expect(upload.deletedFileHash).toBe('file-hash');
-    expect(upload.fileHash).toBeUndefined();
+    expect(upload.fileHash).toBe(`deleted-${processingId}`);
     expect(upload.save).toHaveBeenCalledWith({ session });
     expect(KnowledgeRecordModel.updateMany).toHaveBeenCalledWith(
       { processingId, status: { $ne: 'DELETED' } },

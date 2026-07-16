@@ -17,6 +17,26 @@ jest.mock('../../../events/EventBus', () => {
   };
 });
 
+jest.mock('../repositories/MongoOcrIdempotencyRepository', () => {
+  const inMemoryStore = new Set<string>();
+  const mockInstance = {
+    has: jest.fn().mockImplementation(async (id: string) => inMemoryStore.has(id)),
+    record: jest.fn().mockImplementation(async (id: string) => { inMemoryStore.add(id); }),
+    delete: jest.fn().mockImplementation(async (id: string) => { inMemoryStore.delete(id); }),
+  };
+  const MockClass = jest.fn().mockImplementation(() => mockInstance);
+  (MockClass as any).clearAll = jest.fn().mockImplementation(async () => { inMemoryStore.clear(); });
+  return {
+    MongoOcrIdempotencyRepository: MockClass,
+  };
+});
+
+jest.mock('../../../models/KnowledgeRecord', () => ({
+  KnowledgeRecordModel: {
+    updateOne: jest.fn().mockResolvedValue({}),
+  },
+}));
+
 describe('OCRService', () => {
   let mockProvider: jest.Mocked<IOcrProvider>;
   let ocrService: OCRService;

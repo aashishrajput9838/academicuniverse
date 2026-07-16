@@ -7,6 +7,7 @@ import {
   approveDocument,
   rollbackDocument,
   getReviewHistory,
+  getRoutingInfo,
 } from '../controllers/reviewController';
 
 const router = express.Router();
@@ -60,5 +61,12 @@ router.post('/:processingId/rollback', rollbackDocument);
  * Accessible by: STUDENT (own), FACULTY, ADMIN
  */
 router.get('/:processingId/history', getReviewHistory);
+
+/**
+ * GET /review/:processingId/routing
+ * Returns AI routing decision + module registry for review UI.
+ * Accessible by: STUDENT (own), FACULTY, ADMIN
+ */
+router.get('/:processingId/routing', getRoutingInfo);
 
 export default router;

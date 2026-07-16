@@ -7,6 +7,14 @@ export interface TargetModuleRecommendation {
   reason?: string;
 }
 
+export interface TargetModuleRoutingDecision {
+  documentType: string;
+  primaryModule: string;
+  secondaryModules: string[];
+  routingConfidence: number;
+  reasoning: string;
+}
+
 export interface KnowledgeRecord extends Document {
   processingId: string; // reference to UaipUpload
   documentCategory: string; // e.g., TRANSCRIPT, SYLLABUS, CERTIFICATE, MARKSHEET, etc.
@@ -25,6 +33,8 @@ export interface KnowledgeRecord extends Document {
   extractedEntities?: Record<string, any>; // raw unstructured entities from AI
   candidateFields?: Record<string, any>; // structured entities for human-in-the-loop review
   rawAiOutput?: string; // raw JSON string from AI for debugging
+  routingDecision?: TargetModuleRoutingDecision;
+  routingStatus?: string;
   /** Lifecycle status for retention without physically deleting the record. */
   status?: 'ACTIVE' | 'DELETED';
   deletedAt?: Date;
@@ -53,6 +63,8 @@ const KnowledgeRecordSchema = new Schema<KnowledgeRecord>({
   extractedEntities: { type: Schema.Types.Mixed },
   candidateFields: { type: Schema.Types.Mixed },
   rawAiOutput: { type: String },
+  routingDecision: { type: Schema.Types.Mixed },
+  routingStatus: { type: String },
   status: { type: String, enum: ['ACTIVE', 'DELETED'], default: 'ACTIVE', index: true },
   deletedAt: { type: Date },
   deletedBy: { type: String },
@@ -62,4 +74,3 @@ const KnowledgeRecordSchema = new Schema<KnowledgeRecord>({
 });
 
 export const KnowledgeRecordModel = model<KnowledgeRecord>('KnowledgeRecord', KnowledgeRecordSchema);
-

@@ -25,6 +25,7 @@ import type {
   GrowthProcessingStatus,
   ProcessingTimelineStep,
 } from '@/app/dashboard/student/growth/types/growthUpload';
+import { normalizeSchedule } from './timetableHelper';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -193,11 +194,8 @@ function AiDisclaimerBanner() {
 
 // ── Category-Aware Extracted Data Views ────────────────────────────────────
 
-function TimetableView({ candidateFields }: { candidateFields: Record<string, unknown> }) {
-  const schedule = (candidateFields.schedule as Array<{
-    date: string;
-    events: Array<{ timeSlot?: string; courseCode?: string; courseName?: string; room?: string; instructor?: string; type?: string }>;
-  }>) ?? [];
+export function TimetableView({ candidateFields }: { candidateFields: Record<string, unknown> }) {
+  const schedule = normalizeSchedule(candidateFields?.schedule);
 
   return (
     <div className="space-y-4">
@@ -216,13 +214,13 @@ function TimetableView({ candidateFields }: { candidateFields: Record<string, un
             <div className="divide-y divide-slate-700/30">
               {day.events.map((ev, j) => (
                 <div key={j} className="grid grid-cols-[120px_1fr] gap-3 px-4 py-3 text-sm">
-                  {ev.type === 'Holiday' ? (
+                  {ev.isHoliday ? (
                     <div className="col-span-2 text-center py-2 text-amber-300/70 italic text-xs">🏖️ Holiday</div>
                   ) : (
                     <>
                       <div>
                         <p className="text-xs font-medium text-slate-400">{ev.timeSlot}</p>
-                        <p className="text-[11px] text-slate-600 mt-0.5">{ev.courseCode}</p>
+                        {ev.courseCode && <p className="text-[11px] text-slate-600 mt-0.5">{ev.courseCode}</p>}
                       </div>
                       <div>
                         <p className="font-medium text-white">{ev.courseName}</p>
@@ -244,9 +242,7 @@ function TimetableView({ candidateFields }: { candidateFields: Record<string, un
 }
 
 function MarksheetView({ extractedEntities, candidateFields }: { extractedEntities?: Record<string, unknown>; candidateFields: Record<string, unknown> }) {
-  const subjects = (candidateFields.subjects as Array<{
-    name?: string; code?: string; marks?: number | string; maxMarks?: number | string; grade?: string; credits?: number | string;
-  }>) ?? [];
+  const subjects = Array.isArray(candidateFields?.subjects) ? candidateFields.subjects : [];
   const cgpa = extractedEntities?.cgpa as string | undefined;
   const semester = extractedEntities?.semester as string | undefined;
 
@@ -579,13 +575,14 @@ function buildEditableGrid(
 ): { sheets: { name: string; headers: string[]; rows: EditableCell[][] }[] } {
   // 1. ACADEMIC_TIMETABLE
   if (category === 'ACADEMIC_TIMETABLE') {
-    const schedule = (candidateFields.schedule as any[]) ?? [];
+    const schedule = Array.isArray(candidateFields?.schedule) ? candidateFields.schedule : [];
     const headers = ['Date', 'Time', 'Course', 'Code', 'Room', 'Instructor'];
     const rows: EditableCell[][] = [];
 
     schedule.forEach((day: any, dIdx: number) => {
+      if (!day || typeof day !== 'object') return;
       const dateStr = day.date || '';
-      const events = day.events || [];
+      const events = Array.isArray(day.events) ? day.events : [];
       events.forEach((ev: any, eIdx: number) => {
         rows.push([
           { path: `schedule.${dIdx}.date`, header: 'Date', aiValue: getNestedValue(originalFields, `schedule.${dIdx}.date`) || '' },
@@ -603,7 +600,7 @@ function buildEditableGrid(
 
   // 2. TRANSCRIPT or MARKSHEET
   if (category === 'TRANSCRIPT' || category === 'MARKSHEET') {
-    const subjects = (candidateFields.subjects as any[]) ?? [];
+    const subjects = Array.isArray(candidateFields?.subjects) ? candidateFields.subjects : [];
     const headers = ['Subject', 'Credits', 'Marks', 'Grade'];
     const rows = subjects.map((sub: any, sIdx: number) => [
       { path: `subjects.${sIdx}.name`, header: 'Subject', aiValue: getNestedValue(originalFields, `subjects.${sIdx}.name`) || '' },
@@ -949,24 +946,25 @@ function ExcelView({
 
   // 1. Timetable View
   if (category === 'ACADEMIC_TIMETABLE') {
-    const schedule = (candidateFields.schedule as any[]) ?? [];
+    const schedule = Array.isArray(candidateFields?.schedule) ? candidateFields.schedule : [];
     const headers = ['Date', 'Time', 'Course', 'Code', 'Room', 'Instructor'];
     const rows: string[][] = [];
 
     schedule.forEach((day: any) => {
+      if (!day || typeof day !== 'object') return;
       const dateStr = day.date || '';
-      if (day.events && Array.isArray(day.events)) {
-        day.events.forEach((ev: any) => {
-          rows.push([
-            dateStr,
-            ev.timeSlot || '—',
-            ev.courseName || (ev.type === 'Holiday' ? '🏖️ Holiday' : '—'),
-            ev.courseCode || '—',
-            ev.room || '—',
-            ev.instructor || '—',
-          ]);
-        });
-      }
+      const events = Array.isArray(day.events) ? day.events : [];
+      events.forEach((ev: any) => {
+        if (!ev || typeof ev !== 'object') return;
+        rows.push([
+          dateStr,
+          ev.timeSlot || '—',
+          ev.courseName || (ev.type === 'Holiday' ? '🏖️ Holiday' : '—'),
+          ev.courseCode || '—',
+          ev.room || '—',
+          ev.instructor || '—',
+        ]);
+      });
     });
 
     return (
@@ -986,7 +984,7 @@ function ExcelView({
 
   // 2. Transcript or Marksheet View
   if (category === 'TRANSCRIPT' || category === 'MARKSHEET') {
-    const subjects = (candidateFields.subjects as any[]) ?? [];
+    const subjects = Array.isArray(candidateFields?.subjects) ? candidateFields.subjects : [];
     const headers = ['Subject', 'Credits', 'Marks', 'Grade'];
     const rows: string[][] = subjects.map((sub: any) => [
       sub.name || (sub.code ? `Subject ${sub.code}` : '—'),

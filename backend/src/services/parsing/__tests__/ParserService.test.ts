@@ -8,6 +8,11 @@ import { logger } from '../../../utils/logger';
 
 jest.mock('../../../events/EventBus');
 jest.mock('../../../utils/logger');
+jest.mock('../../../models/KnowledgeRecord', () => ({
+  KnowledgeRecordModel: {
+    updateOne: jest.fn().mockResolvedValue({}),
+  },
+}));
 
 const mockedPublish = jest.fn();
 // @ts-ignore

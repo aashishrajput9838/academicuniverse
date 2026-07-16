@@ -3,6 +3,7 @@ const mockFindOneAndUpdate = jest.fn();
 const mockGetFile = jest.fn();
 const mockClassify = jest.fn();
 const mockParseDocument = jest.fn();
+const mockProcessDocument = jest.fn();
 
 jest.mock('../../events/EventBus', () => ({
   eventBus: {
@@ -35,12 +36,19 @@ jest.mock('../parsing/ParserService', () => ({
   },
 }));
 
+jest.mock('../../shared/application/UaipDocumentAi.service', () => ({
+  UaipDocumentAiService: jest.fn().mockImplementation(() => ({
+    processDocument: mockProcessDocument,
+  })),
+}));
+
 jest.mock('../ocr', () => ({
   ocrService: {},
 }));
 
 import { PipelineOrchestrator } from '../pipeline-orchestrator';
 import { UaipEvent } from '../../events/UaipEvents';
+
 
 describe('PipelineOrchestrator', () => {
   const uploadedPayload = {

@@ -52,6 +52,10 @@ export interface ApproveParams {
   processingId: string;
   editedFields?: Record<string, any>;
   reviewer: ReviewerContext;
+  routingDecisionOverride?: {
+    primaryModule: string;
+    secondaryModules: string[];
+  };
 }
 
 export interface RollbackParams {
@@ -334,22 +338,163 @@ export class ReviewService {
   }
 
   async approve(params: ApproveParams): Promise<{ canonicalCollection: string; canonicalRecordIds: string[] }> {
-    const { processingId, editedFields, reviewer } = params;
+    const { processingId, editedFields, reviewer, routingDecisionOverride } = params;
 
     await assertOwnership(processingId, reviewer.organizationId);
 
     let canonicalCollection = '';
     let canonicalRecordIds: string[] = [];
+    let canonicalWrites: any[] = [];
     let newVersion = 1;
     let finalFields: Record<string, any> = {};
+    let affectedModuleIds: string[] = [];
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // Detect replica set support for transactions
+    let supportsTransactions = false;
     try {
+      if (mongoose.connection && mongoose.connection.db) {
+        const isMasterResult = await mongoose.connection.db.admin().command({ isMaster: 1 });
+        supportsTransactions = !!(isMasterResult.setName || isMasterResult.hosts);
+      }
+    } catch (err) {
+      console.warn('[ReviewService] Failed to query MongoDB isMaster command; assuming standalone mode', err);
+    }
+
+    if (supportsTransactions) {
+      console.log('[ReviewService] MongoDB transaction mode for approve');
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      try {
+        const kr = await KnowledgeRecordModel.findOne({
+          processingId,
+          status: { $ne: 'DELETED' },
+        }).session(session);
+        if (!kr) throw new Error('KnowledgeRecord not found');
+
+        if ((kr as any).reviewStatus === 'APPROVED') {
+          throw new Error('Document is already approved');
+        }
+
+        const upload = await UaipUpload.findOne({
+          processingId,
+          status: { $ne: 'DELETED' },
+        }).session(session);
+        if (!upload) throw new Error('UaipUpload not found');
+
+        finalFields = {
+          ...(kr.candidateFields ?? {}),
+          ...(editedFields ?? {}),
+        };
+
+        newVersion = ((kr as any).version ?? 1) + 1;
+
+        const personId = await resolveOrCreatePerson(reviewer.userId, reviewer.organizationId, session);
+
+        // Determine routing: use override > stored routing > legacy fallback
+        const storedRouting = (kr as any).routingDecision;
+        const hasRoutingDecision = storedRouting && storedRouting.primaryModule;
+
+        if (hasRoutingDecision || routingDecisionOverride) {
+          // ── NEW PATH: RoutingExecutor ──
+          const { RoutingExecutor } = require('../application/routingEngine');
+
+          const effectiveRouting = {
+            ...(storedRouting ?? {}),
+            ...(routingDecisionOverride
+              ? {
+                  primaryModule: routingDecisionOverride.primaryModule,
+                  secondaryModules: routingDecisionOverride.secondaryModules,
+                }
+              : {}),
+          };
+
+          const result = await RoutingExecutor.execute({
+            kr,
+            upload,
+            personId,
+            session,
+            reviewer,
+            finalFields,
+            routingDecision: effectiveRouting,
+          });
+
+          canonicalCollection = result.primaryCollection;
+          canonicalRecordIds = result.primaryRecordIds;
+          canonicalWrites = result.writes;
+          affectedModuleIds = result.writes.map((w: any) => w.moduleId);
+        } else {
+          // ── LEGACY PATH: switch/case (for existing records without routing data) ──
+          const category = (kr as any).documentCategory;
+
+          switch (category) {
+            case 'TRANSCRIPT':
+            case 'MARKSHEET':
+              canonicalCollection = 'AcademicRecord';
+              canonicalRecordIds = await writeAcademicRecords(finalFields, upload, kr, personId, session, reviewer);
+              break;
+            case 'CERTIFICATE':
+              canonicalCollection = 'CertificateRecord';
+              canonicalRecordIds = await writeCertificateRecord(finalFields, upload, kr, personId, session, reviewer);
+              break;
+            case 'RESUME':
+              canonicalCollection = 'ExperienceRecord';
+              canonicalRecordIds = await writeExperienceRecords(finalFields, upload, kr, personId, session, reviewer);
+              break;
+            case 'ACADEMIC_TIMETABLE':
+              canonicalCollection = 'AcademicSchedule';
+              canonicalRecordIds = await writeAcademicSchedule(finalFields, upload, kr, personId, session, reviewer, processingId);
+              break;
+            default:
+              canonicalCollection = 'NONE';
+              canonicalRecordIds = [];
+          }
+
+          canonicalWrites = [{
+            moduleId: canonicalCollection.toLowerCase(),
+            canonicalCollection,
+            recordIds: canonicalRecordIds,
+          }];
+          affectedModuleIds = [canonicalCollection];
+        }
+
+        kr.candidateFields = finalFields;
+        (kr as any).reviewStatus = 'APPROVED';
+        (kr as any).version = newVersion;
+        await kr.save({ session });
+
+        await ReviewHistory.create(
+          [
+            {
+              processingId,
+              organizationId: reviewer.organizationId,
+              reviewerId: reviewer.userId,
+              reviewerRole: reviewer.role,
+              action: 'APPROVED',
+              version: newVersion,
+              candidateFieldsAfter: finalFields,
+              canonicalCollection,
+              canonicalRecordIds,
+              canonicalWrites,
+              timestamp: new Date(),
+            },
+          ],
+          { session }
+        );
+
+        await session.commitTransaction();
+      } catch (err) {
+        await session.abortTransaction();
+        throw err;
+      } finally {
+        await session.endSession();
+      }
+    } else {
+      console.log('[ReviewService] MongoDB standalone fallback mode for approve');
+      // Standalone path: execute sequentially without session
       const kr = await KnowledgeRecordModel.findOne({
         processingId,
         status: { $ne: 'DELETED' },
-      }).session(session);
+      });
       if (!kr) throw new Error('KnowledgeRecord not found');
 
       if ((kr as any).reviewStatus === 'APPROVED') {
@@ -359,7 +504,7 @@ export class ReviewService {
       const upload = await UaipUpload.findOne({
         processingId,
         status: { $ne: 'DELETED' },
-      }).session(session);
+      });
       if (!upload) throw new Error('UaipUpload not found');
 
       finalFields = {
@@ -367,42 +512,83 @@ export class ReviewService {
         ...(editedFields ?? {}),
       };
 
-      const category = (kr as any).documentCategory;
       newVersion = ((kr as any).version ?? 1) + 1;
 
-      const personId = await resolveOrCreatePerson(reviewer.userId, reviewer.organizationId, session);
+      const personId = await resolveOrCreatePerson(reviewer.userId, reviewer.organizationId, undefined);
 
-      switch (category) {
-        case 'TRANSCRIPT':
-        case 'MARKSHEET':
-          canonicalCollection = 'AcademicRecord';
-          canonicalRecordIds = await writeAcademicRecords(finalFields, upload, kr, personId, session, reviewer);
-          break;
-        case 'CERTIFICATE':
-          canonicalCollection = 'CertificateRecord';
-          canonicalRecordIds = await writeCertificateRecord(finalFields, upload, kr, personId, session, reviewer);
-          break;
-        case 'RESUME':
-          canonicalCollection = 'ExperienceRecord';
-          canonicalRecordIds = await writeExperienceRecords(finalFields, upload, kr, personId, session, reviewer);
-          break;
-        case 'ACADEMIC_TIMETABLE':
-          canonicalCollection = 'AcademicSchedule';
-          canonicalRecordIds = await writeAcademicSchedule(finalFields, upload, kr, personId, session, reviewer, processingId);
-          break;
-        default:
-          canonicalCollection = 'NONE';
-          canonicalRecordIds = [];
-      }
+      const storedRouting = (kr as any).routingDecision;
+      const hasRoutingDecision = storedRouting && storedRouting.primaryModule;
 
-      kr.candidateFields = finalFields;
-      (kr as any).reviewStatus = 'APPROVED';
-      (kr as any).version = newVersion;
-      await kr.save({ session });
+      try {
+        if (hasRoutingDecision || routingDecisionOverride) {
+          const { RoutingExecutor } = require('../application/routingEngine');
 
-      await ReviewHistory.create(
-        [
-          {
+          const effectiveRouting = {
+            ...(storedRouting ?? {}),
+            ...(routingDecisionOverride
+              ? {
+                  primaryModule: routingDecisionOverride.primaryModule,
+                  secondaryModules: routingDecisionOverride.secondaryModules,
+                }
+              : {}),
+          };
+
+          const result = await RoutingExecutor.execute({
+            kr,
+            upload,
+            personId,
+            session: undefined as any,
+            reviewer,
+            finalFields,
+            routingDecision: effectiveRouting,
+          });
+
+          canonicalCollection = result.primaryCollection;
+          canonicalRecordIds = result.primaryRecordIds;
+          canonicalWrites = result.writes;
+          affectedModuleIds = result.writes.map((w: any) => w.moduleId);
+        } else {
+          const category = (kr as any).documentCategory;
+
+          switch (category) {
+            case 'TRANSCRIPT':
+            case 'MARKSHEET':
+              canonicalCollection = 'AcademicRecord';
+              canonicalRecordIds = await writeAcademicRecords(finalFields, upload, kr, personId, undefined, reviewer);
+              break;
+            case 'CERTIFICATE':
+              canonicalCollection = 'CertificateRecord';
+              canonicalRecordIds = await writeCertificateRecord(finalFields, upload, kr, personId, undefined, reviewer);
+              break;
+            case 'RESUME':
+              canonicalCollection = 'ExperienceRecord';
+              canonicalRecordIds = await writeExperienceRecords(finalFields, upload, kr, personId, undefined, reviewer);
+              break;
+            case 'ACADEMIC_TIMETABLE':
+              canonicalCollection = 'AcademicSchedule';
+              canonicalRecordIds = await writeAcademicSchedule(finalFields, upload, kr, personId, undefined, reviewer, processingId);
+              break;
+            default:
+              canonicalCollection = 'NONE';
+              canonicalRecordIds = [];
+          }
+
+          canonicalWrites = [{
+            moduleId: canonicalCollection.toLowerCase(),
+            canonicalCollection,
+            recordIds: canonicalRecordIds,
+          }];
+          affectedModuleIds = [canonicalCollection];
+        }
+
+        // Save metadata and update states
+        try {
+          kr.candidateFields = finalFields;
+          (kr as any).reviewStatus = 'APPROVED';
+          (kr as any).version = newVersion;
+          await kr.save();
+
+          await ReviewHistory.create({
             processingId,
             organizationId: reviewer.organizationId,
             reviewerId: reviewer.userId,
@@ -412,20 +598,55 @@ export class ReviewService {
             candidateFieldsAfter: finalFields,
             canonicalCollection,
             canonicalRecordIds,
+            canonicalWrites,
             timestamp: new Date(),
-          },
-        ],
-        { session }
-      );
+          });
+        } catch (saveErr) {
+          // Rollback canonical writes sequentially on failure
+          const { GrowthHubRecord } = require('../../models/GrowthHubRecord');
+          const { CareerRecord } = require('../../models/CareerRecord');
+          const { ResearchPaperRecord } = require('../../models/ResearchPaperRecord');
+          const { GithubRecord } = require('../../models/GithubRecord');
+          const StudentResume = require('../../models/StudentResume').default;
 
-      await session.commitTransaction();
-    } catch (err) {
-      await session.abortTransaction();
-      throw err;
-    } finally {
-      await session.endSession();
+          const modelMap: Record<string, any> = {
+            AcademicRecord,
+            CertificateRecord,
+            ExperienceRecord,
+            AcademicSchedule,
+            GrowthHubRecord,
+            CareerRecord,
+            ResearchPaperRecord,
+            GithubRecord,
+            StudentResume,
+          };
+
+          for (const write of canonicalWrites) {
+            const model = modelMap[write.canonicalCollection];
+            if (model && write.recordIds?.length) {
+              const ids = write.recordIds.map((id: string) => toObjectId(id));
+              await model.deleteMany({ _id: { $in: ids } });
+            }
+          }
+          throw saveErr;
+        }
+      } catch (err: any) {
+        throw new Error(`Sequential document approval failed midway. Rollback performed. Error: ${err.message}`);
+      }
     }
 
+    // Publish events
+    void eventBus.publish(UaipEvent.DocumentApproved, {
+      processingId,
+      userId: reviewer.userId,
+      organizationId: reviewer.organizationId,
+      reviewerId: reviewer.userId,
+      reviewAction: 'approve',
+      version: newVersion,
+      canonicalCollection,
+      canonicalRecordId: canonicalRecordIds[0],
+      targetModules: affectedModuleIds,
+    });
     void eventBus.publish(UaipEvent.CandidateApproved, {
       processingId,
       userId: reviewer.userId,
@@ -435,6 +656,11 @@ export class ReviewService {
       version: newVersion,
       canonicalCollection,
       canonicalRecordId: canonicalRecordIds[0],
+    });
+    void eventBus.publish(UaipEvent.RoutingCompleted, {
+      processingId,
+      organizationId: reviewer.organizationId,
+      targetModules: affectedModuleIds,
     });
     void eventBus.publish(UaipEvent.CanonicalUpdated, {
       processingId,
@@ -447,11 +673,15 @@ export class ReviewService {
       userId: reviewer.userId,
       organizationId: reviewer.organizationId,
     });
-    void eventBus.publish(UaipEvent.ModuleUpdated, {
-      processingId,
-      organizationId: reviewer.organizationId,
-      targetModule: canonicalCollection,
-    });
+
+    // Publish per-module refresh events only for affected modules
+    for (const moduleId of affectedModuleIds) {
+      void eventBus.publish(UaipEvent.ModuleUpdated, {
+        processingId,
+        organizationId: reviewer.organizationId,
+        targetModule: moduleId,
+      });
+    }
 
     return { canonicalCollection, canonicalRecordIds };
   }
@@ -477,34 +707,127 @@ export class ReviewService {
       action: 'APPROVED',
     }).sort({ timestamp: -1 }).lean() as any;
 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // Detect replica set support for transactions
+    let supportsTransactions = false;
     try {
-      if (lastApproval?.canonicalRecordIds?.length) {
-        const col = lastApproval.canonicalCollection;
-        const ids = lastApproval.canonicalRecordIds.map((id: string) => toObjectId(id));
-        const modelMap: Record<string, any> = {
-          AcademicRecord,
-          CertificateRecord,
-          ExperienceRecord,
-          AcademicSchedule,
-        };
-        if (modelMap[col]) {
-          await modelMap[col].deleteMany({ _id: { $in: ids } }, { session });
-        }
+      if (mongoose.connection && mongoose.connection.db) {
+        const isMasterResult = await mongoose.connection.db.admin().command({ isMaster: 1 });
+        supportsTransactions = !!(isMasterResult.setName || isMasterResult.hosts);
       }
-
-      const newVersion = ((kr as any).version ?? 1) + 1;
-      (kr as any).reviewStatus = 'PENDING_REVIEW';
-      (kr as any).version = newVersion;
-      await kr.save({ session });
-
-      await session.commitTransaction();
     } catch (err) {
-      await session.abortTransaction();
-      throw err;
-    } finally {
-      await session.endSession();
+      console.warn('[ReviewService] Failed to query MongoDB isMaster command; assuming standalone mode', err);
+    }
+
+    if (supportsTransactions) {
+      console.log('[ReviewService] MongoDB transaction mode for rollback');
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      try {
+        // Handle multi-collection rollback from canonicalWrites
+        if (lastApproval?.canonicalWrites?.length) {
+          const { GrowthHubRecord } = require('../../models/GrowthHubRecord');
+          const { CareerRecord } = require('../../models/CareerRecord');
+          const { ResearchPaperRecord } = require('../../models/ResearchPaperRecord');
+          const { GithubRecord } = require('../../models/GithubRecord');
+          const StudentResume = require('../../models/StudentResume').default;
+
+          const modelMap: Record<string, any> = {
+            AcademicRecord,
+            CertificateRecord,
+            ExperienceRecord,
+            AcademicSchedule,
+            GrowthHubRecord,
+            CareerRecord,
+            ResearchPaperRecord,
+            GithubRecord,
+            StudentResume,
+          };
+
+          for (const write of lastApproval.canonicalWrites) {
+            const model = modelMap[write.canonicalCollection];
+            if (model && write.recordIds?.length) {
+              const ids = write.recordIds.map((id: string) => toObjectId(id));
+              await model.deleteMany({ _id: { $in: ids } }, { session });
+            }
+          }
+        } else if (lastApproval?.canonicalRecordIds?.length) {
+          // Legacy single-collection rollback
+          const col = lastApproval.canonicalCollection;
+          const ids = lastApproval.canonicalRecordIds.map((id: string) => toObjectId(id));
+          const modelMap: Record<string, any> = {
+            AcademicRecord,
+            CertificateRecord,
+            ExperienceRecord,
+            AcademicSchedule,
+          };
+          if (modelMap[col]) {
+            await modelMap[col].deleteMany({ _id: { $in: ids } }, { session });
+          }
+        }
+
+        const newVersion = ((kr as any).version ?? 1) + 1;
+        (kr as any).reviewStatus = 'PENDING_REVIEW';
+        (kr as any).version = newVersion;
+        await kr.save({ session });
+
+        await session.commitTransaction();
+      } catch (err) {
+        await session.abortTransaction();
+        throw err;
+      } finally {
+        await session.endSession();
+      }
+    } else {
+      console.log('[ReviewService] MongoDB standalone fallback mode for rollback');
+      // Standalone path: execute sequentially without session
+      try {
+        if (lastApproval?.canonicalWrites?.length) {
+          const { GrowthHubRecord } = require('../../models/GrowthHubRecord');
+          const { CareerRecord } = require('../../models/CareerRecord');
+          const { ResearchPaperRecord } = require('../../models/ResearchPaperRecord');
+          const { GithubRecord } = require('../../models/GithubRecord');
+          const StudentResume = require('../../models/StudentResume').default;
+
+          const modelMap: Record<string, any> = {
+            AcademicRecord,
+            CertificateRecord,
+            ExperienceRecord,
+            AcademicSchedule,
+            GrowthHubRecord,
+            CareerRecord,
+            ResearchPaperRecord,
+            GithubRecord,
+            StudentResume,
+          };
+
+          for (const write of lastApproval.canonicalWrites) {
+            const model = modelMap[write.canonicalCollection];
+            if (model && write.recordIds?.length) {
+              const ids = write.recordIds.map((id: string) => toObjectId(id));
+              await model.deleteMany({ _id: { $in: ids } });
+            }
+          }
+        } else if (lastApproval?.canonicalRecordIds?.length) {
+          const col = lastApproval.canonicalCollection;
+          const ids = lastApproval.canonicalRecordIds.map((id: string) => toObjectId(id));
+          const modelMap: Record<string, any> = {
+            AcademicRecord,
+            CertificateRecord,
+            ExperienceRecord,
+            AcademicSchedule,
+          };
+          if (modelMap[col]) {
+            await modelMap[col].deleteMany({ _id: { $in: ids } });
+          }
+        }
+
+        const newVersion = ((kr as any).version ?? 1) + 1;
+        (kr as any).reviewStatus = 'PENDING_REVIEW';
+        (kr as any).version = newVersion;
+        await kr.save();
+      } catch (err: any) {
+        throw new Error(`Sequential rollback failed. Error: ${err.message}`);
+      }
     }
 
     const finalVersion = (kr as any).version ?? 1;
@@ -565,6 +888,9 @@ export class ReviewService {
       extractedEntities: (kr as any).extractedEntities ?? {},
       summary: (kr as any).summary,
       primaryTargetModule: (kr as any).primaryTargetModule,
+      routingDecision: (kr as any).routingDecision ?? null,
+      routingStatus: (kr as any).routingStatus ?? null,
     };
   }
 }
+

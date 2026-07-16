@@ -14,6 +14,8 @@ export enum UaipEvent {
   CanonicalUpdated = "CANONICAL_UPDATED",
   GrowthProjectionUpdated = "GROWTH_PROJECTION_UPDATED",
   ModuleUpdated = "MODULE_UPDATED",
+  DocumentApproved = "DocumentApproved",
+  RoutingCompleted = "RoutingCompleted",
 }
 
 export interface UaipEventPayload {
@@ -41,6 +43,7 @@ export interface UaipEventPayload {
   reviewAction?: 'draft' | 'submit' | 'approve' | 'reject' | 'rollback';
   rejectionReason?: string;
   targetModule?: string;
+  targetModules?: string[];
   version?: number;
   canonicalCollection?: string;
   canonicalRecordId?: string;

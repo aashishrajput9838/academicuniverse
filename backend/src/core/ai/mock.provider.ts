@@ -126,6 +126,49 @@ export class MockAIProvider implements IAIProvider {
       } as unknown as T;
     }
 
+    if (normalizedPrompt.includes('module registry') || normalizedPrompt.includes('routing options') || normalizedPrompt.includes('routing decision')) {
+      let docType = 'UNKNOWN';
+      let primary = '';
+      let secondary: string[] = [];
+      let confidence = 0.95;
+
+      if (normalizedPrompt.includes('transcript') || normalizedPrompt.includes('marks') || normalizedPrompt.includes('xls')) {
+        docType = 'TRANSCRIPT';
+        primary = 'academic_records';
+        secondary = ['growth_hub', 'career_profile'];
+      } else if (normalizedPrompt.includes('timetable') || normalizedPrompt.includes('schedule')) {
+        docType = 'ACADEMIC_TIMETABLE';
+        primary = 'academic_schedule';
+        secondary = ['growth_hub'];
+      } else if (normalizedPrompt.includes('certificate')) {
+        docType = 'CERTIFICATE';
+        primary = 'certificates';
+        secondary = ['growth_hub', 'resume_builder', 'career_profile'];
+      } else if (normalizedPrompt.includes('resume')) {
+        docType = 'RESUME';
+        primary = 'resume_builder';
+        secondary = ['career_profile', 'growth_hub'];
+      } else if (normalizedPrompt.includes('research') || normalizedPrompt.includes('publication')) {
+        docType = 'RESEARCH_PAPER';
+        primary = 'research_wing';
+        secondary = [];
+      } else if (normalizedPrompt.includes('unknown') || normalizedPrompt.includes('corrupted') || normalizedPrompt.includes('other')) {
+        docType = 'UNKNOWN';
+        primary = '';
+        secondary = [];
+        confidence = 0.5;
+      }
+
+      return {
+        documentType: docType,
+        confidence,
+        targetModules: [
+          ...(primary ? [{ moduleId: primary, confidence, reason: `Matched primary candidate for ${docType}.` }] : []),
+          ...secondary.map((s, idx) => ({ moduleId: s, confidence: confidence - 0.05 - idx * 0.02, reason: `Secondary growth and sync for ${docType}.` }))
+        ]
+      } as unknown as T;
+    }
+
     // Default mock JSON
     return {
       message: 'Mock JSON response',

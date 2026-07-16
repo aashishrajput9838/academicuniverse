@@ -36,7 +36,7 @@ const ModulePopulationLogSchema = new Schema<IModulePopulationLog>(
   { timestamps: true }
 );
 
-ModulePopulationLogSchema.index({ processingId: 1, moduleId: 1 }, { unique: true });
+ModulePopulationLogSchema.index({ processingId: 1, moduleId: 1 }, { unique: true } as any);
 ModulePopulationLogSchema.index({ organizationId: 1, personId: 1, moduleId: 1 });
 
 export const ModulePopulationLog = model<IModulePopulationLog>('ModulePopulationLog', ModulePopulationLogSchema);

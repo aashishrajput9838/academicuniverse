@@ -1084,8 +1084,14 @@ Return JSON:
       });
 
       const docType = aiResponse.documentType || 'UNKNOWN';
-      const confidence = Number(aiResponse.confidence ?? 0);
       const targetModules = Array.isArray(aiResponse.targetModules) ? aiResponse.targetModules : [];
+
+      let confidence = Number(aiResponse.confidence ?? 0);
+      if (confidence === 0 && targetModules.length > 0) {
+        const maxConf = targetModules.reduce((max: number, m: any) => Math.max(max, Number(m.confidence ?? 0)), 0);
+        const avgConf = targetModules.reduce((sum: number, m: any) => sum + Number(m.confidence ?? 0), 0) / targetModules.length;
+        confidence = Number((maxConf * 0.7 + avgConf * 0.3).toFixed(2));
+      }
 
       let primaryModule = '';
       const secondaryModules: string[] = [];

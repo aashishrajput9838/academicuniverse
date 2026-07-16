@@ -118,7 +118,7 @@ ${contentToAnalyze.slice(0, 50000)} // safety limit for token size
         candidateFields: validatedResult.candidateFields,
       });
 
-      const routingStatus = (routingDecision.primaryModule && routingDecision.routingConfidence >= 0.8) ? 'ROUTED' : 'UNKNOWN';
+      const routingStatus = (routingDecision.primaryModule && routingDecision.routingConfidence > 0) ? 'ROUTED' : 'UNKNOWN';
 
       // 5️⃣ Update the KnowledgeRecord with AI analysis results
       await KnowledgeRecordModel.updateOne(

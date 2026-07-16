@@ -1647,6 +1647,7 @@ function ReviewTab({
 
   const [routingOverride, setRoutingOverride] = useState<{ primaryModule: string; secondaryModules: string[] } | null>(null);
   const [localRoutingDecision, setLocalRoutingDecision] = useState<{ primaryModule: string; secondaryModules: string[]; reasoning: string } | undefined>(routingDecision);
+  const [affectedModules, setAffectedModules] = useState<string[]>([]);
 
   useEffect(() => {
     if (!localRoutingDecision && backendToken) {
@@ -1787,6 +1788,7 @@ function ReviewTab({
     try {
       const result = await approveDocument(backendToken, processingId, candidateFields, routingOverride || undefined);
       setReviewStatus('APPROVED');
+      setAffectedModules(result.affectedModules ?? []);
       addToast('success', `✓ Approved! Written to ${result.canonicalCollection} (${result.canonicalRecordIds?.length ?? 0} records)`);
       setTimeout(() => {
         onApproved?.(result);
@@ -1849,11 +1851,18 @@ function ReviewTab({
 
       {/* Terminal state banners */}
       {isApproved && (
-        <div className="mx-6 mt-4 flex items-center gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
-          <svg className="h-5 w-5 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          <div>
-            <p className="text-sm font-bold text-emerald-300">Document Approved</p>
-            <p className="text-xs text-emerald-400/70">Canonical records have been written. Growth Hub will refresh automatically.</p>
+        <div className="mx-6 mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <svg className="h-5 w-5 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div>
+              <p className="text-sm font-bold text-emerald-300">Document Approved</p>
+              <p className="text-xs text-emerald-400/70 mt-0.5">
+                Canonical records have been written.
+                {affectedModules.length > 0 && (
+                  <span> Affected modules: {affectedModules.join(', ')}.</span>
+                )}
+              </p>
+            </div>
           </div>
         </div>
       )}

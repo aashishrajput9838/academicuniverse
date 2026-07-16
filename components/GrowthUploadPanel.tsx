@@ -1648,6 +1648,15 @@ function ReviewTab({
   const [routingOverride, setRoutingOverride] = useState<{ primaryModule: string; secondaryModules: string[] } | null>(null);
   const [localRoutingDecision, setLocalRoutingDecision] = useState<{ primaryModule: string; secondaryModules: string[]; reasoning: string } | undefined>(routingDecision);
   const [affectedModules, setAffectedModules] = useState<string[]>([]);
+  const approvalTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (approvalTimerRef.current) {
+        clearTimeout(approvalTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!localRoutingDecision && backendToken) {
@@ -1790,14 +1799,16 @@ function ReviewTab({
       setReviewStatus('APPROVED');
       setAffectedModules(result.affectedModules ?? []);
       addToast('success', `✓ Approved! Written to ${result.canonicalCollection} (${result.canonicalRecordIds?.length ?? 0} records)`);
-      setTimeout(() => {
+
+      if (approvalTimerRef.current) clearTimeout(approvalTimerRef.current);
+      approvalTimerRef.current = setTimeout(() => {
         onApproved?.(result);
         if (result.affectedModules && result.affectedModules.length > 0) {
           window.dispatchEvent(new CustomEvent('au-module-updated', {
             detail: { modules: result.affectedModules, processingId },
           }));
         }
-      }, 1500);
+      }, 10000);
     } catch (err: any) {
       addToast('error', err.message ?? 'Approval failed');
     } finally {

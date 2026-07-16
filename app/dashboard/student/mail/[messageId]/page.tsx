@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { apiRequest } from '@/utils/api';
+import { normalizeDate } from '@/lib/utils/dateNormalizer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -129,7 +130,7 @@ export default function MailMessageDetailPage() {
               <div className="text-slate-400 text-sm">
                 <div><span className="font-medium text-slate-200">From:</span> {message.from || 'Unknown sender'}</div>
                 <div><span className="font-medium text-slate-200">To:</span> {message.to || 'Unknown recipient'}</div>
-                <div><span className="font-medium text-slate-200">Date:</span> {message.date ? new Date(message.date).toLocaleString() : 'Unknown'}</div>
+                <div><span className="font-medium text-slate-200">Date:</span> {message.date ? new Date(normalizeDate(message.date).isoDateTime ?? message.date).toLocaleString() : 'Unknown'}</div>
               </div>
             </div>
 

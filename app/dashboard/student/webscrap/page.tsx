@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ezoneApi } from '@/lib/api/ezone';
 import { useAuth } from '@/lib/AuthContext';
+import { normalizeDate } from '@/lib/utils/dateNormalizer';
 import LiveSyncLogs from '@/components/ezone/LiveSyncLogs';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -279,7 +280,7 @@ export default function WebscrapPage() {
               </div>
 
               <div className="text-xs text-slate-500 text-right italic">
-                Last webscraped: {profile.lastSyncedAt ? new Date(profile.lastSyncedAt).toLocaleString() : 'Just now'}
+                Last webscraped: {profile.lastSyncedAt ? new Date(normalizeDate(profile.lastSyncedAt).isoDateTime ?? profile.lastSyncedAt).toLocaleString() : 'Just now'}
               </div>
             </CardContent>
           </Card>

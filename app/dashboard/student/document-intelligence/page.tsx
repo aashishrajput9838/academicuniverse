@@ -63,9 +63,13 @@ function formatBytes(bytes: number | null): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+import { normalizeDate } from '@/lib/utils/dateNormalizer';
+
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleString('en-IN', {
+  const normalized = normalizeDate(iso);
+  if (!normalized.isValid) return 'Unknown Date';
+  return new Date(normalized.isoDateTime!).toLocaleString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

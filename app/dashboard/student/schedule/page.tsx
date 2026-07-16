@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useModuleRefresh } from '@/hooks/useModuleRefresh';
+import { formatDateForDisplay, normalizeDate } from '@/lib/utils/dateNormalizer';
 
 interface ScheduleEvent {
   timeSlot: string;
@@ -91,7 +92,7 @@ export default function StudentSchedulePage() {
   }
 
   const days = schedule?.schedule ?? [];
-  const today = new Date().toISOString().split('T')[0];
+  const today = normalizeDate(new Date()).iso ?? '';
   const upcomingDays = days.filter(d => d.date >= today);
   const pastDays = days.filter(d => d.date < today);
 
@@ -128,7 +129,7 @@ export default function StudentSchedulePage() {
               Confidence: {Math.round((schedule.rawConfidence ?? 0) * 100)}%
             </span>
             <span className="text-xs text-slate-500">
-              Approved on {new Date(schedule.approvedAt).toLocaleDateString()}
+              Approved on {formatDateForDisplay(schedule.approvedAt)}
             </span>
           </div>
 
@@ -140,12 +141,7 @@ export default function StudentSchedulePage() {
                   <div key={day.date} className="rounded-xl border border-slate-700/50 bg-slate-800/20 overflow-hidden">
                     <div className="bg-slate-800/40 px-4 py-2 border-b border-slate-700/50">
                       <p className="text-sm font-semibold text-white">
-                        {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
+                        {formatDateForDisplay(day.date)}
                       </p>
                     </div>
                     <div className="divide-y divide-slate-700/30">
@@ -183,12 +179,7 @@ export default function StudentSchedulePage() {
                   <div key={day.date} className="rounded-xl border border-slate-700/30 bg-slate-800/10 overflow-hidden opacity-70">
                     <div className="bg-slate-800/20 px-4 py-2 border-b border-slate-700/30">
                       <p className="text-sm font-medium text-slate-400">
-                        {new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
+                        {formatDateForDisplay(day.date)}
                       </p>
                     </div>
                     <div className="divide-y divide-slate-700/20">

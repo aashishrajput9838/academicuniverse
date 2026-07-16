@@ -14,6 +14,7 @@ import { Logger } from '../../shared/utils';
 import { toObjectId } from '../../utils/mongooseHelpers';
 import { ModuleRegistry, ModuleDescriptor } from './moduleRegistry';
 import { ModulePopulationLog } from '../../models/ModulePopulationLog';
+import { normalizeScheduleDates } from '../../shared/utils/dateNormalizer';
 
 const logger = new Logger('RoutingEngine');
 
@@ -248,7 +249,7 @@ class AcademicScheduleAdapter extends BaseAdapter {
     reviewer: any
   ): Promise<string[]> {
     const orgOid = toObjectId(reviewer.organizationId);
-    const schedule = fields.schedule ?? [];
+    const schedule = normalizeScheduleDates(fields.schedule ?? []);
     const result = await AcademicSchedule.findOneAndUpdate(
       { organizationId: orgOid, personId },
       {

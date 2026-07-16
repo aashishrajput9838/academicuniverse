@@ -26,6 +26,7 @@ import { AcademicSchedule } from '../../models/AcademicSchedule';
 import { UaipUpload } from '../../models/UaipUpload';
 import { eventBus } from '../../events/EventBus';
 import { UaipEvent } from '../../events/UaipEvents';
+import { normalizeScheduleDates } from '../utils/dateNormalizer';
 import { toObjectId } from '../../utils/mongooseHelpers';
 import { RoutingExecutor, RoutingExecutionWrite } from '../../shared/application/routingEngine';
 
@@ -242,7 +243,7 @@ async function writeAcademicSchedule(
   processingId: string
 ): Promise<string[]> {
   const orgOid = toObjectId(reviewer.organizationId);
-  const schedule = fields.schedule ?? [];
+  const schedule = normalizeScheduleDates(fields.schedule ?? []);
 
   const result = await (AcademicSchedule as any).findOneAndUpdate(
     { organizationId: orgOid, personId },

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { apiRequest } from '@/utils/api';
+import { normalizeDate } from '@/lib/utils/dateNormalizer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -346,7 +347,7 @@ export default function MailExplorerPage() {
                         </div>
                       </div>
                       <div className="text-slate-500 text-xs text-right">
-                        <div>{message.receivedAt ? new Date(message.receivedAt).toLocaleString() : 'Unknown date'}</div>
+                        <div>{message.receivedAt ? new Date(normalizeDate(message.receivedAt).isoDateTime ?? message.receivedAt).toLocaleString() : 'Unknown date'}</div>
                         <div className="mt-2">
                           {message.isUnread ? <span className="inline-flex items-center rounded-full bg-emerald-500/20 text-emerald-200 px-2 py-0.5 text-[11px]">Unread</span> : null}
                         </div>

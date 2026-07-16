@@ -35,6 +35,18 @@ jest.mock('../../../models/ReviewHistory', () => ({
   },
 }));
 
+jest.mock('../../../storage/GridFSProvider', () => ({
+  GridFSProvider: jest.fn().mockImplementation(() => ({
+    delete: jest.fn().mockResolvedValue(undefined),
+  })),
+}));
+
+jest.mock('../../../services/ocr/OCRService', () => ({
+  OCRService: {
+    clearProcessingId: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
 import mongoose from 'mongoose';
 import { UaipUpload } from '../../../models/UaipUpload';
 import { KnowledgeRecordModel } from '../../../models/KnowledgeRecord';
@@ -145,6 +157,85 @@ describe('Document Intelligence soft deletion', () => {
     expect(upload.save).not.toHaveBeenCalled();
     expect(KnowledgeRecordModel.updateMany).not.toHaveBeenCalled();
     expect(ReviewHistory.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('allows deletion of a FAILED upload', async () => {
+    const upload: any = {
+      processingId,
+      organizationId,
+      status: 'FAILED',
+      fileHash: 'file-hash',
+      storageId: 'gridfs-123',
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    (UaipUpload.findOne as jest.Mock).mockReturnValue(sessionQuery(upload));
+    (KnowledgeRecordModel.findOne as jest.Mock).mockReturnValue(
+      sessionQuery({ processingId, reviewStatus: 'PENDING_REVIEW' })
+    );
+
+    const result = await new DocumentIntelligenceRepository().softDeleteDocument(
+      organizationId,
+      processingId,
+      deletedBy
+    );
+
+    expect(result).toEqual(expect.objectContaining({ outcome: 'DELETED', processingId }));
+    expect(upload.status).toBe('DELETED');
+    expect(upload.deletedBy).toBe(deletedBy);
+    expect(upload.deletedAt).toBeInstanceOf(Date);
+    expect(upload.fileHash).toBe(`deleted-${processingId}`);
+    expect(upload.save).toHaveBeenCalledWith({ session });
+    expect(KnowledgeRecordModel.updateMany).toHaveBeenCalled();
+    expect(ReviewHistory.updateMany).toHaveBeenCalled();
+    expect(session.commitTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses deletion of a PROCESSING upload', async () => {
+    const upload: any = {
+      processingId,
+      organizationId,
+      status: 'PROCESSING',
+      save: jest.fn(),
+    };
+    (UaipUpload.findOne as jest.Mock).mockReturnValue(sessionQuery(upload));
+    (KnowledgeRecordModel.findOne as jest.Mock).mockReturnValue(
+      sessionQuery({ processingId, reviewStatus: 'PENDING_REVIEW' })
+    );
+
+    const result = await new DocumentIntelligenceRepository().softDeleteDocument(
+      organizationId,
+      processingId,
+      deletedBy
+    );
+
+    expect(result).toEqual({ outcome: 'NOT_DELETABLE', processingId });
+    expect(upload.save).not.toHaveBeenCalled();
+    expect(KnowledgeRecordModel.updateMany).not.toHaveBeenCalled();
+    expect(ReviewHistory.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('allows deletion of a VALIDATION_ERROR upload', async () => {
+    const upload: any = {
+      processingId,
+      organizationId,
+      status: 'VALIDATION_ERROR',
+      fileHash: 'file-hash',
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    (UaipUpload.findOne as jest.Mock).mockReturnValue(sessionQuery(upload));
+    (KnowledgeRecordModel.findOne as jest.Mock).mockReturnValue(
+      sessionQuery({ processingId, reviewStatus: 'NOT_READY' })
+    );
+
+    const result = await new DocumentIntelligenceRepository().softDeleteDocument(
+      organizationId,
+      processingId,
+      deletedBy
+    );
+
+    expect(result).toEqual(expect.objectContaining({ outcome: 'DELETED', processingId }));
+    expect(upload.status).toBe('DELETED');
+    expect(upload.save).toHaveBeenCalledWith({ session });
   });
 
   it('returns the required message when an approved-document deletion reaches the controller', async () => {

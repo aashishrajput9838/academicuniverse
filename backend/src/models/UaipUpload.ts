@@ -26,6 +26,8 @@ export interface IUaipUpload {
   errorMessage?: string;
   /** SHA-256 hash of the physical file content. */
   fileHash?: string;
+  /** GridFS file identifier for the uploaded binary. */
+  storageId?: string;
   /** Timestamp when the upload request was created. */
   createdAt: Date;
   /** Timestamp when the pipeline completed (success or failure). */
@@ -53,6 +55,7 @@ const UaipUploadSchema = new Schema(
     },
     errorMessage: { type: String, default: undefined },
     fileHash: { type: String, required: false },
+    storageId: { type: String, required: false },
     createdAt: { type: Date, default: Date.now },
     completedAt: { type: Date },
     deletedAt: { type: Date },

@@ -103,6 +103,7 @@ export class UploadService {
       size,
       status: 'PENDING',
       fileHash,
+      storageId: fileId,
       createdAt: new Date(),
     });
     await uploadDoc.save();

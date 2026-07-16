@@ -10,6 +10,8 @@ import mongoose from 'mongoose';
 import { UaipUpload } from '../../models/UaipUpload';
 import { KnowledgeRecordModel } from '../../models/KnowledgeRecord';
 import { ReviewHistory } from '../../models/ReviewHistory';
+import { GridFSProvider } from '../../storage/GridFSProvider';
+import { OCRService } from '../../services/ocr/OCRService';
 import type {
   DicDocument,
   DicDocumentListResponse,
@@ -33,6 +35,25 @@ const resolveReviewStatus = (
   if (krReviewStatus === 'REJECTED') return 'REJECTED';
   if (uploadStatus === 'SUCCESS') return 'PENDING_REVIEW';
   return 'NOT_READY';
+};
+
+const isDocumentDeletable = (
+  uploadStatus: string,
+  krReviewStatus?: string | null
+): boolean => {
+  // Block active processing states
+  if (uploadStatus === 'PENDING' || uploadStatus === 'PROCESSING') {
+    return false;
+  }
+
+  // Block approved documents — canonical records exist, rollback required first
+  if (krReviewStatus === 'APPROVED') {
+    return false;
+  }
+
+  // All other terminal states are deletable:
+  // FAILED, VALIDATION_ERROR, SUCCESS+PENDING_REVIEW, SUCCESS+REJECTED, NOT_READY, etc.
+  return true;
 };
 
 export class DocumentIntelligenceRepository {
@@ -387,14 +408,10 @@ export class DocumentIntelligenceRepository {
             processingId,
             status: { $ne: 'DELETED' },
           }).session(session);
-          const reviewStatus = resolveReviewStatus(
-            String(upload.status),
-            knowledgeRecord ? String(knowledgeRecord.reviewStatus ?? '') : null
-          );
 
-          if (reviewStatus === 'APPROVED') {
+          if (knowledgeRecord && String(knowledgeRecord.reviewStatus) === 'APPROVED') {
             result = { outcome: 'APPROVED', processingId };
-          } else if (reviewStatus !== 'PENDING_REVIEW' && reviewStatus !== 'REJECTED') {
+          } else if (!isDocumentDeletable(String(upload.status), knowledgeRecord ? String(knowledgeRecord.reviewStatus ?? '') : null)) {
             result = { outcome: 'NOT_DELETABLE', processingId };
           } else {
             const deletedAt = new Date();
@@ -435,6 +452,23 @@ export class DocumentIntelligenceRepository {
               },
               { session }
             );
+
+            // Cleanup external artifacts outside the transaction
+            const storageId = (upload as any).storageId as string | undefined;
+            if (storageId) {
+              try {
+                const gridFs = new GridFSProvider();
+                await gridFs.delete(storageId);
+              } catch (err) {
+                console.warn(`[DIC] Failed to delete GridFS file ${storageId} for ${processingId}:`, err);
+              }
+            }
+
+            try {
+              await OCRService.clearProcessingId(processingId);
+            } catch (err) {
+              console.warn(`[DIC] Failed to clear OCR idempotency for ${processingId}:`, err);
+            }
 
             result = {
               outcome: 'DELETED',
@@ -477,7 +511,7 @@ export class DocumentIntelligenceRepository {
       if (reviewStatus === 'APPROVED') {
         return { outcome: 'APPROVED', processingId };
       }
-      if (reviewStatus !== 'PENDING_REVIEW' && reviewStatus !== 'REJECTED') {
+      if (!isDocumentDeletable(String(upload.status), knowledgeRecord ? String(knowledgeRecord.reviewStatus ?? '') : null)) {
         return { outcome: 'NOT_DELETABLE', processingId };
       }
 
@@ -565,6 +599,23 @@ export class DocumentIntelligenceRepository {
             }
           );
           throw krErr;
+        }
+
+        // Cleanup external artifacts after successful DB soft-delete
+        const storageId = (upload as any).storageId as string | undefined;
+        if (storageId) {
+          try {
+            const gridFs = new GridFSProvider();
+            await gridFs.delete(storageId);
+          } catch (err) {
+            console.warn(`[DIC] Failed to delete GridFS file ${storageId} for ${processingId}:`, err);
+          }
+        }
+
+        try {
+          await OCRService.clearProcessingId(processingId);
+        } catch (err) {
+          console.warn(`[DIC] Failed to clear OCR idempotency for ${processingId}:`, err);
         }
 
         return {

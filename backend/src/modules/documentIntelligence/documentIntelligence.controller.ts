@@ -205,7 +205,7 @@ export class DocumentIntelligenceController {
         return;
       }
       if (result.outcome === 'NOT_DELETABLE') {
-        sendError(res, 409, 'Only documents in PENDING_REVIEW, DRAFT, or REJECTED status can be deleted.');
+        sendError(res, 409, 'Document cannot be deleted because it is actively processing or has already produced approved canonical records.');
         return;
       }
 

@@ -54,6 +54,10 @@ export class OCRService {
     await MongoOcrIdempotencyRepository.clearAll();
   }
 
+  public static async clearProcessingId(processingId: string): Promise<void> {
+    await OCRService.idempotencyRepo.delete(processingId);
+  }
+
   constructor() {
     this.initializeSubscriptions();
   }

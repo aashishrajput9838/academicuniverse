@@ -1,5 +1,6 @@
 const mockSubscribe = jest.fn();
 const mockFindOneAndUpdate = jest.fn();
+const mockFindOne = jest.fn();
 const mockGetFile = jest.fn();
 const mockClassify = jest.fn();
 const mockParseDocument = jest.fn();
@@ -15,6 +16,12 @@ jest.mock('../../events/EventBus', () => ({
 jest.mock('../../models/UaipUpload', () => ({
   UaipUpload: {
     findOneAndUpdate: mockFindOneAndUpdate,
+  },
+}));
+
+jest.mock('../../models/KnowledgeRecord', () => ({
+  KnowledgeRecordModel: {
+    findOne: mockFindOne,
   },
 }));
 
@@ -64,9 +71,15 @@ describe('PipelineOrchestrator', () => {
 
   beforeEach(() => {
     mockFindOneAndUpdate.mockReset();
+    mockFindOne.mockReset();
     mockGetFile.mockReset();
     mockClassify.mockReset();
     mockParseDocument.mockReset();
+    mockFindOne.mockResolvedValue({
+      processingId: uploadedPayload.processingId,
+      documentCategory: 'UNKNOWN',
+      candidateFields: {},
+    });
   });
 
   it('subscribes to uploaded events', () => {

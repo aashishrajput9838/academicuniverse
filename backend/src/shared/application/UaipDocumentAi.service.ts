@@ -58,7 +58,7 @@ The output JSON must strictly follow this schema:
   "documentCategory": string (must be one of the ALLOWED_CATEGORIES listed below),
   "confidenceScore": number (a float between 0.0 and 1.0 representing classification confidence),
   "summary": string (a short, human-readable summary of the document contents),
-  "extractedEntities": object (key-value dictionary of raw key details found in the document, e.g. dates, names, scores, courses, instructors, timeSlots, rooms, etc.),
+  "extractedEntities": object (key-value dictionary of raw key details found in the document, e.g. dates, names, scores, courses, instructors, timeSlots, rooms, etc. For MARKSHEET/TRANSCRIPT also include: semester, term, academicYear, gpa, cgpa, totalCredits, studentName, rollNumber, branch, batch, institution, and academicStatistics here so the Review UI can display them.),
   "suggestedModule": string (legacy field - the canonical data model name like "AcademicRecord", "CertificateRecord", "ExperienceRecord", or "None"),
   "primaryTargetModule": {
     "id": string (must be one of the ALLOWED_MODULE_IDS listed below),
@@ -73,7 +73,7 @@ The output JSON must strictly follow this schema:
       "confidence": number
     }
   ],
-  "candidateFields": object (structured candidate data matching the document category. For ACADEMIC_TIMETABLE: { "schedule": [{ "date": string, "events": [{ "timeSlot": string, "courseCode": string, "courseName": string, "room": string, "instructor": string }] }] }. For MARKSHEET/TRANSCRIPT: { "subjects": [{ "code": string, "name": string, "grade": string, "credits": number }], "gpa": number }. For CERTIFICATE: { "title": string, "issuer": string, "date": string }. For RESUME: { "skills": string[], "education": object[], "experience": object[], "projects": object[] }. For INTERNSHIP/OFFER_LETTER: { "company": string, "role": string, "startDate": string, "endDate": string, "stipend": string }. For other types: use best judgment to structure the data meaningfully.)
+  "candidateFields": object (structured candidate data matching the document category. For ACADEMIC_TIMETABLE: { "schedule": [{ "date": string, "events": [{ "timeSlot": string, "courseCode": string, "courseName": string, "room": string, "instructor": string }] }] }. For MARKSHEET/TRANSCRIPT: { "subjects": [{ "code": string, "name": string, "credits": number, "gradingStatus": string, "grade": string, "gradePoints": number, "semester": string, "term": string, "year": number }], "gpa": number, "totalCredits": number, "academicStatistics": { "subjectsAppeared": number, "subjectsPassed": number, "subjectsFailed": number, "totalMarksObtained": number, "maximumMarks": number, "percentage": number } }. For CERTIFICATE: { "title": string, "issuer": string, "date": string }. For RESUME: { "skills": string[], "education": object[], "experience": object[], "projects": object[] }. For INTERNSHIP/OFFER_LETTER: { "company": string, "role": string, "startDate": string, "endDate": string, "stipend": string }. For other types: use best judgment to structure the data meaningfully.)
 }
 
 IMPORTANT RULES:
@@ -222,6 +222,14 @@ ${contentToAnalyze.slice(0, 50000)} // safety limit for token size
             confidence: typeof sec.confidence === 'number' ? sec.confidence : 0,
           });
         }
+      }
+    }
+
+    // Validate MARKSHEET/TRANSCRIPT extraction completeness
+    if ((documentCategory === 'MARKSHEET' || documentCategory === 'TRANSCRIPT')) {
+      const subjects = candidateFields?.subjects;
+      if (!Array.isArray(subjects) || subjects.length === 0) {
+        throw new Error(`AI extraction failure for ${documentCategory}: subjects array is empty or missing. Document requires at least one subject row.`);
       }
     }
 

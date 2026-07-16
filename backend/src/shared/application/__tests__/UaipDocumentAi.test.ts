@@ -122,6 +122,45 @@ describe('UaipDocumentAiService', () => {
     expect(failedRecord!.documentCategory).toBe('UNKNOWN'); // remains UNKNOWN
   });
 
+  it('should throw on MARKSHEET with empty subjects array (extraction failure)', async () => {
+    await KnowledgeRecordModel.create({
+      processingId: mockProcessingId,
+      documentCategory: 'UNKNOWN',
+      language: 'en',
+      isScanned: false,
+      parserStrategy: 'PDF_PARSER',
+      confidenceScore: 0.5,
+      rawContent: 'Scanned marksheet image with no extractable table',
+    });
+
+    const badMarksheetResponse = {
+      documentCategory: 'MARKSHEET',
+      confidenceScore: 0.9,
+      summary: 'Marksheet document',
+      extractedEntities: { semester: '1' },
+      suggestedModule: 'None',
+      candidateFields: {
+        subjects: [],
+        gpa: 0,
+      },
+    };
+
+    (aiProvider.generateJSON as jest.Mock).mockResolvedValue(badMarksheetResponse);
+
+    await expect(
+      aiService.processDocument({
+        processingId: mockProcessingId,
+        fileName: 'sem1_marks.pdf',
+        mimeType: 'application/pdf',
+        fileSize: 2048,
+      })
+    ).rejects.toThrow(/subjects array is empty or missing/);
+
+    const failedRecord = await KnowledgeRecordModel.findOne({ processingId: mockProcessingId });
+    expect(failedRecord).toBeTruthy();
+    expect(failedRecord!.reviewStatus).toBe('PENDING_REVIEW');
+  });
+
   it('regression: should correctly parse download.xls HTML-based Excel timetable and extract content keywords', async () => {
     const fs = require('fs');
     const path = require('path');

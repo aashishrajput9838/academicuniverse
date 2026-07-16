@@ -1,6 +1,7 @@
 import { eventBus } from '../events/EventBus';
 import { UaipEvent, UaipEventPayload } from '../events/UaipEvents';
 import { UaipUpload } from '../models/UaipUpload';
+import { KnowledgeRecordModel } from '../models/KnowledgeRecord';
 import { GridFSProvider } from '../storage/GridFSProvider';
 import { documentClassifier } from './classification/DocumentClassifier';
 import { ParserService } from './parsing/ParserService';
@@ -94,6 +95,14 @@ export class PipelineOrchestrator {
           mimeType,
           fileSize,
         });
+
+        const updatedRecord = await KnowledgeRecordModel.findOne({ processingId });
+        if (updatedRecord && (updatedRecord.documentCategory === 'MARKSHEET' || updatedRecord.documentCategory === 'TRANSCRIPT')) {
+          const subjects = (updatedRecord.candidateFields as any)?.subjects;
+          if (!Array.isArray(subjects) || subjects.length === 0) {
+            throw new Error(`Extraction failure: ${updatedRecord.documentCategory} document has no subjects extracted`);
+          }
+        }
       }
 
       await UaipUpload.findOneAndUpdate(

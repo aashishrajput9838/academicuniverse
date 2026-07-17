@@ -77,11 +77,23 @@ The output JSON must strictly follow this schema:
   "candidateFields": object (structured candidate data matching the document category. For ACADEMIC_TIMETABLE: { "schedule": [{ "date": string, "events": [{ "timeSlot": string, "courseCode": string, "courseName": string, "room": string, "instructor": string }] }] }. For MARKSHEET/TRANSCRIPT: { "subjects": [{ "code": string, "name": string, "credits": number, "gradingStatus": string, "grade": string, "gradePoints": number, "semester": string, "term": string, "year": number }], "gpa": number, "totalCredits": number, "academicStatistics": { "subjectsAppeared": number, "subjectsPassed": number, "subjectsFailed": number, "totalMarksObtained": number, "maximumMarks": number, "percentage": number } }. For CERTIFICATE: { "title": string, "issuer": string, "date": string }. For RESUME: { "skills": string[], "education": object[], "experience": object[], "projects": object[] }. For INTERNSHIP/OFFER_LETTER: { "company": string, "role": string, "startDate": string, "endDate": string, "stipend": string }. For other types: use best judgment to structure the data meaningfully.)
 }
 
+GRADE VALIDATION RULES (CRITICAL - APPLY TO MARKSHEET/TRANSCRIPT ONLY):
+- Allowed grades: O, A+, A, B+, B, C, P, F, Qualified, Audit
+- Never guess a grade. If the OCR text is ambiguous between two grades (especially O vs C), use the following disambiguation strategy:
+  1. Check gradePoints: O typically maps to 10, C typically maps to 5 or lower. If gradePoints is 10 or接近 10, the grade is O. If gradePoints is 5 or lower, the grade is C.
+  2. Check credits and adjacent subject rows: look at the pattern of grades in nearby rows. If most grades are high (A+, A, O), an ambiguous grade is more likely O. If most grades are low (C, P, F), it is more likely C.
+  3. Check university grading pattern: Sharda University and most Indian universities use O=Outstanding (10), A+=9, A=8, B+=7, B=6, C=5, P=Pass, F=Fail. If the gradePoints field clearly shows 15.000 for 1.5 credits, that is O (15/1.5 = 10 points per credit). If gradePoints is around 7.5 for 1.5 credits, that is C (5 points per credit).
+  4. When in doubt, prefer the grade that makes gradePoints consistent with the standard formula: gradePoints = credits × gradePointPerCredit.
+- gradingStatus must be one of: "Graded", "Audit", "Pass", "Fail", "In Progress", "Qualified"
+- gradePoints must be a number consistent with credits and grade (gradePoints = credits × gradePointValue).
+
 IMPORTANT RULES:
 - "primaryTargetModule" is mandatory. Always pick the best matching module from ALLOWED_MODULE_IDS.
 - "secondaryTargetModules" is optional (max 2). Only include if there is a strong secondary use case.
 - These recommendations are AI suggestions only. No actual module data will be written. A human must approve.
 - Extract as much structured data as possible into "candidateFields". Do not leave it empty.
+- For MARKSHEET/TRANSCRIPT, include ALL subjects visible in the document. Do not truncate the subjects array.
+- academicStatistics must be populated when visible in the document. If not visible, omit it.
 
 ALLOWED_CATEGORIES:
 ${SUPPORTED_CATEGORIES.map(c => `- ${c}`).join('\n')}
@@ -226,11 +238,27 @@ ${contentToAnalyze.slice(0, 50000)} // safety limit for token size
       }
     }
 
-    // Validate MARKSHEET/TRANSCRIPT extraction completeness
+    // Validate MARKSHEET/TRANSCRIPT extraction completeness and grade values
     if ((documentCategory === 'MARKSHEET' || documentCategory === 'TRANSCRIPT')) {
       const subjects = candidateFields?.subjects;
       if (!Array.isArray(subjects) || subjects.length === 0) {
         throw new Error(`AI extraction failure for ${documentCategory}: subjects array is empty or missing. Document requires at least one subject row.`);
+      }
+
+      const ALLOWED_GRADES = new Set(['O', 'A+', 'A', 'B+', 'B', 'C', 'P', 'F', 'Qualified', 'Audit']);
+      const ALLOWED_GRADING_STATUS = new Set(['Graded', 'Audit', 'Pass', 'Fail', 'In Progress', 'Qualified']);
+
+      for (const sub of subjects) {
+        if (sub && typeof sub === 'object') {
+          const grade = String(sub.grade || '').trim();
+          if (grade && !ALLOWED_GRADES.has(grade)) {
+            logger.warn(`UaipDocumentAiService: Invalid grade "${grade}" for subject "${sub.name}". Allowed: ${[...ALLOWED_GRADES].join(', ')}`);
+          }
+          const gradingStatus = String(sub.gradingStatus || '').trim();
+          if (gradingStatus && !ALLOWED_GRADING_STATUS.has(gradingStatus)) {
+            logger.warn(`UaipDocumentAiService: Invalid gradingStatus "${gradingStatus}" for subject "${sub.name}". Allowed: ${[...ALLOWED_GRADING_STATUS].join(', ')}`);
+          }
+        }
       }
     }
 

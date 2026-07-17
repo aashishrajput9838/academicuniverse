@@ -246,6 +246,7 @@ function MarksheetView({ extractedEntities, candidateFields }: { extractedEntiti
   const subjects = Array.isArray(candidateFields?.subjects) ? candidateFields.subjects : [];
   const cgpa = extractedEntities?.cgpa as string | undefined;
   const semester = extractedEntities?.semester as string | undefined;
+  const academicStatistics = extractedEntities?.academicStatistics as Record<string, any> | undefined;
 
   return (
     <div className="space-y-4">
@@ -255,33 +256,59 @@ function MarksheetView({ extractedEntities, candidateFields }: { extractedEntiti
           {cgpa && <div className="ml-auto"><p className="text-xs text-slate-400">CGPA</p><p className="text-lg font-bold text-purple-300">{cgpa}</p></div>}
         </div>
       )}
+
+      {academicStatistics && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+          {[
+            { label: 'Subjects Appeared', value: academicStatistics.subjectsAppeared },
+            { label: 'Subjects Passed', value: academicStatistics.subjectsPassed },
+            { label: 'Subjects Failed', value: academicStatistics.subjectsFailed },
+            { label: 'Total Grade Points', value: academicStatistics.totalMarksObtained },
+            { label: 'Units Towards GPA', value: academicStatistics.maximumMarks },
+            { label: 'Percentage', value: academicStatistics.percentage != null ? `${academicStatistics.percentage}%` : undefined },
+          ].map((stat) => (
+            stat.value !== undefined && stat.value !== null && String(stat.value) !== '' && (
+              <div key={stat.label} className="rounded-lg border border-slate-700/40 bg-slate-800/20 px-3 py-2.5">
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
+                <p className="text-sm font-bold text-white">{String(stat.value)}</p>
+              </div>
+            )
+          ))}
+        </div>
+      )}
+
       {subjects.length > 0 ? (
         <div className="rounded-lg border border-slate-700/40 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-800/60">
               <tr>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Subject</th>
-                <th className="text-center px-3 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Marks</th>
-                <th className="text-center px-3 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Grade</th>
-                <th className="text-center px-3 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Credits</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Code</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Subject Name</th>
+                <th className="text-center px-2 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Credits</th>
+                <th className="text-center px-2 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</th>
+                <th className="text-center px-2 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Grade</th>
+                <th className="text-center px-2 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Grade Points</th>
+                <th className="text-center px-2 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Semester</th>
+                <th className="text-center px-2 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Year</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/30">
               {subjects.map((sub, i) => (
                 <tr key={i} className="hover:bg-slate-800/20 transition-colors">
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-white">{sub.name}</p>
-                    {sub.code && <p className="text-xs text-slate-500">{sub.code}</p>}
+                  <td className="px-3 py-2.5 text-xs font-mono text-slate-400">{sub.code ?? '—'}</td>
+                  <td className="px-3 py-2.5">
+                    <p className="font-medium text-white text-xs">{sub.name}</p>
                   </td>
-                  <td className="text-center px-3 py-3 text-slate-300">
-                    {sub.marks !== undefined ? `${sub.marks}${sub.maxMarks ? `/${sub.maxMarks}` : ''}` : '—'}
-                  </td>
-                  <td className="text-center px-3 py-3">
+                  <td className="text-center px-2 py-2.5 text-xs text-slate-300">{sub.credits ?? '—'}</td>
+                  <td className="text-center px-2 py-2.5 text-xs text-slate-400">{sub.gradingStatus ?? '—'}</td>
+                  <td className="text-center px-2 py-2.5">
                     <span className="rounded-full bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-xs font-semibold text-purple-300">
                       {sub.grade ?? '—'}
                     </span>
                   </td>
-                  <td className="text-center px-3 py-3 text-slate-400 text-xs">{sub.credits ?? '—'}</td>
+                  <td className="text-center px-2 py-2.5 text-xs text-slate-300">{sub.gradePoints ?? '—'}</td>
+                  <td className="text-center px-2 py-2.5 text-xs text-slate-400">{sub.semester ?? '—'}</td>
+                  <td className="text-center px-2 py-2.5 text-xs text-slate-400">{sub.year ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -602,12 +629,17 @@ function buildEditableGrid(
   // 2. TRANSCRIPT or MARKSHEET
   if (category === 'TRANSCRIPT' || category === 'MARKSHEET') {
     const subjects = Array.isArray(candidateFields?.subjects) ? candidateFields.subjects : [];
-    const headers = ['Subject', 'Credits', 'Marks', 'Grade'];
+    const headers = ['Code', 'Subject', 'Credits', 'Status', 'Grade', 'Grade Points', 'Semester', 'Year', 'Marks'];
     const rows = subjects.map((sub: any, sIdx: number) => [
+      { path: `subjects.${sIdx}.code`, header: 'Code', aiValue: getNestedValue(originalFields, `subjects.${sIdx}.code`) || '' },
       { path: `subjects.${sIdx}.name`, header: 'Subject', aiValue: getNestedValue(originalFields, `subjects.${sIdx}.name`) || '' },
       { path: `subjects.${sIdx}.credits`, header: 'Credits', aiValue: String(getNestedValue(originalFields, `subjects.${sIdx}.credits`) ?? '') },
-      { path: `subjects.${sIdx}.marks`, header: 'Marks', aiValue: String(getNestedValue(originalFields, `subjects.${sIdx}.marks`) ?? '') },
+      { path: `subjects.${sIdx}.gradingStatus`, header: 'Status', aiValue: getNestedValue(originalFields, `subjects.${sIdx}.gradingStatus`) || '' },
       { path: `subjects.${sIdx}.grade`, header: 'Grade', aiValue: getNestedValue(originalFields, `subjects.${sIdx}.grade`) || '' },
+      { path: `subjects.${sIdx}.gradePoints`, header: 'Grade Points', aiValue: String(getNestedValue(originalFields, `subjects.${sIdx}.gradePoints`) ?? '') },
+      { path: `subjects.${sIdx}.semester`, header: 'Semester', aiValue: getNestedValue(originalFields, `subjects.${sIdx}.semester`) || '' },
+      { path: `subjects.${sIdx}.year`, header: 'Year', aiValue: String(getNestedValue(originalFields, `subjects.${sIdx}.year`) ?? '') },
+      { path: `subjects.${sIdx}.marks`, header: 'Marks', aiValue: String(getNestedValue(originalFields, `subjects.${sIdx}.marks`) ?? '') },
     ]);
 
     return { sheets: [{ name: 'Marks', headers, rows }] };
@@ -986,12 +1018,17 @@ function ExcelView({
   // 2. Transcript or Marksheet View
   if (category === 'TRANSCRIPT' || category === 'MARKSHEET') {
     const subjects = Array.isArray(candidateFields?.subjects) ? candidateFields.subjects : [];
-    const headers = ['Subject', 'Credits', 'Marks', 'Grade'];
+    const headers = ['Code', 'Subject', 'Credits', 'Status', 'Grade', 'Grade Points', 'Semester', 'Year', 'Marks'];
     const rows: string[][] = subjects.map((sub: any) => [
+      sub.code || '—',
       sub.name || (sub.code ? `Subject ${sub.code}` : '—'),
       sub.credits !== undefined ? String(sub.credits) : '—',
-      sub.marks !== undefined ? `${sub.marks}${sub.maxMarks ? `/${sub.maxMarks}` : ''}` : '—',
+      sub.gradingStatus || '—',
       sub.grade || '—',
+      sub.gradePoints !== undefined ? String(sub.gradePoints) : '—',
+      sub.semester || '—',
+      sub.year || '—',
+      sub.marks !== undefined ? `${sub.marks}${sub.maxMarks ? `/${sub.maxMarks}` : ''}` : '—',
     ]);
 
     return (
@@ -2100,6 +2137,7 @@ function ExtractedDataModal({
 
   const [routingInfo, setRoutingInfo] = useState<RoutingInfo | null>(null);
   const [routingLoading, setRoutingLoading] = useState(false);
+  const [showModuleRegistry, setShowModuleRegistry] = useState(false);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -2476,21 +2514,30 @@ function ExtractedDataModal({
                   </div>
 
                   <div className="rounded-xl border border-slate-700/40 bg-slate-800/20 p-4">
-                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Available Modules in Registry</p>
-                    <div className="space-y-1.5">
-                      {routingInfo.moduleRegistry.map((m) => (
-                        <div key={m.moduleId} className="flex items-center justify-between rounded-lg border border-slate-700/30 bg-slate-800/40 px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-white">{m.moduleName}</span>
-                            <span className="text-[10px] font-mono text-slate-500">{m.moduleId}</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowModuleRegistry((v) => !v)}
+                      className="w-full flex items-center justify-between text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors"
+                    >
+                      <span>Available Modules in Registry</span>
+                      <svg className={`h-4 w-4 transition-transform ${showModuleRegistry ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    {showModuleRegistry && (
+                      <div className="mt-3 space-y-1.5">
+                        {routingInfo.moduleRegistry.map((m) => (
+                          <div key={m.moduleId} className="flex items-center justify-between rounded-lg border border-slate-700/30 bg-slate-800/40 px-3 py-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-white">{m.moduleName}</span>
+                              <span className="text-[10px] font-mono text-slate-500">{m.moduleId}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-slate-500">Priority {m.priority}</span>
+                              <span className="text-[10px] font-mono text-violet-300">{m.canonicalCollection}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-slate-500">Priority {m.priority}</span>
-                            <span className="text-[10px] font-mono text-violet-300">{m.canonicalCollection}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </>
               ) : (

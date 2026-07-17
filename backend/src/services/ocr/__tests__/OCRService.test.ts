@@ -1,6 +1,10 @@
 import { OCRService } from '../OCRService';
 import { OCRFactory } from '../OCRFactory';
-import { IOcrProvider } from '../IOcrProvider';
+import { IOcrEngine } from '../engines/IOcrEngine';
+import { DocumentExtractionEngine } from '../DocumentExtractionEngine';
+import { IPdfTextExtractor, PdfTextResult } from '../extractors/IPdfTextExtractor';
+import { IImagePreprocessor, PreprocessedImage } from '../preprocessing/IImagePreprocessor';
+import { IOcrQualityScorer } from '../quality/IOcrQualityScorer';
 import { eventBus } from '../../../events/EventBus';
 import { UaipEvent, UaipEventPayload } from '../../../events/UaipEvents';
 
@@ -34,11 +38,34 @@ jest.mock('../repositories/MongoOcrIdempotencyRepository', () => {
 jest.mock('../../../models/KnowledgeRecord', () => ({
   KnowledgeRecordModel: {
     updateOne: jest.fn().mockResolvedValue({}),
+    findOne: jest.fn().mockResolvedValue(null),
   },
 }));
 
+jest.mock('../../../storage/GridFSProvider', () => ({
+  GridFSProvider: jest.fn().mockImplementation(() => ({
+    getFile: jest.fn().mockResolvedValue(Buffer.from('mock-image-data')),
+  })),
+}));
+
+jest.mock('pdf-to-img', () => ({
+  pdf: jest.fn().mockImplementation(async function* () {
+    yield Buffer.from('rendered-page-1');
+  }),
+}));
+
+class TestableDocumentExtractionEngine extends DocumentExtractionEngine {
+  async renderPdfPages(buffer: Buffer): Promise<Array<{ buffer: Buffer; pageNumber: number; width: number; height: number }>> {
+    return [{ buffer: Buffer.from('mock-pdf-image'), pageNumber: 1, width: 2481, height: 3508 }];
+  }
+}
+
 describe('OCRService', () => {
-  let mockProvider: jest.Mocked<IOcrProvider>;
+  let mockEngine: jest.Mocked<IOcrEngine>;
+  let mockPdfExtractor: jest.Mocked<IPdfTextExtractor>;
+  let mockPreprocessor: jest.Mocked<IImagePreprocessor>;
+  let mockQualityScorer: jest.Mocked<IOcrQualityScorer>;
+  let extractionEngine: DocumentExtractionEngine;
   let ocrService: OCRService;
   let eventListeners: ((payload: UaipEventPayload) => Promise<void>)[] = [];
 
@@ -46,18 +73,82 @@ describe('OCRService', () => {
     jest.clearAllMocks();
     eventListeners = [];
 
-    // Capture the subscription callbacks when OCRService is instantiated
     (eventBus.subscribe as jest.Mock).mockImplementation((event, listener) => {
       if (event === UaipEvent.Parsed) {
         eventListeners.push(listener);
       }
     });
 
-    mockProvider = {
-      process: jest.fn().mockResolvedValue('Extracted text from mock provider'),
+    mockEngine = {
+      name: 'tesseract',
+      process: jest.fn().mockResolvedValue({
+        text: 'Extracted text from mock engine',
+        confidence: 95,
+        pagesProcessed: 1,
+        engine: 'tesseract',
+        pageDetails: [
+          {
+            pageNumber: 1,
+            text: 'Extracted text from mock engine',
+            confidence: 95,
+          },
+        ],
+      }),
     };
-    OCRFactory.registerProvider('TESSERACT', mockProvider);
 
+    mockPdfExtractor = {
+      extractText: jest.fn().mockResolvedValue({
+        text: '',
+        method: 'pdf-parse',
+        hasText: false,
+      }),
+    };
+
+    mockPreprocessor = {
+      preprocess: jest.fn().mockResolvedValue({
+        buffer: Buffer.from('preprocessed-image'),
+        format: 'png',
+        width: 1000,
+        height: 1000,
+      } as PreprocessedImage),
+      enhanceContrast: jest.fn().mockResolvedValue(Buffer.from('contrast')),
+      resizeForOcr: jest.fn().mockResolvedValue(Buffer.from('resized')),
+      deskew: jest.fn().mockResolvedValue(Buffer.from('deskewed')),
+      autoRotate: jest.fn().mockResolvedValue(Buffer.from('rotated')),
+      adaptiveThreshold: jest.fn().mockResolvedValue(Buffer.from('thresholded')),
+    };
+
+    mockQualityScorer = {
+      score: jest.fn().mockReturnValue({
+        score: 0.8,
+        isSufficient: true,
+        reason: undefined,
+      }),
+    };
+
+    OCRFactory.registerEngine('TESSERACT', mockEngine);
+    OCRFactory.registerEngine('PADDLEOCR', {
+      name: 'paddleocr',
+      process: jest.fn().mockResolvedValue({
+        text: 'Fallback OCR text from PaddleOCR',
+        confidence: 85,
+        pagesProcessed: 1,
+        engine: 'paddleocr',
+        pageDetails: [],
+      }),
+    } as any);
+
+    const paddleOcrEngine = OCRFactory.getEngine('PADDLEOCR') as jest.Mocked<IOcrEngine>;
+
+    extractionEngine = new TestableDocumentExtractionEngine(
+      mockPdfExtractor,
+      mockPreprocessor,
+      mockEngine,
+      paddleOcrEngine,
+      mockQualityScorer,
+    );
+
+    OCRService.setExtractionEngine(extractionEngine);
     OCRService.clearCache();
     ocrService = new OCRService();
   });
@@ -77,12 +168,12 @@ describe('OCRService', () => {
 
     await eventListeners[0](payload);
 
-    expect(mockProvider.process).toHaveBeenCalledWith('store-123', 'image/png');
+    expect(mockEngine.process).toHaveBeenCalledWith(expect.any(Buffer));
     expect(eventBus.publish).toHaveBeenCalledWith(
       UaipEvent.OCR_COMPLETED,
       expect.objectContaining({
         processingId: 'proc-123',
-        ocrText: 'Extracted text from mock provider',
+        ocrText: 'Extracted text from mock engine',
       })
     );
   });
@@ -97,12 +188,12 @@ describe('OCRService', () => {
 
     await eventListeners[0](payload);
 
-    expect(mockProvider.process).toHaveBeenCalledWith('store-456', 'application/pdf');
+    expect(mockEngine.process).toHaveBeenCalledWith(expect.any(Buffer));
     expect(eventBus.publish).toHaveBeenCalledWith(
       UaipEvent.OCR_COMPLETED,
       expect.objectContaining({
         processingId: 'proc-456',
-        ocrText: 'Extracted text from mock provider',
+        ocrText: 'Extracted text from mock engine',
       })
     );
   });
@@ -117,7 +208,7 @@ describe('OCRService', () => {
 
     await eventListeners[0](payload);
 
-    expect(mockProvider.process).not.toHaveBeenCalled();
+    expect(mockEngine.process).not.toHaveBeenCalled();
     expect(eventBus.publish).not.toHaveBeenCalled();
   });
 
@@ -147,7 +238,7 @@ describe('OCRService', () => {
       await eventListeners[0](payload);
     }
 
-    expect(mockProvider.process).not.toHaveBeenCalled();
+    expect(mockEngine.process).not.toHaveBeenCalled();
     expect(eventBus.publish).not.toHaveBeenCalled();
   });
 
@@ -159,22 +250,19 @@ describe('OCRService', () => {
       isScanned: false,
     };
 
-    // First call
     await eventListeners[0](payload);
-    expect(mockProvider.process).toHaveBeenCalledTimes(1);
+    expect(mockEngine.process).toHaveBeenCalledTimes(1);
     expect(eventBus.publish).toHaveBeenCalledTimes(1);
 
-    // Reset calls on mocks to isolate second invocation check
     jest.clearAllMocks();
 
-    // Second call with same processingId
     await eventListeners[0](payload);
-    expect(mockProvider.process).not.toHaveBeenCalled();
+    expect(mockEngine.process).not.toHaveBeenCalled();
     expect(eventBus.publish).not.toHaveBeenCalled();
   });
 
-  it('should handle provider errors by publishing OCR_FAILED and resetting idempotency cache', async () => {
-    mockProvider.process.mockRejectedValue(new Error('Tesseract failed'));
+  it('should handle engine errors by publishing OCR_FAILED and resetting idempotency cache', async () => {
+    mockEngine.process.mockRejectedValue(new Error('Tesseract failed'));
 
     const payload: UaipEventPayload = {
       processingId: 'proc-error',
@@ -193,17 +281,54 @@ describe('OCRService', () => {
       })
     );
 
-    // Verify idempotency cache was reset on failure so we can retry
     jest.clearAllMocks();
-    mockProvider.process.mockResolvedValue('Success on retry');
+    mockEngine.process.mockResolvedValue({
+      text: 'Success on retry',
+      confidence: 90,
+      pagesProcessed: 1,
+      engine: 'tesseract',
+      pageDetails: [],
+    });
 
     await eventListeners[0](payload);
-    expect(mockProvider.process).toHaveBeenCalledTimes(1);
+    expect(mockEngine.process).toHaveBeenCalledTimes(1);
     expect(eventBus.publish).toHaveBeenCalledWith(
       UaipEvent.OCR_COMPLETED,
       expect.objectContaining({
         processingId: 'proc-error',
         ocrText: 'Success on retry',
+      })
+    );
+  });
+
+  it('should fallback to PaddleOCR when Tesseract returns low quality', async () => {
+    mockEngine.process.mockResolvedValue({
+      text: 'Low quality text',
+      confidence: 5,
+      pagesProcessed: 1,
+      engine: 'tesseract',
+      pageDetails: [],
+    });
+
+    mockQualityScorer.score
+      .mockReturnValueOnce({ score: 0.1, isSufficient: false, reason: 'OCR text too short' })
+      .mockReturnValueOnce({ score: 0.9, isSufficient: true, reason: undefined });
+
+    const payload: UaipEventPayload = {
+      processingId: 'proc-fallback',
+      storageId: 'store-fallback',
+      mimeType: 'application/pdf',
+      isScanned: true,
+    };
+
+    await eventListeners[0](payload);
+
+    expect(mockEngine.process).toHaveBeenCalled();
+    expect(eventBus.publish).toHaveBeenCalledWith(
+      UaipEvent.OCR_COMPLETED,
+      expect.objectContaining({
+        processingId: 'proc-fallback',
+        ocrText: 'Fallback OCR text from PaddleOCR',
       })
     );
   });

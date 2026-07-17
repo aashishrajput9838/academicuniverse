@@ -39,6 +39,7 @@ export class UaipDocumentAiService {
     }
 
     const contentToAnalyze = record.rawContent || '';
+    logger.info(`UaipDocumentAiService: rawContent length: ${contentToAnalyze.length}`, { processingId });
     if (!contentToAnalyze.trim()) {
       logger.warn('UaipDocumentAiService: rawContent is empty. Processing with file metadata only.', { processingId });
     }

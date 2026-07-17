@@ -1,26 +1,25 @@
-// src/services/ocr/OCRFactory.ts
-import { IOcrProvider } from './IOcrProvider';
-import { TesseractProvider } from './providers/TesseractProvider';
+import { IOcrEngine } from './engines/IOcrEngine';
+import { TesseractEngine } from './engines/TesseractEngine';
+import { PaddleOcrEngine } from './engines/PaddleOcrEngine';
 
 export class OCRFactory {
-  private static providers: Map<string, IOcrProvider> = new Map();
+  private static engines: Map<string, IOcrEngine> = new Map();
 
-  static registerProvider(name: string, provider: IOcrProvider): void {
-    if (this.providers.has(name)) {
-      console.warn(`OCRFactory: Overriding existing provider for ${name}`);
+  static registerEngine(name: string, engine: IOcrEngine): void {
+    if (this.engines.has(name)) {
+      console.warn(`OCRFactory: Overriding existing engine for ${name}`);
     }
-    this.providers.set(name, provider);
+    this.engines.set(name, engine);
   }
 
-  static getProvider(name: string): IOcrProvider {
-    const provider = this.providers.get(name);
-    if (!provider) {
-      throw new Error(`OCRFactory: No provider registered for strategy '${name}'`);
+  static getEngine(name: string): IOcrEngine {
+    const engine = this.engines.get(name);
+    if (!engine) {
+      throw new Error(`OCRFactory: No engine registered for strategy '${name}'`);
     }
-    return provider;
+    return engine;
   }
 }
 
-// Register built-in providers
-OCRFactory.registerProvider('TESSERACT', new TesseractProvider());
-
+OCRFactory.registerEngine('TESSERACT', new TesseractEngine());
+OCRFactory.registerEngine('PADDLEOCR', new PaddleOcrEngine());

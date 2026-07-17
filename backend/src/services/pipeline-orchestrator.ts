@@ -91,6 +91,8 @@ export class PipelineOrchestrator {
           console.log(`[Pipeline] OCR completed for ${processingId}. Text length: ${ocrText.length} chars`);
           if (ocrText.length > 0) {
             console.log(`[Pipeline] First 1000 chars of OCR output for ${processingId}:\n${ocrText.slice(0, 1000)}`);
+          } else {
+            console.warn(`[Pipeline] OCR returned empty text for ${processingId}. AI will process with file metadata only.`);
           }
         } catch (err: any) {
           console.warn(`[Pipeline] OCR failed or timed out for ${processingId}:`, err.message);

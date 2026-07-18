@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { apiRequest, API_BASE_URL } from '@/utils/api';
 import { useModuleRefresh } from '@/hooks/useModuleRefresh';
+import { SemesterTranscriptSection } from './components/SemesterTranscriptSection';
 
 interface SubjectDTO {
   code: string;
@@ -20,6 +21,7 @@ interface SemesterDTO {
   year: number;
   gpa: number;
   subjects: SubjectDTO[];
+  sourceDocumentId?: string;
 }
 
 interface OverallDTO {
@@ -33,19 +35,6 @@ interface OverallDTO {
 interface AcademicRecordsResponse {
   overall: OverallDTO;
   semesters: SemesterDTO[];
-}
-
-const STATUS_STYLES: Record<string, { bg: string; text: string; border: string }> = {
-  Graded: { bg: 'bg-emerald-500/10', text: 'text-emerald-300', border: 'border-emerald-500/30' },
-  Audit: { bg: 'bg-slate-500/10', text: 'text-slate-300', border: 'border-slate-500/30' },
-  Qualified: { bg: 'bg-blue-500/10', text: 'text-blue-300', border: 'border-blue-500/30' },
-  Pass: { bg: 'bg-green-500/10', text: 'text-green-300', border: 'border-green-500/30' },
-  Fail: { bg: 'bg-red-500/10', text: 'text-red-300', border: 'border-red-500/30' },
-  'In Progress': { bg: 'bg-amber-500/10', text: 'text-amber-300', border: 'border-amber-500/30' },
-};
-
-function getStatusStyle(status: string) {
-  return STATUS_STYLES[status] || { bg: 'bg-slate-500/10', text: 'text-slate-300', border: 'border-slate-500/30' };
 }
 
 function getStanding(cgpa: number): string {
@@ -252,134 +241,20 @@ export default function StudentAcademicRecords() {
           </div>
 
           {/* Transcript */}
-          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-            <h2 className="text-xl font-bold text-emerald-400 mb-4">Transcript</h2>
-            <p className="text-xs text-slate-500 mb-4">
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-emerald-400">Transcript</h2>
+            <p className="text-xs text-slate-500 -mt-4 mb-4">
               Showing {totalSubjects} subject{totalSubjects !== 1 ? 's' : ''} across {records.semesters.length} semester{records.semesters.length !== 1 ? 's' : ''}.
               CGPA is computed from GPA-eligible subjects only.
             </p>
-            <div className="overflow-x-auto -mx-6 px-6">
-              <table className="min-w-full divide-y divide-slate-700">
-                <thead className="sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Course</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Code</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">Credits</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">Grade</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">Grade Points</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-700">
-                  {records.semesters.flatMap((sem) =>
-                    sem.subjects.map((sub) => {
-                      const statusStyle = getStatusStyle(sub.gradingStatus);
-                      return (
-                        <tr key={`${sem.semester}-${sem.year}-${sub.code}`} className="hover:bg-slate-800/30 transition-colors group">
-                          <td className="px-4 py-3 text-sm font-medium text-white max-w-xs truncate" title={sub.name}>
-                            {sub.name}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-400 font-mono">{sub.code}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-slate-300">{sub.credits}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-emerald-400 font-semibold">{sub.grade}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-slate-400">{sub.gradePoints}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border}`}>
-                              {sub.gradingStatus}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Documents Section */}
-          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-            <h2 className="text-xl font-bold text-emerald-400 mb-4">Documents</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {records.semesters.map((sem) => (
-                <div key={`doc-${sem.semester}-${sem.year}`} className="bg-slate-800/50 rounded-lg border border-slate-600 p-4 flex flex-col">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <div className="text-sm font-medium text-white">Semester {sem.semester} Marksheet</div>
-                      <div className="text-xs text-slate-400 mt-0.5">Academic Year {sem.year}</div>
-                    </div>
-                    <span className="text-xs text-slate-500 bg-slate-700/50 px-2 py-0.5 rounded">{sem.subjects.length} subjects</span>
-                  </div>
-                  <div className="mt-auto pt-3 flex gap-2">
-                    <button
-                      type="button"
-                      className="flex-1 rounded-md border border-slate-600 bg-slate-700/30 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-700/50"
-                      onClick={() => {
-                        const sourceDocumentId = (sem as any).sourceDocumentId as string | undefined;
-                        if (!sourceDocumentId) {
-                          return;
-                        }
-                        const url = `${API_BASE_URL}/api/academic-records/documents/${sourceDocumentId}`;
-                        fetch(url, {
-                          headers: {
-                            Authorization: `Bearer ${backendToken}`,
-                          },
-                        })
-                          .then((res) => {
-                            if (!res.ok) throw new Error('Failed to load document');
-                            return res.blob();
-                          })
-                          .then((blob) => {
-                            const blobUrl = window.URL.createObjectURL(blob);
-                            window.open(blobUrl, '_blank');
-                            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
-                          })
-                          .catch((err) => {
-                            console.error('View failed', err);
-                          });
-                      }}
-                    >
-                      View
-                    </button>
-                    <button
-                      type="button"
-                      className="flex-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20"
-                      onClick={() => {
-                        const sourceDocumentId = (sem as any).sourceDocumentId as string | undefined;
-                        if (!sourceDocumentId) {
-                          return;
-                        }
-                        const url = `${API_BASE_URL}/api/academic-records/documents/${sourceDocumentId}`;
-                        fetch(url, {
-                          headers: {
-                            Authorization: `Bearer ${backendToken}`,
-                          },
-                        })
-                          .then((res) => {
-                            if (!res.ok) throw new Error('Failed to fetch document');
-                            return res.blob();
-                          })
-                          .then((blob) => {
-                            const blobUrl = window.URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = blobUrl;
-                            a.download = `semester-${sem.semester}-${sem.year}`;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            window.URL.revokeObjectURL(blobUrl);
-                          })
-                          .catch((err) => {
-                            console.error('Download failed', err);
-                          });
-                      }}
-                    >
-                      Download
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {records.semesters.map((sem) => (
+              <SemesterTranscriptSection
+                key={`${sem.semester}-${sem.year}`}
+                semester={sem}
+                backendToken={backendToken}
+                apiBaseUrl={API_BASE_URL}
+              />
+            ))}
           </div>
         </div>
       )}

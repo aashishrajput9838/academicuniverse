@@ -11,9 +11,21 @@ export class SkillsEventListener {
   private static initialized = false;
   private evidenceService = new SkillEvidenceService();
   private projectionService = new SkillProjectionService();
+  private started = false;
 
   constructor() {
+  }
+
+  public start(): void {
+    if (this.started) {
+      return;
+    }
     this.initializeSubscriptions();
+    this.started = true;
+  }
+
+  public stop(): void {
+    this.started = false;
   }
 
   private initializeSubscriptions(): void {
@@ -224,3 +236,4 @@ export class SkillsEventListener {
 }
 
 export const skillsEventListener = new SkillsEventListener();
+skillsEventListener.start();

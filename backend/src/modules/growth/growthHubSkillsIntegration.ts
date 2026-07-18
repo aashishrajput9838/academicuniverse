@@ -10,10 +10,29 @@ export class GrowthHubSkillsIntegration {
   private readonly invalidatedUsers: Set<string> = new Set();
   private rebuildTimers: Map<string, NodeJS.Timeout> = new Map();
   private readonly REBUILD_DEBOUNCE_MS = 5000;
+  private started = false;
 
   constructor(projectionService?: GrowthProjectionService) {
     this.projectionService = projectionService || new GrowthProjectionService();
+  }
+
+  public start(): void {
+    if (this.started) {
+      return;
+    }
     this.initializeSubscriptions();
+    this.started = true;
+    logger.info('Growth Hub Skills Integration started');
+  }
+
+  public stop(): void {
+    for (const timer of this.rebuildTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.rebuildTimers.clear();
+    this.invalidatedUsers.clear();
+    this.started = false;
+    logger.info('Growth Hub Skills Integration stopped');
   }
 
   private initializeSubscriptions(): void {
@@ -107,3 +126,4 @@ export class GrowthHubSkillsIntegration {
 }
 
 export const growthHubSkillsIntegration = new GrowthHubSkillsIntegration();
+growthHubSkillsIntegration.start();

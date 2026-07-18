@@ -22,6 +22,7 @@ describe('SkillsEventListener', () => {
     (SkillsEventListener as any).initialized = false;
     subscribeSpy = jest.spyOn(eventBus, 'subscribe').mockImplementation(() => {});
     listener = new SkillsEventListener();
+    listener.start();
   });
 
   afterEach(() => {

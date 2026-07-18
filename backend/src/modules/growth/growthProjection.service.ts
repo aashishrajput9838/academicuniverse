@@ -11,6 +11,7 @@ import { SkillCategory } from '../../shared/enums/skills.enum';
 import githubService from '../../services/githubService';
 import { ConfigurationError } from '../../utils/errors';
 import { toObjectId } from '../../utils/mongooseHelpers';
+import { Logger } from '../../utils/logger';
 import {
   GrowthMetric,
   GrowthMetricReasonCode,
@@ -21,6 +22,8 @@ import {
   SkillsMetrics,
   SkillSummaryItem,
 } from './growthProjection.types';
+
+const logger = new Logger('GrowthProjectionService');
 
 const PROJECTION_VERSION = 2;
 
@@ -71,6 +74,7 @@ const latestTimestamp = (values: Array<Date | string | undefined | null>): strin
 
 export class GrowthProjectionService {
   async buildProjection(userId: string, organizationId: string): Promise<GrowthProjection> {
+    const startTime = Date.now();
     const [profileId, marksMetrics, canonicalMetrics, ezoneMetrics, githubMetrics, skillsMetrics] = await Promise.all([
       this.resolveProfileId(userId, organizationId),
       this.getMarksMetrics(userId, organizationId),
@@ -90,7 +94,7 @@ export class GrowthProjectionService {
       skillsTracker: skillsMetrics.source.updatedAt,
     };
 
-    return {
+    const projection = {
       projectionVersion: PROJECTION_VERSION,
       generatedAt: new Date().toISOString(),
       stale: false,
@@ -119,6 +123,19 @@ export class GrowthProjectionService {
       },
       sourceVersions,
     };
+
+    const duration = Date.now() - startTime;
+    logger.info('Growth Hub projection built', {
+      userId,
+      organizationId,
+      profileId,
+      projectionVersion: PROJECTION_VERSION,
+      durationMs: duration,
+      skillsState: skillsMetrics.skills.state,
+      skillsTotal: skillsMetrics.skills.value.totalSkills,
+    });
+
+    return projection;
   }
 
   private async resolveProfileId(userId: string, organizationId: string): Promise<string> {

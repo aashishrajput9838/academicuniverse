@@ -60,6 +60,7 @@ describe('Skills Tracker End-to-End Verification', () => {
     (eventBus as any).listeners.clear();
     (SkillsEventListener as any).initialized = false;
     listener = new SkillsEventListener();
+    listener.start();
 
     mockedPerson.findOne.mockResolvedValue(null);
     mockedPerson.create.mockResolvedValue({ _id: PERSON_A } as any);

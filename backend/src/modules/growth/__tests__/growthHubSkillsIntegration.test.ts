@@ -23,6 +23,7 @@ describe('GrowthHubSkillsIntegration', () => {
       buildProjection: mockBuildProjection,
     } as any));
     integration = new GrowthHubSkillsIntegration();
+    integration.start();
   });
 
   afterEach(() => {

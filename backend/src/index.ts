@@ -58,6 +58,10 @@ import logger from './utils/logger';
 import { initSentry, sentryRequestHandler, sentryTracingHandler, sentryErrorHandler } from './config/sentry';
 import routes from './routes';
 
+// Event-driven subsystem initialization (explicit bootstrap)
+import { skillsEventListener } from './shared/events/skillsEventListener';
+import { growthHubSkillsIntegration } from './modules/growth/growthHubSkillsIntegration';
+
 const app = express();
 
 // Trust proxy for Render/Vercel (must be set before other middleware)
@@ -189,6 +193,11 @@ const startServer = async () => {
         await connectDB();
         logger.info('Connected to MongoDB');
 
+        // Initialize event-driven subsystems after DB connection
+        skillsEventListener.start();
+        growthHubSkillsIntegration.start();
+        logger.info('Event-driven subsystems initialized');
+
         if (process.env.NODE_ENV !== 'test') {
             app.listen(PORT, () => {
                 logger.info(`Server running on port ${PORT}`, {
@@ -226,15 +235,16 @@ const startServer = async () => {
 };
 
 // Handle graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully...');
+const gracefulShutdown = () => {
+  logger.info('Shutting down gracefully...');
+  growthHubSkillsIntegration.stop();
+  skillsEventListener.stop();
+  logger.info('Event-driven subsystems stopped');
   process.exit(0);
-});
+};
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully...');
-  process.exit(0);
-});
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
 if (process.env.NODE_ENV !== 'test') {
   startServer();

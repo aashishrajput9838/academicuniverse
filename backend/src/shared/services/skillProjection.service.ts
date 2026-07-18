@@ -7,6 +7,9 @@ import { ProficiencyLevel, SkillSource, SkillStatus, SkillCategory } from '../..
 import { toObjectId } from '../../utils/mongooseHelpers';
 import { eventBus } from '../../events/EventBus';
 import { UaipEvent } from '../../events/UaipEvents';
+import { Logger } from '../../utils/logger';
+
+const logger = new Logger('SkillProjectionService');
 
 export interface ProficiencyResult {
   score: number;
@@ -109,6 +112,14 @@ export class SkillProjectionService {
       metadata: { domain: 'skills', skillId },
     });
 
+    logger.info('SkillRecord projection rebuilt', {
+      organizationId,
+      personId,
+      skillId,
+      proficiencyScore: projection.score,
+      evidenceCount: projection.evidenceCount,
+    });
+
     void eventBus.publish(UaipEvent.SkillUpdated, {
       processingId: `skill-projection-${result._id.toString()}`,
       organizationId,
@@ -132,6 +143,12 @@ export class SkillProjectionService {
     for (const skillId of skillIds) {
       await this.rebuildSkillRecord(organizationId, personId, skillId);
     }
+
+    logger.info('All SkillRecord projections rebuilt', {
+      organizationId,
+      personId,
+      skillsRebuilt: skillIds.size,
+    });
 
     void eventBus.publish(UaipEvent.SkillProfileRebuilt, {
       processingId: `skill-profile-${personId}-${Date.now()}`,

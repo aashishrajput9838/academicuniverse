@@ -5,7 +5,6 @@ import { PersonResolver } from '../shared/services/personResolver.service';
 import { AcademicRecord } from '../models/AcademicRecord';
 import { UaipUpload } from '../models/UaipUpload';
 import { GridFSProvider } from '../storage/GridFSProvider';
-import { Person } from '../models/Person';
 import { logger } from '../utils/logger';
 
 interface SubjectDTO {
@@ -22,7 +21,7 @@ interface SemesterDTO {
   year: number;
   term: string;
   academicYear: number;
-  semesterNumber: number;
+  semesterNumber?: number;
   gpa: number;
   subjects: SubjectDTO[];
   sourceDocumentId?: string;
@@ -39,21 +38,6 @@ interface OverallDTO {
 interface AcademicRecordsResponse {
   overall: OverallDTO;
   semesters: SemesterDTO[];
-}
-
-function computeSemesterNumber(academicYear: number, term: string, admissionYear?: number): number | null {
-  const normalizedTerm = String(term || '').trim().toLowerCase();
-  if (!normalizedTerm || isNaN(academicYear)) {
-    return null;
-  }
-
-  if (admissionYear && !isNaN(admissionYear) && academicYear >= admissionYear) {
-    const yearOffset = academicYear - admissionYear;
-    const termOffset = normalizedTerm.includes('2') || normalizedTerm.includes('ii') ? 2 : 1;
-    return yearOffset * 2 + termOffset;
-  }
-
-  return null;
 }
 
 /**
@@ -131,14 +115,6 @@ export const getMyAcademicRecords = async (req: any, res: Response) => {
     const repo = new AcademicRecordRepository();
     const records = await repo.findByPerson(personId, organizationId);
 
-    let admissionYear: number | undefined;
-    try {
-      const person = await Person.findOne({ _id: personId, organizationId }).lean();
-      admissionYear = person?.admissionYear;
-    } catch {
-      admissionYear = undefined;
-    }
-
     if (!records || records.length === 0) {
       const emptyResponse: AcademicRecordsResponse = {
         overall: {
@@ -163,15 +139,12 @@ export const getMyAcademicRecords = async (req: any, res: Response) => {
     for (const record of records) {
       const key = `${record.semester}-${record.year}`;
       if (!semesterMap.has(key)) {
-        const academicYear = Number(record.academicYear ?? record.year);
-        const term = String(record.term ?? record.semester ?? 'Term 1');
-        const semesterNumber = record.semesterNumber ?? computeSemesterNumber(academicYear, term, admissionYear);
         semesterMap.set(key, {
           semester: record.semester,
           year: record.year,
-          term,
-          academicYear,
-          semesterNumber: semesterNumber ?? 0,
+          term: String(record.term ?? record.semester ?? 'Term 1'),
+          academicYear: Number(record.academicYear ?? record.year),
+          ...(record.semesterNumber ? { semesterNumber: record.semesterNumber } : {}),
           gpa: 0,
           subjects: [],
           sourceDocumentId: typeof record.sourceDocumentId === 'string' ? record.sourceDocumentId : record.sourceDocumentId?.toString?.() || undefined,

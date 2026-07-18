@@ -5,6 +5,7 @@ import { AcademicRecord } from '../../models/AcademicRecord';
 import { CertificateRecord } from '../../models/CertificateRecord';
 import { ExperienceRecord } from '../../models/ExperienceRecord';
 import { AcademicSchedule } from '../../models/AcademicSchedule';
+import { Person } from '../../models/Person';
 import StudentResume from '../../models/StudentResume';
 import { GrowthHubRecord } from '../../models/GrowthHubRecord';
 import { CareerRecord } from '../../models/CareerRecord';
@@ -491,10 +492,25 @@ class GithubAdapter extends BaseAdapter {
     recordIds: string[],
     organizationId: string,
     session: mongoose.ClientSession
-  ): Promise<void> {
-    const orgOid = toObjectId(organizationId);
-    await GithubRecord.deleteMany({ _id: { $in: recordIds.map(toObjectId) }, organizationId: orgOid }).session(session);
+): Promise<void> {
+  const orgOid = toObjectId(organizationId);
+  await GithubRecord.deleteMany({ _id: { $in: recordIds.map(toObjectId) }, organizationId: orgOid }).session(session);
   }
+}
+
+function computeSemesterNumber(academicYear: number, term: string, admissionYear?: number): number | undefined {
+  const normalizedTerm = String(term || '').trim().toLowerCase();
+  if (!normalizedTerm || isNaN(academicYear)) {
+    return undefined;
+  }
+
+  if (admissionYear && !isNaN(admissionYear) && academicYear >= admissionYear) {
+    const yearOffset = academicYear - admissionYear;
+    const termOffset = normalizedTerm.includes('2') || normalizedTerm.includes('ii') ? 2 : 1;
+    return yearOffset * 2 + termOffset;
+  }
+
+  return undefined;
 }
 
 class AcademicRecordsAdapter extends BaseAdapter {
@@ -520,6 +536,17 @@ class AcademicRecordsAdapter extends BaseAdapter {
     const sourceOid = upload._id;
     const ids: string[] = [];
 
+    let admissionYear: number | undefined;
+    try {
+      const person = await Person.findOne({
+        _id: personId,
+        organizationId: orgOid,
+      }).lean();
+      admissionYear = person?.admissionYear;
+    } catch {
+      admissionYear = undefined;
+    }
+
     for (const sub of subjects) {
       const filter = {
         organizationId: orgOid,
@@ -530,7 +557,7 @@ class AcademicRecordsAdapter extends BaseAdapter {
       };
       const term = sub.term ?? kr.extractedEntities?.term ?? 'Term 1';
       const academicYear = Number(sub.academicYear ?? kr.extractedEntities?.academicYear ?? new Date().getFullYear());
-      const semesterNumber = sub.semesterNumber ? Number(sub.semesterNumber) : undefined;
+      const semesterNumber = computeSemesterNumber(academicYear, term, admissionYear);
       const update = {
         $set: {
           subjectName: sub.name ?? sub.code ?? 'UNKNOWN',

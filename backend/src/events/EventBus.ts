@@ -22,6 +22,10 @@ export class EventBus {
       }
     }
   }
+
+  reset() {
+    this.listeners.clear();
+  }
 }
 
 export const eventBus = new EventBus();

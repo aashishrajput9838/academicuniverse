@@ -5,6 +5,8 @@ import { ISkillRecord } from '../../models/SkillRecord';
 import { ISkillEvidence } from '../../models/SkillEvidence';
 import { ProficiencyLevel, SkillSource, SkillStatus, SkillCategory } from '../../shared/enums/skills.enum';
 import { toObjectId } from '../../utils/mongooseHelpers';
+import { eventBus } from '../../events/EventBus';
+import { UaipEvent } from '../../events/UaipEvents';
 
 export interface ProficiencyResult {
   score: number;
@@ -107,6 +109,19 @@ export class SkillProjectionService {
       metadata: { domain: 'skills', skillId },
     });
 
+    void eventBus.publish(UaipEvent.SkillUpdated, {
+      processingId: `skill-projection-${result._id.toString()}`,
+      organizationId,
+      personId,
+      skillId,
+      skillName: projectionData.skillName,
+      proficiencyScore: projection.score,
+      evidenceCount: projection.evidenceCount,
+      occurredAt: new Date(),
+      source: 'skills_tracker',
+      primarySource: 'PROJECTION',
+    });
+
     return result;
   }
 
@@ -117,6 +132,15 @@ export class SkillProjectionService {
     for (const skillId of skillIds) {
       await this.rebuildSkillRecord(organizationId, personId, skillId);
     }
+
+    void eventBus.publish(UaipEvent.SkillProfileRebuilt, {
+      processingId: `skill-profile-${personId}-${Date.now()}`,
+      organizationId,
+      personId,
+      occurredAt: new Date(),
+      source: 'skills_tracker',
+      skillsRebuilt: skillIds.size,
+    });
   }
 
   private getRecencyFactor(ageMs: number): number {

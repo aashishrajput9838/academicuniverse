@@ -28,6 +28,9 @@ import { researchRoutes } from '../modules/research';
 import { ezoneRoutes } from '../modules/ezone';
 import moduleHealthRoutes from './moduleHealthRoutes';
 
+// Initialize Growth Hub Skills Integration (event subscriber)
+import { growthHubSkillsIntegration } from '../modules/growth/growthHubSkillsIntegration';
+
 const router = express.Router();
 
 router.use('/auth', authRoutes);

@@ -71,4 +71,7 @@ export interface UaipEventPayload {
   extractedBy?: string;
   effectiveFrom?: Date;
   effectiveTo?: Date;
+  proficiencyScore?: number;
+  evidenceCount?: number;
+  skillsRebuilt?: number;
 }

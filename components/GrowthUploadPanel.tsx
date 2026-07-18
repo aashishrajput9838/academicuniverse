@@ -1639,6 +1639,39 @@ function ReviewHistoryPanel({ entries }: { entries: ReviewHistoryEntry[] }) {
 
 // ── Review Tab ─────────────────────────────────────────────────────────────────
 
+// NOTE: This frontend helper mirrors backend SemesterResolutionService.getTermOffset().
+// The term format parsing is duplicated here because the frontend cannot import backend services.
+// Any changes to term format support must be applied in BOTH places.
+function getTermOffset(term: string): number | null {
+  const normalized = term.toLowerCase().replace(/\s+/g, '');
+  if (
+    normalized === 'term1' ||
+    normalized === 'term-1' ||
+    normalized === 'term_1' ||
+    normalized === '1' ||
+    normalized === 'i' ||
+    normalized === 'semester1' ||
+    normalized === 'semester-1' ||
+    normalized === 'semester_1'
+  ) {
+    return 1;
+  }
+  if (
+    normalized === 'term2' ||
+    normalized === 'term-2' ||
+    normalized === 'term_2' ||
+    normalized === '2' ||
+    normalized === 'ii' ||
+    normalized === 'semester2' ||
+    normalized === 'semester-2' ||
+    normalized === 'semester_2' ||
+    normalized === 'semesterii'
+  ) {
+    return 2;
+  }
+  return null;
+}
+
 function ReviewTab({
   processingId,
   backendToken,
@@ -1781,8 +1814,19 @@ function ReviewTab({
       return;
     }
 
-    const yearOffset = Number(academicYear) - admissionYear;
-    const termOffset = normalizedTerm.includes('2') || normalizedTerm.includes('ii') ? 2 : 1;
+    const termOffset = getTermOffset(normalizedTerm);
+    if (termOffset === null) {
+      setSemesterWarning(null);
+      return;
+    }
+
+    const academicYearNum = Number(academicYear);
+    if (isNaN(academicYearNum) || academicYearNum < admissionYear) {
+      setSemesterWarning(null);
+      return;
+    }
+
+    const yearOffset = academicYearNum - admissionYear;
     const derivedSemester = yearOffset * 2 + termOffset;
     const extractedNumber = parseInt(String(extractedSemester).trim(), 10);
 

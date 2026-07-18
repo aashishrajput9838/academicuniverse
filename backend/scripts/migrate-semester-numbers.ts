@@ -7,7 +7,7 @@
  * This script:
  * 1. Finds all AcademicRecords without semesterNumber
  * 2. Looks up the corresponding Person's admissionYear
- * 3. Computes semesterNumber = (academicYear - admissionYear) * 2 + termOffset
+ * 3. Computes semesterNumber using SemesterResolutionService
  * 4. Updates the AcademicRecord with the computed semesterNumber
  *
  * If admissionYear is missing, semesterNumber remains null.
@@ -16,6 +16,7 @@
 import mongoose from 'mongoose';
 import { AcademicRecord } from '../src/models/AcademicRecord';
 import { Person } from '../src/models/Person';
+import { SemesterResolutionService } from '../src/shared/services/semesterResolution.service';
 import { toObjectId } from '../src/utils/mongooseHelpers';
 
 interface AcademicRecordDoc extends mongoose.Document {
@@ -26,21 +27,6 @@ interface AcademicRecordDoc extends mongoose.Document {
   term?: string;
   academicYear?: number;
   semesterNumber?: number;
-}
-
-function computeSemesterNumber(academicYear: number, term: string, admissionYear?: number): number | null {
-  const normalizedTerm = String(term || '').trim().toLowerCase();
-  if (!normalizedTerm || isNaN(academicYear)) {
-    return null;
-  }
-
-  if (admissionYear && !isNaN(admissionYear) && academicYear >= admissionYear) {
-    const yearOffset = academicYear - admissionYear;
-    const termOffset = normalizedTerm.includes('2') || normalizedTerm.includes('ii') ? 2 : 1;
-    return yearOffset * 2 + termOffset;
-  }
-
-  return null;
 }
 
 async function migrate() {
@@ -68,7 +54,8 @@ async function migrate() {
         admissionYear = undefined;
       }
       
-      const semesterNumber = computeSemesterNumber(academicYear, term, admissionYear);
+      const resolution = SemesterResolutionService.resolve({ admissionYear, academicYear, term });
+      const semesterNumber = resolution.isResolvable ? resolution.semesterNumber : null;
       
       if (semesterNumber !== null) {
         await AcademicRecord.updateOne(
@@ -83,7 +70,7 @@ async function migrate() {
     
     console.log(`Migration complete:`);
     console.log(`  Updated: ${updated}`);
-    console.log(`  Skipped (no admissionYear): ${skipped}`);
+    console.log(`  Skipped (no admissionYear or invalid data): ${skipped}`);
     
   } catch (error) {
     console.error('Migration failed:', error);

@@ -62,8 +62,16 @@ export const updateProfileController = async (req: AuthenticatedRequest, res: Re
     });
     
     if (person) {
+      const previousAdmissionYear = person.admissionYear;
       person.admissionYear = year;
       await person.save();
+
+      // If admissionYear changed, log a warning.
+      // Changing admissionYear affects semesterNumber derivation for all existing AcademicRecords.
+      // A re-migration is required to recompute semesterNumber for affected records.
+      if (previousAdmissionYear !== undefined && previousAdmissionYear !== year) {
+        logger.warn(`Admission year changed for person ${person._id} from ${previousAdmissionYear} to ${year}. Existing AcademicRecords may have inconsistent semesterNumber values. Consider running the semester migration script.`, { personId: person._id, previousAdmissionYear, newAdmissionYear: year });
+      }
     }
 
     logger.info(`User profile updated for ${user.email}`, { userId: user._id, updatedFields: { name, githubUsername, admissionYear: year } });
@@ -82,11 +90,6 @@ export const updateProfileController = async (req: AuthenticatedRequest, res: Re
       role: (user.roleId as any)?.name || 'USER',
       admissionYear: updatedPerson?.admissionYear,
     }, 'Profile updated successfully');
-  } catch (error: any) {
-    logger.error('Error updating profile:', error);
-    return sendError(res, 500, 'Failed to update profile');
-  }
-};
   } catch (error: any) {
     logger.error('Error updating profile:', error);
     return sendError(res, 500, 'Failed to update profile');

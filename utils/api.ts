@@ -23,8 +23,11 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
 
   try {
     const response = await fetch(fullUrl, {
-      headers,
       ...options,
+      headers: {
+        ...headers,
+        ...(options.headers || {}),
+      },
     });
 
     const contentType = response.headers.get('content-type');

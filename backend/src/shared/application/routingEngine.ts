@@ -530,6 +530,7 @@ class AcademicRecordsAdapter extends BaseAdapter {
       };
       const term = sub.term ?? kr.extractedEntities?.term ?? 'Term 1';
       const academicYear = Number(sub.academicYear ?? kr.extractedEntities?.academicYear ?? new Date().getFullYear());
+      const semesterNumber = sub.semesterNumber ? Number(sub.semesterNumber) : undefined;
       const update = {
         $set: {
           subjectName: sub.name ?? sub.code ?? 'UNKNOWN',
@@ -542,6 +543,7 @@ class AcademicRecordsAdapter extends BaseAdapter {
           sourceDocumentId: sourceOid,
           term,
           academicYear,
+          ...(semesterNumber ? { semesterNumber } : {}),
         },
       };
       const result = await AcademicRecord.findOneAndUpdate(filter, update, {

@@ -147,6 +147,7 @@ async function writeAcademicRecords(
     };
     const term = sub.term ?? kr.extractedEntities?.term ?? 'Term 1';
     const academicYear = Number(sub.academicYear ?? kr.extractedEntities?.academicYear ?? new Date().getFullYear());
+    const semesterNumber = sub.semesterNumber ? Number(sub.semesterNumber) : undefined;
     const update = {
       $set: {
         subjectName: sub.name ?? sub.code ?? 'UNKNOWN',
@@ -159,6 +160,7 @@ async function writeAcademicRecords(
         sourceDocumentId: sourceOid,
         term,
         academicYear,
+        ...(semesterNumber ? { semesterNumber } : {}),
       },
     };
     const result = await (AcademicRecord as any).findOneAndUpdate(filter, update, {

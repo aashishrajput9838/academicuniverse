@@ -16,7 +16,7 @@ export interface SemesterDTO {
   year: number;
   term: string;
   academicYear: number;
-  semesterNumber: number;
+  semesterNumber?: number;
   gpa: number;
   subjects: SubjectDTO[];
   sourceDocumentId?: string;
@@ -100,7 +100,7 @@ export function SemesterTranscriptSection({
         <div className="flex items-center gap-4">
           <div>
             <h3 className="text-lg font-bold text-white">
-              Semester {semester.semesterNumber}
+              {semester.semesterNumber ? `Semester ${semester.semesterNumber}` : `Semester ${semester.semester}`}
             </h3>
             <p className="text-sm text-slate-400">
               Academic Year {semester.academicYear} &bull; {semester.term}

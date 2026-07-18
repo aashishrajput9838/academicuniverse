@@ -100,7 +100,7 @@ export function SemesterTranscriptSection({
         <div className="flex items-center gap-4">
           <div>
             <h3 className="text-lg font-bold text-white">
-              {semester.semesterNumber ? `Semester ${semester.semesterNumber}` : `Semester ${semester.semester}`}
+              {semester.semesterNumber ? `Semester ${semester.semesterNumber}` : 'Semester Unknown'}
             </h3>
             <p className="text-sm text-slate-400">
               Academic Year {semester.academicYear} &bull; {semester.term}

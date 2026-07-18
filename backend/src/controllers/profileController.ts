@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { User } from '../models';
+import { Person } from '../models/Person';
 import { sendResponse, sendError } from '../utils/response';
 import { Logger } from '../utils/logger';
+import { toObjectId } from '../utils/mongooseHelpers';
 
 const logger = new Logger('profileController');
 
@@ -26,24 +28,14 @@ export const updateProfileController = async (req: AuthenticatedRequest, res: Re
       return sendError(res, 401, 'Authentication required');
     }
 
-    const { name, githubUsername } = req.body;
+    const { name, githubUsername, admissionYear } = req.body;
     
-    // Find user by the same method as the GitHub controller - by Firebase UID
-    // First, we need to get the Firebase UID from the JWT token or request
-    // Since this uses authenticateUser middleware, we have req.user from JWT
-    // But we need to get the Firebase UID to match with GitHub controller
-    
-    // Look up the user by the ID from the JWT to get their Firebase UID
-    logger.info(`Attempting to find user by ID: ${req.user.userId} for profile update`);
     const user = await User.findById(req.user.userId);
-    
-    logger.info(`Found user for profile update: ${user ? user.name : 'NOT FOUND'}, current GitHub username: ${user ? user.githubUsername : 'N/A'}`);
     
     if (!user) {
       return sendError(res, 404, 'User not found');
     }
 
-    // Update allowed fields
     if (name) {
       user.name = name;
     }
@@ -54,13 +46,37 @@ export const updateProfileController = async (req: AuthenticatedRequest, res: Re
 
     await user.save();
 
-    logger.info(`User profile updated for ${user.email}`, { userId: user._id, updatedFields: { name, githubUsername } });
+    // Update Person profile if admissionYear is provided
+    if (admissionYear !== undefined) {
+      const person = await Person.findOne({
+        organizationId: toObjectId(req.user.organizationId),
+        userIds: toObjectId(req.user.userId),
+      });
+      
+      if (person) {
+        const year = admissionYear === null || admissionYear === '' ? undefined : Number(admissionYear);
+        if (year === undefined || (!isNaN(year) && year > 1900 && year <= new Date().getFullYear())) {
+          person.admissionYear = year;
+          await person.save();
+        }
+      }
+    }
+
+    logger.info(`User profile updated for ${user.email}`, { userId: user._id, updatedFields: { name, githubUsername, admissionYear } });
+
+    // Fetch updated Person for response
+    const person = await Person.findOne({
+      organizationId: toObjectId(req.user.organizationId),
+      userIds: toObjectId(req.user.userId),
+    }).lean();
 
     return sendResponse(res, 200, {
       id: user._id,
       name: user.name,
       email: user.email,
       githubUsername: user.githubUsername,
+      role: (user.roleId as any)?.name || 'USER',
+      admissionYear: person?.admissionYear,
     }, 'Profile updated successfully');
   } catch (error: any) {
     logger.error('Error updating profile:', error);
@@ -84,12 +100,19 @@ export const getProfileController = async (req: AuthenticatedRequest, res: Respo
       return sendError(res, 404, 'User not found');
     }
 
+    // Fetch Person for admissionYear
+    const person = await Person.findOne({
+      organizationId: toObjectId(req.user.organizationId),
+      userIds: toObjectId(req.user.userId),
+    }).lean();
+
     return sendResponse(res, 200, {
       id: user._id,
       name: user.name,
       email: user.email,
       githubUsername: user.githubUsername,
       role: (user.roleId as any)?.name || 'USER',
+      admissionYear: person?.admissionYear,
     }, 'Profile retrieved successfully');
   } catch (error: any) {
     logger.error('Error retrieving profile:', error);

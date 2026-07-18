@@ -1553,7 +1553,6 @@ function getFieldSchema(category: string): FieldDef[] {
       return [
         { key: 'studentName', label: 'Student Name' },
         { key: 'rollNumber', label: 'Roll / Enrollment No.' },
-        { key: 'semester', label: 'Semester' },
         { key: 'term', label: 'Term' },
         { key: 'academicYear', label: 'Academic Year' },
         { key: 'programme', label: 'Programme' },

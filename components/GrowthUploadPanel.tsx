@@ -246,14 +246,16 @@ function MarksheetView({ extractedEntities, candidateFields }: { extractedEntiti
   const subjects = Array.isArray(candidateFields?.subjects) ? candidateFields.subjects : [];
   const cgpa = extractedEntities?.cgpa as string | undefined;
   const semester = extractedEntities?.semester as string | undefined;
+  const term = extractedEntities?.term as string | undefined;
   const academicYear = extractedEntities?.academicYear as string | undefined;
   const academicStatistics = extractedEntities?.academicStatistics as Record<string, any> | undefined;
 
   return (
     <div className="space-y-4">
-      {(semester || academicYear || cgpa) && (
+      {(semester || term || academicYear || cgpa) && (
         <div className="flex items-center gap-4 rounded-lg bg-purple-500/5 border border-purple-500/20 px-4 py-3">
           {semester && <div><p className="text-xs text-slate-400">Semester</p><p className="text-sm font-bold text-white">{semester}</p></div>}
+          {term && <div><p className="text-xs text-slate-400">Term</p><p className="text-sm font-bold text-white">{term}</p></div>}
           {academicYear && <div><p className="text-xs text-slate-400">Academic Year</p><p className="text-sm font-bold text-white">{academicYear}</p></div>}
           {cgpa && <div className="ml-auto"><p className="text-xs text-slate-400">CGPA</p><p className="text-lg font-bold text-purple-300">{cgpa}</p></div>}
         </div>
@@ -1366,7 +1368,8 @@ function EntitySection({ entities }: { entities: Record<string, unknown> }) {
     weekEndDate: 'Week End', courses: 'Courses', courseCodes: 'Course Codes',
     instructors: 'Instructors', roomNumbers: 'Rooms', timeSlots: 'Time Slots',
     documentType: 'Document Type', subjects: 'Subjects', gpa: 'GPA', cgpa: 'CGPA',
-    semester: 'Semester', skills: 'Skills', education: 'Education',
+    semester: 'Semester', term: 'Term', academicYear: 'Academic Year',
+    skills: 'Skills', education: 'Education',
     experience: 'Experience', projects: 'Projects', title: 'Title',
     issuer: 'Issuing Organization', date: 'Issue Date',
   };
@@ -1551,6 +1554,7 @@ function getFieldSchema(category: string): FieldDef[] {
         { key: 'studentName', label: 'Student Name' },
         { key: 'rollNumber', label: 'Roll / Enrollment No.' },
         { key: 'semester', label: 'Semester' },
+        { key: 'term', label: 'Term' },
         { key: 'academicYear', label: 'Academic Year' },
         { key: 'programme', label: 'Programme' },
         { key: 'cgpa', label: 'CGPA / GPA' },

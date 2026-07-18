@@ -63,6 +63,12 @@ EXTRACTION RULES (CRITICAL):
   * "subjects[].credits" = credits for THAT SPECIFIC SUBJECT ONLY.
   * Do NOT copy the document-level totalCredits into a subject's credits field.
   * Do NOT copy a subject's credits into totalCredits.
+- CRITICAL: For MARKSHEET/TRANSCRIPT documents, distinguish between three DIFFERENT concepts:
+  * "academicYear" = the calendar year of the academic session (e.g. 2023, 2024)
+  * "term" = the term/session WITHIN that year (e.g. "Term 1", "Term 2", "Semester 1", "Semester 2")
+  * "semester" = the OVERALL degree semester number (e.g. 1, 2, 3, 4) ONLY if explicitly stated in the document
+  * DO NOT map "Term 1" or "Term 2" into the "semester" field. These are TERMS, not semesters.
+  * If the document does not explicitly state the overall semester number, leave "semester" empty/null.
 
 The output JSON must strictly follow this schema:
 {
@@ -84,7 +90,7 @@ The output JSON must strictly follow this schema:
       "confidence": number
     }
   ],
-  "candidateFields": object (structured candidate data matching the document category. For ACADEMIC_TIMETABLE: { "schedule": [{ "date": string, "events": [{ "timeSlot": string, "courseCode": string, "courseName": string, "room": string, "instructor": string }] }] }. For MARKSHEET/TRANSCRIPT: { "subjects": [{ "code": string, "name": string, "credits": number, "gradingStatus": string, "grade": string, "gradePoints": number, "semester": string, "term": string, "year": number }], "gpa": number, "totalCredits": number }. For CERTIFICATE: { "title": string, "issuer": string, "date": string }. For RESUME: { "skills": string[], "education": object[], "experience": object[], "projects": object[] }. For INTERNSHIP/OFFER_LETTER: { "company": string, "role": string, "startDate": string, "endDate": string, "stipend": string }. For other types: use best judgment to structure the data meaningfully.)
+  "candidateFields": object (structured candidate data matching the document category. For ACADEMIC_TIMETABLE: { "schedule": [{ "date": string, "events": [{ "timeSlot": string, "courseCode": string, "courseName": string, "room": string, "instructor": string }] }] }. For MARKSHEET/TRANSCRIPT: { "subjects": [{ "code": string, "name": string, "credits": number, "gradingStatus": string, "grade": string, "gradePoints": number, "semester": string, "term": string, "year": number }], "gpa": number, "totalCredits": number, "academicYear": number, "semesterNumber": number }. For CERTIFICATE: { "title": string, "issuer": string, "date": string }. For RESUME: { "skills": string[], "education": object[], "experience": object[], "projects": object[] }. For INTERNSHIP/OFFER_LETTER: { "company": string, "role": string, "startDate": string, "endDate": string, "stipend": string }. For other types: use best judgment to structure the data meaningfully.)
 }
 
 GRADE VALIDATION RULES (CRITICAL - APPLY TO MARKSHEET/TRANSCRIPT ONLY):

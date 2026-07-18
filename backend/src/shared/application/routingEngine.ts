@@ -528,6 +528,8 @@ class AcademicRecordsAdapter extends BaseAdapter {
         semester: sub.semester ?? kr.extractedEntities?.semester ?? 'UNKNOWN',
         year: Number(sub.year ?? new Date().getFullYear()),
       };
+      const term = sub.term ?? kr.extractedEntities?.term ?? 'Term 1';
+      const academicYear = Number(sub.academicYear ?? kr.extractedEntities?.academicYear ?? new Date().getFullYear());
       const update = {
         $set: {
           subjectName: sub.name ?? sub.code ?? 'UNKNOWN',
@@ -538,6 +540,8 @@ class AcademicRecordsAdapter extends BaseAdapter {
           status: 'APPROVED',
           rawConfidence: Number(kr.confidenceScore ?? 0),
           sourceDocumentId: sourceOid,
+          term,
+          academicYear,
         },
       };
       const result = await AcademicRecord.findOneAndUpdate(filter, update, {

@@ -19,6 +19,9 @@ interface SubjectDTO {
 interface SemesterDTO {
   semester: string;
   year: number;
+  term: string;
+  academicYear: number;
+  semesterNumber: number;
   gpa: number;
   subjects: SubjectDTO[];
   sourceDocumentId?: string;
@@ -35,6 +38,17 @@ interface OverallDTO {
 interface AcademicRecordsResponse {
   overall: OverallDTO;
   semesters: SemesterDTO[];
+}
+
+function computeSemesterNumber(academicYear: number, term: string): number {
+  const normalizedTerm = String(term || '').trim().toLowerCase();
+  if (!normalizedTerm || isNaN(academicYear)) {
+    return 0;
+  }
+  const baseYear = 2023;
+  const yearOffset = academicYear - baseYear;
+  const termOffset = normalizedTerm.includes('2') || normalizedTerm.includes('ii') ? 2 : 1;
+  return yearOffset * 2 + termOffset;
 }
 
 /**
@@ -136,9 +150,15 @@ export const getMyAcademicRecords = async (req: any, res: Response) => {
     for (const record of records) {
       const key = `${record.semester}-${record.year}`;
       if (!semesterMap.has(key)) {
+        const academicYear = Number(record.academicYear ?? record.year);
+        const term = String(record.term ?? record.semester ?? 'Term 1');
+        const semesterNumber = computeSemesterNumber(academicYear, term);
         semesterMap.set(key, {
           semester: record.semester,
           year: record.year,
+          term,
+          academicYear,
+          semesterNumber,
           gpa: 0,
           subjects: [],
           sourceDocumentId: typeof record.sourceDocumentId === 'string' ? record.sourceDocumentId : record.sourceDocumentId?.toString?.() || undefined,

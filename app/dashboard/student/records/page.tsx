@@ -19,6 +19,9 @@ interface SubjectDTO {
 interface SemesterDTO {
   semester: string;
   year: number;
+  term: string;
+  academicYear: number;
+  semesterNumber: number;
   gpa: number;
   subjects: SubjectDTO[];
   sourceDocumentId?: string;
@@ -217,28 +220,28 @@ export default function StudentAcademicRecords() {
             </div>
           </div>
 
-          {/* Semester List */}
-          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-            <h2 className="text-xl font-bold text-emerald-400 mb-4">Semesters</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {records.semesters.map((sem) => (
-                <div key={`${sem.semester}-${sem.year}`} className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-semibold text-white">Semester {sem.semester}</h3>
-                    <span className="text-xs font-medium text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded">{sem.year}</span>
-                  </div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-slate-400 text-sm">GPA</span>
-                    <span className="text-emerald-400 font-semibold">{sem.gpa.toFixed(3)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400 text-sm">Subjects</span>
-                    <span className="text-slate-300 text-sm font-medium">{sem.subjects.length}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+           {/* Semester List */}
+           <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+             <h2 className="text-xl font-bold text-emerald-400 mb-4">Semesters</h2>
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+               {records.semesters.map((sem) => (
+                 <div key={`${sem.semester}-${sem.year}`} className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
+                   <div className="flex justify-between items-center mb-3">
+                     <h3 className="font-semibold text-white">Semester {sem.semesterNumber}</h3>
+                     <span className="text-xs font-medium text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded">Academic Year {sem.academicYear} &bull; {sem.term}</span>
+                   </div>
+                   <div className="flex justify-between items-center mb-1">
+                     <span className="text-slate-400 text-sm">GPA</span>
+                     <span className="text-emerald-400 font-semibold">{sem.gpa.toFixed(3)}</span>
+                   </div>
+                   <div className="flex justify-between items-center">
+                     <span className="text-slate-400 text-sm">Subjects</span>
+                     <span className="text-slate-300 text-sm font-medium">{sem.subjects.length}</span>
+                   </div>
+                 </div>
+               ))}
+             </div>
+           </div>
 
           {/* Transcript */}
           <div className="space-y-6">

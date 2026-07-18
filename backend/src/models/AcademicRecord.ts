@@ -9,6 +9,8 @@ export interface IAcademicRecord extends Document {
   subjectName: string;
   semester: string;
   year: number;
+  term: string;
+  academicYear: number;
   grade: string;
   gradePoints: number;
   gradingStatus: string;
@@ -28,6 +30,8 @@ const AcademicRecordSchema = new Schema<IAcademicRecord>(
     subjectName: { type: String, required: true },
     semester: { type: String, required: true },
     year: { type: Number, required: true },
+    term: { type: String, required: false },
+    academicYear: { type: Number, required: false },
     grade: { type: String, required: true },
     gradePoints: { type: Number, required: true },
     gradingStatus: { type: String, required: false },

@@ -1,5 +1,6 @@
 // API utility functions for consistent error handling
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5003';
+export { API_BASE_URL };
 
 export const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
   const fullUrl = `${API_BASE_URL}${endpoint}`;

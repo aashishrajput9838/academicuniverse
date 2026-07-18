@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { apiRequest } from '@/utils/api';
+import { apiRequest, API_BASE_URL } from '@/utils/api';
 import { useModuleRefresh } from '@/hooks/useModuleRefresh';
 
 interface SubjectDTO {
@@ -314,12 +314,65 @@ export default function StudentAcademicRecords() {
                     <button
                       type="button"
                       className="flex-1 rounded-md border border-slate-600 bg-slate-700/30 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-700/50"
+                      onClick={() => {
+                        const sourceDocumentId = (sem as any).sourceDocumentId as string | undefined;
+                        if (!sourceDocumentId) {
+                          return;
+                        }
+                        const url = `${API_BASE_URL}/api/academic-records/documents/${sourceDocumentId}`;
+                        fetch(url, {
+                          headers: {
+                            Authorization: `Bearer ${backendToken}`,
+                          },
+                        })
+                          .then((res) => {
+                            if (!res.ok) throw new Error('Failed to load document');
+                            return res.blob();
+                          })
+                          .then((blob) => {
+                            const blobUrl = window.URL.createObjectURL(blob);
+                            window.open(blobUrl, '_blank');
+                            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+                          })
+                          .catch((err) => {
+                            console.error('View failed', err);
+                          });
+                      }}
                     >
                       View
                     </button>
                     <button
                       type="button"
                       className="flex-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20"
+                      onClick={() => {
+                        const sourceDocumentId = (sem as any).sourceDocumentId as string | undefined;
+                        if (!sourceDocumentId) {
+                          return;
+                        }
+                        const url = `${API_BASE_URL}/api/academic-records/documents/${sourceDocumentId}`;
+                        fetch(url, {
+                          headers: {
+                            Authorization: `Bearer ${backendToken}`,
+                          },
+                        })
+                          .then((res) => {
+                            if (!res.ok) throw new Error('Failed to fetch document');
+                            return res.blob();
+                          })
+                          .then((blob) => {
+                            const blobUrl = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = blobUrl;
+                            a.download = `semester-${sem.semester}-${sem.year}`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            window.URL.revokeObjectURL(blobUrl);
+                          })
+                          .catch((err) => {
+                            console.error('Download failed', err);
+                          });
+                      }}
                     >
                       Download
                     </button>

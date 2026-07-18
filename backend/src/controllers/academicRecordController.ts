@@ -3,6 +3,8 @@ import { sendResponse, sendError } from '../utils/response';
 import { AcademicRecordRepository } from '../shared/repositories/academicRecord.repository';
 import { PersonResolver } from '../shared/services/personResolver.service';
 import { AcademicRecord } from '../models/AcademicRecord';
+import { UaipUpload } from '../models/UaipUpload';
+import { GridFSProvider } from '../storage/GridFSProvider';
 
 interface SubjectDTO {
   code: string;
@@ -18,6 +20,7 @@ interface SemesterDTO {
   year: number;
   gpa: number;
   subjects: SubjectDTO[];
+  sourceDocumentId?: string;
 }
 
 interface OverallDTO {
@@ -137,6 +140,7 @@ export const getMyAcademicRecords = async (req: any, res: Response) => {
           year: record.year,
           gpa: 0,
           subjects: [],
+          sourceDocumentId: typeof record.sourceDocumentId === 'string' ? record.sourceDocumentId : record.sourceDocumentId?.toString?.() || undefined,
         });
       }
       const semester = semesterMap.get(key)!;
@@ -202,5 +206,41 @@ export const getMyAcademicRecords = async (req: any, res: Response) => {
   } catch (err: any) {
     console.error('Get academic records error:', err);
     return sendError(res, 500, 'Failed to fetch academic records');
+  }
+};
+
+/**
+ * GET /api/academic-records/documents/:sourceDocumentId
+ * Streams the original uploaded document for the given AcademicRecord source document.
+ */
+export const getAcademicRecordDocument = async (req: any, res: Response) => {
+  const { organizationId, user } = req;
+  const { sourceDocumentId } = req.params;
+
+  if (!organizationId || !user?.userId || !sourceDocumentId) {
+    return sendError(res, 401, 'Authentication required');
+  }
+
+  try {
+    const upload = await UaipUpload.findOne({
+      _id: sourceDocumentId,
+      organizationId,
+      status: 'SUCCESS',
+    });
+
+    if (!upload || !upload.storageId) {
+      return sendError(res, 404, 'Document not found');
+    }
+
+    const gridFs = new GridFSProvider();
+    const fileBuffer = await gridFs.getFile(upload.storageId);
+
+    res.setHeader('Content-Type', upload.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${upload.fileName}"`);
+    res.setHeader('Content-Length', fileBuffer.length);
+    return res.send(fileBuffer);
+  } catch (err: any) {
+    console.error('Get academic record document error:', err);
+    return sendError(res, 500, 'Failed to fetch document');
   }
 };

@@ -12,6 +12,7 @@ import { KnowledgeRecordModel } from '../../models/KnowledgeRecord';
 import { ReviewHistory } from '../../models/ReviewHistory';
 import { GridFSProvider } from '../../storage/GridFSProvider';
 import { OCRService } from '../../services/ocr/OCRService';
+import { logger } from '../../utils/logger';
 import type {
   DicDocument,
   DicDocumentListResponse,
@@ -386,11 +387,11 @@ export class DocumentIntelligenceRepository {
         supportsTransactions = !!(isMasterResult.setName || isMasterResult.hosts);
       }
     } catch (err) {
-      console.warn('[DIC] Failed to query MongoDB isMaster command; assuming standalone mode', err);
+      logger.warn('[DIC] Failed to query MongoDB isMaster command; assuming standalone mode', err);
     }
 
     if (supportsTransactions) {
-      console.log('[DIC] MongoDB transaction mode');
+      logger.info('[DIC] MongoDB transaction mode');
       const session = await mongoose.startSession();
       try {
         session.startTransaction();
@@ -460,14 +461,14 @@ export class DocumentIntelligenceRepository {
                 const gridFs = new GridFSProvider();
                 await gridFs.delete(storageId);
               } catch (err) {
-                console.warn(`[DIC] Failed to delete GridFS file ${storageId} for ${processingId}:`, err);
+                logger.warn(`[DIC] Failed to delete GridFS file ${storageId} for ${processingId}:`, err);
               }
             }
 
             try {
               await OCRService.clearProcessingId(processingId);
             } catch (err) {
-              console.warn(`[DIC] Failed to clear OCR idempotency for ${processingId}:`, err);
+              logger.warn(`[DIC] Failed to clear OCR idempotency for ${processingId}:`, err);
             }
 
             result = {
@@ -487,7 +488,7 @@ export class DocumentIntelligenceRepository {
         await session.endSession();
       }
     } else {
-      console.log('[DIC] MongoDB standalone fallback mode');
+      logger.info('[DIC] MongoDB standalone fallback mode');
       // Sequential soft deletes with manual rollbacks if fails midway
       const upload: any = await UaipUpload.findOne({
         processingId,
@@ -608,14 +609,14 @@ export class DocumentIntelligenceRepository {
             const gridFs = new GridFSProvider();
             await gridFs.delete(storageId);
           } catch (err) {
-            console.warn(`[DIC] Failed to delete GridFS file ${storageId} for ${processingId}:`, err);
+            logger.warn(`[DIC] Failed to delete GridFS file ${storageId} for ${processingId}:`, err);
           }
         }
 
         try {
           await OCRService.clearProcessingId(processingId);
         } catch (err) {
-          console.warn(`[DIC] Failed to clear OCR idempotency for ${processingId}:`, err);
+          logger.warn(`[DIC] Failed to clear OCR idempotency for ${processingId}:`, err);
         }
 
         return {

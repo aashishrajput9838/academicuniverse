@@ -5,6 +5,7 @@ import { PersonResolver } from '../shared/services/personResolver.service';
 import { AcademicRecord } from '../models/AcademicRecord';
 import { UaipUpload } from '../models/UaipUpload';
 import { GridFSProvider } from '../storage/GridFSProvider';
+import { logger } from '../utils/logger';
 
 interface SubjectDTO {
   code: string;
@@ -204,7 +205,7 @@ export const getMyAcademicRecords = async (req: any, res: Response) => {
 
     return sendResponse(res, 200, response, 'Academic records retrieved');
   } catch (err: any) {
-    console.error('Get academic records error:', err);
+    logger.error('Get academic records error:', err);
     return sendError(res, 500, 'Failed to fetch academic records');
   }
 };
@@ -240,7 +241,7 @@ export const getAcademicRecordDocument = async (req: any, res: Response) => {
     res.setHeader('Content-Length', fileBuffer.length);
     return res.send(fileBuffer);
   } catch (err: any) {
-    console.error('Get academic record document error:', err);
+    logger.error('Get academic record document error:', err);
     return sendError(res, 500, 'Failed to fetch document');
   }
 };

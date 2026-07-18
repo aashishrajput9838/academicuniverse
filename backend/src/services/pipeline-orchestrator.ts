@@ -57,11 +57,11 @@ export class PipelineOrchestrator {
       );
 
       if (!uploadDoc) {
-        console.log(`PipelineOrchestrator: Upload ${processingId} is not pending. Skipping duplicate or stale event.`);
+        logger.warn(`PipelineOrchestrator: Upload ${processingId} is not pending. Skipping duplicate or stale event.`);
         return;
       }
 
-      console.log(`[Pipeline] Started processing document ${processingId}`);
+      logger.info(`[Pipeline] Started processing document ${processingId}`);
 
       const buffer = await this.storageProvider.getFile(storageId);
       const classification = await this.classifier.classify({
@@ -106,7 +106,7 @@ export class PipelineOrchestrator {
         SEMANTIC_DOCUMENT_TYPES.includes(mimeType);
 
       if (isUnknownCategory || isLowConfidence || isSemanticDoc) {
-        console.log(`[Pipeline] Stage 2 AI processing required for ${processingId}`);
+        logger.info(`[Pipeline] Stage 2 AI processing required for ${processingId}`);
         await this.aiService.processDocument({
           processingId,
           fileName,
@@ -128,9 +128,9 @@ export class PipelineOrchestrator {
         { status: 'SUCCESS', completedAt: new Date(), errorMessage: undefined }
       );
 
-      console.log(`[Pipeline] Completed processing document ${processingId}`);
+      logger.info(`[Pipeline] Completed processing document ${processingId}`);
     } catch (error: any) {
-      console.error(`[Pipeline] Error processing document ${processingId}:`, error);
+      logger.error(`[Pipeline] Error processing document ${processingId}:`, error);
 
       await UaipUpload.findOneAndUpdate(
         { processingId },

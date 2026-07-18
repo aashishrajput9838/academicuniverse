@@ -29,6 +29,7 @@ import { UaipEvent } from '../../events/UaipEvents';
 import { normalizeScheduleDates, normalizeDate } from '../utils/dateNormalizer';
 import { toObjectId } from '../../utils/mongooseHelpers';
 import { RoutingExecutor, RoutingExecutionWrite } from '../../shared/application/routingEngine';
+import { logger } from '../../utils/logger';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -361,11 +362,11 @@ export class ReviewService {
         supportsTransactions = !!(isMasterResult.setName || isMasterResult.hosts);
       }
     } catch (err) {
-      console.warn('[ReviewService] Failed to query MongoDB isMaster command; assuming standalone mode', err);
+      logger.warn('[ReviewService] Failed to query MongoDB isMaster command; assuming standalone mode', err);
     }
 
     if (supportsTransactions) {
-      console.log('[ReviewService] MongoDB transaction mode for approve');
+      logger.info('[ReviewService] MongoDB transaction mode for approve');
       const session = await mongoose.startSession();
       session.startTransaction();
       try {
@@ -496,7 +497,7 @@ export class ReviewService {
         await session.endSession();
       }
     } else {
-      console.log('[ReviewService] MongoDB standalone fallback mode for approve');
+      logger.info('[ReviewService] MongoDB standalone fallback mode for approve');
       // Standalone path: execute sequentially without session
       const kr = await KnowledgeRecordModel.findOne({
         processingId,
@@ -734,11 +735,11 @@ export class ReviewService {
         supportsTransactions = !!(isMasterResult.setName || isMasterResult.hosts);
       }
     } catch (err) {
-      console.warn('[ReviewService] Failed to query MongoDB isMaster command; assuming standalone mode', err);
+      logger.warn('[ReviewService] Failed to query MongoDB isMaster command; assuming standalone mode', err);
     }
 
     if (supportsTransactions) {
-      console.log('[ReviewService] MongoDB transaction mode for rollback');
+      logger.info('[ReviewService] MongoDB transaction mode for rollback');
       const session = await mongoose.startSession();
       session.startTransaction();
       try {
@@ -814,7 +815,7 @@ export class ReviewService {
         await session.endSession();
       }
     } else {
-      console.log('[ReviewService] MongoDB standalone fallback mode for rollback');
+      logger.info('[ReviewService] MongoDB standalone fallback mode for rollback');
       // Standalone path: execute sequentially without session
       try {
         if (hasRoutingDecision) {

@@ -246,13 +246,15 @@ function MarksheetView({ extractedEntities, candidateFields }: { extractedEntiti
   const subjects = Array.isArray(candidateFields?.subjects) ? candidateFields.subjects : [];
   const cgpa = extractedEntities?.cgpa as string | undefined;
   const semester = extractedEntities?.semester as string | undefined;
+  const academicYear = extractedEntities?.academicYear as string | undefined;
   const academicStatistics = extractedEntities?.academicStatistics as Record<string, any> | undefined;
 
   return (
     <div className="space-y-4">
-      {(cgpa || semester) && (
+      {(semester || academicYear || cgpa) && (
         <div className="flex items-center gap-4 rounded-lg bg-purple-500/5 border border-purple-500/20 px-4 py-3">
           {semester && <div><p className="text-xs text-slate-400">Semester</p><p className="text-sm font-bold text-white">{semester}</p></div>}
+          {academicYear && <div><p className="text-xs text-slate-400">Academic Year</p><p className="text-sm font-bold text-white">{academicYear}</p></div>}
           {cgpa && <div className="ml-auto"><p className="text-xs text-slate-400">CGPA</p><p className="text-lg font-bold text-purple-300">{cgpa}</p></div>}
         </div>
       )}
@@ -288,8 +290,6 @@ function MarksheetView({ extractedEntities, candidateFields }: { extractedEntiti
                 <th className="text-center px-2 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</th>
                 <th className="text-center px-2 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Grade</th>
                 <th className="text-center px-2 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Grade Points</th>
-                <th className="text-center px-2 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Semester</th>
-                <th className="text-center px-2 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Year</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/30">
@@ -301,14 +301,12 @@ function MarksheetView({ extractedEntities, candidateFields }: { extractedEntiti
                   </td>
                   <td className="text-center px-2 py-2.5 text-xs text-slate-300">{sub.credits ?? '—'}</td>
                   <td className="text-center px-2 py-2.5 text-xs text-slate-400">{sub.gradingStatus ?? '—'}</td>
-                  <td className="text-center px-2 py-2.5">
+                  <td className="text-center px-2 py-2.5 text-xs text-slate-400">
                     <span className="rounded-full bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-xs font-semibold text-purple-300">
                       {sub.grade ?? '—'}
                     </span>
                   </td>
                   <td className="text-center px-2 py-2.5 text-xs text-slate-300">{sub.gradePoints ?? '—'}</td>
-                  <td className="text-center px-2 py-2.5 text-xs text-slate-400">{sub.semester ?? '—'}</td>
-                  <td className="text-center px-2 py-2.5 text-xs text-slate-400">{sub.year ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -629,7 +627,7 @@ function buildEditableGrid(
   // 2. TRANSCRIPT or MARKSHEET
   if (category === 'TRANSCRIPT' || category === 'MARKSHEET') {
     const subjects = Array.isArray(candidateFields?.subjects) ? candidateFields.subjects : [];
-    const headers = ['Code', 'Subject', 'Credits', 'Status', 'Grade', 'Grade Points', 'Semester', 'Year', 'Marks'];
+    const headers = ['Code', 'Subject', 'Credits', 'Status', 'Grade', 'Grade Points', 'Marks'];
     const rows = subjects.map((sub: any, sIdx: number) => [
       { path: `subjects.${sIdx}.code`, header: 'Code', aiValue: getNestedValue(originalFields, `subjects.${sIdx}.code`) || '' },
       { path: `subjects.${sIdx}.name`, header: 'Subject', aiValue: getNestedValue(originalFields, `subjects.${sIdx}.name`) || '' },
@@ -637,8 +635,6 @@ function buildEditableGrid(
       { path: `subjects.${sIdx}.gradingStatus`, header: 'Status', aiValue: getNestedValue(originalFields, `subjects.${sIdx}.gradingStatus`) || '' },
       { path: `subjects.${sIdx}.grade`, header: 'Grade', aiValue: getNestedValue(originalFields, `subjects.${sIdx}.grade`) || '' },
       { path: `subjects.${sIdx}.gradePoints`, header: 'Grade Points', aiValue: String(getNestedValue(originalFields, `subjects.${sIdx}.gradePoints`) ?? '') },
-      { path: `subjects.${sIdx}.semester`, header: 'Semester', aiValue: getNestedValue(originalFields, `subjects.${sIdx}.semester`) || '' },
-      { path: `subjects.${sIdx}.year`, header: 'Year', aiValue: String(getNestedValue(originalFields, `subjects.${sIdx}.year`) ?? '') },
       { path: `subjects.${sIdx}.marks`, header: 'Marks', aiValue: String(getNestedValue(originalFields, `subjects.${sIdx}.marks`) ?? '') },
     ]);
 
@@ -1018,7 +1014,7 @@ function ExcelView({
   // 2. Transcript or Marksheet View
   if (category === 'TRANSCRIPT' || category === 'MARKSHEET') {
     const subjects = Array.isArray(candidateFields?.subjects) ? candidateFields.subjects : [];
-    const headers = ['Code', 'Subject', 'Credits', 'Status', 'Grade', 'Grade Points', 'Semester', 'Year', 'Marks'];
+    const headers = ['Code', 'Subject', 'Credits', 'Status', 'Grade', 'Grade Points', 'Marks'];
     const rows: string[][] = subjects.map((sub: any) => [
       sub.code || '—',
       sub.name || (sub.code ? `Subject ${sub.code}` : '—'),
@@ -1026,8 +1022,6 @@ function ExcelView({
       sub.gradingStatus || '—',
       sub.grade || '—',
       sub.gradePoints !== undefined ? String(sub.gradePoints) : '—',
-      sub.semester || '—',
-      sub.year || '—',
       sub.marks !== undefined ? `${sub.marks}${sub.maxMarks ? `/${sub.maxMarks}` : ''}` : '—',
     ]);
 
@@ -1557,6 +1551,7 @@ function getFieldSchema(category: string): FieldDef[] {
         { key: 'studentName', label: 'Student Name' },
         { key: 'rollNumber', label: 'Roll / Enrollment No.' },
         { key: 'semester', label: 'Semester' },
+        { key: 'academicYear', label: 'Academic Year' },
         { key: 'programme', label: 'Programme' },
         { key: 'cgpa', label: 'CGPA / GPA' },
       ];

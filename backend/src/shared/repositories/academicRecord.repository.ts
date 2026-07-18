@@ -27,7 +27,11 @@ export class AcademicRecordRepository {
     return { doc: created, action: 'create' };
   }
 
-  async findByPerson(personId: string) {
-    return AcademicRecord.find({ personId: toObjectId(personId) });
+  async findByPerson(personId: string, organizationId?: string) {
+    const filter: any = { personId: toObjectId(personId) };
+    if (organizationId) {
+      filter.organizationId = toObjectId(organizationId);
+    }
+    return AcademicRecord.find(filter).sort({ year: 1, semester: 1 });
   }
 }

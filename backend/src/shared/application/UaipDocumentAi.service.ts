@@ -54,6 +54,16 @@ export class UaipDocumentAiService {
 Your task is to analyze the document content (or metadata if content is empty) and return a valid JSON object.
 Do not wrap your response in markdown code blocks or add extra explanation. Return ONLY the JSON object.
 
+EXTRACTION RULES (CRITICAL):
+- Extract EXACT values as they appear in the document. Do not infer, guess, correct, or normalize values.
+- If a value is unclear or missing, use null or empty string. Never hallucinate or substitute a similar-looking value.
+- For numeric fields (credits, gradePoints, totalCredits, gpa, cgpa, percentage, etc.), preserve the exact number from the document.
+- Distinguish carefully between document-level totals and per-subject values:
+  * "totalCredits" = sum of all subject credits at the DOCUMENT level.
+  * "subjects[].credits" = credits for THAT SPECIFIC SUBJECT ONLY.
+  * Do NOT copy the document-level totalCredits into a subject's credits field.
+  * Do NOT copy a subject's credits into totalCredits.
+
 The output JSON must strictly follow this schema:
 {
   "documentCategory": string (must be one of the ALLOWED_CATEGORIES listed below),
@@ -74,7 +84,7 @@ The output JSON must strictly follow this schema:
       "confidence": number
     }
   ],
-  "candidateFields": object (structured candidate data matching the document category. For ACADEMIC_TIMETABLE: { "schedule": [{ "date": string, "events": [{ "timeSlot": string, "courseCode": string, "courseName": string, "room": string, "instructor": string }] }] }. For MARKSHEET/TRANSCRIPT: { "subjects": [{ "code": string, "name": string, "credits": number, "gradingStatus": string, "grade": string, "gradePoints": number, "semester": string, "term": string, "year": number }], "gpa": number, "totalCredits": number, "academicStatistics": { "subjectsAppeared": number, "subjectsPassed": number, "subjectsFailed": number, "totalMarksObtained": number, "maximumMarks": number, "percentage": number } }. For CERTIFICATE: { "title": string, "issuer": string, "date": string }. For RESUME: { "skills": string[], "education": object[], "experience": object[], "projects": object[] }. For INTERNSHIP/OFFER_LETTER: { "company": string, "role": string, "startDate": string, "endDate": string, "stipend": string }. For other types: use best judgment to structure the data meaningfully.)
+  "candidateFields": object (structured candidate data matching the document category. For ACADEMIC_TIMETABLE: { "schedule": [{ "date": string, "events": [{ "timeSlot": string, "courseCode": string, "courseName": string, "room": string, "instructor": string }] }] }. For MARKSHEET/TRANSCRIPT: { "subjects": [{ "code": string, "name": string, "credits": number, "gradingStatus": string, "grade": string, "gradePoints": number, "semester": string, "term": string, "year": number }], "gpa": number, "totalCredits": number }. For CERTIFICATE: { "title": string, "issuer": string, "date": string }. For RESUME: { "skills": string[], "education": object[], "experience": object[], "projects": object[] }. For INTERNSHIP/OFFER_LETTER: { "company": string, "role": string, "startDate": string, "endDate": string, "stipend": string }. For other types: use best judgment to structure the data meaningfully.)
 }
 
 GRADE VALIDATION RULES (CRITICAL - APPLY TO MARKSHEET/TRANSCRIPT ONLY):

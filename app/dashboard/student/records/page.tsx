@@ -1,24 +1,115 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
+import { apiRequest } from '@/utils/api';
+import { useModuleRefresh } from '@/hooks/useModuleRefresh';
+
+interface SubjectDTO {
+  code: string;
+  name: string;
+  credits: number;
+  grade: string;
+  gradePoints: number;
+  gradingStatus: string;
+}
+
+interface SemesterDTO {
+  semester: string;
+  year: number;
+  gpa: number;
+  subjects: SubjectDTO[];
+}
+
+interface OverallDTO {
+  cgpa: number;
+  totalCredits: number;
+  completedCredits: number;
+  remainingCredits: number | null;
+  semestersCompleted: number;
+}
+
+interface AcademicRecordsResponse {
+  overall: OverallDTO;
+  semesters: SemesterDTO[];
+}
+
+const STATUS_STYLES: Record<string, { bg: string; text: string; border: string }> = {
+  Graded: { bg: 'bg-emerald-500/10', text: 'text-emerald-300', border: 'border-emerald-500/30' },
+  Audit: { bg: 'bg-slate-500/10', text: 'text-slate-300', border: 'border-slate-500/30' },
+  Qualified: { bg: 'bg-blue-500/10', text: 'text-blue-300', border: 'border-blue-500/30' },
+  Pass: { bg: 'bg-green-500/10', text: 'text-green-300', border: 'border-green-500/30' },
+  Fail: { bg: 'bg-red-500/10', text: 'text-red-300', border: 'border-red-500/30' },
+  'In Progress': { bg: 'bg-amber-500/10', text: 'text-amber-300', border: 'border-amber-500/30' },
+};
+
+function getStatusStyle(status: string) {
+  return STATUS_STYLES[status] || { bg: 'bg-slate-500/10', text: 'text-slate-300', border: 'border-slate-500/30' };
+}
+
+function getStanding(cgpa: number): string {
+  if (cgpa >= 9.5) return 'Outstanding Standing';
+  if (cgpa >= 8.5) return 'Excellent Standing';
+  if (cgpa >= 7.5) return 'Good Standing';
+  if (cgpa >= 6.5) return 'Satisfactory Standing';
+  if (cgpa >= 5.5) return 'Adequate Standing';
+  return 'Needs Improvement';
+}
 
 export default function StudentAcademicRecords() {
-  const { user, backendUser, loading } = useAuth();
+  const { user, backendUser, backendToken, loading } = useAuth();
   const router = useRouter();
+  const [records, setRecords] = useState<AcademicRecordsResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Redirect to login if not authenticated
+  useModuleRefresh(['academic_records'], () => {
+    if (backendToken) fetchRecords(backendToken);
+  });
+
+  const fetchRecords = async (token: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await apiRequest('/api/academic-records/me', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setRecords(response.data as AcademicRecordsResponse);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch academic records');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!loading && (!user || !backendUser)) {
       router.push('/login');
     } else if (!loading && backendUser && backendUser.role !== 'STUDENT' && backendUser.role !== 'FACULTY') {
-      // For unauthorized role, redirect to home
       router.push('/');
     }
   }, [user, backendUser, loading, router]);
 
-  // Show loading state while checking authentication
+  useEffect(() => {
+    if (loading || !user || !backendUser || backendUser.role !== 'STUDENT') {
+      return;
+    }
+    if (!backendToken) {
+      setError('Your session is no longer authenticated. Please sign in again to view your academic records.');
+      setIsLoading(false);
+      return;
+    }
+    fetchRecords(backendToken);
+  }, [backendToken, backendUser, loading, user]);
+
+  const totalSubjects = useMemo(() => {
+    if (!records) return 0;
+    return records.semesters.reduce((sum, sem) => sum + sem.subjects.length, 0);
+  }, [records]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 flex items-center justify-center">
@@ -27,7 +118,6 @@ export default function StudentAcademicRecords() {
     );
   }
 
-  // Don't render content until user is authenticated and is a student
   if (!user || !backendUser || backendUser.role !== 'STUDENT') {
     return null;
   }
@@ -39,175 +129,207 @@ export default function StudentAcademicRecords() {
         <p className="text-slate-400">View and manage your academic transcripts and records</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Academic Summary */}
-        <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-bold text-emerald-400 mb-4">Academic Summary</h2>
-          <div className="space-y-4">
-            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-semibold text-white mb-2">Overall GPA</h3>
-              <div className="flex items-baseline gap-3">
-                <span className="text-3xl font-bold text-emerald-400">8.5</span>
-                <span className="text-slate-400">/ 10.0</span>
-              </div>
-              <div className="mt-2 text-sm text-slate-400">Excellent Standing</div>
-            </div>
-            
-            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-semibold text-white mb-2">Credits Completed</h3>
-              <div className="flex items-baseline gap-3">
-                <span className="text-3xl font-bold text-emerald-400">98</span>
-                <span className="text-slate-400">/ 150</span>
-              </div>
-              <div className="mt-2 text-sm text-slate-400">52 credits remaining</div>
-            </div>
-            
-            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-semibold text-white mb-2">Class Standing</h3>
-              <div className="flex items-baseline gap-3">
-                <span className="text-3xl font-bold text-emerald-400">Junior</span>
-              </div>
-              <div className="mt-2 text-sm text-slate-400">Second Year - Second Semester</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Current Semester */}
-        <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-bold text-emerald-400 mb-4">Current Semester (Fall 2024)</h2>
-          <div className="space-y-3">
-            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-medium text-white">Advanced Data Structures</h3>
-              <div className="flex justify-between mt-1">
-                <span className="text-slate-400">CS301</span>
-                <span className="text-emerald-400">A-</span>
-              </div>
-            </div>
-            
-            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-medium text-white">Database Systems</h3>
-              <div className="flex justify-between mt-1">
-                <span className="text-slate-400">CS302</span>
-                <span className="text-emerald-400">B+</span>
-              </div>
-            </div>
-            
-            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-medium text-white">Software Engineering</h3>
-              <div className="flex justify-between mt-1">
-                <span className="text-slate-400">CS303</span>
-                <span className="text-emerald-400">A</span>
-              </div>
-            </div>
-            
-            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-medium text-white">Operating Systems</h3>
-              <div className="flex justify-between mt-1">
-                <span className="text-slate-400">CS304</span>
-                <span className="text-emerald-400">B</span>
-              </div>
-            </div>
-            
-            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-medium text-white">Mathematics for AI</h3>
-              <div className="flex justify-between mt-1">
-                <span className="text-slate-400">MA301</span>
-                <span className="text-emerald-400">A+</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Transcript */}
-        <div className="md:col-span-2 bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-bold text-emerald-400 mb-4">Transcript</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-700">
-              <thead>
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Course</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Code</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Credits</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Grade</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Semester</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-700">
-                <tr>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">Introduction to Programming</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">CS101</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">4</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-emerald-400">A+</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">Fall 2023</td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-500/20 text-green-400">Completed</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">Calculus I</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">MA101</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">4</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-emerald-400">A</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">Fall 2023</td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-500/20 text-green-400">Completed</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">Physics for Engineers</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">PH101</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">3</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-emerald-400">B+</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">Fall 2023</td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-500/20 text-green-400">Completed</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">Data Structures</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">CS201</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">4</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-emerald-400">A-</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">Spring 2024</td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-500/20 text-green-400">Completed</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">Object Oriented Programming</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">CS202</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">4</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-emerald-400">A</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">Spring 2024</td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-500/20 text-green-400">Completed</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Download Options */}
-        <div className="md:col-span-2 bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-bold text-emerald-400 mb-4">Download Documents</h2>
+      {isLoading ? (
+        <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button className="bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-lg transition flex flex-col items-center justify-center">
-              <div className="text-2xl mb-2">📄</div>
-              <span>Official Transcript</span>
-            </button>
-            <button className="bg-slate-700 hover:bg-slate-600 text-white p-4 rounded-lg transition flex flex-col items-center justify-center">
-              <div className="text-2xl mb-2">📋</div>
-              <span>Certificate of Enrollment</span>
-            </button>
-            <button className="bg-slate-700 hover:bg-slate-600 text-white p-4 rounded-lg transition flex flex-col items-center justify-center">
-              <div className="text-2xl mb-2">🎓</div>
-              <span>Degree Audit</span>
-            </button>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-5 border border-slate-700 animate-pulse">
+                <div className="h-3 w-20 bg-slate-700 rounded mb-3" />
+                <div className="h-9 w-24 bg-slate-700 rounded mb-2" />
+                <div className="h-3 w-32 bg-slate-700 rounded" />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[0, 1].map((i) => (
+              <div key={i} className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 animate-pulse">
+                <div className="h-4 w-28 bg-slate-700 rounded mb-4" />
+                <div className="space-y-3">
+                  <div className="h-16 bg-slate-700 rounded" />
+                  <div className="h-16 bg-slate-700 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 animate-pulse">
+            <div className="h-4 w-28 bg-slate-700 rounded mb-4" />
+            <div className="space-y-3">
+              <div className="h-10 bg-slate-700 rounded" />
+              <div className="h-10 bg-slate-700 rounded" />
+              <div className="h-10 bg-slate-700 rounded" />
+            </div>
           </div>
         </div>
-      </div>
+      ) : error ? (
+        <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-8 border border-slate-700 text-center">
+          <div className="text-4xl mb-3">⚠️</div>
+          <h2 className="text-xl font-bold text-white mb-2">Academic records unavailable</h2>
+          <p className="text-slate-400 mb-6 max-w-md mx-auto">{error}</p>
+          <button
+            type="button"
+            onClick={() => {
+              if (backendToken) fetchRecords(backendToken);
+            }}
+            disabled={!backendToken}
+            className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-5 py-2.5 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50"
+          >
+            Try again
+          </button>
+        </div>
+      ) : !records || records.semesters.length === 0 ? (
+        <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-8 border border-slate-700 text-center">
+          <div className="text-5xl mb-4">📊</div>
+          <h2 className="text-xl font-bold text-white mb-2">No academic records yet</h2>
+          <p className="text-slate-400 mb-6 max-w-md mx-auto">
+            Upload and approve a marksheet or transcript to see your academic records here.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push('/dashboard/student/growth')}
+            className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-5 py-2.5 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/20"
+          >
+            Upload Document
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Academic Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-5 border border-slate-700 flex flex-col">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">CGPA</h3>
+              <div className="flex items-baseline gap-2 mt-auto">
+                <span className="text-4xl font-bold text-emerald-400">{records.overall.cgpa.toFixed(3)}</span>
+                <span className="text-sm text-slate-400">/ 10.0</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">{getStanding(records.overall.cgpa)}</p>
+            </div>
+
+            <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-5 border border-slate-700 flex flex-col">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">Credits Completed</h3>
+              <div className="flex items-baseline gap-2 mt-auto">
+                <span className="text-4xl font-bold text-emerald-400">{records.overall.completedCredits}</span>
+                <span className="text-sm text-slate-400">/ {records.overall.totalCredits}</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                {records.overall.remainingCredits !== null
+                  ? `${records.overall.remainingCredits} credits remaining`
+                  : 'Program requirement not configured'}
+              </p>
+            </div>
+
+            <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-5 border border-slate-700 flex flex-col">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">Semesters</h3>
+              <div className="flex items-baseline gap-2 mt-auto">
+                <span className="text-4xl font-bold text-emerald-400">{records.overall.semestersCompleted}</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                {records.overall.semestersCompleted === 1 ? 'First semester completed' : `${records.overall.semestersCompleted} semesters completed`}
+              </p>
+            </div>
+          </div>
+
+          {/* Semester List */}
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+            <h2 className="text-xl font-bold text-emerald-400 mb-4">Semesters</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {records.semesters.map((sem) => (
+                <div key={`${sem.semester}-${sem.year}`} className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-semibold text-white">Semester {sem.semester}</h3>
+                    <span className="text-xs font-medium text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded">{sem.year}</span>
+                  </div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-slate-400 text-sm">GPA</span>
+                    <span className="text-emerald-400 font-semibold">{sem.gpa.toFixed(3)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400 text-sm">Subjects</span>
+                    <span className="text-slate-300 text-sm font-medium">{sem.subjects.length}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Transcript */}
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+            <h2 className="text-xl font-bold text-emerald-400 mb-4">Transcript</h2>
+            <p className="text-xs text-slate-500 mb-4">
+              Showing {totalSubjects} subject{totalSubjects !== 1 ? 's' : ''} across {records.semesters.length} semester{records.semesters.length !== 1 ? 's' : ''}.
+              CGPA is computed from GPA-eligible subjects only.
+            </p>
+            <div className="overflow-x-auto -mx-6 px-6">
+              <table className="min-w-full divide-y divide-slate-700">
+                <thead className="sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Course</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Code</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">Credits</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">Grade</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">Grade Points</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700">
+                  {records.semesters.flatMap((sem) =>
+                    sem.subjects.map((sub) => {
+                      const statusStyle = getStatusStyle(sub.gradingStatus);
+                      return (
+                        <tr key={`${sem.semester}-${sem.year}-${sub.code}`} className="hover:bg-slate-800/30 transition-colors group">
+                          <td className="px-4 py-3 text-sm font-medium text-white max-w-xs truncate" title={sub.name}>
+                            {sub.name}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-400 font-mono">{sub.code}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-slate-300">{sub.credits}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-emerald-400 font-semibold">{sub.grade}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center text-sm text-slate-400">{sub.gradePoints}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border}`}>
+                              {sub.gradingStatus}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Documents Section */}
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+            <h2 className="text-xl font-bold text-emerald-400 mb-4">Documents</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {records.semesters.map((sem) => (
+                <div key={`doc-${sem.semester}-${sem.year}`} className="bg-slate-800/50 rounded-lg border border-slate-600 p-4 flex flex-col">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="text-sm font-medium text-white">Semester {sem.semester} Marksheet</div>
+                      <div className="text-xs text-slate-400 mt-0.5">Academic Year {sem.year}</div>
+                    </div>
+                    <span className="text-xs text-slate-500 bg-slate-700/50 px-2 py-0.5 rounded">{sem.subjects.length} subjects</span>
+                  </div>
+                  <div className="mt-auto pt-3 flex gap-2">
+                    <button
+                      type="button"
+                      className="flex-1 rounded-md border border-slate-600 bg-slate-700/30 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-700/50"
+                    >
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20"
+                    >
+                      Download
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

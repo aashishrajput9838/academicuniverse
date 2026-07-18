@@ -8,6 +8,7 @@ import { ParserService } from './parsing/ParserService';
 import { UaipDocumentAiService } from '../shared/application/UaipDocumentAi.service';
 import { CONFIDENCE_THRESHOLD, SEMANTIC_DOCUMENT_TYPES } from '../shared/application/uaipConfig';
 import { OCRService } from './ocr/OCRService';
+import { logger } from '../utils/logger';
 import './ocr';
 
 type UploadedPayload = UaipEventPayload & {
@@ -85,17 +86,15 @@ export class PipelineOrchestrator {
       const needsOcr = isImage || classification.isScanned === true;
 
       if (needsOcr) {
-        console.log(`[Pipeline] Waiting for OCR to complete before AI processing for ${processingId}`);
+        logger.info(`[Pipeline] Waiting for OCR to complete before AI processing for ${processingId}`);
         try {
           const ocrText = await OCRService.waitForOcr(processingId);
-          console.log(`[Pipeline] OCR completed for ${processingId}. Text length: ${ocrText.length} chars`);
-          if (ocrText.length > 0) {
-            console.log(`[Pipeline] First 1000 chars of OCR output for ${processingId}:\n${ocrText.slice(0, 1000)}`);
-          } else {
-            console.warn(`[Pipeline] OCR returned empty text for ${processingId}. AI will process with file metadata only.`);
+          logger.info(`[Pipeline] OCR completed for ${processingId}. Text length: ${ocrText.length} chars`);
+          if (ocrText.length === 0) {
+            logger.warn(`[Pipeline] OCR returned empty text for ${processingId}. AI will process with file metadata only.`);
           }
         } catch (err: any) {
-          console.warn(`[Pipeline] OCR failed or timed out for ${processingId}:`, err.message);
+          logger.warn(`[Pipeline] OCR failed or timed out for ${processingId}:`, err.message);
         }
       }
 

@@ -532,6 +532,8 @@ class AcademicRecordsAdapter extends BaseAdapter {
         $set: {
           subjectName: sub.name ?? sub.code ?? 'UNKNOWN',
           grade: sub.grade ?? 'N/A',
+          gradePoints: Number(sub.gradePoints ?? 0),
+          gradingStatus: sub.gradingStatus ?? 'Graded',
           credits: Number(sub.credits ?? 0),
           status: 'APPROVED',
           rawConfidence: Number(kr.confidenceScore ?? 0),

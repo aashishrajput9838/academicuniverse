@@ -232,7 +232,8 @@ export class GeminiAIProvider implements IAIProvider {
    */
   private parseJSON<T>(rawText: string): T {
     let cleanJson = this.normalizeJson(rawText);
-    cleanJson = this.extractJson(cleanJson);
+    const extracted = this.extractJson(cleanJson);
+    cleanJson = extracted;
 
     try {
       return JSON.parse(cleanJson) as T;

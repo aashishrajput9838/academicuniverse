@@ -4,6 +4,8 @@ import { AuditEntry } from '../../models/AuditEntry';
 import { ICertificateRecord } from '../../models/CertificateRecord';
 import { normalizeDate } from '../../shared/utils/dateNormalizer';
 import { toObjectId } from '../../utils/mongooseHelpers';
+import { eventBus } from '../../events/EventBus';
+import { UaipEvent } from '../../events/UaipEvents';
 
 export class CertificateService {
   private repo = new CertificateRecordRepository();
@@ -42,6 +44,20 @@ export class CertificateService {
       performedBy: 'dispatcher',
       metadata: { domain: 'certificate', rawConfidence, correlationId },
     });
+
+    void eventBus.publish(UaipEvent.CertificateApproved, {
+      processingId: doc._id.toString(),
+      organizationId,
+      personId,
+      correlationId: correlationId || doc._id.toString(),
+      eventId: doc._id.toString(),
+      occurredAt: new Date(),
+      source: 'certificates',
+      title,
+      issuer,
+      issuedDate: doc.issuedDate,
+      rawConfidence,
+    } as any);
 
     return doc;
   }

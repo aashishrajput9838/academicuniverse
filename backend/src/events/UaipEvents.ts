@@ -16,6 +16,13 @@ export enum UaipEvent {
   ModuleUpdated = "MODULE_UPDATED",
   DocumentApproved = "DocumentApproved",
   RoutingCompleted = "RoutingCompleted",
+  // Skills Tracker events
+  AcademicRecordUpdated = "ACADEMIC_RECORD_UPDATED",
+  CertificateApproved = "CERTIFICATE_APPROVED",
+  GithubUpdated = "GITHUB_UPDATED",
+  ResearchUpdated = "RESEARCH_UPDATED",
+  SkillUpdated = "SKILL_UPDATED",
+  SkillProfileRebuilt = "SKILL_PROFILE_REBUILT",
 }
 
 export interface UaipEventPayload {
@@ -47,4 +54,21 @@ export interface UaipEventPayload {
   version?: number;
   canonicalCollection?: string;
   canonicalRecordId?: string;
+  // Skills Tracker fields
+  personId?: string;
+  correlationId?: string;
+  eventId?: string;
+  occurredAt?: Date;
+  source?: string;
+  skillId?: string;
+  skillName?: string;
+  aliases?: string[];
+  primarySource?: string;
+  sourceType?: string;
+  sourceSubtype?: string;
+  payload?: Record<string, any>;
+  confidence?: number;
+  extractedBy?: string;
+  effectiveFrom?: Date;
+  effectiveTo?: Date;
 }

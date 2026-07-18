@@ -17,6 +17,8 @@ import { ModuleRegistry, ModuleDescriptor } from './moduleRegistry';
 import { ModulePopulationLog } from '../../models/ModulePopulationLog';
 import { normalizeScheduleDates, normalizeDate } from '../../shared/utils/dateNormalizer';
 import { SemesterResolutionService } from '../../shared/services/semesterResolution.service';
+import { eventBus } from '../../events/EventBus';
+import { UaipEvent } from '../../events/UaipEvents';
 
 const logger = new Logger('RoutingEngine');
 
@@ -351,6 +353,22 @@ class ResearchAdapter extends BaseAdapter {
       },
       { upsert: true, new: true, session }
     );
+
+    void eventBus.publish(UaipEvent.ResearchUpdated, {
+      processingId: upload._id.toString(),
+      organizationId: reviewer.organizationId,
+      personId: personId.toString(),
+      correlationId: (kr as any)?._id?.toString() || upload._id.toString(),
+      eventId: result._id.toString(),
+      occurredAt: new Date(),
+      source: 'research_wing',
+      ...(fields.title && { title: fields.title }),
+      ...(fields.authors && { authors: fields.authors }),
+      ...(fields.journal && { journal: fields.journal }),
+      ...(fields.abstract && { abstract: fields.abstract }),
+      rawConfidence: Number(kr.confidenceScore ?? 0),
+    } as any);
+
     return [String(result._id)];
   }
   async deleteCanonical(
@@ -487,6 +505,21 @@ class GithubAdapter extends BaseAdapter {
       },
       { upsert: true, new: true, session }
     );
+
+    void eventBus.publish(UaipEvent.GithubUpdated, {
+      processingId: upload._id.toString(),
+      organizationId: reviewer.organizationId,
+      personId: personId.toString(),
+      correlationId: (kr as any)?._id?.toString() || upload._id.toString(),
+      eventId: result._id.toString(),
+      occurredAt: new Date(),
+      source: 'github',
+      ...(fields.repositories && { repositories: fields.repositories }),
+      ...(fields.languages && { languages: fields.languages }),
+      ...(fields.contributions && { contributions: fields.contributions }),
+      rawConfidence: Number(kr.confidenceScore ?? 0),
+    } as any);
+
     return [String(result._id)];
   }
   async deleteCanonical(

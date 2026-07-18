@@ -1,0 +1,36 @@
+export enum SkillCategory {
+  TECHNICAL = 'TECHNICAL',
+  SOFT = 'SOFT',
+  DOMAIN_SPECIFIC = 'DOMAIN_SPECIFIC',
+  TOOL = 'TOOL',
+  LANGUAGE = 'LANGUAGE',
+}
+
+export enum ProficiencyLevel {
+  BEGINNER = 'BEGINNER',
+  INTERMEDIATE = 'INTERMEDIATE',
+  ADVANCED = 'ADVANCED',
+  EXPERT = 'EXPERT',
+}
+
+export enum SkillSource {
+  ACADEMIC = 'ACADEMIC',
+  CERTIFICATE = 'CERTIFICATE',
+  GITHUB = 'GITHUB',
+  PROJECT = 'PROJECT',
+  RESEARCH = 'RESEARCH',
+  AI_INFERENCE = 'AI_INFERENCE',
+  MANUAL = 'MANUAL',
+}
+
+export enum SkillStatus {
+  ACTIVE = 'ACTIVE',
+  ARCHIVED = 'ARCHIVED',
+  SUPERSEDED = 'SUPERSEDED',
+}
+
+export enum EvidenceStatus {
+  ACTIVE = 'ACTIVE',
+  SUPERSEDED = 'SUPERSEDED',
+  REVOKED = 'REVOKED',
+}

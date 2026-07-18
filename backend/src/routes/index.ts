@@ -21,6 +21,7 @@ import exportRoutes from './exportRoutes';
 import growthRoutes from './growthRoutes';
 import reviewRoutes from './reviewRoutes';
 import documentIntelligenceRoutes from './documentIntelligenceRoutes';
+import skillsRoutes from './skillsRoutes';
 
 // Import modular routes (new architecture)
 import { researchRoutes } from '../modules/research';
@@ -49,6 +50,7 @@ router.use('/research', researchRoutes); // New modular route
 router.use('/ezone', ezoneRoutes);
 router.use('/growth', growthRoutes);
 router.use('/document-registry', documentRegistryRoutes);
+router.use('/skills', skillsRoutes);
 router.use('/export', exportRoutes);
 router.use('/review', reviewRoutes);
 router.use('/document-intelligence', documentIntelligenceRoutes);

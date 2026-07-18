@@ -3,6 +3,8 @@ import { AcademicRecordRepository } from '../repositories/academicRecord.reposit
 import { AuditEntry } from '../../models/AuditEntry';
 import { IAcademicRecord } from '../../models/AcademicRecord';
 import { toObjectId } from '../../utils/mongooseHelpers';
+import { eventBus } from '../../events/EventBus';
+import { UaipEvent } from '../../events/UaipEvents';
 
 /**
  * Service that encapsulates the AcademicRecord merge logic.
@@ -75,6 +77,24 @@ export class AcademicRecordService {
         correlationId,
       },
     });
+
+    void eventBus.publish(UaipEvent.AcademicRecordUpdated, {
+      processingId: doc._id.toString(),
+      organizationId,
+      personId,
+      correlationId: correlationId || doc._id.toString(),
+      eventId: doc._id.toString(),
+      occurredAt: new Date(),
+      source: 'academic_records',
+      subjectCode,
+      subjectName,
+      semester,
+      year,
+      grade,
+      credits,
+      status,
+      rawConfidence,
+    } as any);
 
     return doc;
   }

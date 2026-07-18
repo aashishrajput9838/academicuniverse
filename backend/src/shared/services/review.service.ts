@@ -29,6 +29,7 @@ import { UaipEvent } from '../../events/UaipEvents';
 import { normalizeScheduleDates, normalizeDate } from '../utils/dateNormalizer';
 import { toObjectId } from '../../utils/mongooseHelpers';
 import { RoutingExecutor, RoutingExecutionWrite } from '../../shared/application/routingEngine';
+import { SemesterResolutionService } from './semesterResolution.service';
 import { logger } from '../../utils/logger';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -124,36 +125,6 @@ async function resolveOrCreatePerson(
 
 // ── Canonical Writers ─────────────────────────────────────────────────────────
 
-function computeSemesterNumber(academicYear: number, term: string, admissionYear?: number): number | undefined {
-  const normalizedTerm = String(term || '').trim().toLowerCase();
-  if (!normalizedTerm || isNaN(academicYear)) {
-    return undefined;
-  }
-
-  if (admissionYear && !isNaN(admissionYear) && academicYear >= admissionYear) {
-    const yearOffset = academicYear - admissionYear;
-    const termOffset = normalizedTerm.includes('2') || normalizedTerm.includes('ii') ? 2 : 1;
-    return yearOffset * 2 + termOffset;
-  }
-
-  return undefined;
-}
-
-async function resolvePersonAdmissionYear(
-  personId: mongoose.Types.ObjectId,
-  organizationId: string
-): Promise<number | undefined> {
-  try {
-    const person = await Person.findOne({
-      _id: personId,
-      organizationId: toObjectId(organizationId),
-    }).lean();
-    return person?.admissionYear;
-  } catch {
-    return undefined;
-  }
-}
-
 async function writeAcademicRecords(
   fields: Record<string, any>,
   upload: any,
@@ -167,7 +138,16 @@ async function writeAcademicRecords(
   const sourceOid = upload._id;
   const ids: string[] = [];
 
-  const admissionYear = await resolvePersonAdmissionYear(personId, reviewer.organizationId);
+  let admissionYear: number | undefined;
+  try {
+    const person = await Person.findOne({
+      _id: personId,
+      organizationId: orgOid,
+    }).lean();
+    admissionYear = person?.admissionYear;
+  } catch {
+    admissionYear = undefined;
+  }
 
   for (const sub of subjects) {
     const filter = {
@@ -179,7 +159,8 @@ async function writeAcademicRecords(
     };
     const term = sub.term ?? kr.extractedEntities?.term ?? 'Term 1';
     const academicYear = Number(sub.academicYear ?? kr.extractedEntities?.academicYear ?? new Date().getFullYear());
-    const semesterNumber = computeSemesterNumber(academicYear, term, admissionYear);
+    const resolution = SemesterResolutionService.resolve({ admissionYear, academicYear, term });
+    const semesterNumber = resolution.isResolvable ? resolution.semesterNumber : null;
     const update = {
       $set: {
         subjectName: sub.name ?? sub.code ?? 'UNKNOWN',
@@ -192,7 +173,7 @@ async function writeAcademicRecords(
         sourceDocumentId: sourceOid,
         term,
         academicYear,
-        ...(semesterNumber ? { semesterNumber } : {}),
+        ...(semesterNumber !== null ? { semesterNumber } : {}),
       },
     };
     const result = await (AcademicRecord as any).findOneAndUpdate(filter, update, {

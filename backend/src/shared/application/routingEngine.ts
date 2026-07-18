@@ -16,6 +16,7 @@ import { toObjectId } from '../../utils/mongooseHelpers';
 import { ModuleRegistry, ModuleDescriptor } from './moduleRegistry';
 import { ModulePopulationLog } from '../../models/ModulePopulationLog';
 import { normalizeScheduleDates, normalizeDate } from '../../shared/utils/dateNormalizer';
+import { SemesterResolutionService } from '../../shared/services/semesterResolution.service';
 
 const logger = new Logger('RoutingEngine');
 
@@ -498,21 +499,6 @@ class GithubAdapter extends BaseAdapter {
   }
 }
 
-function computeSemesterNumber(academicYear: number, term: string, admissionYear?: number): number | undefined {
-  const normalizedTerm = String(term || '').trim().toLowerCase();
-  if (!normalizedTerm || isNaN(academicYear)) {
-    return undefined;
-  }
-
-  if (admissionYear && !isNaN(admissionYear) && academicYear >= admissionYear) {
-    const yearOffset = academicYear - admissionYear;
-    const termOffset = normalizedTerm.includes('2') || normalizedTerm.includes('ii') ? 2 : 1;
-    return yearOffset * 2 + termOffset;
-  }
-
-  return undefined;
-}
-
 class AcademicRecordsAdapter extends BaseAdapter {
   static MODULE_ID = 'academic_records';
   static CANONICAL_COLLECTION = 'AcademicRecord';
@@ -557,7 +543,8 @@ class AcademicRecordsAdapter extends BaseAdapter {
       };
       const term = sub.term ?? kr.extractedEntities?.term ?? 'Term 1';
       const academicYear = Number(sub.academicYear ?? kr.extractedEntities?.academicYear ?? new Date().getFullYear());
-      const semesterNumber = computeSemesterNumber(academicYear, term, admissionYear);
+      const resolution = SemesterResolutionService.resolve({ admissionYear, academicYear, term });
+      const semesterNumber = resolution.isResolvable ? resolution.semesterNumber : null;
       const update = {
         $set: {
           subjectName: sub.name ?? sub.code ?? 'UNKNOWN',
@@ -570,7 +557,7 @@ class AcademicRecordsAdapter extends BaseAdapter {
           sourceDocumentId: sourceOid,
           term,
           academicYear,
-          ...(semesterNumber ? { semesterNumber } : {}),
+          ...(semesterNumber !== null ? { semesterNumber } : {}),
         },
       };
       const result = await AcademicRecord.findOneAndUpdate(filter, update, {

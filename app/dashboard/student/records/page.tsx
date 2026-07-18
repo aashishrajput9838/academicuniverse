@@ -228,7 +228,7 @@ export default function StudentAcademicRecords() {
                  <div key={`${sem.semester}-${sem.year}`} className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
                    <div className="flex justify-between items-center mb-3">
                      <h3 className="font-semibold text-white">
-                       {sem.semesterNumber ? `Semester ${sem.semesterNumber}` : 'Semester Unknown'}
+                       {sem.semesterNumber ? `Semester ${sem.semesterNumber}` : `${sem.academicYear} • ${sem.term}`}
                      </h3>
                      <span className="text-xs font-medium text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded">Academic Year {sem.academicYear} &bull; {sem.term}</span>
                    </div>

@@ -100,11 +100,11 @@ export function SemesterTranscriptSection({
         <div className="flex items-center gap-4">
           <div>
             <h3 className="text-lg font-bold text-white">
-              {semester.semesterNumber ? `Semester ${semester.semesterNumber}` : 'Semester Unknown'}
+              {semester.semesterNumber ? `Semester ${semester.semesterNumber}` : `${semester.academicYear} • ${semester.term}`}
             </h3>
-            <p className="text-sm text-slate-400">
-              Academic Year {semester.academicYear} &bull; {semester.term}
-            </p>
+            {!semester.semesterNumber && (
+              <p className="text-xs text-amber-400 mt-0.5">Complete your profile to determine the overall semester.</p>
+            )}
           </div>
           <span className="text-xs font-medium text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded">
             {semester.subjects.length} subject{semester.subjects.length !== 1 ? 's' : ''}

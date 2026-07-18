@@ -1664,6 +1664,8 @@ function ReviewTab({
   const [showHistory, setShowHistory] = useState(false);
   const [showRoutingOverride, setShowRoutingOverride] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<string>('');
+  const [semesterWarning, setSemesterWarning] = useState<string | null>(null);
+  const [admissionYear, setAdmissionYear] = useState<number | null>(null);
 
   // Editable candidateFields and originalFields states
   const [candidateFields, setCandidateFields] = useState<Record<string, any>>(() => {
@@ -1737,6 +1739,59 @@ function ReviewTab({
     load();
     return () => { cancelled = true; };
   }, [processingId, backendToken]);
+
+  // Load student profile for semester validation
+  useEffect(() => {
+    let cancelled = false;
+    async function loadProfile() {
+      try {
+        const res = await fetch('/api/profile', {
+          headers: { Authorization: `Bearer ${backendToken}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data?.data?.admissionYear) {
+          setAdmissionYear(data.data.admissionYear);
+        }
+      } catch { /* silent */ }
+    }
+    loadProfile();
+    return () => { cancelled = true; };
+  }, [backendToken]);
+
+  // Validate extracted semester against derived semester
+  useEffect(() => {
+    if (!admissionYear || !candidateFields) {
+      setSemesterWarning(null);
+      return;
+    }
+
+    const extractedSemester = candidateFields?.semester;
+    const academicYear = candidateFields?.academicYear || candidateFields?.year;
+    const term = candidateFields?.term || 'Term 1';
+
+    if (!extractedSemester || !academicYear) {
+      setSemesterWarning(null);
+      return;
+    }
+
+    const normalizedTerm = String(term || '').trim().toLowerCase();
+    if (!normalizedTerm) {
+      setSemesterWarning(null);
+      return;
+    }
+
+    const yearOffset = Number(academicYear) - admissionYear;
+    const termOffset = normalizedTerm.includes('2') || normalizedTerm.includes('ii') ? 2 : 1;
+    const derivedSemester = yearOffset * 2 + termOffset;
+    const extractedNumber = parseInt(String(extractedSemester).trim(), 10);
+
+    if (!isNaN(extractedNumber) && extractedNumber !== derivedSemester) {
+      setSemesterWarning(`Extracted Semester (${extractedNumber}) does not match the derived Semester (${derivedSemester}) based on your admission year (${admissionYear}), academic year (${academicYear}), and term (${term}). Please verify before approval.`);
+    } else {
+      setSemesterWarning(null);
+    }
+  }, [admissionYear, candidateFields]);
 
   const loadHistory = async () => {
     setHistoryLoading(true);
@@ -1926,7 +1981,20 @@ function ReviewTab({
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
         {!isTerminal && (
           <div className="space-y-4">
-            {/* Multi-sheet Tabs if applicable */}
+            {/* Semester validation warning */}
+            {semesterWarning && (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <svg className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-bold text-amber-300">Semester Number Mismatch</p>
+                    <p className="text-xs text-amber-400/80 mt-1">{semesterWarning}</p>
+                  </div>
+                </div>
+              </div>
+            )}
             {sheets && sheets.length > 1 && (
               <div className="flex flex-wrap gap-1 bg-slate-800/40 p-1 rounded-lg border border-slate-700/40 w-fit">
                 {sheets.map((sheet, idx) => (

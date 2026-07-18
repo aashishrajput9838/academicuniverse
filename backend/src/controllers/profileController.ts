@@ -46,26 +46,30 @@ export const updateProfileController = async (req: AuthenticatedRequest, res: Re
 
     await user.save();
 
-    // Update Person profile if admissionYear is provided
-    if (admissionYear !== undefined) {
-      const person = await Person.findOne({
-        organizationId: toObjectId(req.user.organizationId),
-        userIds: toObjectId(req.user.userId),
-      });
-      
-      if (person) {
-        const year = admissionYear === null || admissionYear === '' ? undefined : Number(admissionYear);
-        if (year === undefined || (!isNaN(year) && year > 1900 && year <= new Date().getFullYear())) {
-          person.admissionYear = year;
-          await person.save();
-        }
-      }
+    // Admission year is mandatory for students
+    if (admissionYear === undefined || admissionYear === null || admissionYear === '') {
+      return sendError(res, 400, 'Admission year is required');
     }
 
-    logger.info(`User profile updated for ${user.email}`, { userId: user._id, updatedFields: { name, githubUsername, admissionYear } });
+    const year = Number(admissionYear);
+    if (isNaN(year) || year < 1900 || year > new Date().getFullYear()) {
+      return sendError(res, 400, 'Admission year must be a valid four-digit year not in the future');
+    }
+
+    const person = await Person.findOne({
+      organizationId: toObjectId(req.user.organizationId),
+      userIds: toObjectId(req.user.userId),
+    });
+    
+    if (person) {
+      person.admissionYear = year;
+      await person.save();
+    }
+
+    logger.info(`User profile updated for ${user.email}`, { userId: user._id, updatedFields: { name, githubUsername, admissionYear: year } });
 
     // Fetch updated Person for response
-    const person = await Person.findOne({
+    const updatedPerson = await Person.findOne({
       organizationId: toObjectId(req.user.organizationId),
       userIds: toObjectId(req.user.userId),
     }).lean();
@@ -76,8 +80,13 @@ export const updateProfileController = async (req: AuthenticatedRequest, res: Re
       email: user.email,
       githubUsername: user.githubUsername,
       role: (user.roleId as any)?.name || 'USER',
-      admissionYear: person?.admissionYear,
+      admissionYear: updatedPerson?.admissionYear,
     }, 'Profile updated successfully');
+  } catch (error: any) {
+    logger.error('Error updating profile:', error);
+    return sendError(res, 500, 'Failed to update profile');
+  }
+};
   } catch (error: any) {
     logger.error('Error updating profile:', error);
     return sendError(res, 500, 'Failed to update profile');

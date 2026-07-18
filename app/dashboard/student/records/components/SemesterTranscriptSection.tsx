@@ -81,7 +81,7 @@ export function SemesterTranscriptSection({
     const blobUrl = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = blobUrl;
-    a.download = `semester-${semester.semester}-${semester.year}`;
+    a.download = `semester-${semester.semesterNumber ?? semester.academicYear}-${semester.term}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

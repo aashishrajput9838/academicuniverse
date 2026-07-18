@@ -132,6 +132,20 @@ export class GeminiAIProvider implements IAIProvider {
             logger.warn('Failed to serialize Gemini response for logs', { err: String(e) });
           }
 
+          // TEMP: Instrument raw response for truncation debugging
+          try {
+            const finishReason = response?.candidates?.[0]?.finishReason || 'UNKNOWN';
+            const usageMetadata = response?.usageMetadata || {};
+            logger.info('Gemini raw response instrumentation', {
+              rawTextLength: rawText.length,
+              finishReason,
+              usageMetadata,
+              rawTextPreview: rawText.slice ? rawText.slice(0, 2000) : rawText,
+            });
+          } catch (e) {
+            logger.warn('Failed to log Gemini instrumentation', { err: String(e) });
+          }
+
           return {
             text: rawText,
             usage: {
@@ -235,16 +249,59 @@ export class GeminiAIProvider implements IAIProvider {
     const extracted = this.extractJson(cleanJson);
     cleanJson = extracted;
 
+    // TEMP: Instrument raw text before JSON parse
+    let rawSubjectCount = 0;
     try {
-      return JSON.parse(cleanJson) as T;
+      const rawObj = JSON.parse(cleanJson);
+      if (rawObj && Array.isArray(rawObj.subjects)) {
+        rawSubjectCount = rawObj.subjects.length;
+      }
+    } catch {
+      // expected if truncated
+    }
+
+    try {
+      const result = JSON.parse(cleanJson) as T;
+      logger.info('Gemini JSON parse: first attempt succeeded', {
+        rawTextLength: rawText.length,
+        subjectCount: rawSubjectCount,
+      });
+      return result;
     } catch (error) {
+      logger.info('Gemini JSON parse: first attempt failed, attempting repair', {
+        rawTextLength: rawText.length,
+        cleanJsonLength: cleanJson.length,
+        rawSubjectCount,
+        error: error.message,
+      });
+
       const repairedJson = this.repairTruncatedJson(cleanJson);
 
       if (repairedJson !== cleanJson) {
         try {
-          return JSON.parse(repairedJson) as T;
-        } catch {
-          // fall through to error logging below
+          const result = JSON.parse(repairedJson) as T;
+          let repairedSubjectCount = 0;
+          try {
+            const repairedObj = result as any;
+            if (Array.isArray(repairedObj?.subjects)) {
+              repairedSubjectCount = repairedObj.subjects.length;
+            }
+          } catch {
+            // ignore
+          }
+          logger.info('Gemini JSON parse: repair succeeded', {
+            rawTextLength: rawText.length,
+            repairedJsonLength: repairedJson.length,
+            rawSubjectCount,
+            repairedSubjectCount,
+          });
+          return result;
+        } catch (repairError) {
+          logger.error('Gemini JSON parse: repair also failed', {
+            rawTextLength: rawText.length,
+            repairedJsonLength: repairedJson.length,
+            error: repairError instanceof Error ? repairError.message : String(repairError),
+          });
         }
       }
 
@@ -493,6 +550,11 @@ export class GeminiAIProvider implements IAIProvider {
     while (stack.length > 0) {
       const opener = stack.pop();
       candidate += opener === '[' ? ']' : '}';
+    }
+
+    // TEMP: Throw instead of silently repairing to expose raw malformed JSON
+    if (candidate !== originalCandidate) {
+      throw new Error(`TEMPORARY: repairTruncatedJson would have modified JSON. Raw length=${rawText.length}, repaired length=${candidate.length}. Stack remaining: ${JSON.stringify(stack)}. Original preview: ${originalCandidate.slice(0, 500)}`);
     }
 
     return candidate.replace(/,\s*([}\]])/g, '$1');

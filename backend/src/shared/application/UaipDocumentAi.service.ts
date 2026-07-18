@@ -136,8 +136,27 @@ ${contentToAnalyze.slice(0, 50000)} // safety limit for token size
         maxTokens: 8192,
       });
 
+      // TEMP: Instrument raw AI response subject count
+      const rawSubjects = Array.isArray((aiResponse as any)?.candidateFields?.subjects)
+        ? (aiResponse as any).candidateFields.subjects.length
+        : -1;
+      logger.info('UaipDocumentAiService: raw AI response subject count', {
+        processingId,
+        rawSubjects,
+        rawCandidateFieldsKeys: aiResponse?.candidateFields ? Object.keys(aiResponse.candidateFields) : [],
+      });
+
       // 4️⃣ Validate response format
       const validatedResult = this.validateAiResponse(aiResponse);
+
+      // TEMP: Instrument validated result subject count
+      const validatedSubjects = Array.isArray(validatedResult?.candidateFields?.subjects)
+        ? validatedResult.candidateFields.subjects.length
+        : -1;
+      logger.info('UaipDocumentAiService: validated result subject count', {
+        processingId,
+        validatedSubjects,
+      });
 
       // Determine routing decision
       const { ModuleRoutingEngine } = require('./routingEngine');
@@ -149,6 +168,15 @@ ${contentToAnalyze.slice(0, 50000)} // safety limit for token size
       });
 
       const routingStatus = (routingDecision.primaryModule && routingDecision.routingConfidence > 0) ? 'ROUTED' : 'UNKNOWN';
+
+      // TEMP: Instrument subject count before persistence
+      const persistSubjects = Array.isArray(validatedResult?.candidateFields?.subjects)
+        ? validatedResult.candidateFields.subjects.length
+        : -1;
+      logger.info('UaipDocumentAiService: subject count before persistence', {
+        processingId,
+        persistSubjects,
+      });
 
       // 5️⃣ Update the KnowledgeRecord with AI analysis results
       await KnowledgeRecordModel.updateOne(

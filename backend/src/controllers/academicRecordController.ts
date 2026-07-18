@@ -137,20 +137,25 @@ export const getMyAcademicRecords = async (req: any, res: Response) => {
     let completedCredits = 0;
 
     for (const record of records) {
-      const key = `${record.semester}-${record.year}`;
-      if (!semesterMap.has(key)) {
-        semesterMap.set(key, {
+      const academicYear = Number(record.academicYear ?? record.year);
+      const term = String(record.term ?? record.semester ?? 'Term 1');
+      const canonicalKey =
+        record.semesterNumber !== null && record.semesterNumber !== undefined
+          ? String(record.semesterNumber)
+          : `${academicYear}-${term}`;
+      if (!semesterMap.has(canonicalKey)) {
+        semesterMap.set(canonicalKey, {
           semester: record.semester,
           year: record.year,
-          term: String(record.term ?? record.semester ?? 'Term 1'),
-          academicYear: Number(record.academicYear ?? record.year),
+          term,
+          academicYear,
           ...(record.semesterNumber ? { semesterNumber: record.semesterNumber } : {}),
           gpa: 0,
           subjects: [],
           sourceDocumentId: typeof record.sourceDocumentId === 'string' ? record.sourceDocumentId : record.sourceDocumentId?.toString?.() || undefined,
         });
       }
-      const semester = semesterMap.get(key)!;
+      const semester = semesterMap.get(canonicalKey)!;
       const credits = Number(record.credits ?? 0);
       const gradePoints = Number(record.gradePoints ?? 0);
 
@@ -192,8 +197,11 @@ export const getMyAcademicRecords = async (req: any, res: Response) => {
     }
 
     semesters.sort((a, b) => {
-      if (a.year !== b.year) return a.year - b.year;
-      return a.semester.localeCompare(b.semester);
+      const aNum = a.semesterNumber ?? Number.MAX_SAFE_INTEGER;
+      const bNum = b.semesterNumber ?? Number.MAX_SAFE_INTEGER;
+      if (aNum !== bNum) return aNum - bNum;
+      if (a.academicYear !== b.academicYear) return a.academicYear - b.academicYear;
+      return a.term.localeCompare(b.term);
     });
 
     const overall: OverallDTO = {

@@ -224,8 +224,11 @@ export default function StudentAcademicRecords() {
            <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
              <h2 className="text-xl font-bold text-emerald-400 mb-4">Semesters</h2>
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-               {records.semesters.map((sem) => (
-                 <div key={`${sem.semester}-${sem.year}`} className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
+                {records.semesters.map((sem) => (
+                  <div
+                    key={`${sem.semesterNumber ?? 'unknown'}-${sem.academicYear}-${sem.term}`}
+                    className="p-4 bg-slate-800/50 rounded-lg border border-slate-600"
+                  >
                    <div className="flex justify-between items-center mb-3">
                      <h3 className="font-semibold text-white">
                        {sem.semesterNumber ? `Semester ${sem.semesterNumber}` : `${sem.academicYear} • ${sem.term}`}
@@ -254,7 +257,7 @@ export default function StudentAcademicRecords() {
             </p>
             {records.semesters.map((sem) => (
               <SemesterTranscriptSection
-                key={`${sem.semester}-${sem.year}`}
+                key={`${sem.semesterNumber ?? 'unknown'}-${sem.academicYear}-${sem.term}`}
                 semester={sem}
                 backendToken={backendToken}
                 apiBaseUrl={API_BASE_URL}

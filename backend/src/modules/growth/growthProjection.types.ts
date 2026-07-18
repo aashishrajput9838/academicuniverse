@@ -37,6 +37,25 @@ export interface SubjectPerformance {
   count: number;
 }
 
+export interface SkillSummaryItem {
+  skillId: string;
+  skillName: string;
+  proficiencyScore: number;
+  evidenceCount: number;
+}
+
+export interface SkillsMetrics {
+  totalSkills: number;
+  averageProficiency: number;
+  technicalSkills: number;
+  softSkills: number;
+  languageSkills: number;
+  toolSkills: number;
+  topSkills: SkillSummaryItem[];
+  weakestSkills: SkillSummaryItem[];
+  lastProjectionAt: string | null;
+}
+
 export interface GrowthProjection {
   projectionVersion: number;
   generatedAt: string;
@@ -53,6 +72,7 @@ export interface GrowthProjection {
     academicRecordsCount: GrowthMetric<number>;
     certificatesCount: GrowthMetric<number>;
     experienceCount: GrowthMetric<number>;
+    skills: GrowthMetric<SkillsMetrics>;
   };
   sources: {
     academicRecords: GrowthSourceState;
@@ -61,6 +81,7 @@ export interface GrowthProjection {
     github: GrowthSourceState;
     certificates: GrowthSourceState;
     experience: GrowthSourceState;
+    skillsTracker: GrowthSourceState;
   };
   sourceVersions: Record<string, string | null>;
 }

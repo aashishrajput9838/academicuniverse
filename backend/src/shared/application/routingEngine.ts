@@ -614,51 +614,6 @@ class AcademicRecordsAdapter extends BaseAdapter {
 
 // ── New Phase 2 Adapters ───────────────────────────────────────────────────────
 
-class SkillsAdapter extends BaseAdapter {
-  static MODULE_ID = 'skills_tracker';
-  static CANONICAL_COLLECTION = 'CareerRecord';
-
-  validateData(fields: Record<string, any>): boolean {
-    return true;
-  }
-  mapCandidateFields(fields: Record<string, any>, kr: any): Record<string, any> {
-    return {
-      skills: fields.skills ?? [],
-      sourceDocumentId: kr._id,
-    };
-  }
-  async writeCanonical(
-    fields: Record<string, any>,
-    kr: any,
-    upload: any,
-    personId: Types.ObjectId,
-    session: mongoose.ClientSession,
-    reviewer: any
-  ): Promise<string[]> {
-    const orgOid = toObjectId(reviewer.organizationId);
-    const result = await CareerRecord.findOneAndUpdate(
-      { organizationId: orgOid, personId },
-      {
-        $set: {
-          skills: fields.skills ?? [],
-          sourceDocumentId: upload._id,
-          rawConfidence: Number(kr.confidenceScore ?? 0),
-        }
-      },
-      { upsert: true, new: true, session }
-    );
-    return [String(result._id)];
-  }
-  async deleteCanonical(
-    recordIds: string[],
-    organizationId: string,
-    session: mongoose.ClientSession
-  ): Promise<void> {
-    const orgOid = toObjectId(organizationId);
-    await CareerRecord.deleteMany({ _id: { $in: recordIds.map(toObjectId) }, organizationId: orgOid }).session(session);
-  }
-}
-
 class CodeArenaAdapter extends BaseAdapter {
   static MODULE_ID = 'code_arena';
   static CANONICAL_COLLECTION = 'GithubRecord';
@@ -908,7 +863,6 @@ const adaptersMap: Record<string, IModuleAdapter> = {
   career_profile: new CareerAdapter(),
   github: new GithubAdapter(),
   academic_records: new AcademicRecordsAdapter(),
-  skills_tracker: new SkillsAdapter(),
   code_arena: new CodeArenaAdapter(),
   faculty_cabin: new FacultyCabinAdapter(),
   emotional_support: new EmotionalSupportAdapter(),

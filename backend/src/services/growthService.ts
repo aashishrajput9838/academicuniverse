@@ -2,6 +2,9 @@ import mongoose from 'mongoose';
 import Mark from '../models/Mark';
 import { EzoneAcademicProfile } from '../models/EzoneAcademicProfile';
 import User from '../models/User';
+import { Person } from '../models/Person';
+import { SkillRecord } from '../models/SkillRecord';
+import { SkillCategory } from '../shared/enums/skills.enum';
 import githubService from './githubService';
 import { ConfigurationError, ExternalAPIError } from '../utils/errors';
 import { toObjectId } from '../utils/mongooseHelpers';
@@ -38,6 +41,25 @@ export interface SubjectPerformance {
   count: number;
 }
 
+export interface SkillSummaryItem {
+  skillId: string;
+  skillName: string;
+  proficiencyScore: number;
+  evidenceCount: number;
+}
+
+export interface SkillsMetrics {
+  totalSkills: number;
+  averageProficiency: number;
+  technicalSkills: number;
+  softSkills: number;
+  languageSkills: number;
+  toolSkills: number;
+  topSkills: SkillSummaryItem[];
+  weakestSkills: SkillSummaryItem[];
+  lastProjectionAt: string | null;
+}
+
 export interface GrowthHubResponse {
   generatedAt: string;
   metrics: {
@@ -48,6 +70,7 @@ export interface GrowthHubResponse {
     academicProfileStatus: GrowthMetric<string>;
     githubRepositoryCount: GrowthMetric<number>;
     completedProjects: GrowthMetric<number>;
+    skills: GrowthMetric<SkillsMetrics>;
   };
 }
 
@@ -194,11 +217,111 @@ const getGithubMetrics = async (userId: string) => {
   }
 };
 
+const getSkillsMetrics = async (userId: string, organizationId: string) => {
+  try {
+    const person = await Person.findOne({
+      organizationId: toObjectId(organizationId),
+      userIds: toObjectId(userId),
+    })
+      .select('_id')
+      .lean();
+
+    if (!person?._id) {
+      const emptyMetrics: SkillsMetrics = {
+        totalSkills: 0,
+        averageProficiency: 0,
+        technicalSkills: 0,
+        softSkills: 0,
+        languageSkills: 0,
+        toolSkills: 0,
+        topSkills: [],
+        weakestSkills: [],
+        lastProjectionAt: null,
+      };
+      return createMetric<SkillsMetrics>('EMPTY', emptyMetrics, null, null, 'NO_DATA');
+    }
+
+    const skillRecords = await SkillRecord.find({
+      organizationId: toObjectId(organizationId),
+      personId: person._id,
+      status: 'ACTIVE',
+    }).lean();
+
+    if (!skillRecords.length) {
+      const emptyMetrics: SkillsMetrics = {
+        totalSkills: 0,
+        averageProficiency: 0,
+        technicalSkills: 0,
+        softSkills: 0,
+        languageSkills: 0,
+        toolSkills: 0,
+        topSkills: [],
+        weakestSkills: [],
+        lastProjectionAt: null,
+      };
+      return createMetric<SkillsMetrics>('EMPTY', emptyMetrics, null, null, 'NO_DATA');
+    }
+
+    const categoryCounts: Record<string, number> = {};
+    let totalProficiency = 0;
+    const skillSummaries: SkillSummaryItem[] = [];
+
+    for (const record of skillRecords) {
+      const category = (record as any).skillCategory || 'DOMAIN_SPECIFIC';
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      totalProficiency += Number((record as any).proficiencyScore || 0);
+
+      skillSummaries.push({
+        skillId: (record as any).skillId,
+        skillName: (record as any).skillName,
+        proficiencyScore: Number((record as any).proficiencyScore || 0),
+        evidenceCount: Number((record as any).evidenceCount || 0),
+      });
+    }
+
+    skillSummaries.sort((a, b) => b.proficiencyScore - a.proficiencyScore);
+
+    const topSkills = skillSummaries.slice(0, 5);
+    const weakestSkills = skillSummaries.slice(-5).reverse();
+
+    const latestRecord = skillRecords[0];
+    const updatedAt = toTimestamp((latestRecord as any).updatedAt || (latestRecord as any).createdAt);
+
+    const skillsMetrics: SkillsMetrics = {
+      totalSkills: skillRecords.length,
+      averageProficiency: Number((totalProficiency / skillRecords.length).toFixed(2)),
+      technicalSkills: categoryCounts[SkillCategory.TECHNICAL] || 0,
+      softSkills: categoryCounts[SkillCategory.SOFT] || 0,
+      languageSkills: categoryCounts[SkillCategory.LANGUAGE] || 0,
+      toolSkills: categoryCounts[SkillCategory.TOOL] || 0,
+      topSkills,
+      weakestSkills,
+      lastProjectionAt: updatedAt,
+    };
+
+    return createMetric<SkillsMetrics>('AVAILABLE', skillsMetrics, updatedAt, false, null);
+  } catch {
+    const emptyMetrics: SkillsMetrics = {
+      totalSkills: 0,
+      averageProficiency: 0,
+      technicalSkills: 0,
+      softSkills: 0,
+      languageSkills: 0,
+      toolSkills: 0,
+      topSkills: [],
+      weakestSkills: [],
+      lastProjectionAt: null,
+    };
+    return createMetric<SkillsMetrics>('ERROR', emptyMetrics, null, null, 'SOURCE_ERROR');
+  }
+};
+
 export const buildGrowthHubResponse = async (userId: string, organizationId: string): Promise<GrowthHubResponse> => {
-  const [marksMetrics, ezoneMetrics, githubMetrics] = await Promise.all([
+  const [marksMetrics, ezoneMetrics, githubMetrics, skillsMetric] = await Promise.all([
     getMarksMetrics(userId, organizationId),
     getEzoneMetrics(userId, organizationId),
     getGithubMetrics(userId),
+    getSkillsMetrics(userId, organizationId),
   ]);
 
   return {
@@ -211,6 +334,7 @@ export const buildGrowthHubResponse = async (userId: string, organizationId: str
       academicProfileStatus: ezoneMetrics.academicProfileStatus,
       githubRepositoryCount: githubMetrics.githubRepositoryCount,
       completedProjects: githubMetrics.completedProjects,
+      skills: skillsMetric,
     },
   };
 };

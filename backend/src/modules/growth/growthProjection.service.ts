@@ -5,6 +5,9 @@ import { AcademicRecord } from '../../models/AcademicRecord';
 import { CertificateRecord } from '../../models/CertificateRecord';
 import { ExperienceRecord } from '../../models/ExperienceRecord';
 import { Person } from '../../models/Person';
+import { SkillRecord } from '../../models/SkillRecord';
+import { SkillEvidence } from '../../models/SkillEvidence';
+import { SkillCategory } from '../../shared/enums/skills.enum';
 import githubService from '../../services/githubService';
 import { ConfigurationError } from '../../utils/errors';
 import { toObjectId } from '../../utils/mongooseHelpers';
@@ -15,9 +18,11 @@ import {
   GrowthProjection,
   GrowthSourceState,
   SubjectPerformance,
+  SkillsMetrics,
+  SkillSummaryItem,
 } from './growthProjection.types';
 
-const PROJECTION_VERSION = 1;
+const PROJECTION_VERSION = 2;
 
 const createMetric = <T>(
   state: GrowthMetricState,
@@ -66,12 +71,13 @@ const latestTimestamp = (values: Array<Date | string | undefined | null>): strin
 
 export class GrowthProjectionService {
   async buildProjection(userId: string, organizationId: string): Promise<GrowthProjection> {
-    const [profileId, marksMetrics, canonicalMetrics, ezoneMetrics, githubMetrics] = await Promise.all([
+    const [profileId, marksMetrics, canonicalMetrics, ezoneMetrics, githubMetrics, skillsMetrics] = await Promise.all([
       this.resolveProfileId(userId, organizationId),
       this.getMarksMetrics(userId, organizationId),
       this.getCanonicalProfileMetrics(userId, organizationId),
       this.getEzoneMetrics(userId, organizationId),
       this.getGithubMetrics(userId, organizationId),
+      this.getSkillsMetrics(userId, organizationId),
     ]);
 
     const sourceVersions = {
@@ -81,6 +87,7 @@ export class GrowthProjectionService {
       github: githubMetrics.source.updatedAt,
       certificates: canonicalMetrics.sources.certificates.updatedAt,
       experience: canonicalMetrics.sources.experience.updatedAt,
+      skillsTracker: skillsMetrics.source.updatedAt,
     };
 
     return {
@@ -99,6 +106,7 @@ export class GrowthProjectionService {
         academicRecordsCount: canonicalMetrics.academicRecordsCount,
         certificatesCount: canonicalMetrics.certificatesCount,
         experienceCount: canonicalMetrics.experienceCount,
+        skills: skillsMetrics.skills,
       },
       sources: {
         academicRecords: canonicalMetrics.sources.academicRecords,
@@ -107,6 +115,7 @@ export class GrowthProjectionService {
         github: githubMetrics.source,
         certificates: canonicalMetrics.sources.certificates,
         experience: canonicalMetrics.sources.experience,
+        skillsTracker: skillsMetrics.source,
       },
       sourceVersions,
     };
@@ -340,5 +349,104 @@ export class GrowthProjectionService {
         completedProjects: createMetric<number>(state, null, null, null, reason),
       };
     }
+  }
+
+  private async getSkillsMetrics(userId: string, organizationId: string) {
+    try {
+      const person = await Person.findOne({
+        organizationId: toObjectId(organizationId),
+        userIds: toObjectId(userId),
+      })
+        .select('_id')
+        .lean();
+
+      if (!person?._id) {
+        const emptyMetrics = this.createEmptySkillsMetrics();
+        const source = createSourceState('EMPTY', null, false, 'NO_DATA');
+        return {
+          source,
+          skills: createMetric<SkillsMetrics>('EMPTY', emptyMetrics, null, null, 'NO_DATA'),
+        };
+      }
+
+      const skillRecords = await SkillRecord.find({
+        organizationId: toObjectId(organizationId),
+        personId: person._id,
+        status: 'ACTIVE',
+      }).lean();
+
+      if (!skillRecords.length) {
+        const emptyMetrics = this.createEmptySkillsMetrics();
+        const source = createSourceState('EMPTY', null, false, 'NO_DATA');
+        return {
+          source,
+          skills: createMetric<SkillsMetrics>('EMPTY', emptyMetrics, null, null, 'NO_DATA'),
+        };
+      }
+
+      const categoryCounts: Record<string, number> = {};
+      let totalProficiency = 0;
+      const skillSummaries: SkillSummaryItem[] = [];
+
+      for (const record of skillRecords) {
+        const category = (record as any).skillCategory || 'DOMAIN_SPECIFIC';
+        categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+        totalProficiency += Number((record as any).proficiencyScore || 0);
+
+        skillSummaries.push({
+          skillId: (record as any).skillId,
+          skillName: (record as any).skillName,
+          proficiencyScore: Number((record as any).proficiencyScore || 0),
+          evidenceCount: Number((record as any).evidenceCount || 0),
+        });
+      }
+
+      skillSummaries.sort((a, b) => b.proficiencyScore - a.proficiencyScore);
+
+      const topSkills = skillSummaries.slice(0, 5);
+      const weakestSkills = skillSummaries.slice(-5).reverse();
+
+      const latestRecord = skillRecords[0];
+      const updatedAt = toTimestamp((latestRecord as any).updatedAt || (latestRecord as any).createdAt);
+      const source = createSourceState('AVAILABLE', updatedAt, false, null);
+
+      const skillsMetrics: SkillsMetrics = {
+        totalSkills: skillRecords.length,
+        averageProficiency: Number((totalProficiency / skillRecords.length).toFixed(2)),
+        technicalSkills: categoryCounts[SkillCategory.TECHNICAL] || 0,
+        softSkills: categoryCounts[SkillCategory.SOFT] || 0,
+        languageSkills: categoryCounts[SkillCategory.LANGUAGE] || 0,
+        toolSkills: categoryCounts[SkillCategory.TOOL] || 0,
+        topSkills,
+        weakestSkills,
+        lastProjectionAt: updatedAt,
+      };
+
+      return {
+        source,
+        skills: createMetric<SkillsMetrics>('AVAILABLE', skillsMetrics, updatedAt, false, null),
+      };
+    } catch {
+      const errorSource = createSourceState('ERROR', null, false, 'SOURCE_ERROR');
+      const emptyMetrics = this.createEmptySkillsMetrics();
+      return {
+        source: errorSource,
+        skills: createMetric<SkillsMetrics>('ERROR', emptyMetrics, null, null, 'SOURCE_ERROR'),
+      };
+    }
+  }
+
+  private createEmptySkillsMetrics(): SkillsMetrics {
+    return {
+      totalSkills: 0,
+      averageProficiency: 0,
+      technicalSkills: 0,
+      softSkills: 0,
+      languageSkills: 0,
+      toolSkills: 0,
+      topSkills: [],
+      weakestSkills: [],
+      lastProjectionAt: null,
+    };
   }
 }

@@ -28,6 +28,18 @@ export class SkillEvidenceRepository {
     return SkillEvidence.find(filter).sort({ createdAt: -1 });
   }
 
+  async findActiveByPersonAndCanonical(personId: string, canonicalId: string, organizationId?: string): Promise<ISkillEvidence[]> {
+    const filter: any = {
+      personId: toObjectId(personId),
+      'payload.canonicalId': canonicalId,
+      status: 'ACTIVE',
+    };
+    if (organizationId) {
+      filter.organizationId = toObjectId(organizationId);
+    }
+    return SkillEvidence.find(filter).sort({ createdAt: -1 });
+  }
+
   async findByDocument(sourceDocumentId: string, organizationId?: string): Promise<ISkillEvidence[]> {
     const filter: any = { sourceDocumentId: toObjectId(sourceDocumentId) };
     if (organizationId) {

@@ -111,7 +111,7 @@ export const getMyAcademicRecords = async (req: any, res: Response) => {
   }
   try {
     const personResolver = new PersonResolver();
-    const personId = await personResolver.resolve(authUserId, organizationId);
+    const personId = await personResolver.resolve(authUserId, organizationId, user?.email, user?.name);
     const repo = new AcademicRecordRepository();
     const records = await repo.findByPerson(personId, organizationId);
 

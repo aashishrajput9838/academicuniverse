@@ -3,14 +3,21 @@ import { Logger } from '../utils/logger';
 import { ExternalAPIError, NotFoundError } from '../utils/errors';
 import { User } from '../models';
 import githubService, { ProjectStats } from '../services/githubService';
+import analyticsService from '../services/analyticsService';
 
 const logger = new Logger('githubController');
 
 interface AuthenticatedRequest extends Request {
-  firebaseUser?: {
-    firebaseUid: string;
+  user?: {
+    userId: string;
     email: string;
+    organizationId: string;
+    roleId: string;
+    permissions: string[];
+    isSuperAdmin: boolean;
+    firebaseUid?: string;
   };
+  organizationId?: string;
 }
 
 /**
@@ -19,30 +26,28 @@ interface AuthenticatedRequest extends Request {
  * @access Private (Student role only)
  */
 export const getProjectStats = async (req: AuthenticatedRequest, res: Response) => {
-  let userRecord; // Declare outside try block for error logging
-  
+  let userRecord;
+
   try {
-    // Verify Firebase authentication
-    if (!req.firebaseUser) {
+    if (!req.user) {
       return res.status(401).json({
         success: false,
         message: 'Authentication required',
-        error: 'No valid Firebase token provided'
+        error: 'No valid token provided'
       });
     }
 
-    const { firebaseUid, email } = req.firebaseUser;
-    logger.info(`Fetching project stats for user: ${email} (Firebase UID: ${firebaseUid})`);
+    const { userId, email } = req.user;
+    logger.info(`Fetching project stats for user: ${email} (User ID: ${userId})`);
 
-    // Fetch user from database
-    const user = await User.findOne({ firebaseUid }).populate('roleId');
-    userRecord = user; // Assign to outer variable for error logging
-    
-    logger.info(`Attempting to find user by Firebase UID: ${firebaseUid}`);
+    const user = await User.findOne({ _id: userId }).populate('roleId');
+    userRecord = user;
+
+    logger.info(`Attempting to find user by ID: ${userId}`);
     logger.info(`Found user: ${user ? user.name : 'NOT FOUND'}, GitHub username: ${user ? user.githubUsername : 'N/A'}`);
-    
+
     if (!user) {
-      logger.warn(`User not found in database for Firebase UID: ${firebaseUid}`);
+      logger.warn(`User not found in database for User ID: ${userId}`);
       return res.status(404).json({
         success: false,
         message: 'User profile not found',
@@ -50,7 +55,6 @@ export const getProjectStats = async (req: AuthenticatedRequest, res: Response) 
       });
     }
 
-    // Check if user has student role
     const userRole = user.roleId as any;
     if (userRole.name !== 'STUDENT') {
       logger.warn(`Non-student user attempted to access GitHub projects: ${email}`);
@@ -61,7 +65,6 @@ export const getProjectStats = async (req: AuthenticatedRequest, res: Response) 
       });
     }
 
-    // Check if GitHub username is set
     if (!user.githubUsername) {
       logger.info(`User ${email} has no GitHub username configured`);
       return res.status(400).json({
@@ -72,7 +75,6 @@ export const getProjectStats = async (req: AuthenticatedRequest, res: Response) 
       });
     }
 
-    // Check if service is rate limited
     if (githubService.isRateLimited()) {
       logger.warn(`GitHub service is currently rate limited for user: ${email}`);
       return res.status(429).json({
@@ -83,11 +85,10 @@ export const getProjectStats = async (req: AuthenticatedRequest, res: Response) 
       });
     }
 
-    // Fetch project statistics from GitHub
     const stats: ProjectStats = await githubService.getProjectStats(user.githubUsername);
-    
+
     logger.info(`Successfully fetched project stats for user ${email}:`, stats);
-    
+
     return res.status(200).json({
       success: true,
       message: 'Project statistics retrieved successfully',
@@ -109,8 +110,7 @@ export const getProjectStats = async (req: AuthenticatedRequest, res: Response) 
       userId: userRecord?._id,
       githubUsername: userRecord?.githubUsername
     });
-    
-    // Handle specific error types
+
     if (error instanceof ExternalAPIError) {
       return res.status(502).json({
         success: false,
@@ -119,7 +119,7 @@ export const getProjectStats = async (req: AuthenticatedRequest, res: Response) 
         code: 'GITHUB_API_ERROR'
       });
     }
-    
+
     if (error instanceof NotFoundError) {
       return res.status(404).json({
         success: false,
@@ -127,8 +127,7 @@ export const getProjectStats = async (req: AuthenticatedRequest, res: Response) 
         error: error.message
       });
     }
-    
-    // Handle generic errors with more detail in development
+
     const isDev = process.env.NODE_ENV === 'development';
     return res.status(500).json({
       success: false,
@@ -147,20 +146,18 @@ export const getProjectStats = async (req: AuthenticatedRequest, res: Response) 
  */
 export const refreshProjectStats = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // Verify Firebase authentication
-    if (!req.firebaseUser) {
+    if (!req.user) {
       return res.status(401).json({
         success: false,
         message: 'Authentication required'
       });
     }
 
-    const { firebaseUid, email } = req.firebaseUser;
+    const { userId, email } = req.user;
     logger.info(`Refreshing project stats cache for user: ${email}`);
 
-    // Fetch user from database
-    const user = await User.findOne({ firebaseUid }).populate('roleId');
-    
+    const user = await User.findOne({ _id: userId }).populate('roleId');
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -168,7 +165,6 @@ export const refreshProjectStats = async (req: AuthenticatedRequest, res: Respon
       });
     }
 
-    // Check if user has student role
     const userRole = user.roleId as any;
     if (userRole.name !== 'STUDENT') {
       return res.status(403).json({
@@ -177,7 +173,6 @@ export const refreshProjectStats = async (req: AuthenticatedRequest, res: Respon
       });
     }
 
-    // Check if GitHub username is set
     if (!user.githubUsername) {
       return res.status(400).json({
         success: false,
@@ -185,12 +180,11 @@ export const refreshProjectStats = async (req: AuthenticatedRequest, res: Respon
       });
     }
 
-    // Clear cache and fetch fresh data
     githubService.clearUserCache(user.githubUsername);
     const stats: ProjectStats = await githubService.getProjectStats(user.githubUsername);
-    
+
     logger.info(`Successfully refreshed project stats for user ${email}`);
-    
+
     return res.status(200).json({
       success: true,
       message: 'Project statistics refreshed successfully',
@@ -205,10 +199,71 @@ export const refreshProjectStats = async (req: AuthenticatedRequest, res: Respon
 
   } catch (error: any) {
     logger.error('Error refreshing GitHub project statistics:', error);
-    
+
     return res.status(500).json({
       success: false,
       message: 'Failed to refresh project statistics',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Controller: Sync GitHub data and trigger skill pipeline
+ * @route POST /api/github/sync
+ * @access Private (Student role only)
+ */
+export const syncGithubData = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    const { userId, email } = req.user;
+    logger.info(`Manual GitHub sync requested for user: ${email}`);
+
+    const user = await User.findOne({ _id: userId }).populate('roleId');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const userRole = user.roleId as any;
+    if (userRole.name !== 'STUDENT') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    if (!user.githubUsername) {
+      return res.status(400).json({
+        success: false,
+        message: 'GitHub username not configured',
+        code: 'GITHUB_USERNAME_MISSING'
+      });
+    }
+
+    const result = await analyticsService.syncGithubData(req.user.firebaseUid!);
+
+    logger.info(`GitHub sync completed for user ${email}:`, result);
+
+    return res.status(200).json({
+      success: true,
+      message: 'GitHub data synced successfully',
+      data: result
+    });
+  } catch (error: any) {
+    logger.error('Error syncing GitHub data:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to sync GitHub data',
       error: error.message
     });
   }

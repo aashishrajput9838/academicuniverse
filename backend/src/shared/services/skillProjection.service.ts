@@ -81,16 +81,18 @@ export class SkillProjectionService {
   }
 
   async rebuildSkillRecord(organizationId: string, personId: string, skillId: string): Promise<ISkillRecord> {
-    const evidence = await this.evidenceRepo.findActiveByPersonAndSkill(personId, skillId, organizationId);
+    const evidence = await this.getEvidenceForProjectionKey(organizationId, personId, skillId);
     const projection = this.computeProficiency(evidence);
 
     const existing = await this.repo.findBySkill(personId, skillId, organizationId);
+
+    const projectionSkillName = evidence[0]?.payload?.canonicalName || evidence[0]?.skillName || skillId;
 
     const projectionData: Partial<ISkillRecord> = {
       organizationId: toObjectId(organizationId),
       personId: toObjectId(personId),
       skillId,
-      skillName: evidence[0]?.skillName || skillId,
+      skillName: projectionSkillName,
       aliases: evidence[0]?.aliases || [],
       skillCategory: SkillCategory.TECHNICAL,
       proficiencyLevel: projection.level,
@@ -138,16 +140,28 @@ export class SkillProjectionService {
 
   async rebuildAllSkillRecords(organizationId: string, personId: string): Promise<void> {
     const evidence = await this.evidenceRepo.findByPerson(personId, organizationId);
-    const skillIds = new Set(evidence.map(e => e.skillId));
 
-    for (const skillId of skillIds) {
+    const useOntology = process.env.USE_ONTOLOGY_RESOLUTION === 'true';
+    const skillGroups = new Map<string, ISkillEvidence[]>();
+
+    for (const e of evidence) {
+      const key = useOntology ? (e.payload?.canonicalId || e.skillId) : e.skillId;
+      if (!skillGroups.has(key)) {
+        skillGroups.set(key, []);
+      }
+      skillGroups.get(key)!.push(e);
+    }
+
+    const sortedKeys = Array.from(skillGroups.keys()).sort();
+
+    for (const skillId of sortedKeys) {
       await this.rebuildSkillRecord(organizationId, personId, skillId);
     }
 
     logger.info('All SkillRecord projections rebuilt', {
       organizationId,
       personId,
-      skillsRebuilt: skillIds.size,
+      skillsRebuilt: sortedKeys.length,
     });
 
     void eventBus.publish(UaipEvent.SkillProfileRebuilt, {
@@ -156,8 +170,29 @@ export class SkillProjectionService {
       personId,
       occurredAt: new Date(),
       source: 'skills_tracker',
-      skillsRebuilt: skillIds.size,
+      skillsRebuilt: sortedKeys.length,
     });
+  }
+
+  private async getEvidenceForProjectionKey(
+    organizationId: string,
+    personId: string,
+    projectionKey: string
+  ): Promise<ISkillEvidence[]> {
+    const useOntology = process.env.USE_ONTOLOGY_RESOLUTION === 'true';
+
+    if (useOntology) {
+      const canonicalEvidence = await this.evidenceRepo.findActiveByPersonAndCanonical(
+        personId,
+        projectionKey,
+        organizationId
+      );
+      if (canonicalEvidence.length > 0) {
+        return canonicalEvidence;
+      }
+    }
+
+    return this.evidenceRepo.findActiveByPersonAndSkill(personId, projectionKey, organizationId);
   }
 
   private getRecencyFactor(ageMs: number): number {

@@ -13,7 +13,7 @@ export class GithubOAuthService {
   constructor() {
     this.clientId = process.env.GITHUB_CLIENT_ID || '';
     this.clientSecret = process.env.GITHUB_CLIENT_SECRET || '';
-    this.redirectUri = `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/github/callback`;
+    this.redirectUri = `${process.env.BACKEND_URL || `http://localhost:${process.env.PORT || '5003'}`}/api/github/callback`;
     
     if (!this.clientId || !this.clientSecret) {
       logger.warn('GITHUB_CLIENT_ID and/or GITHUB_CLIENT_SECRET not set in environment variables. GitHub OAuth features will be unavailable.');
@@ -86,10 +86,8 @@ export class GithubOAuthService {
    */
   async storeAccessToken(firebaseUid: string, accessToken: string): Promise<void> {
     try {
-      // Encrypt the access token
       const { iv, encryptedData } = EncryptionUtil.encrypt(accessToken);
 
-      // Update the user's GitHub access token in the database
       const user = await User.findOne({ firebaseUid });
       if (!user) {
         throw new Error('User not found');
@@ -106,6 +104,28 @@ export class GithubOAuthService {
     } catch (error: any) {
       logger.error('Error storing GitHub access token:', error.message);
       throw new Error(`Failed to store GitHub access token: ${error.message}`);
+    }
+  }
+
+  /**
+   * Fetches the GitHub username for a user using their access token
+   * @param accessToken The GitHub access token
+   * @returns The GitHub username
+   */
+  async getGithubUsername(accessToken: string): Promise<string> {
+    try {
+      const response = await axios.get('https://api.github.com/user', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Academic-Universe-App'
+        }
+      });
+
+      return response.data.login;
+    } catch (error: any) {
+      logger.error('Error fetching GitHub username:', error.message);
+      throw new Error(`Failed to fetch GitHub username: ${error.message}`);
     }
   }
 

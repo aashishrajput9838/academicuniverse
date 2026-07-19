@@ -16,7 +16,7 @@ export const getMyAcademicSchedule = async (req: any, res: Response) => {
   }
   try {
     const personResolver = new PersonResolver();
-    const personId = await personResolver.resolve(authUserId, organizationId);
+    const personId = await personResolver.resolve(authUserId, organizationId, user?.email, user?.name);
 
     const schedule = await AcademicSchedule.findOne({
       organizationId: toObjectId(organizationId),

@@ -33,20 +33,22 @@ const VALID_SKILL_ID = 'ESCO-1234';
 describe('SkillsController', () => {
   let mockReq: any;
   let mockRes: any;
+  let resolveMock: jest.MockedFunction<any>;
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockReq = {
       organizationId: VALID_ORG_ID,
-      user: { userId: 'user-456' },
+      user: { userId: 'user-456', email: 'test@example.com', name: 'Test User' },
     };
     mockRes = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn().mockReturnThis(),
     };
 
+    resolveMock = jest.fn().mockResolvedValue(VALID_PERSON_ID);
     mockedPersonResolver.mockImplementation(() => ({
-      resolve: jest.fn().mockResolvedValue(VALID_PERSON_ID),
+      resolve: resolveMock,
     }) as any);
   });
 
@@ -98,6 +100,53 @@ describe('SkillsController', () => {
       expect(responseBody.data.skills).toHaveLength(0);
       expect(responseBody.data.categories).toEqual({});
     });
+
+    it('should pass email and name to PersonResolver for existing person', async () => {
+      mockedSkillRecordRepo.prototype.findByPerson.mockResolvedValue([]);
+      mockedMappingService.prototype.getMappingsForSubject.mockResolvedValue([]);
+
+      await getMySkills(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(resolveMock).toHaveBeenCalledWith(
+        'user-456',
+        VALID_ORG_ID,
+        'test@example.com',
+        'Test User'
+      );
+    });
+
+    it('should return 500 when PersonResolver throws for new user without person', async () => {
+      resolveMock.mockRejectedValue(
+        new Error('Unable to resolve Person: insufficient identity information')
+      );
+
+      await getMySkills(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'Failed to fetch skill profile',
+        })
+      );
+    });
+
+    it('should pass email for email-based resolution when Person not found by userId', async () => {
+      resolveMock.mockResolvedValue(VALID_PERSON_ID);
+      mockedSkillRecordRepo.prototype.findByPerson.mockResolvedValue([]);
+      mockedMappingService.prototype.getMappingsForSubject.mockResolvedValue([]);
+
+      await getMySkills(mockReq, mockRes);
+
+      expect(resolveMock).toHaveBeenCalledWith(
+        'user-456',
+        VALID_ORG_ID,
+        'test@example.com',
+        'Test User'
+      );
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
   });
 
   describe('getMySkillEvidence', () => {
@@ -108,13 +157,13 @@ describe('SkillsController', () => {
     });
 
     it('should return 400 when skillId is missing', async () => {
-      mockReq = { organizationId: VALID_ORG_ID, user: { userId: 'user-456' }, params: {} };
+      mockReq = { organizationId: VALID_ORG_ID, user: { userId: 'user-456', email: 'test@example.com', name: 'Test User' }, params: {} };
       await getMySkillEvidence(mockReq, mockRes);
       expect(mockRes.status).toHaveBeenCalledWith(400);
     });
 
     it('should return 404 when skill not found', async () => {
-      mockReq = { organizationId: VALID_ORG_ID, user: { userId: 'user-456' }, params: { skillId: VALID_SKILL_ID } };
+      mockReq = { organizationId: VALID_ORG_ID, user: { userId: 'user-456', email: 'test@example.com', name: 'Test User' }, params: { skillId: VALID_SKILL_ID } };
       mockedSkillRecordRepo.prototype.findBySkill.mockResolvedValue(null);
 
       await getMySkillEvidence(mockReq, mockRes);
@@ -123,7 +172,7 @@ describe('SkillsController', () => {
     });
 
     it('should return evidence for a skill', async () => {
-      mockReq = { organizationId: VALID_ORG_ID, user: { userId: 'user-456' }, params: { skillId: VALID_SKILL_ID } };
+      mockReq = { organizationId: VALID_ORG_ID, user: { userId: 'user-456', email: 'test@example.com', name: 'Test User' }, params: { skillId: VALID_SKILL_ID } };
       mockedSkillRecordRepo.prototype.findBySkill.mockResolvedValue({
         _id: 'sr-1',
         skillId: VALID_SKILL_ID,
@@ -198,7 +247,7 @@ describe('SkillsController', () => {
     });
 
     it('should return 400 for missing required fields', async () => {
-      mockReq = { organizationId: VALID_ORG_ID, user: { userId: 'user-456' }, body: { subjectCode: 'CSE101' } };
+      mockReq = { organizationId: VALID_ORG_ID, user: { userId: 'user-456', email: 'test@example.com', name: 'Test User' }, body: { subjectCode: 'CSE101' } };
       await createSkillMapping(mockReq, mockRes);
       expect(mockRes.status).toHaveBeenCalledWith(400);
     });
@@ -206,7 +255,7 @@ describe('SkillsController', () => {
     it('should return 400 for invalid relevanceWeight', async () => {
       mockReq = {
         organizationId: VALID_ORG_ID,
-        user: { userId: 'user-456' },
+        user: { userId: 'user-456', email: 'test@example.com', name: 'Test User' },
         body: {
           subjectCode: 'CSE101',
           subjectName: 'Intro to CS',
@@ -239,7 +288,7 @@ describe('SkillsController', () => {
 
       mockReq = {
         organizationId: VALID_ORG_ID,
-        user: { userId: 'user-456' },
+        user: { userId: 'user-456', email: 'test@example.com', name: 'Test User' },
         body: {
           subjectCode: 'CSE101',
           subjectName: 'Intro to CS',

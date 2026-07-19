@@ -2,6 +2,11 @@ import axios from 'axios';
 import { User } from '../models';
 import { Logger } from '../utils/logger';
 import getGithubOAuthService from './githubOAuthService';
+import { eventBus } from '../events/EventBus';
+import { UaipEvent } from '../events/UaipEvents';
+import { GithubRecord } from '../models/GithubRecord';
+import { PersonResolver } from '../shared/services/personResolver.service';
+import { toObjectId } from '../utils/mongooseHelpers';
 
 const logger = new Logger('analyticsService');
 
@@ -70,6 +75,108 @@ export class AnalyticsService {
     } catch (error: any) {
       logger.error('Error processing developer analytics:', error.message);
       throw new Error(`Failed to process developer analytics: ${error.message}`);
+    }
+  }
+
+  /**
+   * Fetches GitHub data, persists GithubRecord, and publishes GithubUpdated event.
+   * This is the canonical sync method used by the scheduler and manual sync endpoint.
+   * @param firebaseUid The Firebase UID of the user
+   * @returns Sync summary with stats and skill creation info
+   */
+  async syncGithubData(firebaseUid: string): Promise<{
+    repositoriesFetched: number;
+    languagesExtracted: number;
+    skillsCreated: number;
+    projectionsRebuilt: number;
+  }> {
+    try {
+      logger.info(`Syncing GitHub data for user: ${firebaseUid}`);
+
+      const githubOAuthService = getGithubOAuthService();
+      const accessToken = await githubOAuthService.getAccessToken(firebaseUid);
+
+      const repositories = await this.fetchUserRepositories(accessToken);
+      const analytics = this.calculateDeveloperStats(repositories);
+
+      const user = await User.findOne({ firebaseUid }).select('organizationId githubUsername name email').lean();
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      const organizationId = user.organizationId instanceof require('mongoose').Types.ObjectId
+        ? user.organizationId
+        : toObjectId(String(user.organizationId));
+
+      const personResolver = new PersonResolver();
+      const personId = await personResolver.resolve(
+        user._id.toString(),
+        organizationId.toString(),
+        user.email,
+        user.name
+      );
+
+      const nonForkRepos = repositories.filter((repo: Repository) => !repo.fork);
+      const languages: Record<string, number> = {};
+      const contributions: Record<string, number> = {};
+
+      for (const repo of nonForkRepos) {
+        if (repo.language) {
+          languages[repo.language] = (languages[repo.language] || 0) + 1;
+        }
+        if (repo.topics) {
+          for (const topic of repo.topics) {
+            contributions[topic] = (contributions[topic] || 0) + 1;
+          }
+        }
+      }
+
+      const githubRecord = await GithubRecord.findOneAndUpdate(
+        { organizationId, personId: toObjectId(personId) },
+        {
+          $set: {
+            githubUsername: user.githubUsername,
+            repositories: nonForkRepos,
+            languages,
+            contributions,
+            rawConfidence: 0.9,
+          },
+        },
+        { upsert: true, new: true }
+      );
+
+      logger.info(`GithubRecord persisted for user: ${firebaseUid}`, {
+        recordId: githubRecord._id.toString(),
+        repoCount: nonForkRepos.length,
+        languageCount: Object.keys(languages).length,
+      });
+
+      const languagesExtracted = Object.keys(languages).length;
+
+      await eventBus.publish(UaipEvent.GithubUpdated, {
+        processingId: `github-sync-${personId.toString()}-${Date.now()}`,
+        organizationId: organizationId.toString(),
+        personId: personId.toString(),
+        correlationId: githubRecord._id.toString(),
+        eventId: githubRecord._id.toString(),
+        occurredAt: new Date(),
+        source: 'github',
+        repositories: nonForkRepos,
+        languages,
+        contributions,
+      });
+
+      logger.info(`GithubUpdated event published for user: ${firebaseUid}`);
+
+      return {
+        repositoriesFetched: nonForkRepos.length,
+        languagesExtracted,
+        skillsCreated: languagesExtracted,
+        projectionsRebuilt: 1,
+      };
+    } catch (error: any) {
+      logger.error(`Error syncing GitHub data for user ${firebaseUid}:`, error.message);
+      throw error;
     }
   }
 

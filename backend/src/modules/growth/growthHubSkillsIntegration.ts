@@ -1,6 +1,8 @@
 import { eventBus } from '../../events/EventBus';
 import { UaipEvent } from '../../events/UaipEvents';
 import { GrowthProjectionService } from './growthProjection.service';
+import { Person } from '../../models/Person';
+import { toObjectId } from '../../utils/mongooseHelpers';
 import { Logger } from '../../utils/logger';
 
 const logger = new Logger('GrowthHubSkillsIntegration');
@@ -98,13 +100,41 @@ export class GrowthHubSkillsIntegration {
 
   private async rebuildGrowthProjection(organizationId: string, personId: string): Promise<void> {
     try {
+      const person = await Person.findOne({
+        _id: toObjectId(personId),
+        organizationId: toObjectId(organizationId),
+      }).select('userIds').lean();
+
+      if (!person) {
+        logger.warn('Growth Hub projection skipped: Person document not found', {
+          organizationId,
+          personId,
+        });
+        return;
+      }
+
+      const userIds = (person as any).userIds || [];
+
+      if (userIds.length !== 1) {
+        logger.warn('Growth Hub projection skipped: Person has zero or multiple userIds', {
+          organizationId,
+          personId,
+          userIdCount: userIds.length,
+          userIds: userIds.map((id: any) => id.toString()),
+        });
+        return;
+      }
+
+      const userId = userIds[0].toString();
+
       const startTime = Date.now();
-      await this.projectionService.buildProjection(personId, organizationId);
+      await this.projectionService.buildProjection(userId, organizationId);
       const duration = Date.now() - startTime;
 
       logger.info('Growth Hub projection rebuilt after Skills Tracker update', {
         organizationId,
         personId,
+        userId,
         durationMs: duration,
       });
     } catch (err: any) {

@@ -90,7 +90,8 @@ export class SchedulerService {
           logger.info(`Updating GitHub analytics for user: ${userEmail}`);
 
           if (user.firebaseUid) {
-            const stats = await analyticsService.processDeveloperAnalytics(user.firebaseUid);
+            const stats = await analyticsService.syncGithubData(user.firebaseUid);
+            logger.info(`GitHub sync completed for user: ${userEmail}`, stats);
           }
 
           // Update the user's developer stats in the database

@@ -52,10 +52,12 @@ export class AuthenticationResolver {
     const accessToken = generateToken({
       userId: userDto._id,
       email: userDto.email,
+      firebaseUid: authPayload.providerUserId,
       organizationId: userDto.organizationId,
       roleId: userDto.roleId,
       permissions: userDto.permissions,
       isSuperAdmin: userDto.isSuperAdmin,
+      name: userDto.name,
     });
 
     const refreshToken = generateRefreshToken({

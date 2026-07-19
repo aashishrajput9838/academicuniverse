@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { getProjectStats, refreshProjectStats } from '../controllers/githubController';
-import { authenticateFirebaseUser } from '../middleware/auth';
+import { getProjectStats, refreshProjectStats, syncGithubData } from '../controllers/githubController';
+import { authenticateUser } from '../middleware/auth';
 import { 
   githubOAuthCallback, 
   connectGithub, 
@@ -11,11 +11,11 @@ import {
 const router = Router();
 
 /**
- * @route   GET /api/github/connect
+ * @route   POST /api/github/connect
  * @desc    Initiate GitHub OAuth flow
  * @access  Private (Student role only)
  */
-router.get('/connect', authenticateFirebaseUser, connectGithub);
+router.post('/connect', authenticateUser, connectGithub);
 
 /**
  * @route   GET /api/github/callback
@@ -29,27 +29,34 @@ router.get('/callback', githubOAuthCallback);
  * @desc    Disconnect GitHub account
  * @access  Private (Student role only)
  */
-router.delete('/disconnect', authenticateFirebaseUser, disconnectGithub);
+router.delete('/disconnect', authenticateUser, disconnectGithub);
 
 /**
  * @route   GET /api/github/stats
  * @desc    Get processed developer statistics
  * @access  Private (Student role only)
  */
-router.get('/stats', authenticateFirebaseUser, getDeveloperStats);
+router.get('/stats', authenticateUser, getDeveloperStats);
 
 /**
  * @route   GET /api/github/projects
  * @desc    Get student's GitHub project statistics
  * @access  Private (Student role only)
  */
-router.get('/projects', authenticateFirebaseUser, getProjectStats);
+router.get('/projects', authenticateUser, getProjectStats);
 
 /**
  * @route   POST /api/github/projects/refresh
  * @desc    Refresh cached GitHub project statistics
  * @access  Private (Student role only)
  */
-router.post('/projects/refresh', authenticateFirebaseUser, refreshProjectStats);
+router.post('/projects/refresh', authenticateUser, refreshProjectStats);
+
+/**
+ * @route   POST /api/github/sync
+ * @desc    Sync GitHub data and trigger skill pipeline
+ * @access  Private (Student role only)
+ */
+router.post('/sync', authenticateUser, syncGithubData);
 
 export default router;

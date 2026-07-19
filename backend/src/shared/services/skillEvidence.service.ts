@@ -2,9 +2,16 @@ import { AuditEntry } from '../../models/AuditEntry';
 import { SkillEvidenceRepository } from '../repositories/skillEvidence.repository';
 import { ISkillEvidence } from '../../models/SkillEvidence';
 import { EvidenceStatus, SkillSource } from '../../shared/enums/skills.enum';
+import { SkillIdentityResolver, ResolvedSkill } from './skillIdentityResolver.service';
+import { Logger } from '../../utils/logger';
+import { ontologyResolutionMetrics } from './ontologyResolutionMetrics.service';
+import { AliasType } from '../enums/skillAlias.enum';
+
+const logger = new Logger('SkillEvidenceService');
 
 export class SkillEvidenceService {
   private repo = new SkillEvidenceRepository();
+  private resolver = new SkillIdentityResolver();
 
   async ingestEvidence(payload: {
     organizationId: string;
@@ -41,6 +48,49 @@ export class SkillEvidenceService {
       effectiveTo,
     } = payload;
 
+    let resolvedSkill: ResolvedSkill | null = null;
+    const ontologyResolutionEnabled = process.env.USE_ONTOLOGY_RESOLUTION === 'true';
+
+    if (ontologyResolutionEnabled) {
+      try {
+        resolvedSkill = await this.resolver.resolve({
+          rawSkillId: skillId,
+          rawSkillName: skillName,
+          source: primarySource,
+          organizationId,
+          aliasType: AliasType.SKILL_ID,
+          confidence,
+          extractedBy,
+          correlationId,
+        });
+        ontologyResolutionMetrics.recordSuccess();
+      } catch (err: any) {
+        ontologyResolutionMetrics.recordFailure();
+        logger.error('Ontology resolution failed, falling back to raw skillId', {
+          error: err.message,
+          skillId,
+          skillName,
+          organizationId,
+          personId,
+          correlationId,
+          primarySource,
+        });
+        ontologyResolutionMetrics.recordFallback();
+      }
+    }
+
+    const enrichedPayload: Record<string, any> = { ...evidencePayload };
+
+    if (ontologyResolutionEnabled && resolvedSkill && resolvedSkill.canonicalId) {
+      enrichedPayload.canonicalId = resolvedSkill.canonicalId;
+      enrichedPayload.canonicalName = resolvedSkill.canonicalName;
+    }
+
+    if (ontologyResolutionEnabled) {
+      enrichedPayload.ontologyResolutionEnabled = true;
+      enrichedPayload.ontologyResolutionSucceeded = resolvedSkill !== null;
+    }
+
     const evidence = await this.repo.create(
       {
         organizationId,
@@ -52,7 +102,7 @@ export class SkillEvidenceService {
         primarySource,
         sourceType,
         sourceSubtype,
-        payload: evidencePayload,
+        payload: enrichedPayload,
         confidence,
         extractedBy,
         correlationId,
@@ -75,6 +125,9 @@ export class SkillEvidenceService {
         correlationId,
         primarySource,
         sourceType,
+        canonicalId: resolvedSkill?.canonicalId || null,
+        ontologyResolutionEnabled,
+        ontologyResolutionSucceeded: resolvedSkill !== null,
       },
     });
 

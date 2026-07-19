@@ -20,6 +20,7 @@ describe('SkillProjectionService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    delete process.env.USE_ONTOLOGY_RESOLUTION;
     service = new SkillProjectionService();
   });
 
@@ -227,6 +228,190 @@ describe('SkillProjectionService', () => {
         expect.objectContaining({ skillId: 'SKILL-2' }),
         VALID_ORG_ID
       );
+    });
+  });
+
+  describe('ontology integration', () => {
+    it('should rebuild using canonicalId when feature flag is ON and canonicalId exists', async () => {
+      process.env.USE_ONTOLOGY_RESOLUTION = 'true';
+
+      const evidence = [
+        createEvidence({
+          skillId: 'LANGUAGE-Python',
+          payload: { canonicalId: 'python', canonicalName: 'Python' },
+          confidence: 0.9,
+          primarySource: SkillSource.GITHUB,
+        }),
+      ];
+
+      mockedEvidenceRepo.prototype.findActiveByPersonAndCanonical.mockResolvedValue(evidence as any);
+      mockedEvidenceRepo.prototype.findActiveByPersonAndSkill.mockResolvedValue([] as any);
+      mockedSkillRecordRepo.prototype.findBySkill.mockResolvedValue(null);
+      mockedSkillRecordRepo.prototype.rebuildProjection.mockResolvedValue({ _id: 'skill-1', skillId: 'python' } as any);
+
+      const result = await service.rebuildSkillRecord(VALID_ORG_ID, VALID_PERSON_ID, 'python');
+
+      expect(mockedEvidenceRepo.prototype.findActiveByPersonAndCanonical).toHaveBeenCalledWith(
+        VALID_PERSON_ID,
+        'python',
+        VALID_ORG_ID
+      );
+      expect(mockedSkillRecordRepo.prototype.rebuildProjection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skillId: 'python',
+          skillName: 'Python',
+        }),
+        VALID_ORG_ID
+      );
+    });
+
+    it('should fallback to raw skillId when feature flag is ON but no canonicalId', async () => {
+      process.env.USE_ONTOLOGY_RESOLUTION = 'true';
+
+      const evidence = [
+        createEvidence({
+          skillId: 'CUSTOM-SKILL',
+          payload: {},
+          confidence: 0.8,
+        }),
+      ];
+
+      mockedEvidenceRepo.prototype.findActiveByPersonAndCanonical.mockResolvedValue([] as any);
+      mockedEvidenceRepo.prototype.findActiveByPersonAndSkill.mockResolvedValue(evidence as any);
+      mockedSkillRecordRepo.prototype.findBySkill.mockResolvedValue(null);
+      mockedSkillRecordRepo.prototype.rebuildProjection.mockResolvedValue({ _id: 'skill-1', skillId: 'CUSTOM-SKILL' } as any);
+
+      const result = await service.rebuildSkillRecord(VALID_ORG_ID, VALID_PERSON_ID, 'CUSTOM-SKILL');
+
+      expect(mockedEvidenceRepo.prototype.findActiveByPersonAndCanonical).toHaveBeenCalledWith(
+        VALID_PERSON_ID,
+        'CUSTOM-SKILL',
+        VALID_ORG_ID
+      );
+      expect(mockedEvidenceRepo.prototype.findActiveByPersonAndSkill).toHaveBeenCalledWith(
+        VALID_PERSON_ID,
+        'CUSTOM-SKILL',
+        VALID_ORG_ID
+      );
+      expect(mockedSkillRecordRepo.prototype.rebuildProjection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skillId: 'CUSTOM-SKILL',
+        }),
+        VALID_ORG_ID
+      );
+    });
+
+    it('should merge duplicate evidence from multiple sources into one canonical projection', async () => {
+      process.env.USE_ONTOLOGY_RESOLUTION = 'true';
+
+      const now = new Date();
+      const evidence = [
+        createEvidence({
+          skillId: 'LANGUAGE-Python',
+          payload: { canonicalId: 'python', canonicalName: 'Python' },
+          confidence: 0.7,
+          primarySource: SkillSource.GITHUB,
+          effectiveFrom: now,
+        }),
+        createEvidence({
+          skillId: 'CERTIFICATE-Python',
+          payload: { canonicalId: 'python', canonicalName: 'Python' },
+          confidence: 1.0,
+          primarySource: SkillSource.CERTIFICATE,
+          effectiveFrom: now,
+        }),
+      ];
+
+      mockedEvidenceRepo.prototype.findActiveByPersonAndCanonical.mockResolvedValue(evidence as any);
+      mockedEvidenceRepo.prototype.findActiveByPersonAndSkill.mockResolvedValue([] as any);
+      mockedSkillRecordRepo.prototype.findBySkill.mockResolvedValue(null);
+      mockedSkillRecordRepo.prototype.rebuildProjection.mockResolvedValue({ _id: 'skill-1', skillId: 'python' } as any);
+
+      const result = await service.rebuildSkillRecord(VALID_ORG_ID, VALID_PERSON_ID, 'python');
+
+      expect(mockedEvidenceRepo.prototype.findActiveByPersonAndCanonical).toHaveBeenCalledWith(
+        VALID_PERSON_ID,
+        'python',
+        VALID_ORG_ID
+      );
+      expect(mockedSkillRecordRepo.prototype.rebuildProjection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skillId: 'python',
+          skillName: 'Python',
+          evidenceCount: 2,
+        }),
+        VALID_ORG_ID
+      );
+    });
+
+    it('should rebuild all records grouping by canonicalId when feature flag is ON', async () => {
+      process.env.USE_ONTOLOGY_RESOLUTION = 'true';
+
+      const evidence = [
+        createEvidence({ skillId: 'LANGUAGE-Python', payload: { canonicalId: 'python' }, personId: VALID_PERSON_ID }),
+        createEvidence({ skillId: 'CERTIFICATE-Python', payload: { canonicalId: 'python' }, personId: VALID_PERSON_ID }),
+        createEvidence({ skillId: 'CUSTOM-SKILL', payload: {}, personId: VALID_PERSON_ID }),
+      ];
+
+      mockedEvidenceRepo.prototype.findByPerson.mockResolvedValue(evidence as any);
+      mockedEvidenceRepo.prototype.findActiveByPersonAndCanonical.mockResolvedValue([] as any);
+      mockedEvidenceRepo.prototype.findActiveByPersonAndSkill.mockResolvedValue([] as any);
+      mockedSkillRecordRepo.prototype.findBySkill.mockResolvedValue(null);
+      mockedSkillRecordRepo.prototype.rebuildProjection.mockResolvedValue({ _id: 'skill-1' } as any);
+
+      await service.rebuildAllSkillRecords(VALID_ORG_ID, VALID_PERSON_ID);
+
+      expect(mockedSkillRecordRepo.prototype.rebuildProjection).toHaveBeenCalledTimes(2);
+      expect(mockedSkillRecordRepo.prototype.rebuildProjection).toHaveBeenNthCalledWith(1,
+        expect.objectContaining({ skillId: 'CUSTOM-SKILL' }),
+        VALID_ORG_ID
+      );
+      expect(mockedSkillRecordRepo.prototype.rebuildProjection).toHaveBeenNthCalledWith(2,
+        expect.objectContaining({ skillId: 'python' }),
+        VALID_ORG_ID
+      );
+    });
+
+    it('should produce deterministic projections with mixed canonical and raw evidence', async () => {
+      process.env.USE_ONTOLOGY_RESOLUTION = 'true';
+
+      const now = new Date();
+      const evidence = [
+        createEvidence({
+          skillId: 'LANGUAGE-Python',
+          payload: { canonicalId: 'python', canonicalName: 'Python' },
+          confidence: 0.9,
+          primarySource: SkillSource.GITHUB,
+          effectiveFrom: now,
+        }),
+        createEvidence({
+          skillId: 'CERTIFICATE-Python',
+          payload: { canonicalId: 'python', canonicalName: 'Python' },
+          confidence: 1.0,
+          primarySource: SkillSource.CERTIFICATE,
+          effectiveFrom: now,
+        }),
+        createEvidence({
+          skillId: 'CUSTOM-SKILL',
+          payload: {},
+          confidence: 0.8,
+          primarySource: SkillSource.MANUAL,
+          effectiveFrom: now,
+        }),
+      ];
+
+      mockedEvidenceRepo.prototype.findByPerson.mockResolvedValue(evidence as any);
+      mockedEvidenceRepo.prototype.findActiveByPersonAndCanonical.mockResolvedValue([] as any);
+      mockedEvidenceRepo.prototype.findActiveByPersonAndSkill.mockResolvedValue([] as any);
+      mockedSkillRecordRepo.prototype.findBySkill.mockResolvedValue(null);
+      mockedSkillRecordRepo.prototype.rebuildProjection.mockResolvedValue({ _id: 'skill-1' } as any);
+
+      await service.rebuildAllSkillRecords(VALID_ORG_ID, VALID_PERSON_ID);
+
+      const calls = mockedSkillRecordRepo.prototype.rebuildProjection.mock.calls;
+      const skillIds = calls.map(c => c[0].skillId).sort();
+
+      expect(skillIds).toEqual(['CUSTOM-SKILL', 'python']);
     });
   });
 });

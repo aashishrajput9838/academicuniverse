@@ -80,6 +80,7 @@ export const loginWithEmail = async (email: string, password: string): Promise<{
       roleId: normalizedRoleId,
       permissions,
       isSuperAdmin,
+      name: user.name,
     };
 
     const token = generateToken(payload);
@@ -242,10 +243,11 @@ export const loginWithFirebase = async (idToken: string): Promise<{ token: strin
       userId: user._id.toString(),
       email: user.email,
       firebaseUid: user.firebaseUid,
-      organizationId: organization._id.toString(), // Use actual ObjectId from database
-      roleId: normalizedRoleId, // Keep the DB role for compatibility
-      permissions, // Use permissions from role detection
+      organizationId: organization._id.toString(),
+      roleId: normalizedRoleId,
+      permissions,
       isSuperAdmin,
+      name: user.name,
     };
 
     const token = generateToken(payload);

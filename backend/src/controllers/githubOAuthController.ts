@@ -17,36 +17,39 @@ declare module 'express-session' {
 const logger = new Logger('githubOAuthController');
 
 interface AuthenticatedRequest extends Request {
-  firebaseUser?: {
-    firebaseUid: string;
+  user?: {
+    userId: string;
     email: string;
+    organizationId: string;
+    roleId: string;
+    permissions: string[];
+    isSuperAdmin: boolean;
+    firebaseUid?: string;
   };
+  organizationId?: string;
 }
 
 /**
  * Initiates the GitHub OAuth flow
- * GET /api/github/connect
+ * POST /api/github/connect
  */
 export const connectGithub = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (!req.firebaseUser) {
+    if (!req.user) {
       return sendError(res, 401, 'Authentication required');
     }
 
-    // Generate a random state parameter for CSRF protection
     const state = crypto.randomBytes(32).toString('hex');
 
-    // Store the Firebase UID in session for verification after callback
     req.session.github_oauth_state = state;
-    req.session.firebase_uid = req.firebaseUser.firebaseUid;
+    req.session.firebase_uid = req.user.firebaseUid!;
 
-    // Get the GitHub authorization URL
     const githubOAuthService = getGithubOAuthService();
     const authUrl = githubOAuthService.getAuthorizationUrl(state);
 
-    logger.info(`GitHub OAuth initiated for user: ${req.firebaseUser.email}`);
+    logger.info(`GitHub OAuth initiated for user: ${req.user.email}`);
 
-    return res.redirect(authUrl);
+    return sendResponse(res, 200, { authUrl, state }, 'GitHub OAuth initiated');
   } catch (error: any) {
     logger.error('Error initiating GitHub OAuth:', error);
     return sendError(res, 500, 'Failed to initiate GitHub OAuth');
@@ -84,8 +87,18 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
     const githubOAuthService = getGithubOAuthService();
     const accessToken = await githubOAuthService.exchangeCodeForToken(code, state);
 
-    // Store the access token in the user's profile
+    // Fetch GitHub username
+    const githubUsername = await githubOAuthService.getGithubUsername(accessToken);
+
+    // Store the access token and username in the user's profile
     await githubOAuthService.storeAccessToken(firebaseUid, accessToken);
+
+    // Update the GitHub username
+    const user = await User.findOne({ firebaseUid });
+    if (user) {
+      user.githubUsername = githubUsername;
+      await user.save();
+    }
 
     // Clear the session data
     delete req.session.github_oauth_state;
@@ -114,7 +127,7 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
                 type: 'GITHUB_CONNECTED',
                 message: 'GitHub account connected successfully!'
               }, '*');
-              window.close();
+              setTimeout(() => window.close(), 100);
             }
             // Or redirect to main app if not in popup
             setTimeout(() => {
@@ -152,7 +165,7 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
                 type: 'GITHUB_CONNECT_ERROR', 
                 error: '${error.message.replace(/'/g, "\\'")}' 
               }, '*');
-              window.close();
+              setTimeout(() => window.close(), 100);
             }
             // Or redirect to main app if not in popup
             setTimeout(() => {
@@ -171,15 +184,14 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
  */
 export const disconnectGithub = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (!req.firebaseUser) {
+    if (!req.user) {
       return sendError(res, 401, 'Authentication required');
     }
 
-    // Remove the GitHub access token from the user's profile
     const githubOAuthService = getGithubOAuthService();
-    await githubOAuthService.removeAccessToken(req.firebaseUser.firebaseUid);
+    await githubOAuthService.removeAccessToken(req.user.firebaseUid!);
 
-    logger.info(`GitHub account disconnected for user: ${req.firebaseUser.email}`);
+    logger.info(`GitHub account disconnected for user: ${req.user.email}`);
 
     return sendResponse(res, 200, null, 'GitHub account disconnected successfully');
   } catch (error: any) {
@@ -194,22 +206,19 @@ export const disconnectGithub = async (req: AuthenticatedRequest, res: Response)
  */
 export const getDeveloperStats = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (!req.firebaseUser) {
+    if (!req.user) {
       return sendError(res, 401, 'Authentication required');
     }
 
-    // Process and return developer statistics
-    const stats = await analyticsService.processDeveloperAnalytics(req.firebaseUser.firebaseUid);
+    const stats = await analyticsService.processDeveloperAnalytics(req.user.firebaseUid!);
 
-    logger.info(`Developer stats retrieved for user: ${req.firebaseUser.email}`);
+    logger.info(`Developer stats retrieved for user: ${req.user.email}`);
 
     return sendResponse(res, 200, stats, 'Developer statistics retrieved successfully');
   } catch (error: any) {
     logger.error('Error retrieving developer stats:', error);
     
-    // Handle specific error cases
     if (error.message.includes('GitHub access token')) {
-      // User hasn't connected GitHub OAuth - this is not an error, just not available
       return sendResponse(res, 200, null, 'GitHub OAuth not connected');
     }
     

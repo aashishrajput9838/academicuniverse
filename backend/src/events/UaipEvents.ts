@@ -74,4 +74,8 @@ export interface UaipEventPayload {
   proficiencyScore?: number;
   evidenceCount?: number;
   skillsRebuilt?: number;
+  // GitHub-specific fields
+  repositories?: any[];
+  languages?: Record<string, number>;
+  contributions?: Record<string, number>;
 }

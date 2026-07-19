@@ -88,7 +88,7 @@ export const getMySkills = async (req: any, res: Response) => {
     }
 
     const personResolver = new PersonResolver();
-    const personId = await personResolver.resolve(authUserId, organizationId);
+    const personId = await personResolver.resolve(authUserId, organizationId, user.email, user.name);
 
     const records = await skillRecordRepo.findByPerson(personId, organizationId);
     const skills = records.map(toSkillRecordDTO);
@@ -144,7 +144,7 @@ export const getMySkillEvidence = async (req: any, res: Response) => {
     }
 
     const personResolver = new PersonResolver();
-    const personId = await personResolver.resolve(authUserId, organizationId);
+    const personId = await personResolver.resolve(authUserId, organizationId, user.email, user.name);
 
     const skillRecord = await skillRecordRepo.findBySkill(personId, skillId, organizationId);
     if (!skillRecord) {
@@ -179,7 +179,7 @@ export const getMySkillSummary = async (req: any, res: Response) => {
     }
 
     const personResolver = new PersonResolver();
-    const personId = await personResolver.resolve(authUserId, organizationId);
+    const personId = await personResolver.resolve(authUserId, organizationId, user.email, user.name);
 
     const records = await skillRecordRepo.findByPerson(personId, organizationId);
 

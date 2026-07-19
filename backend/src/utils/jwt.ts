@@ -8,6 +8,7 @@ export interface JWTPayload {
   roleId: string;
   permissions: string[];
   isSuperAdmin: boolean;
+  name?: string;
 }
 
 export interface AuthenticatedRequest {

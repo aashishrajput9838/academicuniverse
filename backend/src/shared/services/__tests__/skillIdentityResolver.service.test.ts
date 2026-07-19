@@ -345,4 +345,99 @@ describe('SkillIdentityResolver', () => {
       ).rejects.toThrow('Canonical skill not found: nonexistent');
     });
   });
+
+  describe('concurrent resolution safety', () => {
+    it('should recover from duplicate key error by re-reading existing canonical', async () => {
+      mockAliasRepo.findByAlias!.mockResolvedValue(null);
+
+      const duplicateKeyError = new Error('E11000 duplicate key error') as any;
+      duplicateKeyError.code = 11000;
+
+      mockCanonicalRepo.upsertByCanonicalId!.mockRejectedValue(duplicateKeyError);
+
+      const existingCanonical = {
+        canonicalId: 'python',
+        canonicalName: 'Python',
+        canonicalCategory: SkillCategory.LANGUAGE,
+        source: 'INTERNAL',
+        status: SkillStatus.ACTIVE,
+      } as any;
+      mockCanonicalRepo.findByCanonicalId!.mockResolvedValue(existingCanonical);
+
+      const newAlias = {
+        canonicalId: 'python',
+        alias: 'PYTHON',
+        aliasType: AliasType.SKILL_ID,
+        confidence: 0.9,
+        source: 'GITHUB',
+        extractedBy: 'listener',
+        status: AliasStatus.ACTIVE,
+      } as any;
+      mockAliasRepo.upsert!.mockResolvedValue(newAlias);
+
+      const result = await resolver.resolve({
+        rawSkillId: 'PYTHON',
+        rawSkillName: 'Python',
+        source: 'GITHUB',
+      });
+
+      expect(result.canonicalId).toBe('python');
+      expect(result.isNew).toBe(false);
+      expect(mockCanonicalRepo.findByCanonicalId).toHaveBeenCalledWith('python');
+    });
+
+    it('should recover from duplicate key error on alias creation', async () => {
+      mockAliasRepo.findByAlias!.mockResolvedValue(null);
+
+      const newCanonical = {
+        canonicalId: 'python',
+        canonicalName: 'Python',
+        canonicalCategory: SkillCategory.LANGUAGE,
+        source: 'INTERNAL',
+        status: SkillStatus.ACTIVE,
+      } as any;
+      mockCanonicalRepo.upsertByCanonicalId!.mockResolvedValue(newCanonical);
+      mockCanonicalRepo.findByCanonicalId!.mockResolvedValue(newCanonical);
+
+      const duplicateKeyError = new Error('E11000 duplicate key error') as any;
+      duplicateKeyError.code = 11000;
+      mockAliasRepo.upsert!.mockRejectedValue(duplicateKeyError);
+
+      const existingAlias = {
+        canonicalId: 'python',
+        alias: 'PYTHON',
+        aliasType: AliasType.SKILL_ID,
+        confidence: 0.9,
+        source: 'GITHUB',
+        extractedBy: 'listener',
+        status: AliasStatus.ACTIVE,
+      } as any;
+      mockAliasRepo.findByAlias!.mockResolvedValueOnce(null).mockResolvedValueOnce(existingAlias);
+
+      const result = await resolver.resolve({
+        rawSkillId: 'PYTHON',
+        rawSkillName: 'Python',
+        source: 'GITHUB',
+      });
+
+      expect(result.canonicalId).toBe('python');
+      expect(result.confidence).toBe(0.9);
+    });
+
+    it('should throw for non-duplicate errors', async () => {
+      mockAliasRepo.findByAlias!.mockResolvedValue(null);
+
+      const nonDuplicateError = new Error('Network timeout') as any;
+      nonDuplicateError.code = 500;
+      mockCanonicalRepo.upsertByCanonicalId!.mockRejectedValue(nonDuplicateError);
+
+      await expect(
+        resolver.resolve({
+          rawSkillId: 'PYTHON',
+          rawSkillName: 'Python',
+          source: 'GITHUB',
+        })
+      ).rejects.toThrow('Network timeout');
+    });
+  });
 });

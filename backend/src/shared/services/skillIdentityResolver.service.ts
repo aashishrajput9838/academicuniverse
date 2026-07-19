@@ -74,45 +74,101 @@ export class SkillIdentityResolver {
       }
     }
 
-    const newCanonical = await this.canonicalRepo.upsertByCanonicalId(normalizedCanonicalId, {
-      canonicalName: rawSkillName,
-      canonicalCategory: canonicalCategory || this.defaultCategory,
-      source,
-      description: `Auto-created from ${source}`,
-    });
+    try {
+      const newCanonical = await this.canonicalRepo.upsertByCanonicalId(normalizedCanonicalId, {
+        canonicalName: rawSkillName,
+        canonicalCategory: canonicalCategory || this.defaultCategory,
+        source,
+        description: `Auto-created from ${source}`,
+      });
 
-    const newAlias = await this.aliasRepo.upsert({
-      organizationId,
-      canonicalId: newCanonical.canonicalId,
-      alias: rawSkillId,
-      aliasType,
-      confidence,
-      source,
-      extractedBy,
-      correlationId,
-      status: AliasStatus.ACTIVE,
-    });
+      const newAlias = await this.aliasRepo.upsert({
+        organizationId,
+        canonicalId: newCanonical.canonicalId,
+        alias: rawSkillId,
+        aliasType,
+        confidence,
+        source,
+        extractedBy,
+        correlationId,
+        status: AliasStatus.ACTIVE,
+      });
 
-    logger.info('New canonical skill created', {
-      canonicalId: newCanonical.canonicalId,
-      rawSkillId,
-      rawSkillName,
-      aliasType,
-      confidence,
-      source,
-      organizationId,
-      correlationId,
-    });
+      logger.info('New canonical skill created', {
+        canonicalId: newCanonical.canonicalId,
+        rawSkillId,
+        rawSkillName,
+        aliasType,
+        confidence,
+        source,
+        organizationId,
+        correlationId,
+      });
 
-    return {
-      canonicalId: newCanonical.canonicalId,
-      canonicalName: newCanonical.canonicalName,
-      canonicalCategory: newCanonical.canonicalCategory,
-      confidence: newAlias.confidence,
-      aliasType: newAlias.aliasType,
-      isNew: true,
-      source: newCanonical.source,
-    };
+      return {
+        canonicalId: newCanonical.canonicalId,
+        canonicalName: newCanonical.canonicalName,
+        canonicalCategory: newCanonical.canonicalCategory,
+        confidence: newAlias.confidence,
+        aliasType: newAlias.aliasType,
+        isNew: true,
+        source: newCanonical.source,
+      };
+    } catch (err: any) {
+      if (this.isDuplicateKeyError(err)) {
+        logger.warn('Concurrent canonical skill creation detected, re-reading existing record', {
+          normalizedCanonicalId,
+          rawSkillId,
+          rawSkillName,
+          source,
+          organizationId,
+          correlationId,
+          error: err.message,
+        });
+
+        const canonical = await this.canonicalRepo.findByCanonicalId(normalizedCanonicalId);
+        if (!canonical) {
+          throw new Error(`Failed to create or read canonical skill: ${normalizedCanonicalId}`);
+        }
+
+        const alias = await this.aliasRepo.findByAlias(rawSkillId, aliasType, organizationId);
+        if (!alias) {
+          const newAlias = await this.aliasRepo.upsert({
+            organizationId,
+            canonicalId: canonical.canonicalId,
+            alias: rawSkillId,
+            aliasType,
+            confidence,
+            source,
+            extractedBy,
+            correlationId,
+            status: AliasStatus.ACTIVE,
+          });
+
+          return {
+            canonicalId: canonical.canonicalId,
+            canonicalName: canonical.canonicalName,
+            canonicalCategory: canonical.canonicalCategory,
+            confidence: newAlias.confidence,
+            aliasType: newAlias.aliasType,
+            isNew: false,
+            source: canonical.source,
+          };
+        }
+
+        return {
+          canonicalId: canonical.canonicalId,
+          canonicalName: canonical.canonicalName,
+          canonicalCategory: canonical.canonicalCategory,
+          confidence: alias.confidence,
+          aliasType: alias.aliasType,
+          isNew: false,
+          source: canonical.source,
+        };
+      }
+
+      throw err;
+    }
   }
 
   async batchResolve(inputs: ResolutionInput[]): Promise<ResolvedSkill[]> {
@@ -165,5 +221,11 @@ export class SkillIdentityResolver {
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
+  }
+
+  private isDuplicateKeyError(err: any): boolean {
+    if (!err) return false;
+    const code = err.code || err.errno || (err.response && err.response.code);
+    return code === 11000 || code === 11001 || err.name === 'MongoServerError' && /duplicate key/i.test(err.message || '');
   }
 }

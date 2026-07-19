@@ -76,7 +76,13 @@ After root cause is identified:
 
 ## Status
 
-**OPEN** — awaiting reproduction and launcher identification.
+**Startup improvements:** MITIGATED  
+- `server.on('error')` added after `app.listen()` (commit 7fd0812)
+- `server.on('listening')` added for startup verification
+- Duplicate SIGINT/SIGTERM handlers removed from inside `app.listen()` callback
+- Global signal handlers retained at module level
+
+**Duplicate launch investigation:** OPEN — awaiting reproduction and launcher identification.
 
 ## Investigation Log
 

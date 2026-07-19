@@ -199,7 +199,7 @@ const startServer = async () => {
         logger.info('Event-driven subsystems initialized');
 
         if (process.env.NODE_ENV !== 'test') {
-            app.listen(PORT, () => {
+            const server = app.listen(PORT, () => {
                 logger.info(`Server running on port ${PORT}`, {
                     port: PORT,
                     environment: process.env.NODE_ENV || 'development',
@@ -208,6 +208,7 @@ const startServer = async () => {
                 // Start the scheduler service after server is running
                 schedulerService.start();
                 logger.info('Scheduler service started');
+
                 // Initialize Knowledge Queue Service (singleton) only once
                 if (!(global as any).knowledgeQueueService) {
                   const knowledgeJobRepo = new KnowledgeJobRepository();
@@ -215,17 +216,18 @@ const startServer = async () => {
                   const knowledgeQueueService = new KnowledgeQueueService(knowledgeJobRepo, knowledgeDispatcher);
                   knowledgeQueueService.start();
                   (global as any).knowledgeQueueService = knowledgeQueueService;
-                  // Graceful shutdown handling (only once)
-                  const shutdown = () => {
-                    knowledgeQueueService.stop();
-                    logger.info('Knowledge queue service stopped');
-                    process.exit(0);
-                  };
-                  process.on('SIGINT', shutdown);
-                  process.on('SIGTERM', shutdown);
                 }
                 // else: already running
 
+            });
+
+            server.on('error', (err: any) => {
+                logger.error(`Server error on port ${PORT}`, { error: err });
+            });
+
+            server.on('listening', () => {
+                const address = server.address();
+                logger.info('Server listening', { address });
             });
         }
     } catch (error) {

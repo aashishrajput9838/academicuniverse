@@ -17,7 +17,15 @@ export function SkillTimeline({ evidence }: SkillTimelineProps) {
   }
 
   const sorted = [...evidence].sort(
-    (a, b) => new Date(a.effectiveFrom).getTime() - new Date(b.effectiveFrom).getTime()
+    (a, b) => {
+      const dateA = a.primarySource === 'GITHUB' && a.sourceDetails?.metadata?.firstCommitDate
+        ? new Date(a.sourceDetails.metadata.firstCommitDate).getTime()
+        : new Date(a.effectiveFrom).getTime();
+      const dateB = b.primarySource === 'GITHUB' && b.sourceDetails?.metadata?.firstCommitDate
+        ? new Date(b.sourceDetails.metadata.firstCommitDate).getTime()
+        : new Date(b.effectiveFrom).getTime();
+      return dateA - dateB;
+    }
   );
 
   return (
@@ -44,7 +52,11 @@ export function SkillTimeline({ evidence }: SkillTimelineProps) {
                 )}
               </div>
               <div className="text-slate-400 text-xs mb-1">
-                {new Date(item.effectiveFrom).toLocaleDateString('en-US', {
+                {new Date(
+                  item.primarySource === 'GITHUB' && item.sourceDetails?.metadata?.firstCommitDate
+                    ? item.sourceDetails.metadata.firstCommitDate
+                    : item.effectiveFrom
+                ).toLocaleDateString('en-US', {
                   month: 'short',
                   day: 'numeric',
                   year: 'numeric',

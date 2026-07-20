@@ -186,7 +186,7 @@ export class SkillsEventListener {
             confidence: 0.7,
             extractedBy: 'dispatcher',
             correlationId,
-            effectiveFrom: new Date(),
+            effectiveFrom: repo.created_at ? new Date(repo.created_at) : new Date(),
           });
         }
       } else if (languages && typeof languages === 'object') {

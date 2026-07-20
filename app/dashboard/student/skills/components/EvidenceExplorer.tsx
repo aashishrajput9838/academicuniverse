@@ -179,7 +179,11 @@ export function EvidenceExplorer({ evidence }: EvidenceExplorerProps) {
                       <Calendar className="w-3 h-3" />
                       Detected
                     </span>
-                    <span className="text-white text-sm">{formatDate(item.effectiveFrom)}</span>
+                    <span className="text-white text-sm">
+                      {item.primarySource === 'GITHUB' && item.sourceDetails?.metadata?.firstCommitDate
+                        ? formatDate(item.sourceDetails.metadata.firstCommitDate)
+                        : formatDate(item.effectiveFrom)}
+                    </span>
                   </div>
 
                   <div>
@@ -187,8 +191,24 @@ export function EvidenceExplorer({ evidence }: EvidenceExplorerProps) {
                       <Calendar className="w-3 h-3" />
                       Last Verified
                     </span>
-                    <span className="text-white text-sm">{formatDate(item.updatedAt)}</span>
+                    <span className="text-white text-sm">
+                      {item.primarySource === 'GITHUB' && item.sourceDetails?.metadata?.lastCommitDate
+                        ? formatDate(item.sourceDetails.metadata.lastCommitDate)
+                        : formatDate(item.updatedAt)}
+                    </span>
                   </div>
+
+                  {item.primarySource === 'GITHUB' && item.sourceDetails?.metadata?.firstCommitDate && (
+                    <div>
+                      <span className="text-slate-500 text-xs block flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        Repository Created
+                      </span>
+                      <span className="text-white text-sm">
+                        {formatDate(item.sourceDetails.metadata.firstCommitDate)}
+                      </span>
+                    </div>
+                  )}
 
                   {item.sourceDetails?.metadata?.grade && (
                     <div>

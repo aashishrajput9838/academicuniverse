@@ -70,8 +70,12 @@ async function reconcile() {
     const skillId = doc.skillId;
     const primarySource = doc.primarySource;
     const sourceType = doc.sourceType;
+    const repositoryId = (doc as any).repositoryId;
 
-    const key = `${personId}|${correlationId}|${skillId}|${primarySource}|${sourceType}`;
+    const isGitHubWithRepo = primarySource === 'GITHUB' && repositoryId;
+    const key = isGitHubWithRepo
+      ? `${personId}|${correlationId}|${repositoryId}|${primarySource}|${sourceType}`
+      : `${personId}|${correlationId}|${skillId}|${primarySource}|${sourceType}`;
 
     if (!groups.has(key)) {
       groups.set(key, {

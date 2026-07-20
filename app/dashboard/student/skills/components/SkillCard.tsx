@@ -87,7 +87,7 @@ export function SkillCard({ skill, onSelect, isSelected }: SkillCardProps) {
             </span>
             <span className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
-              {formatDate(skill.lastVerifiedAt)}
+              {formatDate(skill.firstSeenAt)}
             </span>
           </div>
           <button

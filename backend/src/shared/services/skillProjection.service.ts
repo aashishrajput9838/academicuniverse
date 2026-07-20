@@ -63,8 +63,12 @@ export class SkillProjectionService {
       activeCount++;
 
       const effectiveFrom = new Date(e.effectiveFrom);
-      if (!firstSeen || effectiveFrom < firstSeen) firstSeen = effectiveFrom;
       if (!lastVerified || effectiveFrom > lastVerified) lastVerified = effectiveFrom;
+
+      const acquisitionDate = this.getAcquisitionDate(e);
+      if (acquisitionDate) {
+        if (!firstSeen || acquisitionDate < firstSeen) firstSeen = acquisitionDate;
+      }
     }
 
     const rawScore = activeCount > 0 ? (weightedSum / activeCount) * 100 : 0;
@@ -78,6 +82,21 @@ export class SkillProjectionService {
       lastVerifiedAt: lastVerified ?? new Date(0),
       evidenceCount: activeCount,
     };
+  }
+
+  private getAcquisitionDate(evidence: ISkillEvidence): Date | null {
+    if (evidence.primarySource === SkillSource.GITHUB) {
+      const repoDate = evidence.firstCommitDate || (evidence.payload as any)?.firstCommitDate;
+      if (repoDate) {
+        const d = new Date(repoDate);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+
+    const effectiveFrom = new Date(evidence.effectiveFrom);
+    if (!isNaN(effectiveFrom.getTime())) return effectiveFrom;
+
+    return null;
   }
 
   async rebuildSkillRecord(organizationId: string, personId: string, skillId: string): Promise<ISkillRecord> {

@@ -10,7 +10,6 @@ import { SourceContributionChart } from './SourceContributionChart';
 import { ConfidenceExplanation } from './ConfidenceExplanation';
 import { MissingEvidencePanel } from './MissingEvidencePanel';
 import { RelatedSkillsPanel } from './RelatedSkillsPanel';
-import { SkillGrowthTracker } from './SkillGrowthTracker';
 import { ResumeReadinessBadge } from './ResumeReadinessBadge';
 import { cn } from '@/lib/utils';
 
@@ -22,7 +21,7 @@ interface SkillDetailPanelProps {
 }
 
 export function SkillDetailPanel({ skill, detail, detailLoading, onClose }: SkillDetailPanelProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'evidence' | 'timeline' | 'growth'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'evidence' | 'timeline'>('overview');
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';
@@ -95,7 +94,6 @@ export function SkillDetailPanel({ skill, detail, detailLoading, onClose }: Skil
             { key: 'overview', label: 'Overview' },
             { key: 'evidence', label: 'Evidence' },
             { key: 'timeline', label: 'Timeline' },
-            { key: 'growth', label: 'Growth' },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -215,33 +213,10 @@ export function SkillDetailPanel({ skill, detail, detailLoading, onClose }: Skil
                   <SkillTimeline evidence={detail?.evidence || []} />
                 </div>
               )}
-
-              {activeTab === 'growth' && (
-                <div className="bg-slate-800/30 rounded-xl p-5 border border-slate-700">
-                  <SkillGrowthTracker
-                    stages={
-                      detail?.evidence
-                        .filter((e) => e.status === 'ACTIVE')
-                        .map((e) => ({
-                          level: inferLevel(e.confidence),
-                          achievedAt: e.effectiveFrom,
-                          source: e.primarySource,
-                        })) || []
-                    }
-                  />
-                </div>
-              )}
             </div>
           )}
         </div>
       </div>
     </div>
   );
-}
-
-function inferLevel(confidence: number): 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT' {
-  if (confidence >= 0.9) return 'EXPERT';
-  if (confidence >= 0.7) return 'ADVANCED';
-  if (confidence >= 0.4) return 'INTERMEDIATE';
-  return 'BEGINNER';
 }

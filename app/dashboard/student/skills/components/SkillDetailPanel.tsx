@@ -10,7 +10,6 @@ import { SourceContributionChart } from './SourceContributionChart';
 import { ConfidenceExplanation } from './ConfidenceExplanation';
 import { MissingEvidencePanel } from './MissingEvidencePanel';
 import { RelatedSkillsPanel } from './RelatedSkillsPanel';
-import { ResumeReadinessBadge } from './ResumeReadinessBadge';
 import { cn } from '@/lib/utils';
 
 const proficiencyColors: Record<ProficiencyLevel, string> = {
@@ -37,12 +36,6 @@ export function SkillDetailPanel({ skill, detail, detailLoading, onClose }: Skil
       day: 'numeric',
       year: 'numeric',
     });
-  };
-
-  const getResumeReadiness = (): 'RESUME_READY' | 'NEEDS_MORE_EVIDENCE' | 'NOT_VERIFIED' => {
-    if (skill.proficiencyScore >= 70 && skill.evidenceCount >= 3) return 'RESUME_READY';
-    if (skill.proficiencyScore >= 30 && skill.evidenceCount >= 1) return 'NEEDS_MORE_EVIDENCE';
-    return 'NOT_VERIFIED';
   };
 
   const getMissingEvidence = () => {
@@ -210,13 +203,6 @@ export function SkillDetailPanel({ skill, detail, detailLoading, onClose }: Skil
                         </div>
                       </div>
                     )}
-
-                    <div className="bg-slate-800/30 rounded-xl p-5 border border-slate-700">
-                      <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
-                        Resume Readiness
-                      </h3>
-                      <ResumeReadinessBadge readiness={getResumeReadiness()} score={skill.proficiencyScore} />
-                    </div>
 
                     <div className="bg-slate-800/30 rounded-xl p-5 border border-slate-700">
                       <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">

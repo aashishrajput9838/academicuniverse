@@ -28,6 +28,16 @@ export interface ISkillEvidence extends Document {
 
   createdAt: Date;
   updatedAt: Date;
+
+  repositoryId?: string;
+  repositoryName?: string;
+  repositoryUrl?: string;
+  owner?: string;
+  language?: string;
+  firstCommitDate?: Date;
+  lastCommitDate?: Date;
+  bytesOfCode?: number;
+  repositoryVisibility?: string;
 }
 
 const SkillEvidenceSchema = new Schema<ISkillEvidence>(
@@ -55,6 +65,16 @@ const SkillEvidenceSchema = new Schema<ISkillEvidence>(
 
     status: { type: String, required: true, enum: Object.values(EvidenceStatus), default: EvidenceStatus.ACTIVE },
     supersededBy: { type: Schema.Types.ObjectId, ref: 'SkillEvidence' },
+
+    repositoryId: { type: String },
+    repositoryName: { type: String },
+    repositoryUrl: { type: String },
+    owner: { type: String },
+    language: { type: String },
+    firstCommitDate: { type: Date },
+    lastCommitDate: { type: Date },
+    bytesOfCode: { type: Number },
+    repositoryVisibility: { type: String },
   },
   { timestamps: true }
 );

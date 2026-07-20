@@ -91,27 +91,119 @@ export class SkillEvidenceService {
       enrichedPayload.ontologyResolutionSucceeded = resolvedSkill !== null;
     }
 
-    const evidence = await this.repo.create(
-      {
-        organizationId,
-        personId,
-        sourceDocumentId,
-        skillId,
-        skillName,
-        aliases,
-        primarySource,
-        sourceType,
-        sourceSubtype,
-        payload: enrichedPayload,
-        confidence,
-        extractedBy,
-        correlationId,
-        effectiveFrom: effectiveFrom || new Date(),
-        effectiveTo,
-        status: EvidenceStatus.ACTIVE,
-      },
-      organizationId
-    );
+    const isGitHub = primarySource === SkillSource.GITHUB && correlationId;
+    const repoId = (enrichedPayload as any).repositoryId as string | undefined;
+
+    if (correlationId) {
+      let existing: ISkillEvidence | null = null;
+
+      if (isGitHub && repoId) {
+        existing = await this.repo.findActiveByCorrelationIdAndRepository(
+          correlationId,
+          repoId,
+          organizationId
+        );
+      } else {
+        existing = await this.repo.findActiveByCorrelationIdAndSkill(
+          correlationId,
+          skillId,
+          organizationId
+        );
+      }
+
+      if (existing) {
+        const existingPayload = existing.payload || {};
+        const payloadMatch =
+          JSON.stringify(existingPayload) === JSON.stringify(enrichedPayload);
+
+        if (payloadMatch) {
+          logger.info('Idempotent evidence hit — returning existing document', {
+            evidenceId: existing._id.toString(),
+            skillId,
+            correlationId,
+            primarySource,
+            sourceType,
+            repositoryId: repoId,
+          });
+          return existing as ISkillEvidence;
+        }
+
+        logger.info('Superseding existing evidence with changed payload', {
+          existingId: existing._id.toString(),
+          skillId,
+          correlationId,
+          primarySource,
+          sourceType,
+          repositoryId: repoId,
+        });
+
+        await this.repo.supersede(
+          existing._id.toString(),
+          existing._id.toString(),
+          organizationId
+        );
+
+        await AuditEntry.create({
+          organizationId,
+          recordId: existing._id.toString(),
+          collectionName: 'skill_evidence',
+          action: 'update',
+          performedBy: extractedBy,
+          metadata: {
+            domain: 'skills',
+            reason: 'superseded_by_idempotency',
+            correlationId,
+            primarySource,
+            sourceType,
+            repositoryId: repoId,
+          },
+        });
+      }
+    }
+
+    let evidence: ISkillEvidence;
+    try {
+      evidence = await this.repo.create(
+        {
+          organizationId,
+          personId,
+          sourceDocumentId,
+          skillId,
+          skillName,
+          aliases,
+          primarySource,
+          sourceType,
+          sourceSubtype,
+          payload: enrichedPayload,
+          confidence,
+          extractedBy,
+          correlationId,
+          effectiveFrom: effectiveFrom || new Date(),
+          effectiveTo,
+          status: EvidenceStatus.ACTIVE,
+        },
+        organizationId
+      );
+    } catch (err: any) {
+      if (err.code === 11000 || err.message?.includes('duplicate key')) {
+        logger.info('Duplicate evidence prevented by unique index — treating as idempotent success', {
+          skillId,
+          correlationId,
+          primarySource,
+          sourceType,
+        });
+        const existing = await this.repo.findActiveByCorrelationIdAndSkill(
+          correlationId,
+          skillId,
+          organizationId
+        );
+        if (existing) {
+          return existing as ISkillEvidence;
+        }
+        throw err;
+      }
+      throw err;
+    }
 
     await AuditEntry.create({
       organizationId,

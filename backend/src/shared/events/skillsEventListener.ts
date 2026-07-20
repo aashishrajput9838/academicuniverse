@@ -146,7 +146,7 @@ export class SkillsEventListener {
   }
 
   private async handleGithubUpdated(payload: any): Promise<void> {
-    const { organizationId, personId, correlationId, sourceDocumentId } = payload;
+    const { organizationId, personId, correlationId, sourceDocumentId, repositories, languages } = payload;
 
     if (!organizationId || !personId) {
       logger.warn('GithubUpdated event missing organizationId or personId', { correlationId });
@@ -154,29 +154,63 @@ export class SkillsEventListener {
     }
 
     try {
-      const languages = payload.languages || {};
-      const contributions = payload.contributions || {};
+      const repos = Array.isArray(repositories) ? repositories : [];
+      const nonForkRepos = repos.filter((repo: any) => !repo.fork);
 
-      for (const [language, count] of Object.entries(languages)) {
-        await this.evidenceService.ingestEvidence({
-          organizationId,
-          personId,
-          sourceDocumentId,
-          skillId: `LANGUAGE-${language}`,
-          skillName: language,
-          aliases: [],
-          primarySource: SkillSource.GITHUB,
-          sourceType: 'LANGUAGE',
-          payload: {
-            language,
-            bytesOfCode: count,
-            contributionCount: contributions[language] || 0,
-          },
-          confidence: 0.7,
-          extractedBy: 'dispatcher',
-          correlationId,
-          effectiveFrom: new Date(),
-        });
+      if (nonForkRepos.length > 0) {
+        for (const repo of nonForkRepos) {
+          if (!repo.language) continue;
+
+          await this.evidenceService.ingestEvidence({
+            organizationId,
+            personId,
+            sourceDocumentId,
+            skillId: `LANGUAGE-${repo.language}`,
+            skillName: repo.language,
+            aliases: repo.topics || [],
+            primarySource: SkillSource.GITHUB,
+            sourceType: 'LANGUAGE',
+            payload: {
+              language: repo.language,
+              repositoryId: String(repo.id),
+              repositoryName: repo.name,
+              repositoryUrl: repo.html_url,
+              owner: repo.owner?.login,
+              bytesOfCode: repo.size || 0,
+              firstCommitDate: repo.created_at,
+              lastCommitDate: repo.pushed_at,
+              repositoryVisibility: repo.private ? 'PRIVATE' : 'PUBLIC',
+              topics: repo.topics || [],
+              description: repo.description,
+            },
+            confidence: 0.7,
+            extractedBy: 'dispatcher',
+            correlationId,
+            effectiveFrom: new Date(),
+          });
+        }
+      } else if (languages && typeof languages === 'object') {
+        for (const [language, count] of Object.entries(languages)) {
+          await this.evidenceService.ingestEvidence({
+            organizationId,
+            personId,
+            sourceDocumentId,
+            skillId: `LANGUAGE-${language}`,
+            skillName: language,
+            aliases: [],
+            primarySource: SkillSource.GITHUB,
+            sourceType: 'LANGUAGE',
+            payload: {
+              language,
+              bytesOfCode: count,
+              contributionCount: payload.contributions?.[language] || 0,
+            },
+            confidence: 0.7,
+            extractedBy: 'dispatcher',
+            correlationId,
+            effectiveFrom: new Date(),
+          });
+        }
       }
 
       await this.projectionService.rebuildAllSkillRecords(organizationId, personId);

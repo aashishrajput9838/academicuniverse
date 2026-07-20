@@ -45,6 +45,20 @@ export type SkillEvidenceDTO = {
   status: string;
   createdAt: string;
   updatedAt: string;
+  sourceDetails?: {
+    title?: string;
+    subtitle?: string;
+    owner?: string;
+    url?: string;
+    repository?: {
+      id: string;
+      name: string;
+      owner: string;
+      url: string;
+    } | null;
+    detectedLanguage?: string;
+    metadata?: Record<string, any>;
+  };
 };
 
 export type SkillDetailDTO = {

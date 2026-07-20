@@ -69,6 +69,14 @@ describe('Skills Tracker End-to-End Verification', () => {
       sort: jest.fn().mockResolvedValue([]),
     } as any);
 
+    mockedSkillEvidence.findOne.mockReturnValue({
+      sort: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue(null),
+        }),
+      }),
+    } as any);
+
     mockedSkillRecord.find.mockReturnValue({
       sort: jest.fn().mockResolvedValue([]),
     } as any);
@@ -257,6 +265,10 @@ describe('Skills Tracker End-to-End Verification', () => {
         source: 'github',
         languages: { TypeScript: 50000, Python: 30000 },
         contributions: { TypeScript: 142, Python: 89 },
+        repositories: [
+          { id: 101, name: 'ts-repo', language: 'TypeScript', fork: false, private: false, html_url: 'https://github.com/test/ts-repo', owner: { login: 'test' }, size: 100, topics: [], created_at: '2024-01-01', pushed_at: '2024-06-01' },
+          { id: 102, name: 'py-repo', language: 'Python', fork: false, private: false, html_url: 'https://github.com/test/py-repo', owner: { login: 'test' }, size: 200, topics: [], created_at: '2024-01-02', pushed_at: '2024-06-02' },
+        ],
         rawConfidence: 80,
       } as any);
 

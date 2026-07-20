@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, Github, GraduationCap, BookOpen, Code2, Briefcase, ClipboardCheck, User, ExternalLink } from 'lucide-react';
+import { FileText, Github, GraduationCap, BookOpen, Code2, Briefcase, ClipboardCheck, User, ExternalLink, Calendar } from 'lucide-react';
 import { SkillEvidenceDTO, EvidenceSourceType } from '../types/skills';
 import { cn } from '@/lib/utils';
 
@@ -55,59 +55,166 @@ export function EvidenceExplorer({ evidence }: EvidenceExplorerProps) {
     return (
       <div className="text-center py-8 text-slate-400">
         <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-        <p>No evidence records found for this skill.</p>
+        <p>No evidence available for this skill.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
         Evidence Sources ({evidence.length})
       </h4>
-      <div className="space-y-2.5">
+      <div className="space-y-3">
         {evidence.map((item) => (
           <div
             key={item.id}
             className={cn(
-              'flex items-start gap-3 p-3.5 rounded-lg border transition-colors',
-              'bg-slate-800/30 border-slate-700 hover:border-slate-600',
+              'rounded-xl p-5 border transition-colors',
+              'bg-slate-800/30 border-slate-700 hover:border-slate-600'
             )}
           >
-            <div
-              className={cn(
-                'p-2 rounded-lg border shrink-0',
-                sourceColors[item.primarySource],
-              )}
-            >
-              {sourceIcons[item.primarySource]}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-white font-medium text-sm">
-                  {sourceLabels[item.primarySource]}
-                </span>
-                <span className="text-slate-500 text-xs">•</span>
-                <span className="text-slate-400 text-xs">{item.sourceType}</span>
-                {item.sourceSubtype && (
-                  <>
-                    <span className="text-slate-500 text-xs">•</span>
-                    <span className="text-slate-400 text-xs">{item.sourceSubtype}</span>
-                  </>
+            <div className="flex items-start gap-4">
+              <div
+                className={cn(
+                  'p-2.5 rounded-lg border shrink-0',
+                  sourceColors[item.primarySource]
                 )}
+              >
+                {sourceIcons[item.primarySource]}
               </div>
-              <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
-                <span className="flex items-center gap-1">
-                  <span className="text-emerald-400 font-medium">{Math.round(item.confidence * 100)}%</span>
-                  confidence
-                </span>
-                <span>•</span>
-                <span>{formatDate(item.effectiveFrom)}</span>
-                <span>•</span>
-                <span className="capitalize">{item.status.toLowerCase()}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-white font-medium text-sm">
+                    {sourceLabels[item.primarySource]}
+                  </span>
+                  <span className="text-slate-500 text-xs">•</span>
+                  <span className="text-slate-400 text-xs">{item.sourceType}</span>
+                  {item.sourceSubtype && (
+                    <>
+                      <span className="text-slate-500 text-xs">•</span>
+                      <span className="text-slate-400 text-xs">{item.sourceSubtype}</span>
+                    </>
+                  )}
+                  <span
+                    className={cn(
+                      'ml-auto text-xs px-2 py-0.5 rounded-full border',
+                      item.status === 'ACTIVE'
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                    )}
+                  >
+                    {item.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mt-3">
+                  {item.sourceDetails?.repository && (
+                    <>
+                      <div>
+                        <span className="text-slate-500 text-xs block">Repository</span>
+                        {item.sourceDetails.repository.url ? (
+                          <a
+                            href={item.sourceDetails.repository.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-400 text-sm font-medium hover:underline inline-flex items-center gap-1"
+                          >
+                            {item.sourceDetails.repository.name}
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span className="text-white text-sm font-medium">
+                            {item.sourceDetails.repository.name}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-slate-500 text-xs block">Owner</span>
+                        <span className="text-white text-sm">
+                          {item.sourceDetails.repository.owner}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  {item.sourceDetails?.title && !item.sourceDetails?.repository && (
+                    <div className="sm:col-span-2">
+                      <span className="text-slate-500 text-xs block">
+                        {item.primarySource === 'ACADEMIC_RECORD'
+                          ? 'Document'
+                          : item.primarySource === 'CERTIFICATE'
+                          ? 'Certificate'
+                          : item.primarySource === 'RESEARCH'
+                          ? 'Paper'
+                          : 'Title'}
+                      </span>
+                      <span className="text-white text-sm font-medium">
+                        {item.sourceDetails.title}
+                      </span>
+                      {item.sourceDetails.subtitle && (
+                        <span className="text-slate-400 text-sm ml-2">
+                          ({item.sourceDetails.subtitle})
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {item.sourceDetails?.detectedLanguage && (
+                    <div>
+                      <span className="text-slate-500 text-xs block">Detected Language</span>
+                      <span className="text-white text-sm">{item.sourceDetails.detectedLanguage}</span>
+                    </div>
+                  )}
+
+                  {item.sourceDetails?.owner && !item.sourceDetails?.repository && (
+                    <div>
+                      <span className="text-slate-500 text-xs block">Owner</span>
+                      <span className="text-white text-sm">{item.sourceDetails.owner}</span>
+                    </div>
+                  )}
+
+                  <div>
+                    <span className="text-slate-500 text-xs block flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      Detected
+                    </span>
+                    <span className="text-white text-sm">{formatDate(item.effectiveFrom)}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 text-xs block flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      Last Verified
+                    </span>
+                    <span className="text-white text-sm">{formatDate(item.updatedAt)}</span>
+                  </div>
+
+                  {item.sourceDetails?.metadata?.grade && (
+                    <div>
+                      <span className="text-slate-500 text-xs block">Grade</span>
+                      <span className="text-white text-sm">{item.sourceDetails.metadata.grade}</span>
+                    </div>
+                  )}
+
+                  {item.sourceDetails?.metadata?.credits != null && (
+                    <div>
+                      <span className="text-slate-500 text-xs block">Credits</span>
+                      <span className="text-white text-sm">{item.sourceDetails.metadata.credits}</span>
+                    </div>
+                  )}
+
+                  {item.sourceDetails?.metadata?.issuedDate && (
+                    <div>
+                      <span className="text-slate-500 text-xs block">Issued Date</span>
+                      <span className="text-white text-sm">
+                        {formatDate(item.sourceDetails.metadata.issuedDate)}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-            <ExternalLink className="w-4 h-4 text-slate-500 shrink-0 mt-1" />
           </div>
         ))}
       </div>

@@ -31,6 +31,22 @@ export interface SkillEvidenceDTO {
   status: string;
   createdAt: Date;
   updatedAt: Date;
+  sourceDetails?: EvidenceSourceDetails;
+}
+
+export interface EvidenceSourceDetails {
+  title?: string;
+  subtitle?: string;
+  owner?: string;
+  url?: string;
+  repository?: {
+    id: string;
+    name: string;
+    owner: string;
+    url: string;
+  } | null;
+  detectedLanguage?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface SkillProfileResponse {

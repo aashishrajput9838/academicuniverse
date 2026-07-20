@@ -64,4 +64,37 @@ export class SkillEvidenceRepository {
       { status: 'REVOKED' }
     );
   }
+
+  async findActiveByCorrelationIdAndSkill(
+    correlationId: string,
+    skillId: string,
+    organizationId?: string
+  ): Promise<ISkillEvidence | null> {
+    const filter: any = {
+      correlationId,
+      skillId,
+      status: 'ACTIVE',
+      repositoryId: { $exists: false },
+    };
+    if (organizationId) {
+      filter.organizationId = toObjectId(organizationId);
+    }
+    return SkillEvidence.findOne(filter).sort({ createdAt: -1 }).lean().exec();
+  }
+
+  async findActiveByCorrelationIdAndRepository(
+    correlationId: string,
+    repositoryId: string,
+    organizationId?: string
+  ): Promise<ISkillEvidence | null> {
+    const filter: any = {
+      correlationId,
+      repositoryId,
+      status: 'ACTIVE',
+    };
+    if (organizationId) {
+      filter.organizationId = toObjectId(organizationId);
+    }
+    return SkillEvidence.findOne(filter).sort({ createdAt: -1 }).lean().exec();
+  }
 }

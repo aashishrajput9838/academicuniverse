@@ -6,10 +6,12 @@ import { SkillEvidenceService } from '../shared/services/skillEvidence.service';
 import { SubjectSkillMappingService } from '../shared/services/subjectSkillMapping.service';
 import { SkillRecordRepository } from '../shared/repositories/skillRecord.repository';
 import { SkillEvidenceRepository } from '../shared/repositories/skillEvidence.repository';
+import { GithubRecord } from '../models/GithubRecord';
 import { logger } from '../utils/logger';
 import {
   SkillRecordDTO,
   SkillEvidenceDTO,
+  EvidenceSourceDetails,
   SkillProfileResponse,
   SkillSummaryResponse,
   SubjectMappingDTO,
@@ -152,7 +154,31 @@ export const getMySkillEvidence = async (req: any, res: Response) => {
     }
 
     const evidence = await evidenceRepo.findActiveByPersonAndSkill(personId, skillId, organizationId);
-    const evidenceDTOs = evidence.map(toSkillEvidenceDTO);
+
+    const correlationIds = Array.from(
+      new Set(
+        evidence
+          .map(e => e.correlationId)
+          .filter((id): id is string => !!id)
+      )
+    );
+
+    const githubRecordMap = new Map<string, any>();
+    if (correlationIds.length > 0) {
+      const githubRecords = await GithubRecord.find({
+        _id: { $in: correlationIds.map(id => toObjectId(id)) },
+      }).lean().exec();
+
+      for (const record of githubRecords) {
+        githubRecordMap.set(record._id.toString(), record);
+      }
+    }
+
+    const evidenceDTOs = evidence.map(raw => {
+      const dto = toSkillEvidenceDTO(raw);
+      const sourceDetails = buildSourceDetails(raw, githubRecordMap);
+      return { ...dto, sourceDetails };
+    });
 
     return sendResponse(
       res,
@@ -169,6 +195,84 @@ export const getMySkillEvidence = async (req: any, res: Response) => {
     return sendError(res, 500, 'Failed to fetch skill evidence');
   }
 };
+
+function buildSourceDetails(
+  evidence: any,
+  githubRecordMap: Map<string, any>
+): EvidenceSourceDetails | undefined {
+  const primarySource = evidence.primarySource;
+  const payload = evidence.payload || {};
+  const correlationId = evidence.correlationId;
+
+  if (primarySource === 'GITHUB') {
+    const githubRecord = correlationId ? githubRecordMap.get(correlationId) : null;
+
+    const repository =
+      evidence.repositoryId || evidence.repositoryName
+        ? {
+            id: evidence.repositoryId || String(payload.repositoryId || ''),
+            name: evidence.repositoryName || payload.repositoryName || 'Unknown',
+            owner: evidence.owner || payload.owner || githubRecord?.githubUsername || 'Unknown',
+            url: evidence.repositoryUrl || payload.repositoryUrl || githubRecord?.repositories?.find?.(
+              (r: any) => r.language === (evidence.language || payload.language)
+            )?.html_url || '',
+          }
+        : null;
+
+    return {
+      repository,
+      detectedLanguage: evidence.language || payload.language,
+      metadata: {
+        bytesOfCode: evidence.bytesOfCode ?? payload.bytesOfCode,
+        contributionCount: payload.contributionCount,
+        firstCommitDate: evidence.firstCommitDate || payload.firstCommitDate,
+        lastCommitDate: evidence.lastCommitDate || payload.lastCommitDate,
+        repositoryVisibility: evidence.repositoryVisibility || payload.repositoryVisibility,
+        topics: payload.topics,
+        description: payload.description,
+      },
+    };
+  }
+
+  if (primarySource === 'ACADEMIC') {
+    return {
+      title: payload.subjectName || payload.fileName,
+      subtitle: payload.subjectCode,
+      metadata: {
+        grade: payload.grade,
+        credits: payload.credits,
+        semester: payload.semester,
+        year: payload.year,
+      },
+    };
+  }
+
+  if (primarySource === 'CERTIFICATE') {
+    return {
+      title: payload.title || payload.fileName,
+      subtitle: payload.issuer,
+      metadata: {
+        issuedDate: payload.issuedDate,
+      },
+    };
+  }
+
+  if (primarySource === 'RESEARCH') {
+    return {
+      title: payload.title || payload.fileName,
+      subtitle: payload.journal,
+      metadata: {
+        authors: payload.authors,
+        abstract: payload.abstract,
+      },
+    };
+  }
+
+  return {
+    title: payload.title || payload.fileName || payload.subjectName,
+    metadata: payload,
+  };
+}
 
 export const getMySkillSummary = async (req: any, res: Response) => {
   try {

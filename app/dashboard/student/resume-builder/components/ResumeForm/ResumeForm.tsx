@@ -15,14 +15,15 @@ interface ResumeFormProps {
   backendToken: string;
   onBack: () => void;
   onNext: (data: Record<string, any>) => void;
+  onGenerate: (data: Record<string, any>) => void;
+  isGenerating: boolean;
 }
 
-export function ResumeForm({ template, backendToken, onBack, onNext }: ResumeFormProps) {
+export function ResumeForm({ template, backendToken, onBack, onNext, onGenerate, isGenerating }: ResumeFormProps) {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingDraft, setIsLoadingDraft] = useState(true);
 
   const loadDraft = useCallback(async () => {
@@ -67,9 +68,13 @@ export function ResumeForm({ template, backendToken, onBack, onNext }: ResumeFor
 
   const handleNext = useCallback(() => {
     if (validate()) {
-      onNext(formData);
+      if (onGenerate) {
+        onGenerate(formData);
+      } else {
+        onNext(formData);
+      }
     }
-  }, [validate, formData, onNext]);
+  }, [validate, formData, onNext, onGenerate]);
 
   const handleSaveStart = useCallback(() => {
     setDraftStatus('saving');
@@ -141,7 +146,8 @@ export function ResumeForm({ template, backendToken, onBack, onNext }: ResumeFor
           onPrevious={onBack}
           onNext={handleNext}
           canProceed={template.questions.every(q => formData[q.tag]?.trim())}
-          isSubmitting={isSubmitting}
+          isSubmitting={isGenerating}
+          nextLabel="Generate Resume"
         />
       </form>
     </div>

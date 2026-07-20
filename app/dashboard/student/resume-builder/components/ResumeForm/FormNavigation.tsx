@@ -7,6 +7,7 @@ interface FormNavigationProps {
   onNext: () => void;
   canProceed: boolean;
   isSubmitting?: boolean;
+  nextLabel?: string;
 }
 
 export function FormNavigation({
@@ -16,6 +17,7 @@ export function FormNavigation({
   onNext,
   canProceed,
   isSubmitting = false,
+  nextLabel,
 }: FormNavigationProps) {
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === totalSteps - 1;
@@ -39,7 +41,7 @@ export function FormNavigation({
         disabled={!canProceed || isSubmitting}
         className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isLastStep ? 'Finish' : 'Next'}
+        {nextLabel || (isLastStep ? 'Finish' : 'Next')}
       </button>
     </div>
   );

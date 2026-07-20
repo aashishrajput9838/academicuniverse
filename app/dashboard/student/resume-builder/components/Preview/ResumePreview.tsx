@@ -1,11 +1,24 @@
 'use client';
 
+import { ExportActions } from './ExportActions';
+
 interface ResumePreviewProps {
   htmlPreview: string;
+  onDownload: () => void;
+  isDownloading?: boolean;
+  downloadError?: string | null;
+  onRetryDownload?: () => void;
   title?: string;
 }
 
-export function ResumePreview({ htmlPreview, title = 'Resume Preview' }: ResumePreviewProps) {
+export function ResumePreview({
+  htmlPreview,
+  onDownload,
+  isDownloading = false,
+  downloadError,
+  onRetryDownload,
+  title = 'Resume Preview',
+}: ResumePreviewProps) {
   return (
     <div className="bg-white rounded-lg overflow-hidden shadow-2xl">
       <div className="bg-slate-100 px-4 py-2 border-b border-slate-200 flex items-center gap-2">
@@ -21,6 +34,12 @@ export function ResumePreview({ htmlPreview, title = 'Resume Preview' }: ResumeP
         sandbox="allow-same-origin allow-scripts"
         title={title}
         className="w-full h-[600px] border-0"
+      />
+      <ExportActions
+        onDownload={onDownload}
+        isDownloading={isDownloading}
+        downloadError={downloadError}
+        onRetryDownload={onRetryDownload}
       />
     </div>
   );

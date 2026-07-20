@@ -10,6 +10,7 @@ import { GenerationLoading } from '../Generation/GenerationLoading';
 import { GenerationError } from '../Generation/GenerationError';
 import { ResumePreview } from '../Preview/ResumePreview';
 import { PreviewToolbar } from '../Preview/PreviewToolbar';
+import { DownloadToolbar } from '../Preview/DownloadToolbar';
 import { useResumeBuilder } from './hooks/useResumeBuilder';
 import { useTemplateSelection } from './hooks/useTemplateSelection';
 import type { ResumeTemplateDTO } from '@/components/Resume/types/resume';
@@ -27,6 +28,12 @@ export default function ResumeBuilderPage() {
     resetBuilder,
     isGenerating,
     generatedPreview,
+    generatedDocx,
+    isDownloading,
+    downloadError,
+    setDownloadError,
+    downloadResume,
+    retryGeneration,
   } = useResumeBuilder(backendToken || '');
 
   const {
@@ -56,18 +63,21 @@ export default function ResumeBuilderPage() {
   };
 
   const handleRetryGeneration = () => {
-    setError(null);
-    setGenerationError(null);
-    if (selectedTemplate && generatedPreview === null) {
-      // Retry with current form data - we don't have it here, so user needs to click generate again
-      // Actually, formData is in useResumeBuilder but we don't expose it here.
-      // For retry, we'll just clear the error and let user click generate again.
-    }
+    retryGeneration();
   };
 
   const handleBackToForm = () => {
     setError(null);
     setGenerationError(null);
+  };
+
+  const handleDownload = () => {
+    downloadResume();
+  };
+
+  const handleRetryDownload = () => {
+    setDownloadError(null);
+    downloadResume();
   };
 
   if (!backendToken) {
@@ -111,8 +121,20 @@ export default function ResumeBuilderPage() {
           </p>
         </div>
 
-        <PreviewToolbar onBackToForm={handleBackToForm} isGenerating={isGenerating} />
-        <ResumePreview htmlPreview={generatedPreview} />
+        <DownloadToolbar
+          onBackToForm={handleBackToForm}
+          isGenerating={isGenerating}
+          isDownloading={isDownloading}
+          downloadError={downloadError}
+          onRetryDownload={handleRetryDownload}
+        />
+        <ResumePreview
+          htmlPreview={generatedPreview}
+          onDownload={handleDownload}
+          isDownloading={isDownloading}
+          downloadError={downloadError}
+          onRetryDownload={handleRetryDownload}
+        />
       </div>
     );
   }

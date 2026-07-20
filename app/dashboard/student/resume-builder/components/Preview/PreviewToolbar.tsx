@@ -3,9 +3,10 @@
 interface PreviewToolbarProps {
   onBackToForm: () => void;
   isGenerating?: boolean;
+  isDownloading?: boolean;
 }
 
-export function PreviewToolbar({ onBackToForm, isGenerating = false }: PreviewToolbarProps) {
+export function PreviewToolbar({ onBackToForm, isGenerating = false, isDownloading = false }: PreviewToolbarProps) {
   return (
     <div className="flex items-center justify-between bg-slate-800/50 p-4 rounded-xl border border-slate-700">
       <div>
@@ -15,7 +16,7 @@ export function PreviewToolbar({ onBackToForm, isGenerating = false }: PreviewTo
       <button
         type="button"
         onClick={onBackToForm}
-        disabled={isGenerating}
+        disabled={isGenerating || isDownloading}
         className="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-slate-600"
       >
         Back to Form

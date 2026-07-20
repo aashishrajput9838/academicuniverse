@@ -15,6 +15,8 @@ export function useResumeBuilder(backendToken: string) {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const selectTemplate = useCallback((template: ResumeTemplateDTO) => {
     setSelectedTemplate(template);
@@ -47,6 +49,44 @@ export function useResumeBuilder(backendToken: string) {
     }
   }, [backendToken]);
 
+  const downloadResume = useCallback(async () => {
+    if (!generatedDocx || !selectedTemplate) return;
+
+    setIsDownloading(true);
+    setDownloadError(null);
+
+    try {
+      const byteCharacters = atob(generatedDocx);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${selectedTemplate.templateName.replace(/\s+/g, '_')}_resume.docx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to download resume';
+      setDownloadError(message);
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [generatedDocx, selectedTemplate]);
+
+  const retryGeneration = useCallback(() => {
+    setError(null);
+    setGenerationError(null);
+    if (selectedTemplate && formData) {
+      generatePreview(selectedTemplate._id, formData);
+    }
+  }, [selectedTemplate, formData, generatePreview]);
+
   const resetBuilder = useCallback(() => {
     setCurrentStep('template');
     setSelectedTemplate(null);
@@ -58,6 +98,8 @@ export function useResumeBuilder(backendToken: string) {
     setGenerationError(null);
     setDraftStatus('idle');
     setLastSavedAt(null);
+    setIsDownloading(false);
+    setDownloadError(null);
   }, []);
 
   return {
@@ -72,10 +114,15 @@ export function useResumeBuilder(backendToken: string) {
     setGenerationError,
     draftStatus,
     lastSavedAt,
+    isDownloading,
+    downloadError,
+    setDownloadError,
     setCurrentStep,
     selectTemplate,
     updateFormData,
     generatePreview,
+    downloadResume,
+    retryGeneration,
     setGeneratedPreview,
     setGeneratedDocx,
     setIsGenerating,

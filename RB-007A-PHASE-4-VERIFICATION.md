@@ -787,28 +787,6 @@ useResumeBuilder.ts
 **Issues:**
 - ⚠️ `formData` is exposed but not used in `ResumeBuilderPage` (reserved for retry, but retry doesn't use it)
 
-### 23.6 ResumeForm.tsx (Updated)
-
-**Lines:** 155
-
-**Changes:**
-- Added `onGenerate` prop
-- Added `isGenerating` prop
-- Changed `handleNext` to call `onGenerate` when provided
-- Changed `isSubmitting` to `isGenerating` in `FormNavigation`
-
-**Issues:** None
-
-### 23.7 FormNavigation.tsx (Updated)
-
-**Lines:** 48
-
-**Changes:**
-- Added `nextLabel` optional prop
-- Uses `nextLabel` or falls back to "Finish"/"Next"
-
-**Issues:** None
-
 ---
 
 ## 24. Final Checklist
@@ -874,7 +852,7 @@ useResumeBuilder.ts
 
 **Impact:** User experience degradation. Button label "Try Again" implies automatic retry.
 
-**Fix:** Either wire `handleRetryGeneration` to call `generatePreview(selectedTemplate._id, formData)` again, or change the button label to "Dismiss".
+**Fix:** Either wire `handleRetryGeneration` to actually call `generatePreview` again with current `formData`, or change the button label to "Dismiss".
 
 **Status:** Non-blocking for Phase 4 approval. Can be fixed in Phase 5.
 

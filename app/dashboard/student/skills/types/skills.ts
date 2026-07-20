@@ -29,6 +29,22 @@ export type SkillRecordDTO = {
   status: SkillStatus;
   createdAt: string;
   updatedAt: string;
+  explanation?: {
+    score: number;
+    level: string;
+    thresholds: { BEGINNER: number; INTERMEDIATE: number; ADVANCED: number; EXPERT: number };
+    formula: string;
+    evidenceCount: number;
+    activeEvidenceCount: number;
+    description: string;
+    sourceBreakdown: Array<{
+      source: string;
+      count: number;
+      avgWeight: number;
+      sourceWeight: number;
+      isSourceDefault: boolean;
+    }>;
+  };
 };
 
 export type SkillEvidenceDTO = {
@@ -59,18 +75,71 @@ export type SkillEvidenceDTO = {
     detectedLanguage?: string;
     metadata?: Record<string, any>;
   };
+  explanation?: {
+    source: string;
+    defaultConfidence: number;
+    isSourceDefault: boolean;
+    description: string;
+  };
 };
 
 export type SkillDetailDTO = {
   skillId: string;
   skillName: string;
   evidence: SkillEvidenceDTO[];
+  explanation?: {
+    score: number;
+    level: string;
+    thresholds: { BEGINNER: number; INTERMEDIATE: number; ADVANCED: number; EXPERT: number };
+    formula: string;
+    evidenceCount: number;
+    activeEvidenceCount: number;
+    description: string;
+    sourceBreakdown: Array<{
+      source: string;
+      count: number;
+      avgWeight: number;
+      sourceWeight: number;
+      isSourceDefault: boolean;
+    }>;
+  };
 };
 
 export type SkillProfileResponse = {
   profileId: string;
   generatedAt: string;
-  skills: SkillRecordDTO[];
+  skills: Array<{
+    id: string;
+    skillId: string;
+    skillName: string;
+    aliases: string[];
+    skillCategory: SkillCategory;
+    skillSubcategory?: string;
+    proficiencyLevel: ProficiencyLevel;
+    proficiencyScore: number;
+    evidenceCount: number;
+    firstSeenAt: string;
+    lastVerifiedAt: string;
+    status: SkillStatus;
+    createdAt: string;
+    updatedAt: string;
+    explanation?: {
+      score: number;
+      level: string;
+      thresholds: { BEGINNER: number; INTERMEDIATE: number; ADVANCED: number; EXPERT: number };
+      formula: string;
+      evidenceCount: number;
+      activeEvidenceCount: number;
+      description: string;
+      sourceBreakdown: Array<{
+        source: string;
+        count: number;
+        avgWeight: number;
+        sourceWeight: number;
+        isSourceDefault: boolean;
+      }>;
+    };
+  }>;
   categories: Record<string, { count: number; averageScore: number }>;
   subjectMappings: Array<{
     subjectCode: string;
@@ -80,7 +149,7 @@ export type SkillProfileResponse = {
     mappings: Array<{
       skillId: string;
       skillName: string;
-      skillCategory: SkillCategory;
+      skillCategory: string;
       relevanceWeight: number;
       isCore: boolean;
     }>;

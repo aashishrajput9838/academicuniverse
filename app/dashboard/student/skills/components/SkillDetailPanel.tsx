@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { X, Calendar, MapPin, Tag, Link as LinkIcon } from 'lucide-react';
-import { SkillRecordDTO, SkillDetailDTO, MissingEvidenceItem } from '../types/skills';
+import { SkillRecordDTO, SkillDetailDTO, MissingEvidenceItem, ProficiencyLevel } from '../types/skills';
 import { SkillCard } from './SkillCard';
 import { EvidenceExplorer } from './EvidenceExplorer';
 import { SkillTimeline } from './SkillTimeline';
@@ -12,6 +12,13 @@ import { MissingEvidencePanel } from './MissingEvidencePanel';
 import { RelatedSkillsPanel } from './RelatedSkillsPanel';
 import { ResumeReadinessBadge } from './ResumeReadinessBadge';
 import { cn } from '@/lib/utils';
+
+const proficiencyColors: Record<ProficiencyLevel, string> = {
+  BEGINNER: 'text-red-400 bg-red-400/10 border-red-400/20',
+  INTERMEDIATE: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
+  ADVANCED: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+  EXPERT: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
+};
 
 interface SkillDetailPanelProps {
   skill: SkillRecordDTO;
@@ -41,18 +48,22 @@ export function SkillDetailPanel({ skill, detail, detailLoading, onClose }: Skil
   const getMissingEvidence = () => {
     const missing: MissingEvidenceItem[] = [];
     const evidenceTypes = new Set(detail?.evidence.map(e => e.primarySource) || []);
+    const isTechnical = skill.skillCategory === 'TECHNICAL';
     
     if (!evidenceTypes.has('GITHUB')) {
       missing.push({ type: 'GITHUB', label: 'GitHub Project', description: 'Add code repositories to demonstrate practical application' });
     }
-    if (!evidenceTypes.has('CERTIFICATE')) {
-      missing.push({ type: 'CERTIFICATE', label: 'Certification', description: 'Earn a recognized certificate in this skill area' });
-    }
-    if (!evidenceTypes.has('ASSESSMENT')) {
-      missing.push({ type: 'ASSESSMENT', label: 'Assessment', description: 'Complete a formal assessment to validate proficiency' });
-    }
+    
     if (!evidenceTypes.has('PROJECT')) {
-      missing.push({ type: 'PROJECT', label: 'Project', description: 'Build and document a real-world project using this skill' });
+      missing.push({ type: 'PROJECT', label: 'Project', description: 'Submit a deployed project with:\n• Live URL\n• Screenshots\n• Supporting documentation' });
+    }
+    
+    if (!evidenceTypes.has('CERTIFICATE')) {
+      if (isTechnical) {
+        missing.push({ type: 'CERTIFICATE', label: 'Certification (Optional)', description: 'Earn a recognized certificate in this skill area' });
+      } else {
+        missing.push({ type: 'CERTIFICATE', label: 'Certification', description: 'Earn a recognized certificate in this skill area' });
+      }
     }
     
     return missing;
@@ -153,6 +164,52 @@ export function SkillDetailPanel({ skill, detail, detailLoading, onClose }: Skil
                         </div>
                       </div>
                     </div>
+
+                    {detail?.explanation && (
+                      <div className="bg-slate-800/30 rounded-xl p-5 border border-slate-700">
+                        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
+                          Proficiency Breakdown
+                        </h3>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-400">Score</span>
+                            <span className="text-white font-medium">{detail.explanation.score}/100</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-slate-400">Level</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${proficiencyColors[skill.proficiencyLevel]}`}>
+                              {detail.explanation.level}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-500 space-y-1">
+                            <div className="flex justify-between">
+                              <span>Thresholds:</span>
+                              <span>INTERMEDIATE ≥{detail.explanation.thresholds.INTERMEDIATE} | ADVANCED ≥{detail.explanation.thresholds.ADVANCED} | EXPERT ≥{detail.explanation.thresholds.EXPERT}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Formula:</span>
+                              <span className="text-slate-400">{detail.explanation.formula}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Active evidence:</span>
+                              <span className="text-slate-400">{detail.explanation.activeEvidenceCount} of {detail.explanation.evidenceCount}</span>
+                            </div>
+                          </div>
+                          {detail.explanation.sourceBreakdown.length > 0 && (
+                            <div className="text-xs text-slate-500 space-y-1">
+                              <span className="block mb-1">Source weights:</span>
+                              {detail.explanation.sourceBreakdown.map((src, idx) => (
+                                <div key={idx} className="flex justify-between items-center">
+                                  <span className="text-slate-400">{src.source} {src.isSourceDefault ? '(default)' : ''}</span>
+                                  <span className="text-slate-500">×{src.count} · weight={src.sourceWeight.toFixed(2)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <p className="text-xs text-slate-500 italic">{detail.explanation.description}</p>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="bg-slate-800/30 rounded-xl p-5 border border-slate-700">
                       <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">

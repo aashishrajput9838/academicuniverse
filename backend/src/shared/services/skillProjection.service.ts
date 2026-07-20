@@ -8,6 +8,7 @@ import { toObjectId } from '../../utils/mongooseHelpers';
 import { eventBus } from '../../events/EventBus';
 import { UaipEvent } from '../../events/UaipEvents';
 import { Logger } from '../../utils/logger';
+import { ProficiencyExplanationDTO, ConfidenceExplanationDTO } from '../../shared/dtos/skills.dto';
 
 const logger = new Logger('SkillProjectionService');
 
@@ -39,6 +40,10 @@ export class SkillProjectionService {
     { maxAgeMs: 24 * 30 * 24 * 60 * 60 * 1000, factor: 0.75 },
     { maxAgeMs: Infinity, factor: 0.6 },
   ];
+
+  getSourceWeight(source: SkillSource): number {
+    return this.SOURCE_WEIGHTS[source] ?? 0.5;
+  }
 
   computeProficiency(evidence: ISkillEvidence[]): ProficiencyResult {
     const now = Date.now();
@@ -81,6 +86,125 @@ export class SkillProjectionService {
       firstSeenAt: firstSeen ?? new Date(0),
       lastVerifiedAt: lastVerified ?? new Date(0),
       evidenceCount: activeCount,
+    };
+  }
+
+  generateProficiencyExplanation(evidence: ISkillEvidence[]): ProficiencyExplanationDTO {
+    const now = Date.now();
+    let weightedSum = 0;
+    let weightTotal = 0;
+    let activeCount = 0;
+    const sourceWeights: Record<string, { count: number; totalWeight: number; sourceWeight: number; isSourceDefault: boolean }> = {};
+
+    for (const e of evidence) {
+      if (e.status !== 'ACTIVE') continue;
+      if (e.effectiveTo && new Date(e.effectiveTo).getTime() < now) continue;
+
+      const ageMs = now - new Date(e.effectiveFrom).getTime();
+      const recency = this.getRecencyFactor(ageMs);
+      const sourceWeight = this.SOURCE_WEIGHTS[e.primarySource] ?? 0.5;
+      const confidence = Math.max(0, Math.min(1, e.confidence));
+      const weight = confidence * sourceWeight * recency;
+
+      weightedSum += weight;
+      weightTotal += weight;
+      activeCount++;
+
+      const sourceKey = e.primarySource;
+      if (!sourceWeights[sourceKey]) {
+        sourceWeights[sourceKey] = { count: 0, totalWeight: 0, sourceWeight, isSourceDefault: true };
+      }
+      sourceWeights[sourceKey].count++;
+      sourceWeights[sourceKey].totalWeight += weight;
+    }
+
+    const rawScore = activeCount > 0 ? (weightedSum / activeCount) * 100 : 0;
+    const score = Math.max(0, Math.min(100, Math.round(rawScore)));
+    const level = this.scoreToLevel(score);
+
+    const sourceBreakdown = Object.entries(sourceWeights).map(([source, data]) => ({
+      source,
+      count: data.count,
+      avgWeight: data.count > 0 ? data.totalWeight / data.count : 0,
+      sourceWeight: data.sourceWeight,
+      isSourceDefault: data.isSourceDefault,
+    }));
+
+    return {
+      score,
+      level,
+      thresholds: {
+        BEGINNER: 0,
+        INTERMEDIATE: 26,
+        ADVANCED: 51,
+        EXPERT: 76,
+      },
+      formula: 'weighted_average',
+      evidenceCount: evidence.length,
+      activeEvidenceCount: activeCount,
+      description: `Proficiency is calculated as the weighted average of all active evidence. Each evidence item contributes a weight based on its confidence, source authority, and recency. The final score is normalized to 0-100.`,
+      sourceBreakdown,
+    };
+  }
+
+  generateConfidenceExplanation(evidence: ISkillEvidence[]): ConfidenceExplanationDTO {
+    const now = Date.now();
+    const activeEvidence = evidence.filter(e => {
+      if (e.status !== 'ACTIVE') return false;
+      if (e.effectiveTo && new Date(e.effectiveTo).getTime() < now) return false;
+      return true;
+    });
+
+    if (activeEvidence.length === 0) {
+      return {
+        overallConfidence: 0,
+        isSourceDefault: false,
+        source: 'NONE',
+        sourceDefaultConfidence: 0,
+        description: 'No active evidence available.',
+        perSourceBreakdown: [],
+      };
+    }
+
+    const totalConfidence = activeEvidence.reduce((sum, e) => sum + e.confidence, 0);
+    const overallConfidence = totalConfidence / activeEvidence.length;
+
+    const sourceConfidences: Record<string, { count: number; total: number; isSourceDefault: boolean; defaultConfidence: number }> = {};
+    for (const e of activeEvidence) {
+      const source = e.primarySource;
+      if (!sourceConfidences[source]) {
+        const defaultConf = this.SOURCE_WEIGHTS[source] ?? 0.5;
+        sourceConfidences[source] = { count: 0, total: 0, isSourceDefault: true, defaultConfidence: defaultConf };
+      }
+      sourceConfidences[source].count++;
+      sourceConfidences[source].total += e.confidence;
+    }
+
+    const perSourceBreakdown = Object.entries(sourceConfidences).map(([source, data]) => ({
+      source,
+      count: data.count,
+      avgConfidence: data.count > 0 ? data.total / data.count : 0,
+      isSourceDefault: data.isSourceDefault,
+    }));
+
+    const primarySource = activeEvidence[0].primarySource;
+    const sourceDefaultConfidence = this.SOURCE_WEIGHTS[primarySource] ?? 0.5;
+    const isSourceDefault = activeEvidence.every(e => Math.abs(e.confidence - sourceDefaultConfidence) < 0.01);
+
+    let description = '';
+    if (isSourceDefault) {
+      description = `All evidence comes from ${primarySource}, which uses a default confidence value of ${Math.round(sourceDefaultConfidence * 100)}%. This reflects the reliability of the source type, not the quality of individual evidence items.`;
+    } else {
+      description = `Confidence values vary across evidence items. This indicates that some evidence was assigned custom confidence values rather than using source defaults.`;
+    }
+
+    return {
+      overallConfidence,
+      isSourceDefault,
+      source: primarySource,
+      sourceDefaultConfidence,
+      description,
+      perSourceBreakdown,
     };
   }
 

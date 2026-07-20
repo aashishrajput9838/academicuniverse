@@ -1,6 +1,6 @@
 'use client';
 
-import { GraduationCap, Github, FileText, BookOpen, Code2, Briefcase, ClipboardCheck, User, Plus } from 'lucide-react';
+import { GraduationCap, Github, FileText, BookOpen, Briefcase, User, Plus } from 'lucide-react';
 import { EvidenceSourceType, MissingEvidenceItem } from '../types/skills';
 import { cn } from '@/lib/utils';
 
@@ -9,11 +9,10 @@ const missingIcons: Record<EvidenceSourceType, React.ReactNode> = {
   GITHUB: <Github className="w-5 h-5" />,
   CERTIFICATE: <FileText className="w-5 h-5" />,
   RESEARCH: <BookOpen className="w-5 h-5" />,
-  CODING_ARENA: <Code2 className="w-5 h-5" />,
+  CODING_ARENA: <Plus className="w-5 h-5" />,
   PROJECT: <Briefcase className="w-5 h-5" />,
-  ASSESSMENT: <ClipboardCheck className="w-5 h-5" />,
   MANUAL: <User className="w-5 h-5" />,
-};
+} as any;
 
 interface MissingEvidencePanelProps {
   missingItems: MissingEvidenceItem[];
@@ -42,7 +41,7 @@ export function MissingEvidencePanel({ missingItems }: MissingEvidencePanelProps
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-white font-medium text-sm">{item.label}</div>
-              <div className="text-slate-400 text-xs mt-0.5">{item.description}</div>
+              <div className="text-slate-400 text-xs mt-0.5 whitespace-pre-line">{item.description}</div>
             </div>
           </div>
         ))}

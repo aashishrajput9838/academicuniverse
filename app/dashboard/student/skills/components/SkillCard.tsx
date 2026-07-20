@@ -122,6 +122,48 @@ export function SkillCard({ skill, onSelect, isSelected }: SkillCardProps) {
                 <span className="text-white font-medium">{skill.evidenceCount}</span>
               </div>
             </div>
+
+            {skill.explanation && (
+              <div className="p-3 rounded-lg bg-slate-800/50 border border-slate-700 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-400">Proficiency Score</span>
+                  <span className="text-white font-medium">{skill.explanation.score}/100</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-400">Level</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${proficiencyColors[skill.proficiencyLevel]}`}>
+                    {skill.proficiencyLevel}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-500 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Thresholds:</span>
+                    <span>INTERMEDIATE ≥{skill.explanation.thresholds.INTERMEDIATE} | ADVANCED ≥{skill.explanation.thresholds.ADVANCED} | EXPERT ≥{skill.explanation.thresholds.EXPERT}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Formula:</span>
+                    <span className="text-slate-400">{skill.explanation.formula}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Active evidence:</span>
+                    <span className="text-slate-400">{skill.explanation.activeEvidenceCount} of {skill.explanation.evidenceCount}</span>
+                  </div>
+                </div>
+                {skill.explanation.sourceBreakdown.length > 0 && (
+                  <div className="text-xs text-slate-500">
+                    <span className="block mb-1">Sources:</span>
+                    {skill.explanation.sourceBreakdown.map((src, idx) => (
+                      <div key={idx} className="flex justify-between items-center">
+                        <span className="text-slate-400">{src.source} {src.isSourceDefault ? '(default)' : ''}</span>
+                        <span className="text-slate-500">×{src.count} · w={src.sourceWeight.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-slate-500 italic">{skill.explanation.description}</p>
+              </div>
+            )}
+
             {skill.aliases.length > 0 && (
               <div>
                 <span className="text-slate-400 text-sm block mb-1">Aliases</span>

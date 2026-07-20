@@ -15,6 +15,7 @@ export interface SkillRecordDTO {
   status: string;
   createdAt: Date;
   updatedAt: Date;
+  explanation?: ProficiencyExplanationDTO;
 }
 
 export interface SkillEvidenceDTO {
@@ -32,6 +33,7 @@ export interface SkillEvidenceDTO {
   createdAt: Date;
   updatedAt: Date;
   sourceDetails?: EvidenceSourceDetails;
+  explanation?: SourceDefaultInfo;
 }
 
 export interface EvidenceSourceDetails {
@@ -97,4 +99,47 @@ export interface ApiEnvelope<T = any> {
   statusCode: number;
   message: string;
   data: T;
+}
+
+export interface SourceDefaultInfo {
+  source: string;
+  defaultConfidence: number;
+  isSourceDefault: boolean;
+  description: string;
+}
+
+export interface ConfidenceExplanationDTO {
+  overallConfidence: number;
+  isSourceDefault: boolean;
+  source: string;
+  sourceDefaultConfidence: number;
+  description: string;
+  perSourceBreakdown: Array<{
+    source: string;
+    count: number;
+    avgConfidence: number;
+    isSourceDefault: boolean;
+  }>;
+}
+
+export interface ProficiencyExplanationDTO {
+  score: number;
+  level: string;
+  thresholds: {
+    BEGINNER: number;
+    INTERMEDIATE: number;
+    ADVANCED: number;
+    EXPERT: number;
+  };
+  formula: string;
+  evidenceCount: number;
+  activeEvidenceCount: number;
+  description: string;
+  sourceBreakdown: Array<{
+    source: string;
+    count: number;
+    avgWeight: number;
+    sourceWeight: number;
+    isSourceDefault: boolean;
+  }>;
 }

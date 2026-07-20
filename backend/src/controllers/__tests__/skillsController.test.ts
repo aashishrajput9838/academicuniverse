@@ -50,6 +50,18 @@ describe('SkillsController', () => {
     mockedPersonResolver.mockImplementation(() => ({
       resolve: resolveMock,
     }) as any);
+    mockedEvidenceRepo.prototype.findByPerson.mockResolvedValue([]);
+    mockedProjectionService.prototype.generateProficiencyExplanation.mockReturnValue({
+      score: 50,
+      level: 'INTERMEDIATE',
+      thresholds: { BEGINNER: 0, INTERMEDIATE: 26, ADVANCED: 51, EXPERT: 76 },
+      formula: 'weighted_average',
+      evidenceCount: 0,
+      activeEvidenceCount: 0,
+      description: 'Test explanation',
+      sourceBreakdown: [],
+    } as any);
+    mockedProjectionService.prototype.getSourceWeight.mockReturnValue(0.7);
   });
 
   describe('getMySkills', () => {

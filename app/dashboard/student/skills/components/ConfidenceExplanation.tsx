@@ -1,6 +1,6 @@
 'use client';
 
-import { Shield, CheckCircle2 } from 'lucide-react';
+import { Shield, CheckCircle2, Info, AlertTriangle } from 'lucide-react';
 import { SkillEvidenceDTO, EvidenceSourceType } from '../types/skills';
 import { cn } from '@/lib/utils';
 
@@ -22,7 +22,9 @@ export function ConfidenceExplanation({ confidence, evidence }: ConfidenceExplan
   const reasons = Array.from(evidenceBySource.entries()).map(([source, items]) => {
     const count = items.length;
     const avgConfidence = items.reduce((sum, i) => sum + i.confidence, 0) / count;
-    return { source: source as EvidenceSourceType, count, avgConfidence };
+    const explanation = items[0]?.explanation;
+    const isSourceDefault = explanation?.isSourceDefault ?? true;
+    return { source: source as EvidenceSourceType, count, avgConfidence, isSourceDefault, explanation };
   });
 
   const sourceLabels: Record<EvidenceSourceType, string> = {
@@ -36,6 +38,10 @@ export function ConfidenceExplanation({ confidence, evidence }: ConfidenceExplan
     MANUAL: 'Manual Evidence',
   };
 
+  const overallIsSourceDefault = reasons.every(r => r.isSourceDefault);
+  const primarySource = reasons[0]?.source;
+  const primaryExplanation = reasons[0]?.explanation;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -44,9 +50,31 @@ export function ConfidenceExplanation({ confidence, evidence }: ConfidenceExplan
         </div>
         <div>
           <div className="text-2xl font-bold text-white">{Math.round(confidence * 100)}%</div>
-          <div className="text-sm text-slate-400">Confidence Score</div>
+          <div className="text-sm text-slate-400">
+            {overallIsSourceDefault ? 'Source Default Confidence' : 'Average Confidence'}
+          </div>
         </div>
       </div>
+
+      {overallIsSourceDefault && primaryExplanation && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-200">
+            This confidence value is a <strong>source default</strong>, not a repository quality assessment.
+            {primaryExplanation.description}
+          </p>
+        </div>
+      )}
+
+      {!overallIsSourceDefault && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+          <AlertTriangle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-200">
+            Confidence values vary across evidence items. Some evidence uses custom confidence values
+            instead of source defaults.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2">
         <p className="text-sm text-slate-300">Because:</p>
@@ -61,10 +89,22 @@ export function ConfidenceExplanation({ confidence, evidence }: ConfidenceExplan
               <span className="text-slate-500 text-xs ml-auto">
                 {Math.round(reason.avgConfidence * 100)}% avg
               </span>
+              {reason.isSourceDefault && (
+                <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-300 border border-slate-600">
+                  default
+                </span>
+              )}
             </li>
           ))}
         </ul>
       </div>
+
+      {primarySource === 'GITHUB' && (
+        <div className="text-xs text-slate-500 mt-2">
+          GitHub evidence confidence is currently a fixed source default. Future versions will assess
+          each repository individually based on size, activity, and community engagement.
+        </div>
+      )}
     </div>
   );
 }

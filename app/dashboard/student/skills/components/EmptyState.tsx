@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { GraduationCap, Github, FileText, BookOpen, Code2 } from 'lucide-react';
+import { GraduationCap, Github, FileText, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/AuthContext';
 import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
@@ -20,7 +20,6 @@ export function EmptyState({ onRetry, syncing }: EmptyStateProps) {
     { icon: <Github className="w-5 h-5" />, label: 'Connect GitHub', description: 'Sync your repositories', action: 'github' },
     { icon: <FileText className="w-5 h-5" />, label: 'Upload Certificates', description: 'Add professional certifications', action: null },
     { icon: <BookOpen className="w-5 h-5" />, label: 'Add Research', description: 'Link your publications', action: null },
-    { icon: <Code2 className="w-5 h-5" />, label: 'Complete Assessments', description: 'Take skill assessments', action: null },
   ];
 
   const handleAction = async (action: string | null) => {

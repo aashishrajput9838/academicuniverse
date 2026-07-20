@@ -93,7 +93,22 @@ export const getMySkills = async (req: any, res: Response) => {
     const personId = await personResolver.resolve(authUserId, organizationId, user.email, user.name);
 
     const records = await skillRecordRepo.findByPerson(personId, organizationId);
-    const skills = records.map(toSkillRecordDTO);
+    const allEvidence = await evidenceRepo.findByPerson(personId, organizationId);
+    const evidenceBySkill = new Map<string, any[]>();
+    for (const e of allEvidence) {
+      const key = e.skillId;
+      if (!evidenceBySkill.has(key)) {
+        evidenceBySkill.set(key, []);
+      }
+      evidenceBySkill.get(key)!.push(e);
+    }
+
+    const skills = records.map(record => {
+      const dto = toSkillRecordDTO(record);
+      const evidence = evidenceBySkill.get(record.skillId) || [];
+      dto.explanation = skillProjectionService.generateProficiencyExplanation(evidence);
+      return dto;
+    });
 
     const categories: Record<string, { count: number; averageScore: number }> = {};
     for (const skill of skills) {
@@ -177,8 +192,19 @@ export const getMySkillEvidence = async (req: any, res: Response) => {
     const evidenceDTOs = evidence.map(raw => {
       const dto = toSkillEvidenceDTO(raw);
       const sourceDetails = buildSourceDetails(raw, githubRecordMap);
+      const sourceDefaultConfidence = skillProjectionService.getSourceWeight(raw.primarySource);
+      dto.explanation = {
+        source: raw.primarySource,
+        defaultConfidence: sourceDefaultConfidence,
+        isSourceDefault: Math.abs(raw.confidence - sourceDefaultConfidence) < 0.01,
+        description: raw.confidence === sourceDefaultConfidence
+          ? `This evidence uses the default confidence value (${Math.round(sourceDefaultConfidence * 100)}%) for ${raw.primarySource} sources. This reflects source reliability, not individual evidence quality.`
+          : `This evidence has a custom confidence value (${Math.round(raw.confidence * 100)}%), different from the ${raw.primarySource} source default (${Math.round(sourceDefaultConfidence * 100)}%).`,
+      };
       return { ...dto, sourceDetails };
     });
+
+    const proficiencyExplanation = skillProjectionService.generateProficiencyExplanation(evidence);
 
     return sendResponse(
       res,
@@ -187,6 +213,7 @@ export const getMySkillEvidence = async (req: any, res: Response) => {
         skillId: skillRecord.skillId,
         skillName: skillRecord.skillName,
         evidence: evidenceDTOs,
+        explanation: proficiencyExplanation,
       },
       'Skill evidence retrieved'
     );

@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import TemplateUploadForm from '@/components/Resume/TemplateUploadForm';
-import TemplateList from '@/components/Resume/TemplateList';
 
 export default function ResumeTemplatesPage() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -17,11 +15,9 @@ export default function ResumeTemplatesPage() {
       </div>
 
       <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-700 shadow-xl">
-        <TemplateUploadForm onUploadSuccess={() => setRefreshKey(k => k + 1)} />
-      </div>
-
-      <div className="pt-6">
-        <TemplateList key={refreshKey} />
+        <p className="text-slate-400 text-center py-8">
+          Template management interface coming in Phase 6.
+        </p>
       </div>
     </div>
   );

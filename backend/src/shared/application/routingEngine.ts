@@ -13,7 +13,8 @@ import { ResearchPaperRecord } from '../../models/ResearchPaperRecord';
 import { GithubRecord } from '../../models/GithubRecord';
 import { Logger } from '../../shared/utils';
 import { toObjectId } from '../../utils/mongooseHelpers';
-import { ModuleRegistry, ModuleDescriptor } from './moduleRegistry';
+import { ModuleRegistry } from './moduleRegistry';
+import type { ModuleDescriptor } from './moduleRegistry';
 import { ModulePopulationLog } from '../../models/ModulePopulationLog';
 import { normalizeScheduleDates, normalizeDate } from '../../shared/utils/dateNormalizer';
 import { SemesterResolutionService } from '../../shared/services/semesterResolution.service';
@@ -22,7 +23,8 @@ import { UaipEvent } from '../../events/UaipEvents';
 
 const logger = new Logger('RoutingEngine');
 
-export { ModuleRegistry, ModuleDescriptor } from './moduleRegistry';
+export { ModuleRegistry } from './moduleRegistry';
+export type { ModuleDescriptor } from './moduleRegistry';
 
 export const moduleRegistry: ModuleDescriptor[] = ModuleRegistry.getInstance().getAll();
 

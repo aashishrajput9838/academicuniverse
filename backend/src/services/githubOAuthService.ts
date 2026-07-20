@@ -171,6 +171,22 @@ export class GithubOAuthService {
       throw new Error(`Failed to remove GitHub access token: ${error.message}`);
     }
   }
+
+  /**
+   * Checks whether the user has a stored GitHub OAuth connection.
+   * Does NOT decrypt the token.
+   * @param firebaseUid The Firebase UID of the user
+   * @returns true if githubAccessToken exists, false otherwise
+   */
+  async hasGithubOAuthConnection(firebaseUid: string): Promise<boolean> {
+    try {
+      const user = await User.findOne({ firebaseUid }).select('githubAccessToken');
+      return !!user?.githubAccessToken?.encryptedToken;
+    } catch (error: any) {
+      logger.error('Error checking GitHub OAuth connection status:', error.message);
+      return false;
+    }
+  }
 }
 
 // Create a singleton instance getter that initializes on first use

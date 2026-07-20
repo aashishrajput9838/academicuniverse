@@ -225,3 +225,23 @@ export const getDeveloperStats = async (req: AuthenticatedRequest, res: Response
     return sendError(res, 500, 'Failed to retrieve developer statistics');
   }
 };
+
+/**
+ * Gets GitHub OAuth connection status
+ * GET /api/github/connection-status
+ */
+export const getGithubConnectionStatus = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return sendError(res, 401, 'Authentication required');
+    }
+
+    const githubOAuthService = getGithubOAuthService();
+    const connected = await githubOAuthService.hasGithubOAuthConnection(req.user.firebaseUid!);
+
+    return sendResponse(res, 200, { connected }, 'GitHub connection status retrieved');
+  } catch (error: any) {
+    logger.error('Error retrieving GitHub connection status:', error);
+    return sendError(res, 500, 'Failed to retrieve GitHub connection status');
+  }
+};

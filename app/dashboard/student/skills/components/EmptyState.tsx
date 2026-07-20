@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { GraduationCap, Github, FileText, BookOpen, Code2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/AuthContext';
+import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
 
 interface EmptyStateProps {
   onRetry?: () => void;
@@ -12,7 +13,7 @@ interface EmptyStateProps {
 
 export function EmptyState({ onRetry, syncing }: EmptyStateProps) {
   const { backendToken } = useAuth();
-  const [connecting, setConnecting] = useState(false);
+  const { connect: connectGitHub, connecting } = useGitHubOAuth({ backendToken });
 
   const actions = [
     { icon: <GraduationCap className="w-5 h-5" />, label: 'Connect Academic Profile', description: 'Import your transcript', action: null },
@@ -22,64 +23,9 @@ export function EmptyState({ onRetry, syncing }: EmptyStateProps) {
     { icon: <Code2 className="w-5 h-5" />, label: 'Complete Assessments', description: 'Take skill assessments', action: null },
   ];
 
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'GITHUB_CONNECT_ERROR') {
-        console.error('GitHub connection error:', event.data.error);
-        setConnecting(false);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
   const handleAction = async (action: string | null) => {
-    if (action === 'github' && backendToken) {
-      setConnecting(true);
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'}/api/github/connect`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${backendToken}`,
-          },
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to initiate GitHub OAuth');
-        }
-
-        const data = await response.json();
-        if (data?.success && data?.data?.authUrl) {
-          const width = 600;
-          const height = 700;
-          const left = window.screenX + (window.outerWidth - width) / 2;
-          const top = window.screenY + (window.outerHeight - height) / 2;
-          const popup = window.open(
-            data.data.authUrl,
-            'GitHub OAuth',
-            `width=${width},height=${height},left=${left},top=${top}`
-          );
-
-          if (!popup) {
-            setConnecting(false);
-            alert('Popup was blocked. Please allow popups for this site.');
-          } else {
-            const pollTimer = setInterval(() => {
-              if (popup.closed) {
-                clearInterval(pollTimer);
-                setConnecting(false);
-              }
-            }, 500);
-          }
-        } else {
-          setConnecting(false);
-        }
-      } catch (error) {
-        console.error('GitHub connect error:', error);
-        setConnecting(false);
-      }
+    if (action === 'github') {
+      await connectGitHub();
     }
   };
 

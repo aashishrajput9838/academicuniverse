@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { MarksOverviewCard } from '@/components/MarksOverviewCard';
@@ -12,16 +12,98 @@ import { GrowthUploadPanel } from '@/components/GrowthUploadPanel';
 import { useGrowthStore } from './store/growthStore';
 import { useGrowthUploadStore } from './store/growthUploadStore';
 import { useModuleRefresh } from '@/hooks/useModuleRefresh';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/utils/api';
+import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
 
 export default function StudentGrowthHub() {
   const { user, backendUser, backendToken, loading } = useAuth();
   const router = useRouter();
   const { growthData, loading: isLoadingData, error, lastFetchedAt, refresh, reset } = useGrowthStore();
   const stopAllPolling = useGrowthUploadStore((s) => s.stopAllPolling);
+  const { toast } = useToast();
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [hasGithubOAuthConnection, setHasGithubOAuthConnection] = useState(false);
+
+  const checkConnection = useCallback(async () => {
+    if (!backendToken) return false;
+
+    try {
+      const result = await apiRequest<{ connected: boolean }>('/api/github/connection-status', {
+        headers: {
+          'Authorization': `Bearer ${backendToken}`,
+        },
+      });
+
+      setHasGithubOAuthConnection(result.data.connected);
+      return true;
+    } catch (err) {
+      setHasGithubOAuthConnection(false);
+      return false;
+    }
+  }, [backendToken]);
+
+  const handleConnected = useCallback(async () => {
+    await checkConnection();
+    if (backendToken) {
+      await refresh(backendToken);
+    }
+  }, [backendToken, checkConnection, refresh]);
+
+  const { connect: connectGitHub, connecting: connectingGithub } = useGitHubOAuth({
+    backendToken,
+    onConnected: handleConnected,
+  });
 
   useModuleRefresh(['growth_hub', 'academic_records', 'academic_schedule', 'certificates', 'career_profile'], () => {
     if (backendToken) refresh(backendToken);
   });
+
+  useEffect(() => {
+    if (!backendToken) return;
+
+    let cancelled = false;
+
+    async function runCheck() {
+      await checkConnection();
+    }
+
+    runCheck();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [backendToken, checkConnection]);
+
+  const handleDisconnectGitHub = async () => {
+    if (!backendToken || disconnecting) return;
+
+    setDisconnecting(true);
+    try {
+      await apiRequest('/api/github/disconnect', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${backendToken}`,
+        },
+      });
+
+      toast({
+        title: 'GitHub disconnected',
+        description: 'Your GitHub account has been unlinked. You can reconnect it from the Growth Hub or Skills page.',
+      });
+
+      setHasGithubOAuthConnection(false);
+      await refresh(backendToken);
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to disconnect GitHub account',
+        variant: 'destructive',
+      });
+    } finally {
+      setDisconnecting(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading && (!user || !backendUser)) {
@@ -129,6 +211,32 @@ export default function StudentGrowthHub() {
           <SubjectPerformanceCard subjectWisePerformance={growthData.metrics.subjectWisePerformance} />
         </div>
       ) : null}
+
+      {!isLoadingData && (
+        hasGithubOAuthConnection ? (
+          <div className="mt-6 flex justify-end">
+            <button
+              type="button"
+              onClick={handleDisconnectGitHub}
+              disabled={disconnecting}
+              className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
+            >
+              {disconnecting ? 'Disconnecting...' : 'Disconnect GitHub'}
+            </button>
+          </div>
+        ) : (
+          <div className="mt-6 flex justify-end">
+            <button
+              type="button"
+              onClick={connectGitHub}
+              disabled={connectingGithub || !backendToken}
+              className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50"
+            >
+              {connectingGithub ? 'Connecting...' : 'Connect GitHub'}
+            </button>
+          </div>
+        )
+      )}
     </div>
   );
 }

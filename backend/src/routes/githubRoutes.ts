@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { getProjectStats, refreshProjectStats, syncGithubData } from '../controllers/githubController';
 import { authenticateUser } from '../middleware/auth';
-import { 
-  githubOAuthCallback, 
-  connectGithub, 
-  disconnectGithub, 
-  getDeveloperStats 
+import {
+  githubOAuthCallback,
+  connectGithub,
+  disconnectGithub,
+  getDeveloperStats,
+  getGithubConnectionStatus
 } from '../controllers/githubOAuthController';
 
 const router = Router();
@@ -37,6 +38,13 @@ router.delete('/disconnect', authenticateUser, disconnectGithub);
  * @access  Private (Student role only)
  */
 router.get('/stats', authenticateUser, getDeveloperStats);
+
+/**
+ * @route   GET /api/github/connection-status
+ * @desc    Get GitHub OAuth connection status
+ * @access  Private (Student role only)
+ */
+router.get('/connection-status', authenticateUser, getGithubConnectionStatus);
 
 /**
  * @route   GET /api/github/projects

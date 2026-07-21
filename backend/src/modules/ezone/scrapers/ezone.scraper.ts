@@ -455,6 +455,17 @@ export class EzoneScraper {
             logger.info(`[SCRAPER] mergedExtract: ${JSON.stringify({ profile: rawData.profile, attendance: rawData.attendance, caMarksCount: rawData.caMarks?.length, timetableCount: rawData.timetable?.length, subjectsCount: rawData.subjects?.length })}`);
 
             // Post-Extraction Sanitization & Validation
+            const rawCaMarks = rawData.caMarks || [];
+            const validCaMarks = rawCaMarks.filter((m: any) => {
+                const code = (m.courseCode || '').trim();
+                const name = (m.courseName || '').trim();
+                if (code === 'No record found.' || name === 'No record found.') return false;
+                if (!code && !name) return false;
+                if (code === '-' && name === '-') return false;
+                return true;
+            });
+            logger.info(`[SCRAPER] caMarksFilter: raw=${rawCaMarks.length} valid=${validCaMarks.length} removed=${rawCaMarks.length - validCaMarks.length}`);
+
             const sanitizedData = {
                 studentName: this.sanitize(rawData.profile.studentName),
                 systemId: this.sanitize(rawData.profile.systemId),
@@ -494,7 +505,7 @@ export class EzoneScraper {
                 return parseInt(safe.replace(/[^0-9]/g, '')) || 0;
                 })(),
 
-                caMarks: (rawData.caMarks || []).map((m: any) => ({
+                caMarks: validCaMarks.map((m: any) => ({
                     courseCode: this.sanitize(m.courseCode),
                     courseName: this.sanitize(m.courseName),
                     assignment1: this.sanitize(m.assignment1),

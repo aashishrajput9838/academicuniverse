@@ -103,7 +103,9 @@ export class EzoneExplorer {
                             const mainTable = tables[0];
                             return {
                                 type: 'Collection',
-                                fields: mainTable.headers.map((h: string) => h?.toLowerCase().replace(/\s+/g, '_') || 'field')
+                                fields: mainTable.headers.map((h: string) => {
+                                    return (h || '').toLowerCase().replace(/\s+/g, '_') || 'field';
+                                })
                             };
                         };
 

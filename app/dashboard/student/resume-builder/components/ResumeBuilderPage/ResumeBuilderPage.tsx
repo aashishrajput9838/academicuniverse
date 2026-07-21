@@ -32,7 +32,11 @@ export default function ResumeBuilderPage() {
     isDownloading,
     downloadError,
     setDownloadError,
+    isDownloadingPdf,
+    pdfDownloadError,
+    setPdfDownloadError,
     downloadResume,
+    downloadPdf,
     retryGeneration,
   } = useResumeBuilder(backendToken || '');
 
@@ -71,13 +75,22 @@ export default function ResumeBuilderPage() {
     setGenerationError(null);
   };
 
-  const handleDownload = () => {
+  const handleDownloadDocx = () => {
     downloadResume();
   };
 
-  const handleRetryDownload = () => {
+  const handleDownloadPdf = () => {
+    downloadPdf();
+  };
+
+  const handleRetryDocx = () => {
     setDownloadError(null);
     downloadResume();
+  };
+
+  const handleRetryPdf = () => {
+    setPdfDownloadError(null);
+    downloadPdf();
   };
 
   if (!backendToken) {
@@ -124,16 +137,20 @@ export default function ResumeBuilderPage() {
         <DownloadToolbar
           onBackToForm={handleBackToForm}
           isGenerating={isGenerating}
-          isDownloading={isDownloading}
-          downloadError={downloadError}
-          onRetryDownload={handleRetryDownload}
+          isDownloading={isDownloading || isDownloadingPdf}
+          downloadError={downloadError || pdfDownloadError}
+          onRetryDownload={handleRetryDocx}
         />
         <ResumePreview
           htmlPreview={generatedPreview}
-          onDownload={handleDownload}
-          isDownloading={isDownloading}
+          onDownloadDocx={handleDownloadDocx}
+          onDownloadPdf={handleDownloadPdf}
+          isDownloadingDocx={isDownloading}
+          isDownloadingPdf={isDownloadingPdf}
           downloadError={downloadError}
-          onRetryDownload={handleRetryDownload}
+          pdfDownloadError={pdfDownloadError}
+          onRetryDocx={handleRetryDocx}
+          onRetryPdf={handleRetryPdf}
         />
       </div>
     );

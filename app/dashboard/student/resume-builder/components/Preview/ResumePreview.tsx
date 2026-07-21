@@ -4,19 +4,27 @@ import { ExportActions } from './ExportActions';
 
 interface ResumePreviewProps {
   htmlPreview: string;
-  onDownload: () => void;
-  isDownloading?: boolean;
+  onDownloadDocx: () => void;
+  onDownloadPdf: () => void;
+  isDownloadingDocx?: boolean;
+  isDownloadingPdf?: boolean;
   downloadError?: string | null;
-  onRetryDownload?: () => void;
+  pdfDownloadError?: string | null;
+  onRetryDocx?: () => void;
+  onRetryPdf?: () => void;
   title?: string;
 }
 
 export function ResumePreview({
   htmlPreview,
-  onDownload,
-  isDownloading = false,
+  onDownloadDocx,
+  onDownloadPdf,
+  isDownloadingDocx = false,
+  isDownloadingPdf = false,
   downloadError,
-  onRetryDownload,
+  pdfDownloadError,
+  onRetryDocx,
+  onRetryPdf,
   title = 'Resume Preview',
 }: ResumePreviewProps) {
   return (
@@ -36,10 +44,14 @@ export function ResumePreview({
         className="w-full h-[600px] border-0"
       />
       <ExportActions
-        onDownload={onDownload}
-        isDownloading={isDownloading}
+        onDownloadDocx={onDownloadDocx}
+        onDownloadPdf={onDownloadPdf}
+        isDownloadingDocx={isDownloadingDocx}
+        isDownloadingPdf={isDownloadingPdf}
         downloadError={downloadError}
-        onRetryDownload={onRetryDownload}
+        pdfDownloadError={pdfDownloadError}
+        onRetryDocx={onRetryDocx}
+        onRetryPdf={onRetryPdf}
       />
     </div>
   );

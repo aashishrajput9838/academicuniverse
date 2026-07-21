@@ -117,7 +117,7 @@ export class EzoneSessionProvider {
 
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Locating OTP trigger button...', { category: 'AUTHENTICATION', actionType: 'page.locator', progress: 40 }, firebaseUid);
             
-            const otpTriggerSelector = '#send_stu_otp_phone';
+            const otpTriggerSelector = '#send_stu_otp_email';
             const otpTriggerButton = page.locator(otpTriggerSelector);
 
             try {
@@ -131,7 +131,7 @@ export class EzoneSessionProvider {
                 }, otpTriggerSelector);
 
             } catch (e) {
-                throw new Error('Verified OTP trigger button (#send_stu_otp_phone) not found or not visible.');
+                throw new Error('Verified OTP trigger button (#send_stu_otp_email) not found or not visible.');
             }
 
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'info', 'Waiting for university backend to dispatch OTP...', { category: 'AUTHENTICATION', progress: 50 }, firebaseUid);
@@ -181,13 +181,41 @@ export class EzoneSessionProvider {
                 await page.keyboard.press('Enter');
             }
 
-            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'info', 'Verifying secure session tokens...', { category: 'AUTHENTICATION', progress: 60 }, firebaseUid);
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'info', 'Waiting for authentication redirect...', { category: 'AUTHENTICATION', progress: 60 }, firebaseUid);
+
+            await page.waitForLoadState('networkidle', { timeout: 45000 });
+
+            const currentUrl = page.url();
+            const pageTitle = await page.title();
+            const bodySnippet = await page.evaluate(() => document.body.innerHTML.substring(0, 500));
+
+            logger.info(`[AUTH-DEBUG] Post-auth URL: ${currentUrl}`);
+            logger.info(`[AUTH-DEBUG] Post-auth Title: ${pageTitle}`);
+            logger.info(`[AUTH-DEBUG] Post-auth Response status: page loaded`);
+            logger.info(`[AUTH-DEBUG] Post-auth Body snippet: ${bodySnippet}`);
+
+            const hasOtpField = await page.$('#otp, input[name="otp"]').then(el => !!el);
+            const hasLoginForm = await page.evaluate(() => {
+                const text = document.body.textContent || '';
+                return text.includes('This field is required') ||
+                       text.includes('OTP') ||
+                       text.includes('Invalid OTP') ||
+                       text.includes('login');
+            });
+
+            if (hasOtpField || hasLoginForm) {
+                throw new Error('Authentication failed: Login page still visible after OTP verification. The OTP may be invalid or expired.');
+            }
+
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'info', 'Verifying secure session tokens...', { category: 'AUTHENTICATION', progress: 75 }, firebaseUid);
             
             await Promise.race([
-                page.waitForURL('**/dashboard', { timeout: 45000 }),
-                page.waitForSelector('.user-profile', { timeout: 45000 }),
-                page.waitForSelector('text=Attendance', { timeout: 45000 }),
-                page.waitForSelector('text=Logout', { timeout: 45000 })
+                page.waitForSelector('.user-profile', { timeout: 30000 }),
+                page.waitForSelector('.user-name, .profile-name, .student-name', { timeout: 30000 }),
+                page.waitForSelector('text=Attendance', { timeout: 30000 }),
+                page.waitForSelector('text=Logout', { timeout: 30000 }),
+                page.waitForURL('**/admin/home', { timeout: 30000 }),
+                page.waitForURL('**/admin/dashboard', { timeout: 30000 })
             ]);
 
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'success', 'Identity verified. Dashboard access granted.', { category: 'AUTHENTICATION', progress: 100 }, firebaseUid);

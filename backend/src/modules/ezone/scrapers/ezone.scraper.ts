@@ -8,10 +8,11 @@ export class EzoneScraper {
      * Strict sanitization to prevent raw HTML/CSS/JS from entering the database
      */
     private sanitize(text: string): string {
-        if (!text) return '';
+        const value = typeof text === "string" ? text : text == null ? "" : String(text);
+        if (!value) return '';
         
         // 1. Remove common HTML tags
-        let clean = text.replace(/<[^>]*>?/gm, ' ');
+        let clean = value.replace(/<[^>]*>?/gm, ' ');
         
         // 2. Remove technical fragments and CSS-like patterns
         const blacklist = [
@@ -30,7 +31,7 @@ export class EzoneScraper {
             /\s\s+/g // Multiple spaces
         ];
 
-        blacklist.forEach(pattern => {
+        blacklist.forEach((pattern) => {
             clean = clean.replace(pattern, ' ');
         });
 
@@ -57,6 +58,247 @@ export class EzoneScraper {
      * Extract real profile and attendance data from the Ezone Home page
      * URL: https://student.sharda.ac.in/admin/home
      */
+    private async extractPageData(page: Page): Promise<any> {
+        return await page.evaluate(() => {
+            const clean = (text: string) => {
+                if (!text) return '';
+                return text.trim().replace(/\s+/g, ' ');
+            };
+
+            const findTableByHeaders = (headerTexts: string[]) => {
+                const allTables = Array.from(document.querySelectorAll('table'));
+                const matchedTables: Element[] = [];
+                for (const table of allTables) {
+                    const headerCandidates = [
+                        ...Array.from(table.querySelectorAll('th')),
+                        ...Array.from(table.querySelectorAll('tr:first-child td'))
+                    ];
+                    
+                    const hasMatchingHeader = headerTexts.some(text => 
+                        headerCandidates.some(h => 
+                            clean(h.textContent || '').toUpperCase().includes(text.toUpperCase())
+                        )
+                    );
+                    
+                    if (hasMatchingHeader) {
+                        matchedTables.push(table);
+                    }
+                }
+                
+                return matchedTables;
+            };
+
+            const extractTable = (options: string | { headers: string[] }, colMap: Record<string, number>): any[] => {
+                let tables: Element[] = [];
+                if (typeof options === 'string') {
+                    const table = document.querySelector(options);
+                    if (table) tables = [table];
+                } else {
+                    tables = findTableByHeaders(options.headers);
+                }
+                if (!tables.length) return [];
+                
+                const results: any[] = [];
+                for (const table of tables) {
+                    // Detect if first row is a header row (contains <th>)
+                    const firstRow = table.querySelector('tr');
+                    const hasHeaderRow = firstRow?.querySelector('th') !== null;
+                    const rows = Array.from(table.querySelectorAll('tr'));
+                    const startIndex = hasHeaderRow ? 1 : 0;
+                    
+                    for (let i = startIndex; i < rows.length; i++) {
+                        const cells = Array.from(rows[i].querySelectorAll('td'));
+                        if (cells.length === 0) continue;
+                        
+                        const data: any = {};
+                        Object.entries(colMap).forEach(([key, idx]) => {
+                            data[key] = clean(cells[idx]?.textContent || 'N/A');
+                        });
+                        results.push(data);
+                    }
+                }
+                
+                return results;
+            };
+
+            const findLabelValue = (label: string) => {
+                const elements = Array.from(document.querySelectorAll('td, th, span, div, p, strong, b, label'));
+                const target = elements.find(el => {
+                    const text = (el.textContent?.trim() || '').toUpperCase();
+                    return text === label.toUpperCase() || text === (label.toUpperCase() + ':');
+                });
+                
+                if (!target) return 'N/A';
+                
+                // Strategy 1: Extract value from parent text by removing label
+                const parent = target.parentElement;
+                if (parent) {
+                    const fullText = parent.textContent?.trim() || '';
+                    const labelText = target.textContent?.trim() || '';
+                    let valueText = fullText.replace(labelText, '').trim();
+                    valueText = clean(valueText);
+                    if (valueText) {
+                        return valueText;
+                    }
+                }
+                
+                // Strategy 2: Try next element sibling (fallback)
+                const next = target.nextElementSibling;
+                if (next) return clean(next.textContent || 'N/A');
+                
+                return 'N/A';
+            };
+
+            const profile = {
+                studentName: findLabelValue('Name'),
+                systemId: findLabelValue('System ID'),
+                program: findLabelValue('Program') || findLabelValue('Program [G]') || findLabelValue('Course'),
+                school: findLabelValue('School') || findLabelValue('Department'),
+                semester: findLabelValue('Semester') || findLabelValue('Term'),
+                status: findLabelValue('Programme Status') || findLabelValue('Status') || 'Active'
+            };
+
+            const attendance = (() => {
+                const statWidget = document.querySelector('.statess');
+                if (!statWidget) {
+                    return {
+                        total: 'N/A',
+                        present: 'N/A',
+                        absent: 'N/A',
+                        percentage: 'N/A'
+                    };
+                }
+
+                const columns = statWidget.querySelectorAll('.col-md-12.text-center');
+                const result: Record<string, string> = {};
+
+                columns.forEach((col: any) => {
+                    const labelEl = col.querySelector('p.mb-0');
+                    const valueEl = col.querySelector('h5');
+                    const label = labelEl?.textContent?.trim() || '';
+                    const value = valueEl?.textContent?.trim() || '';
+
+                    if (label === 'Total') result.total = value;
+                    else if (label === 'Present') result.present = value;
+                    else if (label === 'Absent') result.absent = value;
+                });
+
+                if (!result.present && result.total && result.absent) {
+                    const totalNum = parseInt(result.total) || 0;
+                    const absentNum = parseInt(result.absent) || 0;
+                    if (totalNum >= absentNum) {
+                        result.present = String(totalNum - absentNum);
+                    }
+                }
+
+                return {
+                    total: result.total || 'N/A',
+                    present: result.present || 'N/A',
+                    absent: result.absent || 'N/A',
+                    percentage: 'N/A'
+                };
+            })();
+
+            const caMarks = extractTable({ headers: ['Course'] }, {
+                courseCode: 0,
+                courseName: 0,
+                assignment1: 1,
+                assessment1: 2,
+                assignment2: 3,
+                assessment2: 4,
+                total: 5
+            });
+
+            const subjects = extractTable({ headers: ['Credits'] }, {
+                courseCode: 0,
+                courseName: 0,
+                faculty: 1,
+                courseType: 2,
+                credits: 3,
+                attendancePercentage: 4
+            });
+
+            const timetableResult = (() => {
+                const table = document.querySelector('table.viewtimetalbe, table.attendencetable, #table.table');
+                if (!table) {
+                    return { timetable: [], meta: { rows: 0, classes: 0, skipped: 0 } };
+                }
+
+                const rows = Array.from(table.querySelectorAll('tr'));
+                if (rows.length === 0) {
+                    return { timetable: [], meta: { rows: 0, classes: 0, skipped: 0 } };
+                }
+
+                const timeSlots: string[] = [];
+                const headerCells = rows[0].querySelectorAll('th');
+                for (let i = 1; i < headerCells.length; i++) {
+                    const text = headerCells[i].textContent?.trim() || '';
+                    timeSlots.push(text);
+                }
+
+                const classes: any[] = [];
+                let skipped = 0;
+
+                for (let r = 1; r < rows.length; r++) {
+                    const row = rows[r];
+                    const dayTh = row.querySelector('th');
+                    const day = dayTh?.textContent?.trim() || '';
+                    const cells = row.querySelectorAll('td');
+
+                    for (let c = 0; c < cells.length; c++) {
+                        const card = cells[c].querySelector('.tableshaddow');
+                        if (!card) {
+                            skipped++;
+                            continue;
+                        }
+
+                        const subjectEl = card.querySelector('p');
+                        const roomEl = card.querySelector('.badge-primary');
+                        const facultyEl = card.querySelector('.badge-danger');
+
+                        const rawSubject = subjectEl?.textContent?.trim() || '';
+                        const parts = rawSubject.split(' - ');
+                        const courseCode = parts[0]?.trim() || '';
+                        const subject = parts.slice(1).join(' - ').trim();
+
+                        const room = roomEl?.textContent?.trim() || '';
+                        const faculty = facultyEl?.textContent?.trim() || '';
+
+                        if (courseCode || subject) {
+                            classes.push({
+                                day,
+                                time: timeSlots[c] || '',
+                                courseCode,
+                                subject,
+                                faculty,
+                                room
+                            });
+                        } else {
+                            skipped++;
+                        }
+                    }
+                }
+
+                return {
+                    timetable: classes,
+                    meta: {
+                        rows: rows.length - 1,
+                        classes: classes.length,
+                        skipped
+                    }
+                };
+            })();
+            const { timetable, meta: timetableMeta } = timetableResult;
+
+            const holidays = extractTable({ headers: ['Holiday'] }, {
+                name: 0,
+                date: 1
+            });
+
+            return { profile, attendance, caMarks, subjects, timetable, holidays, timetableMeta };
+        });
+    }
+
     async extractData(page: Page, userId: string, organizationId: string, sessionId: string, firebaseUid?: string): Promise<any> {
         const ezoneLogger = (await import('../services/ezone-logger.service')).EzoneLogger.getInstance();
         
@@ -77,148 +319,118 @@ export class EzoneScraper {
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Checking for blocking popups or feedback forms...', { category: 'EXTRACTION', actionType: 'handlePopups', progress: 25 }, firebaseUid);
             await this.handlePopups(page, userId, organizationId, sessionId, firebaseUid);
 
-            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Executing strict structured extraction...', { category: 'EXTRACTION', actionType: 'page.evaluate', progress: 50 }, firebaseUid);
-            
-            const rawData = await page.evaluate(() => {
-                const clean = (text: string) => {
-                    if (!text) return '';
-                    return text.trim().replace(/\s+/g, ' ');
+            // Discover navigation URLs from dashboard
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Discovering navigation URLs from dashboard...', { category: 'EXTRACTION', actionType: 'page.evaluate', progress: 30 }, firebaseUid);
+            const navigationUrls = await page.evaluate(() => {
+                const urls: Record<string, string> = {};
+                const keywords: Record<string, string[]> = {
+                    attendance: ['attendance', 'attend'],
+                    marks: ['marks', 'grade', 'result', 'ca marks'],
+                    timetable: ['timetable', 'schedule', 'time table'],
+                    subjects: ['subjects', 'course', 'syllabus']
                 };
 
-                const findTableByHeaders = (headerTexts: string[]) => {
-                    const allTables = Array.from(document.querySelectorAll('table'));
-                    for (const table of allTables) {
-                        // Check both <th> and also first <tr> for headers!
-                        const headerCandidates = [
-                            ...Array.from(table.querySelectorAll('th')),
-                            ...Array.from(table.querySelectorAll('tr:first-child td'))
-                        ];
-                        
-                        const headerText = headerCandidates.map(h => clean(h.textContent || '')).join(' ').toUpperCase();
-                        
-                        // Check if any header contains any of the required texts
-                        const hasMatchingHeader = headerTexts.some(text => 
-                            headerCandidates.some(h => 
-                                clean(h.textContent || '').toUpperCase().includes(text.toUpperCase())
-                            )
-                        );
-                        
-                        if (hasMatchingHeader) {
-                            return table;
-                        }
-                    }
-                    
-                    // If no table found by headers, just return the first table!
-                    return allTables[0] || null;
-                };
+                document.querySelectorAll('a[href]').forEach((a) => {
+                    const href = (a as HTMLAnchorElement).href || '';
+                    const text = (a.textContent || '').trim().toLowerCase();
 
-                const extractTable = (options: string | { headers: string[] }, colMap: Record<string, number>) => {
-                    let table: Element | null | undefined;
-                    if (typeof options === 'string') {
-                        table = document.querySelector(options);
-                    } else {
-                        table = findTableByHeaders(options.headers);
-                    }
-                    if (!table) return [];
-                    
-                    const rows = Array.from(table.querySelectorAll('tr')).slice(1); // Skip header
-                    return rows.map(row => {
-                        const cells = Array.from(row.querySelectorAll('td'));
-                        const data: any = {};
-                        Object.entries(colMap).forEach(([key, idx]) => {
-                            data[key] = clean(cells[idx]?.textContent || 'N/A');
-                        });
-                        return data;
-                    });
-                };
-
-                const findLabelValue = (label: string) => {
-                    const elements = Array.from(document.querySelectorAll('td, th, span, div, p, strong, b, label'));
-                    const target = elements.find(el => {
-                        const text = el.textContent?.trim().toUpperCase() || '';
-                        return text === label.toUpperCase() || text === (label.toUpperCase() + ':');
-                    });
-                    
-                    if (!target) return 'N/A';
-                    
-                    // Try next sibling
-                    if (target.nextElementSibling) return clean(target.nextElementSibling.textContent || 'N/A');
-                    
-                    // Try parent's next sibling
-                    const parent = target.parentElement;
-                    if (parent && parent.nextElementSibling) return clean(parent.nextElementSibling.textContent || 'N/A');
-
-                    return 'N/A';
-                };
-
-                // PROFILE
-                const profile = {
-                    studentName: '',
-                    systemId: findLabelValue('System ID'),
-                    program: findLabelValue('Program') || findLabelValue('Course'),
-                    school: findLabelValue('School') || findLabelValue('Department'),
-                    semester: findLabelValue('Semester') || findLabelValue('Term'),
-                    status: findLabelValue('Status') || 'Active'
-                };
-
-                // Find Name
-                const nameSelectors = ['.user-name', '.profile-name', '.student-name', '#student_name', '.navbar-user .name'];
-                for (const s of nameSelectors) {
-                    const el = document.querySelector(s);
-                    if (el) {
-                        let text = clean(el.textContent || '');
-                        if (text && text.length > 2 && !text.toUpperCase().includes('WELCOME')) {
-                            profile.studentName = text;
+                    for (const [key, terms] of Object.entries(keywords)) {
+                        if (terms.some(term => text.includes(term) || href.includes(term))) {
+                            urls[key] = href;
                             break;
                         }
                     }
-                }
-
-                // ATTENDANCE
-                const attendance = {
-                    percentage: findLabelValue('Attendance %') || findLabelValue('Attendance'),
-                    total: findLabelValue('Total Classes') || findLabelValue('Total'),
-                    present: findLabelValue('Present Classes') || findLabelValue('Present'),
-                    absent: findLabelValue('Absent Classes') || findLabelValue('Absent')
-                };
-
-                // CA MARKS (Continuous Assessment)
-                const caMarks = extractTable({ headers: ['Course'] }, {
-                    courseCode: 0,
-                    courseName: 1,
-                    assignment1: 2,
-                    assignment2: 3,
-                    assessment1: 4,
-                    assessment2: 5,
-                    total: 6
                 });
 
-                // SUBJECTS
-                const subjects = extractTable({ headers: ['Credits'] }, {
-                    courseCode: 0,
-                    courseName: 1,
-                    faculty: 2,
-                    courseType: 3,
-                    credits: 4,
-                    attendancePercentage: 5
-                });
-
-                // TIMETABLE
-                const timetable = extractTable({ headers: ['Subject'] }, {
-                    subject: 0,
-                    faculty: 1,
-                    room: 2,
-                    time: 3
-                });
-
-                // HOLIDAYS
-                const holidays = extractTable({ headers: ['Holiday'] }, {
-                    name: 0,
-                    date: 1
-                });
-
-                return { profile, attendance, caMarks, subjects, timetable, holidays };
+                return urls;
             });
+            logger.info(`[SCRAPER] Discovered navigation URLs: ${JSON.stringify(navigationUrls)}`);
+
+            // Extract data from dashboard
+            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Extracting data from dashboard...', { category: 'EXTRACTION', actionType: 'page.evaluate', progress: 40 }, firebaseUid);
+            let mergedData = await this.extractPageData(page);
+            logger.info(`[SCRAPER] dashboardExtract: ${JSON.stringify(mergedData.profile)}`);
+            logger.info(`[SCRAPER] dashboardExtract attendance: ${JSON.stringify(mergedData.attendance)}`);
+            logger.info(`[SCRAPER] dashboardExtract caMarks count: ${mergedData.caMarks?.length || 0}`);
+            logger.info(`[SCRAPER] dashboardExtract timetable count: ${mergedData.timetable?.length || 0}`);
+
+            // Extract CGPA from dashboard
+            const cgpa = await this.extractCgpa(page);
+            logger.info(`[SCRAPER] dashboardExtract cgpa: ${cgpa}`);
+
+            // Navigate to discovered pages and extract additional data
+            const pagesToVisit = [
+                { key: 'attendance', dataKey: 'attendanceCards' },
+                { key: 'timetable', dataKey: 'timetable' },
+                { key: 'subjects', dataKey: 'subjects' }
+            ];
+
+            for (const pageInfo of pagesToVisit) {
+                const url = navigationUrls[pageInfo.key];
+                if (!url || url === page.url()) continue;
+
+                try {
+                    await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', `Navigating to ${pageInfo.key}...`, { category: 'EXTRACTION', actionType: 'page.goto', progress: 50 }, firebaseUid);
+                    await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+                    await page.waitForTimeout(3000);
+
+                    await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', `Extracting ${pageInfo.key} data...`, { category: 'EXTRACTION', actionType: 'page.evaluate', progress: 60 }, firebaseUid);
+                    let pageData = await this.extractPageData(page);
+                    
+                    // Special handling for attendance page: extract per-course attendance cards
+                    if (pageInfo.key === 'attendance') {
+                        const attendanceCards: any[] = await this.extractAttendanceCards(page);
+                        logger.info(`[SCRAPER] attendanceExtract cards: ${JSON.stringify(attendanceCards)}`);
+                        pageData.attendanceCards = attendanceCards;
+                        
+                        // Merge attendance percentages into subjects by course code
+                        if (attendanceCards.length > 0 && mergedData.subjects?.length > 0) {
+                            const subjectMap = new Map<string, any>();
+                            for (const s of mergedData.subjects) {
+                                const code = s.courseCode?.toUpperCase();
+                                if (code) {
+                                    subjectMap.set(code, s);
+                                }
+                            }
+                            
+                            for (const card of attendanceCards as any[]) {
+                                const code = card.courseCode?.toUpperCase();
+                                if (code && subjectMap.has(code)) {
+                                    subjectMap.get(code)!.attendancePercentage = card.attendancePercentage;
+                                }
+                            }
+                            
+                            mergedData.subjects = Array.from(subjectMap.values());
+                        } else if (attendanceCards.length > 0 && mergedData.subjects?.length === 0) {
+                            // If no subjects from dashboard, use attendance cards as subjects
+                            mergedData.subjects = attendanceCards.map((card: any) => ({
+                                courseCode: this.sanitize(card.courseCode),
+                                courseName: this.sanitize(card.courseName),
+                                faculty: this.sanitize(card.faculty),
+                                courseType: this.sanitize(card.courseType),
+                                credits: parseFloat(this.sanitize(String(card.credits))) || 0,
+                                attendancePercentage: parseFloat(this.sanitize(String(card.attendancePercentage))) || 0
+                            }));
+                        }
+                    } else if (pageInfo.key === 'timetable') {
+                        const meta = pageData.timetableMeta || {};
+                        logger.info(`[SCRAPER] timetableExtract: rows=${meta.rows || 0}, classes=${meta.classes || 0}, skipped=${meta.skipped || 0}`);
+                    }
+                    
+                    if (pageData[pageInfo.dataKey] && pageData[pageInfo.dataKey].length > 0) {
+                        mergedData[pageInfo.dataKey] = pageData[pageInfo.dataKey];
+                    }
+                } catch (err) {
+                    logger.warn(`[SCRAPER] Failed to extract ${pageInfo.key}: ${(err as Error).message}`);
+                }
+            }
+
+            // Navigate back to home for any remaining data
+            await page.goto('https://student.sharda.ac.in/admin/home', { waitUntil: 'networkidle', timeout: 60000 });
+            await page.waitForTimeout(3000);
+
+            const rawData = mergedData;
+            logger.info(`[SCRAPER] mergedExtract: ${JSON.stringify({ profile: rawData.profile, attendance: rawData.attendance, caMarksCount: rawData.caMarks?.length, timetableCount: rawData.timetable?.length, subjectsCount: rawData.subjects?.length })}`);
 
             // Post-Extraction Sanitization & Validation
             const sanitizedData = {
@@ -226,12 +438,39 @@ export class EzoneScraper {
                 systemId: this.sanitize(rawData.profile.systemId),
                 program: this.sanitize(rawData.profile.program),
                 school: this.sanitize(rawData.profile.school),
+                semester: this.sanitize(rawData.profile.semester),
                 status: this.sanitize(rawData.profile.status),
                 
-                attendancePercentage: parseFloat(rawData.attendance.percentage.replace(/[^0-9.]/g, '')) || 0,
-                totalClasses: parseInt(rawData.attendance.total.replace(/[^0-9]/g, '')) || 0,
-                presentClasses: parseInt(rawData.attendance.present.replace(/[^0-9]/g, '')) || 0,
-                absentClasses: parseInt(rawData.attendance.absent.replace(/[^0-9]/g, '')) || 0,
+                attendancePercentage: (() => {
+                    const totalRaw = rawData.attendance.total;
+                    const totalSafe = typeof totalRaw === "string" ? totalRaw : totalRaw == null ? "" : String(totalRaw);
+                    const total = parseInt(totalSafe.replace(/[^0-9]/g, '')) || 0;
+
+                    const presentRaw = rawData.attendance.present;
+                    const presentSafe = typeof presentRaw === "string" ? presentRaw : presentRaw == null ? "" : String(presentRaw);
+                    const present = parseInt(presentSafe.replace(/[^0-9]/g, '')) || 0;
+
+                    if (total > 0) {
+                        return Math.round((present / total) * 100);
+                    }
+
+                    return 0;
+                })(),
+                totalClasses: (() => {
+                const raw = rawData.attendance.total;
+                const safe = typeof raw === "string" ? raw : raw == null ? "" : String(raw);
+                return parseInt(safe.replace(/[^0-9]/g, '')) || 0;
+                })(),
+                presentClasses: (() => {
+                const raw = rawData.attendance.present;
+                const safe = typeof raw === "string" ? raw : raw == null ? "" : String(raw);
+                return parseInt(safe.replace(/[^0-9]/g, '')) || 0;
+                })(),
+                absentClasses: (() => {
+                const raw = rawData.attendance.absent;
+                const safe = typeof raw === "string" ? raw : raw == null ? "" : String(raw);
+                return parseInt(safe.replace(/[^0-9]/g, '')) || 0;
+                })(),
 
                 caMarks: (rawData.caMarks || []).map((m: any) => ({
                     courseCode: this.sanitize(m.courseCode),
@@ -253,10 +492,12 @@ export class EzoneScraper {
                 })),
 
                 timetable: (rawData.timetable || []).map((t: any) => ({
+                    day: this.sanitize(t.day),
+                    time: this.sanitize(t.time),
                     subject: this.sanitize(t.subject),
+                    courseCode: this.sanitize(t.courseCode),
                     faculty: this.sanitize(t.faculty),
-                    room: this.sanitize(t.room),
-                    time: this.sanitize(t.time)
+                    room: this.sanitize(t.room)
                 })),
 
                 holidays: (rawData.holidays || []).map((h: any) => ({
@@ -264,6 +505,8 @@ export class EzoneScraper {
                     date: this.sanitize(h.date)
                 }))
             };
+
+            logger.info(`[SCRAPER] mongoPayload: ${JSON.stringify({ ...sanitizedData, cgpa })}`);
 
             // Final Validation Layer
             const allValues = [
@@ -285,6 +528,116 @@ export class EzoneScraper {
             logger.error('Failed to extract Ezone data:', error);
             throw new Error(`Extraction Error: ${error.message}`);
         }
+    }
+
+    /**
+     * Extract per-course attendance from the attendance page card-based UI
+     * URL: https://student.sharda.ac.in/admin/courses
+     */
+    private async extractAttendanceCards(page: Page): Promise<any[]> {
+        return await page.evaluate(() => {
+            const clean = (text: any) => {
+                if (!text) return '';
+                const str = typeof text === "string" ? text : String(text);
+                return str.trim().replace(/\s+/g, ' ');
+            };
+
+            const cards = Array.from(document.querySelectorAll('.subjectcard'));
+            return cards.map((card) => {
+                const nameEl = card.querySelector('h2');
+                const facultyEl = card.querySelector('span');
+                const progressBar = card.querySelector('.progress-bar[aria-valuenow]');
+                const typeBadge = card.querySelector('[title="Theory"], [title="Practical"]');
+                const creditBadge = card.querySelector('[title="Course Credit"]');
+                const codeBadge = card.querySelector('[title="Catalog Number"]');
+
+                const attendanceText = progressBar?.textContent?.trim() || 'N/A';
+                const attendanceMatch = attendanceText.match(/(\d+(?:\.\d+)?)\s*%/);
+                const attendancePercentage = attendanceMatch ? parseFloat(attendanceMatch[1]) : 0;
+
+                return {
+                    courseName: clean(nameEl?.textContent || 'N/A'),
+                    courseCode: clean(codeBadge?.textContent || 'N/A'),
+                    courseType: typeBadge?.getAttribute('title') || '',
+                    faculty: clean(facultyEl?.textContent?.replace('Faculty :', '') || 'N/A'),
+                    credits: parseFloat(clean(creditBadge?.textContent || '0')) || 0,
+                    attendancePercentage
+                };
+            });
+        });
+    }
+
+    /**
+     * Extract CGPA from dashboard using multiple strategies:
+     * 1. Runtime JS evaluation (window.cgpa or script variables)
+     * 2. ApexCharts SVG data attributes
+     * 3. Fallback to N/A
+     */
+    private async extractCgpa(page: Page): Promise<string> {
+        // Strategy 1: Try runtime extraction via page.evaluate
+        try {
+            const runtimeCgpa = await page.evaluate(() => {
+            const clean = (text: any) => {
+                if (!text) return '';
+                const str = typeof text === "string" ? text : String(text);
+                return str.trim().replace(/\s+/g, ' ');
+            };
+
+                // Try global window properties
+                const windowCgpa = (window as any).cgpa || (window as any).studentCgpa || (window as any).currentCgpa;
+                if (windowCgpa !== undefined && windowCgpa !== null) {
+                    return String(windowCgpa);
+                }
+
+                // Try to find cgpa in script tags
+                const scripts = Array.from(document.querySelectorAll('script'));
+                for (const script of scripts) {
+                    const text = script.textContent || '';
+                    const match = text.match(/var\s+cgpa\s*=\s*([\d.]+)/);
+                    if (match) {
+                        return match[1];
+                    }
+                }
+
+                // Try ApexCharts SVG data attributes
+                const cgpaPath = document.querySelector('[seriesName="CGPA"] path, [rel="1"][seriesName="CGPA"] path');
+                if (cgpaPath) {
+                    const value = cgpaPath.getAttribute('data:value');
+                    if (value) return value;
+                }
+
+                return null;
+            });
+
+            if (runtimeCgpa !== null && runtimeCgpa !== undefined && runtimeCgpa !== '0') {
+                logger.info(`[SCRAPER] CGPA extracted via runtime evaluation: ${runtimeCgpa}`);
+                return runtimeCgpa;
+            }
+        } catch (err) {
+            logger.warn(`[SCRAPER] Runtime CGPA extraction failed: ${(err as Error).message}`);
+        }
+
+        // Strategy 2: Try SVG data attributes as fallback
+        try {
+            const svgCgpa = await page.evaluate(() => {
+                const cgpaPath = document.querySelector('g[seriesName="CGPA"] path, [seriesName="CGPA"] path');
+                if (cgpaPath) {
+                    return cgpaPath.getAttribute('data:value');
+                }
+                return null;
+            });
+
+            if (svgCgpa) {
+                logger.info(`[SCRAPER] CGPA extracted via SVG data attribute: ${svgCgpa}`);
+                return svgCgpa;
+            }
+        } catch (err) {
+            logger.warn(`[SCRAPER] SVG CGPA extraction failed: ${(err as Error).message}`);
+        }
+
+        const reason = 'CGPA not found in window properties, script variables, or SVG data attributes';
+        logger.warn(`[SCRAPER] ${reason}`);
+        return 'N/A';
     }
 
     /**

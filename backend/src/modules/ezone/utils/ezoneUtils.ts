@@ -5,7 +5,6 @@ const logger = new Logger('EzoneUtils');
 export function sanitizeEzoneData(text: string): string {
     if (!text || typeof text !== 'string') return '';
     
-    // 1. Remove common HTML tags
     let clean = text.replace(/<[^>]*>?/gm, ' ');
     
     // 2. Remove technical fragments and CSS-like patterns
@@ -25,7 +24,7 @@ export function sanitizeEzoneData(text: string): string {
         /\s\s+/g // Multiple spaces
     ];
 
-    blacklist.forEach(pattern => {
+    blacklist.forEach((pattern) => {
         clean = clean.replace(pattern, ' ');
     });
 

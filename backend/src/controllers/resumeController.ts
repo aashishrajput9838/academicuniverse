@@ -37,6 +37,10 @@ export const uploadTemplateController = async (req: any, res: Response) => {
       return sendError(res, 400, 'Template name and type are required.');
     }
 
+    if (type !== 'global' && !target) {
+      return sendError(res, 400, 'Target is required for department and section types.');
+    }
+
     const organizationId = req.user.organizationId;
     const uploadedBy = req.user.userId;
 
@@ -137,6 +141,15 @@ export const getAvailableTemplatesController = async (req: any, res: Response) =
     const { default: Role } = await import('../models/Role');
     const role = await Role.findById(req.user.roleId);
     const roleName = role?.name || '';
+
+    logger.info("Resume Template Debug");
+    logger.info(
+      JSON.stringify({
+        userId: req.user.userId,
+        organizationId,
+        roleName
+      })
+    );
     
     // Admin/Faculty can see all templates for the org
     const isAdminOrFaculty = ['FACULTY', 'ADMIN', 'SUPER_ADMIN'].includes(roleName) || req.user.isSuperAdmin;
@@ -144,23 +157,55 @@ export const getAvailableTemplatesController = async (req: any, res: Response) =
     let query: any = { organizationId };
 
     if (!isAdminOrFaculty) {
-      // Find the user's section to match section-level templates
-      // We don't need to look up Section manually if frontend doesn't provide it, 
-      // because we solely rely on type 'global' or matching specific frontend inputs.
       const targets: string[] = [];
       if (req.query.target && typeof req.query.target === 'string') {
-        targets.push(req.query.target); // Frontend passes specific department or section name like 'CSE' or 'CSE-A'
+        targets.push(req.query.target.trim());
       }
 
-      // Base query: templates for this org that are 'global', OR matching specific target provided by frontend
+      if (targets.length === 0) {
+        try {
+          const { EzoneAcademicProfile } = await import('../models/EzoneAcademicProfile');
+          const profile = await EzoneAcademicProfile.findOne({
+            userId: req.user.userId,
+            organizationId,
+          });
+
+          logger.info("Resolved profile:", profile);
+          logger.info("Resolved department:", profile?.department);
+
+          if (profile?.department) {
+            targets.push(profile.department.trim());
+          } else {
+            logger.warn(`No department found in EzoneAcademicProfile for user ${req.user.userId}; falling back to global templates only`);
+          }
+        } catch (profileError) {
+          logger.warn(`Failed to load EzoneAcademicProfile for user ${req.user.userId}:`, profileError);
+        }
+
+        logger.info("Targets: " + JSON.stringify(targets));
+      }
+
+      const targetPatterns = targets.map(t => {
+        const escaped = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`^${escaped}$`, 'i');
+      });
+
       query = {
         organizationId,
         $or: [
           { type: 'global' },
-          { target: { $in: targets } }
+          { target: { $in: targetPatterns } }
         ]
       };
     }
+
+    logger.info("Final Mongo query:", JSON.stringify(query, null, 2));
+
+    const departmentTemplatesInDb = await ResumeTemplate.find({
+      organizationId,
+      type: "department"
+    }).select("templateName target");
+    logger.info("Department templates in DB:", departmentTemplatesInDb);
 
     const templates = await ResumeTemplate.find(query).sort({ createdAt: -1 }).populate('uploadedBy', 'name email');
     return sendResponse(res, 200, templates, 'Templates retrieved successfully');

@@ -17,6 +17,8 @@ export function useResumeBuilder(backendToken: string) {
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [pdfDownloadError, setPdfDownloadError] = useState<string | null>(null);
 
   const selectTemplate = useCallback((template: ResumeTemplateDTO) => {
     setSelectedTemplate(template);
@@ -79,6 +81,55 @@ export function useResumeBuilder(backendToken: string) {
     }
   }, [generatedDocx, selectedTemplate]);
 
+  const downloadPdf = useCallback(async () => {
+    if (!generatedPreview || !selectedTemplate) return;
+
+    setIsDownloadingPdf(true);
+    setPdfDownloadError(null);
+
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      const blob = new Blob([generatedPreview], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = url;
+      document.body.appendChild(iframe);
+      
+      iframe.onload = () => {
+        try {
+          const element = iframe.contentDocument?.body;
+          if (!element) {
+            throw new Error('Failed to load preview content');
+          }
+          
+            const opt = {
+            margin: 10,
+            filename: `${selectedTemplate.templateName.replace(/\s+/g, '_')}_resume.pdf`,
+            image: { type: 'jpeg' as const, quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+          };
+          
+          html2pdf().set(opt).from(element).save().then(() => {
+            document.body.removeChild(iframe);
+            URL.revokeObjectURL(url);
+          });
+        } catch (err) {
+          document.body.removeChild(iframe);
+          URL.revokeObjectURL(url);
+          throw err;
+        }
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to download PDF';
+      setPdfDownloadError(message);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  }, [generatedPreview, selectedTemplate]);
+
   const retryGeneration = useCallback(() => {
     setError(null);
     setGenerationError(null);
@@ -100,6 +151,8 @@ export function useResumeBuilder(backendToken: string) {
     setLastSavedAt(null);
     setIsDownloading(false);
     setDownloadError(null);
+    setIsDownloadingPdf(false);
+    setPdfDownloadError(null);
   }, []);
 
   return {
@@ -117,11 +170,15 @@ export function useResumeBuilder(backendToken: string) {
     isDownloading,
     downloadError,
     setDownloadError,
+    isDownloadingPdf,
+    pdfDownloadError,
+    setPdfDownloadError,
     setCurrentStep,
     selectTemplate,
     updateFormData,
     generatePreview,
     downloadResume,
+    downloadPdf,
     retryGeneration,
     setGeneratedPreview,
     setGeneratedDocx,

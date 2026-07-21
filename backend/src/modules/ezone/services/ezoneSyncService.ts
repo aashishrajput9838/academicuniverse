@@ -5,6 +5,7 @@ import { GoogleSheetsService } from './googleSheetsService';
 import { EzoneDataMapper } from './ezoneDataMapper';
 import { EzoneDataValidator } from './ezoneDataValidator';
 import { EzoneLogger } from './ezone-logger.service';
+import { EzoneAcademicScheduleSyncService } from './ezoneAcademicScheduleSync.service';
 import { Logger } from '../../../shared/utils';
 import { IEzoneAcademicProfile } from '../../../models/EzoneAcademicProfile';
 import * as fs from 'fs';
@@ -17,6 +18,7 @@ export class EzoneSyncService {
     private googleSheets = GoogleSheetsService.getInstance();
     private mapper = EzoneDataMapper.getInstance();
     private validator = EzoneDataValidator.getInstance();
+    private academicScheduleSync = new EzoneAcademicScheduleSyncService();
 
     constructor(
         private sessionProvider: EzoneSessionProvider,
@@ -193,7 +195,7 @@ export class EzoneSyncService {
     /**
      * Step 2: Verify OTP and Sync Academic Data through the new pipeline
      */
-    async verifyAndSync(sessionId: string, systemId: string, otp: string, userId: string, organizationId: string, firebaseUid?: string): Promise<IEzoneAcademicProfile> {
+    async verifyAndSync(sessionId: string, systemId: string, otp: string, userId: string, organizationId: string, firebaseUid?: string, userEmail?: string, userName?: string): Promise<IEzoneAcademicProfile> {
         try {
             if (this.googleSheets.isEnabled()) {
                 await this.googleSheets.logSync('SYNC_STARTED', 'PENDING', `Starting sync for user ${userId}`);
@@ -289,6 +291,15 @@ export class EzoneSyncService {
             const savedProfile = await this.repository.upsertProfile(userId, organizationId, mongoData);
             if (this.googleSheets.isEnabled()) {
                 await this.googleSheets.logSync('MONGODB_UPDATED', 'SUCCESS', 'Clean data persisted to MongoDB');
+            }
+
+            // 7. Sync timetable to AcademicSchedule
+            try {
+                const timetable = (mongoData as any).timetable || [];
+                const syncResult = await this.academicScheduleSync.syncTimetable(userId, organizationId, timetable, userEmail, userName);
+                logger.info(`[ACADEMIC_SCHEDULE_SYNC] events created=${syncResult.created} updated=${syncResult.updated} skipped=${syncResult.skipped}`);
+            } catch (academicScheduleError: any) {
+                logger.error('AcademicSchedule sync failed:', academicScheduleError);
             }
 
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'success', 'Academic data pipeline completed!', { category: 'DATABASE', progress: 100 }, firebaseUid);

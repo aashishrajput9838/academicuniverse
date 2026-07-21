@@ -40,7 +40,7 @@ export class EzoneController {
     verifyOtp = async (req: Request, res: Response): Promise<void> => {
         try {
             let { systemId, otp, sessionId } = req.body;
-            const { userId, organizationId, firebaseUid } = (req as any).user;
+            const { userId, organizationId, firebaseUid, email, name } = (req as any).user;
 
             if (!systemId || !otp || !sessionId) {
                 res.status(400).json({ success: false, message: 'System ID, OTP, and Session ID are required' });
@@ -48,7 +48,7 @@ export class EzoneController {
             }
 
             systemId = String(systemId).trim();
-            const profile = await this.ezoneService.verifyAndSync(sessionId, systemId, otp, userId, organizationId, firebaseUid);
+            const profile = await this.ezoneService.verifyAndSync(sessionId, systemId, otp, userId, organizationId, firebaseUid, email, name);
             
             res.status(200).json({ success: true, data: profile });
         } catch (error: any) {

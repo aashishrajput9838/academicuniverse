@@ -5,20 +5,10 @@ import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useModuleRefresh } from '@/hooks/useModuleRefresh';
 import { formatDateForDisplay, normalizeDate } from '@/lib/utils/dateNormalizer';
-
-interface ScheduleEvent {
-  timeSlot: string;
-  courseCode: string;
-  courseName: string;
-  room: string;
-  instructor: string;
-  type?: string;
-}
-
-interface ScheduleDay {
-  date: string;
-  events: ScheduleEvent[];
-}
+import { ScheduleDay, getTodayEvents, getNextEvent } from '@/lib/utils/timetable';
+import { WeeklyTimetable } from '@/components/WeeklyTimetable';
+import { TodaySchedule } from '@/components/TodaySchedule';
+import { NextClassWidget } from '@/components/NextClassWidget';
 
 interface AcademicSchedule {
   _id: string;
@@ -92,9 +82,8 @@ export default function StudentSchedulePage() {
   }
 
   const days = schedule?.schedule ?? [];
-  const today = normalizeDate(new Date()).iso ?? '';
-  const upcomingDays = days.filter(d => d.date >= today);
-  const pastDays = days.filter(d => d.date < today);
+  const todayEvents = getTodayEvents(days);
+  const nextClass = getNextEvent(days);
 
   return (
     <div className="space-y-6">
@@ -133,80 +122,17 @@ export default function StudentSchedulePage() {
             </span>
           </div>
 
-          {upcomingDays.length > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold text-white mb-3">Upcoming Classes</h2>
-              <div className="space-y-4">
-                {upcomingDays.map(day => (
-                  <div key={day.date} className="rounded-xl border border-slate-700/50 bg-slate-800/20 overflow-hidden">
-                    <div className="bg-slate-800/40 px-4 py-2 border-b border-slate-700/50">
-                      <p className="text-sm font-semibold text-white">
-                        {formatDateForDisplay(day.date)}
-                      </p>
-                    </div>
-                    <div className="divide-y divide-slate-700/30">
-                      {day.events.map((event, idx) => (
-                        <div key={idx} className="px-4 py-3 flex items-center gap-4">
-                          <div className="w-20 text-xs font-mono text-emerald-400 shrink-0">
-                            {event.timeSlot}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-white truncate">
-                              {event.courseName} <span className="text-slate-500 font-normal">({event.courseCode})</span>
-                            </p>
-                            <p className="text-xs text-slate-400 mt-0.5">
-                              {event.instructor} · {event.room}
-                              {event.type && <span className="ml-2 text-slate-500">· {event.type}</span>}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                      {day.events.length === 0 && (
-                        <div className="px-4 py-3 text-xs text-slate-500">No classes scheduled</div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Today's Schedule + Next Class */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <TodaySchedule events={todayEvents} />
+            <NextClassWidget nextClass={nextClass} />
+          </div>
 
-          {pastDays.length > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold text-white mb-3 opacity-60">Previous Classes</h2>
-              <div className="space-y-4">
-                {pastDays.map(day => (
-                  <div key={day.date} className="rounded-xl border border-slate-700/30 bg-slate-800/10 overflow-hidden opacity-70">
-                    <div className="bg-slate-800/20 px-4 py-2 border-b border-slate-700/30">
-                      <p className="text-sm font-medium text-slate-400">
-                        {formatDateForDisplay(day.date)}
-                      </p>
-                    </div>
-                    <div className="divide-y divide-slate-700/20">
-                      {day.events.map((event, idx) => (
-                        <div key={idx} className="px-4 py-3 flex items-center gap-4">
-                          <div className="w-20 text-xs font-mono text-slate-500 shrink-0">
-                            {event.timeSlot}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-slate-300 truncate">
-                              {event.courseName} <span className="text-slate-500 font-normal">({event.courseCode})</span>
-                            </p>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              {event.instructor} · {event.room}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                      {day.events.length === 0 && (
-                        <div className="px-4 py-3 text-xs text-slate-600">No classes scheduled</div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Weekly Timetable */}
+          <div>
+            <h2 className="text-lg font-semibold text-white mb-3">Weekly Timetable</h2>
+            <WeeklyTimetable schedule={days} />
+          </div>
         </div>
       )}
     </div>

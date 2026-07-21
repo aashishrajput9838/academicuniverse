@@ -149,10 +149,32 @@ export class EzoneScraper {
                 return 'N/A';
             };
 
+            const profileModal = document.querySelector('#exampleModal');
+            const findModalLabelValue = (label: string) => {
+                if (!profileModal) return 'N/A';
+                const elements = Array.from(profileModal.querySelectorAll('td, th, span, div, p, strong, b, label'));
+                const target = elements.find(el => {
+                    const text = (el.textContent?.trim() || '').toUpperCase();
+                    return text === label.toUpperCase() || text === (label.toUpperCase() + ':');
+                });
+                if (!target) return 'N/A';
+                const parent = target.parentElement;
+                if (parent) {
+                    const fullText = parent.textContent?.trim() || '';
+                    const labelText = target.textContent?.trim() || '';
+                    let valueText = fullText.replace(labelText, '').trim();
+                    valueText = clean(valueText);
+                    if (valueText) return valueText;
+                }
+                const next = target.nextElementSibling;
+                if (next) return clean(next.textContent || 'N/A');
+                return 'N/A';
+            };
+
             const profile = {
                 studentName: findLabelValue('Name'),
                 systemId: findLabelValue('System ID'),
-                program: findLabelValue('Program') || findLabelValue('Program [G]') || findLabelValue('Course'),
+                program: findModalLabelValue('Program [G]') || findLabelValue('Program') || findLabelValue('Course'),
                 school: findLabelValue('School') || findLabelValue('Department'),
                 semester: findLabelValue('Semester') || findLabelValue('Term'),
                 status: findLabelValue('Programme Status') || findLabelValue('Status') || 'Active'
@@ -574,6 +596,42 @@ export class EzoneScraper {
      * 3. Fallback to N/A
      */
     private async extractCgpa(page: Page): Promise<string> {
+        // Diagnostic: inspect chart/script state without affecting extraction logic
+        try {
+            const diagnostics = await page.evaluate(() => {
+                const scriptVar = (() => {
+                    const scripts = Array.from(document.querySelectorAll('script'));
+                    for (const script of scripts) {
+                        const text = script.textContent || '';
+                        const match = text.match(/var\s+cgpa\s*=\s*([\d.]+)/);
+                        if (match) return match[1];
+                    }
+                    return null;
+                })();
+
+                const svg = document.querySelector('#chartcgpa svg');
+                const svgWidth = svg ? (svg.getAttribute('width') || '0') : null;
+                const rendered = svg ? svgWidth !== '0' : false;
+
+                const cgpaPath = document.querySelector('[seriesName="CGPA"] path, [rel="1"][seriesName="CGPA"] path');
+                const dataValue = cgpaPath ? cgpaPath.getAttribute('data:value') : null;
+
+                const windowVar = (window as any).cgpa || (window as any).studentCgpa || (window as any).currentCgpa;
+
+                return {
+                    scriptVar,
+                    svgWidth,
+                    rendered,
+                    dataValue,
+                    windowVar
+                };
+            });
+
+            logger.info(`[SCRAPER] CGPA diagnostics: ${JSON.stringify(diagnostics)}`);
+        } catch (err) {
+            logger.warn(`[SCRAPER] CGPA diagnostic extraction failed: ${(err as Error).message}`);
+        }
+
         // Strategy 1: Try runtime extraction via page.evaluate
         try {
             const runtimeCgpa = await page.evaluate(() => {

@@ -6,6 +6,18 @@ import ResumeTemplate from '../models/ResumeTemplate';
 import StudentResume from '../models/StudentResume';
 import { Logger } from '../utils/logger';
 
+const DEPARTMENT_ALIASES: Record<string, string[]> = {
+  'Computer Science and Engineering': ['CSE', 'CS', 'Computer Science'],
+  'Information Technology': ['IT', 'Information Tech'],
+  'Electronics and Communication Engineering': ['ECE', 'Electronics'],
+  'Mechanical Engineering': ['ME', 'Mechanical'],
+  'Civil Engineering': ['CE', 'Civil'],
+  'Electrical and Electronics Engineering': ['EEE', 'Electrical'],
+  'VLSI Design and Technology': ['VLSI'],
+  'Artificial Intelligence and Machine Learning': ['AIML', 'AI ML'],
+  'Computer Science': ['CSE', 'CS'],
+};
+
 const logger = new Logger('resumeController');
 
 /**
@@ -174,7 +186,9 @@ export const getAvailableTemplatesController = async (req: any, res: Response) =
           logger.info("Resolved department:", profile?.department);
 
           if (profile?.department) {
-            targets.push(profile.department.trim());
+            const dept = profile.department.trim();
+            const aliases = DEPARTMENT_ALIASES[dept] || [];
+            targets.push(dept, ...aliases);
           } else {
             logger.warn(`No department found in EzoneAcademicProfile for user ${req.user.userId}; falling back to global templates only`);
           }

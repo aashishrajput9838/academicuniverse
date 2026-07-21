@@ -175,7 +175,8 @@ export class EzoneScraper {
                 studentName: findLabelValue('Name'),
                 systemId: findLabelValue('System ID'),
                 program: findModalLabelValue('Program [G]') || findLabelValue('Program') || findLabelValue('Course'),
-                school: findLabelValue('School') || findLabelValue('Department'),
+                school: findLabelValue('School'),
+                department: findLabelValue('Department'),
                 semester: findLabelValue('Semester') || findLabelValue('Term'),
                 status: findLabelValue('Programme Status') || findLabelValue('Status') || 'Active'
             };
@@ -471,6 +472,7 @@ export class EzoneScraper {
                 systemId: this.sanitize(rawData.profile.systemId),
                 program: this.sanitize(rawData.profile.program),
                 school: this.sanitize(rawData.profile.school),
+                department: this.sanitize(rawData.profile.department),
                 semester: this.sanitize(rawData.profile.semester),
                 status: this.sanitize(rawData.profile.status),
                 

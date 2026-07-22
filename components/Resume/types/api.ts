@@ -9,6 +9,39 @@ export interface ResumeTemplateDTO {
   questions: TemplateQuestion[];
   createdAt: string;
   updatedAt: string;
+  originalFileUrl?: string;
+  sections?: Array<{
+    id: string;
+    title: string;
+    order: number;
+    repeatable: boolean;
+    maxEntries?: number;
+    minEntries?: number;
+    fields: Array<{
+      key: string;
+      label: string;
+      type: 'text' | 'textarea' | 'date' | 'email' | 'phone' | 'url' | 'select' | 'list';
+      required: boolean;
+      aiEnhanceable: boolean;
+      placeholder?: string;
+      validation?: {
+        pattern?: string;
+        minLength?: number;
+        maxLength?: number;
+      };
+      options?: string[];
+    }>;
+    aiPrompt?: string;
+  }>;
+  formattingMetadata?: {
+    styles: Record<string, any>;
+    headingLevels: Record<string, number>;
+    bulletMarker: string;
+    dateFormat: string;
+  };
+  confidence?: number;
+  reviewed?: boolean;
+  reviewNotes?: string;
 }
 
 export interface TemplateQuestion {

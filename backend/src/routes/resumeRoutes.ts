@@ -6,7 +6,8 @@ import {
   getAvailableTemplatesController,
   processResumeController,
   getSavedResumeController,
-  generateResumeController
+  generateResumeController,
+  processTemplateController
 } from '../controllers/resumeController';
 
 const router = express.Router();
@@ -24,6 +25,7 @@ router.use(authenticateUser);
 
 // Faculty / Admin routes
 router.post('/templates', upload.single('templateFile'), uploadTemplateController);
+router.post('/templates/:id/process', processTemplateController);
 
 // Student routes
 router.get('/templates', getAvailableTemplatesController);

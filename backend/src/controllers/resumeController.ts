@@ -358,12 +358,36 @@ export const processTemplateController = async (req: any, res: Response) => {
       organizationId
     );
 
-    return sendResponse(res, 200, {
+    const questions = result.milestone2Result.sections.flatMap((section: any) =>
+      section.fields.map((field: any) => ({
+        tag: field.key,
+        question: field.label,
+        type: field.type === 'textarea' ? 'textarea' : 'text',
+        aiEnhanceable: field.aiEnhanceable || false,
+      }))
+    );
+
+    const updatePayload: any = {
+      fileUrl: processedFileUrl,
       originalFileUrl: template.fileUrl,
-      processedFileUrl,
       sections: result.milestone2Result.sections,
-      entities: result.milestone2Result.entities,
+      questions,
+      formattingMetadata: result.milestone2Result.formattingMetadata,
       confidence: result.milestone2Result.confidence,
+    };
+
+    const updatedTemplate = await ResumeTemplate.findByIdAndUpdate(
+      templateId,
+      { $set: updatePayload },
+      { new: true }
+    );
+
+    return sendResponse(res, 200, {
+      originalFileUrl: updatedTemplate.originalFileUrl,
+      processedFileUrl: updatedTemplate.fileUrl,
+      sections: updatedTemplate.sections,
+      questions: updatedTemplate.questions,
+      confidence: updatedTemplate.confidence,
       placeholdersInjected: result.injectionResult.placeholdersInjected,
       extractionIssues: result.milestone2Result.extractionIssues,
     }, 'Template processed successfully');

@@ -57,6 +57,31 @@ export async function fetchAllTemplates(backendToken: string): Promise<ResumeTem
   return request<ResumeTemplateDTO[]>('/api/resume/templates', { method: 'GET' }, backendToken);
 }
 
+export async function processTemplate(
+  backendToken: string,
+  templateId: string
+): Promise<{
+  originalFileUrl: string;
+  processedFileUrl: string;
+  sections: ResumeTemplateDTO['sections'];
+  questions: ResumeTemplateDTO['questions'];
+  confidence?: number;
+  placeholdersInjected?: number;
+  extractionIssues?: any[];
+}> {
+  return request(
+    `/api/resume/templates/${encodeURIComponent(templateId)}/process`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ templateId }),
+    },
+    backendToken
+  );
+}
+
 export async function deleteTemplate(backendToken: string, templateId: string): Promise<void> {
   await request<void>(
     `/api/resume/templates/${encodeURIComponent(templateId)}`,

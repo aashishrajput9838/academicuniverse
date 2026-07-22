@@ -1,0 +1,1464 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" mc:Ignorable="w14 w15" xml:space="preserve">
+  <w:body>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="7" w:lineRule="exact" w:line="220" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="112" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="26" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:jc w:val="right" />
+        <w:ind w:firstLine="0" w:left="4925" w:right="935" />
+        <w:spacing w:before="0" w:after="0" w:lineRule="auto" w:line="209" />
+        <w:widowControl w:val="0" />
+      </w:pPr>
+      <w:r>
+        <mc:AlternateContent>
+          <mc:Choice Requires="wps">
+            <w:drawing>
+              <wp:anchor allowOverlap="1" layoutInCell="0" relativeHeight="3" locked="0" simplePos="0" distL="114300" distT="0" distR="114300" distB="0" behindDoc="1">
+                <wp:simplePos x="0" y="0" />
+                <wp:positionH relativeFrom="page">
+                  <wp:posOffset>1272552</wp:posOffset>
+                </wp:positionH>
+                <wp:positionV relativeFrom="paragraph">
+                  <wp:posOffset>-1867212</wp:posOffset>
+                </wp:positionV>
+                <wp:extent cx="2169688" cy="2169688" />
+                <wp:effectExtent l="0" t="0" r="0" b="0" />
+                <wp:wrapNone />
+                <wp:docPr id="1" name="drawingObject1" />
+                <wp:cNvGraphicFramePr />
+                <a:graphic>
+                  <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+                    <pic:pic>
+                      <pic:nvPicPr>
+                        <pic:cNvPr id="2" name="Picture 2" />
+                        <pic:cNvPicPr />
+                      </pic:nvPicPr>
+                      <pic:blipFill>
+                        <a:blip r:embed="R25d1110bd3c44352" />
+                        <a:stretch />
+                      </pic:blipFill>
+                      <pic:spPr>
+                        <a:xfrm rot="0">
+                          <a:ext cx="2169688" cy="2169688" />
+                        </a:xfrm>
+                        <a:prstGeom prst="rect">
+                          <a:avLst />
+                        </a:prstGeom>
+                        <a:noFill />
+                      </pic:spPr>
+                    </pic:pic>
+                  </a:graphicData>
+                </a:graphic>
+              </wp:anchor>
+            </w:drawing>
+          </mc:Choice>
+          <mc:Fallback />
+        </mc:AlternateContent>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="49" />
+          <w:szCs w:val="49" />
+          <w:spacing w:val="22" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>B</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="115" />
+          <w:sz w:val="49" />
+          <w:szCs w:val="49" />
+          <w:spacing w:val="22" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>o</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="114" />
+          <w:sz w:val="49" />
+          <w:szCs w:val="49" />
+          <w:spacing w:val="22" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>l</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="97" />
+          <w:sz w:val="49" />
+          <w:szCs w:val="49" />
+          <w:spacing w:val="22" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>t</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="114" />
+          <w:sz w:val="49" />
+          <w:szCs w:val="49" />
+          <w:spacing w:val="22" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>a</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="49" />
+          <w:szCs w:val="49" />
+          <w:spacing w:val="18" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>c</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="115" />
+          <w:sz w:val="49" />
+          <w:szCs w:val="49" />
+          <w:spacing w:val="23" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>h</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="49" />
+          <w:szCs w:val="49" />
+          <w:spacing w:val="27" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t xml:space="preserve"> </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="49" />
+          <w:szCs w:val="49" />
+          <w:spacing w:val="12" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>A</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="115" />
+          <w:sz w:val="49" />
+          <w:szCs w:val="49" />
+          <w:spacing w:val="13" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>n</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="97" />
+          <w:sz w:val="49" />
+          <w:szCs w:val="49" />
+          <w:spacing w:val="13" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>t</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="115" />
+          <w:sz w:val="49" />
+          <w:szCs w:val="49" />
+          <w:spacing w:val="13" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>on</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="49" />
+          <w:szCs w:val="49" />
+          <w:spacing w:val="0" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t xml:space="preserve"> </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="6" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>S</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="82" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="7" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>t</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="105" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="7" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>ud</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="111" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="7" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>e</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="105" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="7" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>n</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="82" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="7" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>t</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="12" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t xml:space="preserve"> </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="7" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>F</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="114" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="26" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>A</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="97" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="26" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>M</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="26" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>CS</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="12" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t xml:space="preserve"> </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="26" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>BS</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="112" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="26" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>U</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="112" />
+          <w:sz w:val="24" />
+          <w:szCs w:val="24" />
+          <w:spacing w:val="26" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="0" w:lineRule="exact" w:line="240" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="112" />
+          <w:sz w:val="14" />
+          <w:szCs w:val="14" />
+          <w:spacing w:val="26" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="13" w:lineRule="exact" w:line="140" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="28" />
+          <w:szCs w:val="28" />
+          <w:spacing w:val="35" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:ind w:firstLine="0" w:left="84" w:right="-20" />
+        <w:spacing w:before="0" w:after="0" w:lineRule="auto" w:line="240" />
+        <w:widowControl w:val="0" />
+      </w:pPr>
+      <w:r>
+        <mc:AlternateContent>
+          <mc:Choice Requires="wps">
+            <w:drawing>
+              <wp:anchor allowOverlap="1" layoutInCell="0" relativeHeight="46" locked="0" simplePos="0" distL="114300" distT="0" distR="114300" distB="0" behindDoc="1">
+                <wp:simplePos x="0" y="0" />
+                <wp:positionH relativeFrom="page">
+                  <wp:posOffset>1134008</wp:posOffset>
+                </wp:positionH>
+                <wp:positionV relativeFrom="paragraph">
+                  <wp:posOffset>198406</wp:posOffset>
+                </wp:positionV>
+                <wp:extent cx="5291975" cy="37958" />
+                <wp:effectExtent l="0" t="0" r="0" b="0" />
+                <wp:wrapNone />
+                <wp:docPr id="3" name="drawingObject3" />
+                <wp:cNvGraphicFramePr />
+                <a:graphic>
+                  <a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+                    <wps:wsp>
+                      <wps:cNvSpPr />
+                      <wps:spPr>
+                        <a:xfrm rot="0">
+                          <a:ext cx="5291975" cy="37958" />
+                        </a:xfrm>
+                        <a:custGeom>
+                          <a:avLst />
+                          <a:pathLst>
+                            <a:path w="5291975" h="37958">
+                              <a:moveTo>
+                                <a:pt x="0" y="0" />
+                              </a:moveTo>
+                              <a:lnTo>
+                                <a:pt x="0" y="37958" />
+                              </a:lnTo>
+                              <a:lnTo>
+                                <a:pt x="5291975" y="37958" />
+                              </a:lnTo>
+                              <a:lnTo>
+                                <a:pt x="5291975" y="0" />
+                              </a:lnTo>
+                              <a:lnTo>
+                                <a:pt x="0" y="0" />
+                              </a:lnTo>
+                              <a:close />
+                            </a:path>
+                          </a:pathLst>
+                        </a:custGeom>
+                        <a:solidFill>
+                          <a:srgbClr val="000000" />
+                        </a:solidFill>
+                      </wps:spPr>
+                      <wps:bodyPr anchor="t" horzOverflow="overflow" vertOverflow="overflow" vert="horz" lIns="91440" tIns="45720" rIns="91440" bIns="45720" />
+                    </wps:wsp>
+                  </a:graphicData>
+                </a:graphic>
+              </wp:anchor>
+            </w:drawing>
+          </mc:Choice>
+          <mc:Fallback />
+        </mc:AlternateContent>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="28" />
+          <w:szCs w:val="28" />
+          <w:spacing w:val="37" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>PERS</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="117" />
+          <w:sz w:val="28" />
+          <w:szCs w:val="28" />
+          <w:spacing w:val="38" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>O</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="112" />
+          <w:sz w:val="28" />
+          <w:szCs w:val="28" />
+          <w:spacing w:val="38" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>N</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="28" />
+          <w:szCs w:val="28" />
+          <w:spacing w:val="38" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>AL</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="28" />
+          <w:szCs w:val="28" />
+          <w:spacing w:val="16" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t xml:space="preserve"> </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="117" />
+          <w:sz w:val="28" />
+          <w:szCs w:val="28" />
+          <w:spacing w:val="35" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>D</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="28" />
+          <w:szCs w:val="28" />
+          <w:spacing w:val="35" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>E</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="28" />
+          <w:szCs w:val="28" />
+          <w:spacing w:val="10" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>T</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="28" />
+          <w:szCs w:val="28" />
+          <w:spacing w:val="35" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>A</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="107" />
+          <w:sz w:val="28" />
+          <w:szCs w:val="28" />
+          <w:spacing w:val="35" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>I</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="1" />
+          <w:bCs w:val="1" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="28" />
+          <w:szCs w:val="28" />
+          <w:spacing w:val="35" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>LS</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="20" />
+          <w:szCs w:val="20" />
+          <w:spacing w:val="35" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:spacing w:before="0" w:after="4" w:lineRule="exact" w:line="200" />
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:sectPr>
+          <w:footnotePr>
+            <w:pos w:val="pageBottom" />
+            <w:numFmt w:val="decimal" />
+            <w:numRestart w:val="continuous" />
+            <w:numStart w:val="1" />
+          </w:footnotePr>
+          <w:endnotePr>
+            <w:pos w:val="docEnd" />
+            <w:numFmt w:val="lowerRoman" />
+            <w:numRestart w:val="continuous" />
+            <w:numStart w:val="1" />
+          </w:endnotePr>
+          <w:type w:val="continuous" />
+          <w:pgSz w:h="16837" w:orient="portrait" w:w="11905" />
+          <w:pgMar w:bottom="887" w:footer="0" w:gutter="0" w:header="0" w:left="1701" w:right="850" w:top="1134" />
+          <w:pgNumType w:fmt="decimal" />
+          <w:cols w:equalWidth="1" w:num="1" w:space="708" w:sep="0" />
+        </w:sectPr>
+      </w:pPr>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="91" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="6" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:jc w:val="left" />
+        <w:ind w:firstLine="3" w:left="504" w:right="-41" />
+        <w:spacing w:before="21" w:after="0" w:lineRule="auto" w:line="236" />
+        <w:widowControl w:val="0" />
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="13" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>Bir</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="98" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="13" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>t</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="96" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="13" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>h</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="0" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t xml:space="preserve"> </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="-4" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>A</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="96" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="7" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>dd</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="-3" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>r</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="91" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="6" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>e</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="103" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="7" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>ss</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="0" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t xml:space="preserve"> </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="6" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>P</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="96" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="7" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>ho</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="106" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="7" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>n</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="91" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="7" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>e</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="100" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="0" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t xml:space="preserve"> </w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="104" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spacing w:val="4" />
+          <w:strike w:val="0" />
+          <w:u w:val="none" />
+        </w:rPr>
+        <w:t>M</w:t>
+      </w:r>
+      <w:r>
+        <w:rPr>
+          <w:b w:val="0" />
+          <w:bCs w:val="0" />
+          <w:color w:val="000000" />
+          <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri" w:eastAsia="Calibri" />
+          <w:i w:val="0" />
+          <w:iCs w:val="0" />
+          <w:outline w:val="0" />
+          <w:position w:val="0" />
+          <w:w w:val="105" />
+          <w:sz w:val="22" />
+          <w:szCs w:val="22" />
+          <w:spa

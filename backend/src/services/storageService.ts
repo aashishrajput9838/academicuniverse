@@ -64,6 +64,45 @@ export class StorageService {
     }
 
     /**
+     * Uploads the original unmodified resume template DOCX to Cloudinary.
+     */
+    async uploadResumeTemplateOriginal(
+        buffer: Buffer,
+        originalName: string,
+        organizationId: string
+    ): Promise<string> {
+        try {
+            const timestamp = Date.now();
+            const safeName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const publicId = `original_${timestamp}_${safeName}`;
+
+            return await new Promise((resolve, reject) => {
+                const uploadStream = cloudinary.uploader.upload_stream(
+                    {
+                        resource_type: 'raw',
+                        folder: `academicuniverse/templates/${organizationId}`,
+                        public_id: publicId,
+                    },
+                    (error, result) => {
+                        if (error) {
+                            logger.error('Cloudinary original upload failed', error);
+                            return reject(new Error(error.message || 'Cloudinary original upload failed'));
+                        }
+                        if (!result) {
+                            return reject(new Error('No result returned from Cloudinary'));
+                        }
+                        resolve(result.secure_url);
+                    }
+                );
+                uploadStream.end(buffer);
+            });
+        } catch (error: any) {
+            logger.error('Failed to upload original resume template to Cloudinary', error);
+            throw new Error(`Storage upload failed: ${error.message}`);
+        }
+    }
+
+    /**
      * Uploads a resume template file to Cloudinary.
      */
     async uploadResumeTemplate(

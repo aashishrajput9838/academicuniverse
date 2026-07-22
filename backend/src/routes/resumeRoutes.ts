@@ -5,7 +5,8 @@ import {
   uploadTemplateController,
   getAvailableTemplatesController,
   processResumeController,
-  getSavedResumeController
+  getSavedResumeController,
+  generateResumeController
 } from '../controllers/resumeController';
 
 const router = express.Router();
@@ -27,6 +28,7 @@ router.post('/templates', upload.single('templateFile'), uploadTemplateControlle
 // Student routes
 router.get('/templates', getAvailableTemplatesController);
 router.post('/generate', processResumeController);
+router.post('/generate-resume', generateResumeController);
 router.get('/draft', getSavedResumeController);
 
 export default router;

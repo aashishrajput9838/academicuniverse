@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import { sendResponse, sendError } from '../utils/response';
 import storageService from '../services/storageService';
 import resumeService from '../services/resumeService';
+import { TemplateProcessingOrchestrator } from '../services/templateProcessingOrchestrator.service';
+import { ResumeGenerationOrchestrator } from '../services/resumeGenerationOrchestrator.service';
+import axios from 'axios';
 import ResumeTemplate from '../models/ResumeTemplate';
 import StudentResume from '../models/StudentResume';
 import { Logger } from '../utils/logger';
@@ -305,5 +308,106 @@ export const getSavedResumeController = async (req: any, res: Response) => {
   } catch (error: any) {
     logger.error('Error fetching resume draft:', error);
     return sendError(res, 500, 'Failed to fetch resume draft');
+  }
+};
+
+/**
+ * Process a raw template: extract structure, inject placeholders, generate processed DOCX
+ */
+export const processTemplateController = async (req: any, res: Response) => {
+  try {
+    if (!req.user) {
+      return sendError(res, 401, 'Not authenticated');
+    }
+
+    const { templateId } = req.body;
+    if (!templateId) {
+      return sendError(res, 400, 'Template ID is required.');
+    }
+
+    const template = await ResumeTemplate.findById(templateId);
+    if (!template) {
+      return sendError(res, 404, 'Resume template not found.');
+    }
+
+    const organizationId = req.user.organizationId;
+
+    const orchestrator = new TemplateProcessingOrchestrator({
+      enableAiAssistance: false,
+    });
+
+    let originalBuffer: Buffer;
+    try {
+      const response = await axios.get(template.fileUrl, { responseType: 'arraybuffer' });
+      originalBuffer = Buffer.from(response.data);
+    } catch (error: any) {
+      return sendError(res, 500, `Failed to download template: ${error.message}`);
+    }
+
+    const result = await orchestrator.process(originalBuffer);
+
+    if (!result.success) {
+      return sendError(res, 500, `Template processing failed: ${result.issues.join(', ')}`);
+    }
+
+    const timestamp = Date.now();
+    const safeName = `processed_${timestamp}_template.docx`;
+    const processedFileUrl = await storageService.uploadResumeTemplate(
+      result.processedBuffer,
+      safeName,
+      organizationId
+    );
+
+    return sendResponse(res, 200, {
+      originalFileUrl: template.fileUrl,
+      processedFileUrl,
+      sections: result.milestone2Result.sections,
+      entities: result.milestone2Result.entities,
+      confidence: result.milestone2Result.confidence,
+      placeholdersInjected: result.injectionResult.placeholdersInjected,
+      extractionIssues: result.milestone2Result.extractionIssues,
+    }, 'Template processed successfully');
+  } catch (error: any) {
+    logger.error('Error processing template:', error);
+    return sendError(res, 500, error.message || 'Failed to process template');
+  }
+};
+
+/**
+ * Generate a filled resume from a processed template and student data
+ */
+export const generateResumeController = async (req: any, res: Response) => {
+  try {
+    if (!req.user) {
+      return sendError(res, 401, 'Not authenticated');
+    }
+
+    const { processedTemplateBuffer, studentData } = req.body;
+    
+    if (!processedTemplateBuffer || !studentData) {
+      return sendError(res, 400, 'Processed template buffer and student data are required.');
+    }
+
+    const orchestrator = new ResumeGenerationOrchestrator({
+      enableAiAssistance: false,
+    });
+
+    const templateBuffer = Buffer.from(processedTemplateBuffer, 'base64');
+    const result = await orchestrator.generate(templateBuffer, studentData);
+
+    if (!result.success) {
+      return sendError(res, 500, `Resume generation failed: ${result.issues.join(', ')}`);
+    }
+
+    const docxBase64 = result.docxBuffer.toString('base64');
+
+    return sendResponse(res, 200, {
+      docxBase64,
+      htmlPreview: result.htmlPreview,
+      validation: result.validationResult,
+    }, 'Resume generated successfully');
+  } catch (error: any) {
+    logger.error('Error generating resume:', error);
+    return sendError(res, 500, error.message || 'Failed to generate resume');
   }
 };

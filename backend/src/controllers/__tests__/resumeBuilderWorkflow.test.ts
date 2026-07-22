@@ -171,7 +171,21 @@ describe('Resume Builder Workflow Integration', () => {
         $set: {
           fileUrl: 'https://storage.example.com/processed.docx',
           originalFileUrl: 'https://storage.example.com/original.docx',
-          sections: MOCK_SECTIONS,
+          sections: [
+            {
+              id: 'section_1',
+              title: 'Education',
+              order: 0,
+              repeatable: false,
+              maxEntries: undefined,
+              minEntries: undefined,
+              fields: [
+                { key: 'degree', label: 'Degree', type: 'text', required: true, aiEnhanceable: true, placeholder: undefined, validation: undefined, options: undefined },
+                { key: 'institution', label: 'Institution', type: 'text', required: true, aiEnhanceable: true, placeholder: undefined, validation: undefined, options: undefined },
+              ],
+              aiPrompt: undefined,
+            },
+          ],
           questions: [
             { tag: 'degree', question: 'Degree', type: 'text', aiEnhanceable: true },
             { tag: 'institution', question: 'Institution', type: 'text', aiEnhanceable: true },
@@ -212,5 +226,76 @@ describe('Resume Builder Workflow Integration', () => {
     expect(listedTemplate.questions).toHaveLength(2);
     expect(listedTemplate.confidence).toBe(0.9);
     expect(listedTemplate.formattingMetadata).toEqual({ styles: {}, headingLevels: {}, bulletMarker: '-', dateFormat: 'YYYY-MM-DD' });
+  });
+
+  it('should transform sections to schema-compatible format before persisting', async () => {
+    const mockTemplate = createMockTemplate({ questions: [] });
+    MockedResumeTemplate.findById.mockResolvedValue(mockTemplate);
+
+    const sectionsWithExtraProps = [
+      {
+        id: 'section_1',
+        title: 'Summary',
+        order: 0,
+        repeatable: false,
+        maxEntries: 1,
+        minEntries: 1,
+        fields: [
+          { key: 'text', label: 'Summary', type: 'textarea', required: true, aiEnhanceable: true, extraProp: 'should-be-removed' },
+        ],
+        aiPrompt: 'Extract summary',
+        extraSectionProp: 'should-be-removed',
+      },
+    ];
+
+    MockedOrchestrator.mockImplementation(() => ({
+      process: jest.fn().mockResolvedValue({
+        success: true,
+        milestone2Result: {
+          sections: sectionsWithExtraProps,
+          entities: [],
+          formattingMetadata: { styles: {}, headingLevels: {}, bulletMarker: '-', dateFormat: 'YYYY-MM-DD' },
+          extractionIssues: [],
+          confidence: 0.9,
+        },
+        injectionResult: {
+          success: true,
+          placeholdersInjected: 1,
+          issues: [],
+          buffer: MOCK_PROCESSED_BUFFER,
+        },
+        generationResult: {
+          success: true,
+          buffer: MOCK_PROCESSED_BUFFER,
+          size: MOCK_PROCESSED_BUFFER.length,
+          issues: [],
+        },
+        processedBuffer: MOCK_PROCESSED_BUFFER,
+        issues: [],
+      }),
+    } as any));
+
+    mockReq.body = { templateId: VALID_TEMPLATE_ID };
+
+    await processTemplateController(mockReq, mockRes);
+
+    expect(mockRes.status).toHaveBeenCalledWith(200);
+    const updateCall = MockedResumeTemplate.findByIdAndUpdate.mock.calls[0];
+    const updateArg = updateCall[1];
+    const persistedSections = updateArg.$set.sections;
+
+    expect(persistedSections).toHaveLength(1);
+    expect(persistedSections[0]).not.toHaveProperty('extraSectionProp');
+    expect(persistedSections[0].fields[0]).not.toHaveProperty('extraProp');
+    expect(persistedSections[0].fields[0]).toEqual({
+      key: 'text',
+      label: 'Summary',
+      type: 'textarea',
+      required: true,
+      aiEnhanceable: true,
+      placeholder: undefined,
+      validation: undefined,
+      options: undefined,
+    });
   });
 });

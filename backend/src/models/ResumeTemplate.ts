@@ -54,6 +54,38 @@ export interface ITemplateField {
     options?: string[];
 }
 
+const ResumeFieldSchema = new Schema<ITemplateField>(
+    {
+        key: { type: String, required: true },
+        label: { type: String, required: true },
+        type: { type: String, required: true },
+        required: { type: Boolean, default: false },
+        aiEnhanceable: { type: Boolean, default: false },
+        placeholder: String,
+        validation: {
+            pattern: String,
+            minLength: Number,
+            maxLength: Number,
+        },
+        options: [String],
+    },
+    { _id: false }
+);
+
+const ResumeSectionSchema = new Schema<ITemplateSection>(
+    {
+        id: { type: String, required: true },
+        title: { type: String, required: true },
+        order: { type: Number, required: true },
+        repeatable: { type: Boolean, default: false },
+        maxEntries: Number,
+        minEntries: Number,
+        fields: { type: [ResumeFieldSchema], default: [] } as any,
+        aiPrompt: String,
+    },
+    { _id: false }
+);
+
 const ResumeTemplateSchema = new Schema<IResumeTemplate>(
     {
         templateName: {
@@ -86,59 +118,39 @@ const ResumeTemplateSchema = new Schema<IResumeTemplate>(
             ref: 'User',
             required: true,
         },
-        questions: [{
-            tag: { type: String, required: true },
-            question: { type: String, required: true },
-            type: { type: String, enum: ['text', 'textarea'], default: 'text' },
-            aiEnhanceable: { type: Boolean, default: false }
-        }],
+        questions: [
+            {
+                tag: { type: String, required: true },
+                question: { type: String, required: true },
+                type: { type: String, enum: ['text', 'textarea'], default: 'text' },
+                aiEnhanceable: { type: Boolean, default: false },
+            },
+        ],
         originalFileUrl: {
             type: String,
             required: false,
         },
-        sections: [{
-            id: String,
-            title: String,
-            order: Number,
-            repeatable: Boolean,
-            maxEntries: Number,
-            minEntries: Number,
-            fields: [{
-                key: String,
-                label: String,
-                type: String,
-                required: Boolean,
-                aiEnhanceable: Boolean,
-                placeholder: String,
-                validation: {
-                    pattern: String,
-                    minLength: Number,
-                    maxLength: Number
-                },
-                options: [String]
-            }],
-            aiPrompt: String
-        }],
+        sections: { type: [ResumeSectionSchema], default: [] } as any,
         formattingMetadata: {
             styles: Schema.Types.Mixed,
             headingLevels: Schema.Types.Mixed,
             bulletMarker: String,
-            dateFormat: String
+            dateFormat: String,
         },
         confidence: {
             type: Number,
             default: 0,
             min: 0,
-            max: 1
+            max: 1,
         },
         reviewed: {
             type: Boolean,
-            default: false
+            default: false,
         },
         reviewNotes: {
             type: String,
-            default: ''
-        }
+            default: '',
+        },
     } as any,
     { timestamps: true }
 );

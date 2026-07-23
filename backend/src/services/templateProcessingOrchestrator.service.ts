@@ -40,6 +40,10 @@ export class TemplateProcessingOrchestrator {
     const issues: string[] = [];
 
     try {
+      if (process.env.PLACEHOLDER_INJECTOR_DEBUG === 'true') {
+        this.placeholderInjector.enableDebug();
+      }
+
       const extractedDoc = await this.docxService.extract(originalBuffer);
       const milestone2Result = await this.extractionResultService.extract(extractedDoc);
 
@@ -48,6 +52,11 @@ export class TemplateProcessingOrchestrator {
         extractedDoc,
         milestone2Result.sections
       );
+
+      if (process.env.PLACEHOLDER_INJECTOR_DEBUG === 'true' && injectionResult.success) {
+        const debugLog = this.placeholderInjector.getDebugLog();
+        logger.info('Placeholder injection debug log:', debugLog);
+      }
 
       if (!injectionResult.success) {
         issues.push(...injectionResult.issues);

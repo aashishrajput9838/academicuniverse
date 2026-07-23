@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { generateResume, fetchDraft } from '@/components/Resume/api/resumeApi';
+import { saveDraft as saveDraftApi } from '@/components/Resume/api/resumeApi';
 
 export function useAutoSave(
   backendToken: string,
@@ -21,7 +21,7 @@ export function useAutoSave(
     onSaveStart();
 
     try {
-      const response = await generateResume(backendToken, templateId, formData, 'none');
+      await saveDraftApi(backendToken, templateId, formData);
       onSaveSuccess(formData);
     } catch (error) {
       onSaveError(error instanceof Error ? error : new Error('Failed to save draft'));

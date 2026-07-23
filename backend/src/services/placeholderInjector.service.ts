@@ -17,6 +17,8 @@ export interface InjectionResult {
 export class PlaceholderInjector {
   private xmlParser: XMLParser;
   private xmlBuilder: XMLBuilder;
+  private debugMode = false;
+  private debugLog: string[] = [];
 
   constructor() {
     this.xmlParser = new XMLParser({
@@ -36,6 +38,19 @@ export class PlaceholderInjector {
       format: false,
       suppressBooleanAttributes: false,
     });
+  }
+
+  enableDebug() {
+    this.debugMode = true;
+    this.debugLog = [];
+  }
+
+  disableDebug() {
+    this.debugMode = false;
+  }
+
+  getDebugLog(): string[] {
+    return [...this.debugLog];
   }
 
   async inject(
@@ -82,6 +97,62 @@ export class PlaceholderInjector {
     let modifiedXml: string;
     try {
       modifiedXml = this.xmlBuilder.build(normalized);
+      
+      if (this.debugMode) {
+        this.debugLog.push('=== PLACEHOLDER INJECTION DEBUG REPORT ===');
+        this.debugLog.push(`Original XML length: ${documentXml.length} chars`);
+        this.debugLog.push(`Modified XML length: ${modifiedXml.length} chars`);
+        this.debugLog.push(`Total placeholders injected: ${placeholdersInjected}`);
+        this.debugLog.push('');
+        this.debugLog.push('--- Injected Placeholders ---');
+        for (const [rawKey, uniqueKeys] of Object.entries(dataKeyMapping)) {
+          this.debugLog.push(`  raw: "${rawKey}" -> unique: [${uniqueKeys.join(', ')}]`);
+        }
+        this.debugLog.push('');
+        
+        const leftoverOpen = (modifiedXml.match(/\{\{/g) || []).length;
+        const leftoverClose = (modifiedXml.match(/\}\}/g) || []).length;
+        this.debugLog.push(`--- Brace Balance Check ---`);
+        this.debugLog.push(`  Open braces: ${leftoverOpen}`);
+        this.debugLog.push(`  Close braces: ${leftoverClose}`);
+        this.debugLog.push(`  Expected pairs: ${placeholdersInjected}`);
+        
+        if (leftoverOpen !== leftoverClose) {
+          this.debugLog.push(`  WARNING: Brace mismatch! Open=${leftoverOpen}, Close=${leftoverClose}`);
+        }
+        if (leftoverOpen > placeholdersInjected * 2) {
+          this.debugLog.push(`  WARNING: Extra braces detected! Possible duplicate/fragmented placeholders.`);
+        }
+        
+        this.debugLog.push('');
+        this.debugLog.push('--- XML Diff Summary ---');
+        const origBraces = this.extractBracedTokens(documentXml);
+        const modBraces = this.extractBracedTokens(modifiedXml);
+        this.debugLog.push(`  Original brace tokens: ${origBraces.length}`);
+        this.debugLog.push(`  Modified brace tokens: ${modBraces.length}`);
+        
+        const newTokens = modBraces.filter(t => !origBraces.includes(t));
+        const removedTokens = origBraces.filter(t => !modBraces.includes(t));
+        if (newTokens.length > 0) {
+          this.debugLog.push(`  New tokens injected: ${newTokens.join(', ')}`);
+        }
+        if (removedTokens.length > 0) {
+          this.debugLog.push(`  Removed tokens: ${removedTokens.join(', ')}`);
+        }
+        
+        const fs = require('fs');
+        const path = require('path');
+        const debugDir = 'C:/Users/elitebook840g89319/AppData/Local/Temp/kilo';
+        try {
+          if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+          fs.writeFileSync(path.join(debugDir, 'placeholder-injection-debug.log'), this.debugLog.join('\n'));
+          fs.writeFileSync(path.join(debugDir, 'placeholder-injection-original.xml'), documentXml);
+          fs.writeFileSync(path.join(debugDir, 'placeholder-injection-modified.xml'), modifiedXml);
+        } catch (e) {
+          logger.warn('Failed to write debug files:', e);
+        }
+      }
+      
       try {
         const fs = require('fs');
         fs.writeFileSync('C:/Users/elitebook840g89319/AppData/Local/Temp/kilo/debug-xml-output.xml', modifiedXml);
@@ -151,7 +222,28 @@ export class PlaceholderInjector {
 
     for (const target of fieldTargets) {
       if (target.paragraphIndex < paragraphs.length) {
-        const replaced = this.replaceRunTextWithPlaceholder(paragraphs[target.paragraphIndex], target.runIndex, target.fieldKey);
+        const paragraph = paragraphs[target.paragraphIndex];
+        
+        if (this.debugMode) {
+          const beforeXml = this.xmlBuilder.build(paragraph);
+          this.debugLog.push(`[PARA] p[${target.paragraphIndex}] run[${target.runIndex}] BEFORE:`);
+          this.debugLog.push(beforeXml);
+        }
+        
+        const replaced = this.replaceRunTextWithPlaceholder(paragraph, target.runIndex, target.fieldKey);
+        
+        if (this.debugMode) {
+          const afterXml = this.xmlBuilder.build(paragraph);
+          this.debugLog.push(`[PARA] p[${target.paragraphIndex}] run[${target.runIndex}] AFTER:`);
+          this.debugLog.push(afterXml);
+          
+          const openBraces = (afterXml.match(/\{\{/g) || []).length;
+          const closeBraces = (afterXml.match(/\}\}/g) || []).length;
+          if (openBraces !== closeBraces) {
+            this.debugLog.push(`  WARNING: Paragraph ${target.paragraphIndex} has unmatched braces after injection! Open=${openBraces}, Close=${closeBraces}`);
+          }
+        }
+        
         if (replaced) injected++;
       }
     }
@@ -244,6 +336,24 @@ export class PlaceholderInjector {
       const tNode = textArray[i];
       const textValue = typeof tNode === 'string' ? tNode : tNode['#text'];
       if (textValue && textValue.trim().length > 0) {
+        if (this.debugMode) {
+          this.debugLog.push(`[INJECT] paragraph run[${runIndex}] textNode[${i}]`);
+          this.debugLog.push(`  BEFORE: "${textValue}"`);
+          this.debugLog.push(`  AFTER:  "${placeholder}"`);
+          
+          const allTextInRun = textArray.map(t => typeof t === 'string' ? t : (t['#text'] || '')).join('');
+          this.debugLog.push(`  Full run text: "${allTextInRun}"`);
+          
+          const hasOpenBraces = (allTextInRun.match(/\{\{/g) || []).length;
+          const hasCloseBraces = (allTextInRun.match(/\}\}/g) || []).length;
+          if (hasOpenBraces > 1 || hasCloseBraces > 1) {
+            this.debugLog.push(`  WARNING: Multiple brace pairs in run! Open=${hasOpenBraces}, Close=${hasCloseBraces}`);
+          }
+          if (hasOpenBraces !== hasCloseBraces) {
+            this.debugLog.push(`  WARNING: Unmatched braces in run!`);
+          }
+        }
+        
         if (typeof tNode === 'string') {
           textArray[i] = placeholder;
         } else {
@@ -263,11 +373,7 @@ export class PlaceholderInjector {
       delete node['#text'];
     }
 
-    for (const key of Object.keys(node)) {
-      if (key.startsWith('xmlns')) {
-        delete node[key];
-      }
-    }
+    // Preserve XML namespace declarations (xmlns:*). Removing them breaks Mammoth/WordprocessingML.
 
     for (const key of Object.keys(node)) {
       if (key === '#text') continue;
@@ -290,5 +396,10 @@ export class PlaceholderInjector {
     }
 
     return node;
+  }
+
+  private extractBracedTokens(text: string): string[] {
+    const matches = text.match(/\{\{[^}]+\}\}/g);
+    return matches || [];
   }
 }

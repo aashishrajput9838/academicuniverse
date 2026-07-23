@@ -4,6 +4,8 @@ import mammoth from 'mammoth';
 import axios from 'axios';
 import { Logger } from '../utils/logger';
 import aiService from './aiService';
+import fs from 'fs';
+import path from 'path';
 
 const logger = new Logger('resumeService');
 
@@ -17,6 +19,10 @@ export class ResumeService {
       // 1. Fetch the DOCX template from Firebase Storage (or any public URL)
       const response = await axios.get(templateUrl, { responseType: 'arraybuffer' });
       const content = response.data;
+
+      const rawDebugPath = path.join(__dirname, '..', '..', 'debug-raw-template.docx');
+      fs.writeFileSync(rawDebugPath, Buffer.from(content));
+      logger.info(`[DEBUG] Wrote raw template to ${rawDebugPath}`);
 
       // 2. Load the DOCX content as a zip
       const zip = new PizZip(content);
@@ -48,6 +54,10 @@ export class ResumeService {
         type: 'nodebuffer',
         compression: 'DEFLATE',
       });
+
+      const debugPath = path.join(__dirname, '..', '..', 'generated-debug.docx');
+      fs.writeFileSync(debugPath, docxBuffer);
+      logger.info(`[DEBUG] Wrote generated DOCX to ${debugPath}`);
 
       // 5. Generate HTML preview using Mammoth
       logger.info('Converting generated DOCX to HTML sequence for preview.');

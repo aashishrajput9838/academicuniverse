@@ -312,6 +312,36 @@ export const getSavedResumeController = async (req: any, res: Response) => {
 };
 
 /**
+ * Save resume draft data without generating DOCX or preview
+ */
+export const saveDraftController = async (req: any, res: Response) => {
+  try {
+    if (!req.user) {
+      return sendError(res, 401, 'Not authenticated');
+    }
+
+    const { templateId, data } = req.body;
+    if (!templateId || data == null) {
+      return sendError(res, 400, 'Template ID and data are required.');
+    }
+
+    const studentResume = await StudentResume.findOneAndUpdate(
+      { userId: req.user.userId, templateId },
+      { filledData: data },
+      { new: true, upsert: true }
+    );
+
+    return sendResponse(res, 200, {
+      studentResumeId: studentResume._id,
+      updatedAt: studentResume.updatedAt,
+    }, 'Draft saved successfully');
+  } catch (error: any) {
+    logger.error('Error saving resume draft:', error);
+    return sendError(res, 500, 'Failed to save draft');
+  }
+};
+
+/**
  * Process a raw template: extract structure, inject placeholders, generate processed DOCX
  */
 export const processTemplateController = async (req: any, res: Response) => {

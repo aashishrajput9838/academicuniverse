@@ -45,6 +45,7 @@ export interface ResumeTemplateDTO {
 }
 
 export interface TemplateQuestion {
+  _id?: string;
   tag: string;
   question: string;
   type: 'text' | 'textarea';

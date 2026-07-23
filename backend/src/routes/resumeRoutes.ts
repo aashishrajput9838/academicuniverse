@@ -7,7 +7,8 @@ import {
   processResumeController,
   getSavedResumeController,
   generateResumeController,
-  processTemplateController
+  processTemplateController,
+  saveDraftController
 } from '../controllers/resumeController';
 
 const router = express.Router();
@@ -32,5 +33,6 @@ router.get('/templates', getAvailableTemplatesController);
 router.post('/generate', processResumeController);
 router.post('/generate-resume', generateResumeController);
 router.get('/draft', getSavedResumeController);
+router.post('/draft', saveDraftController);
 
 export default router;

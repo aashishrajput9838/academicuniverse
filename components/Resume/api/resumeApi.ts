@@ -5,7 +5,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5
 async function request<T>(
   endpoint: string,
   options: RequestInit,
-  backendToken: string
+  backendToken: string,
+  requireData: boolean = true
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
@@ -22,7 +23,7 @@ async function request<T>(
   }
 
   const payload = await response.json();
-  if (!payload?.success || !payload?.data) {
+  if (!payload?.success || (requireData && payload?.data == null)) {
     throw new Error('Invalid API response');
   }
 
@@ -32,6 +33,21 @@ async function request<T>(
 export async function fetchTemplates(backendToken: string, target?: string): Promise<ResumeTemplateDTO[]> {
   const url = target ? `/api/resume/templates?target=${encodeURIComponent(target)}` : '/api/resume/templates';
   return request<ResumeTemplateDTO[]>(url, { method: 'GET' }, backendToken);
+}
+
+export async function saveDraft(
+  backendToken: string,
+  templateId: string,
+  data: Record<string, any>
+): Promise<{ studentResumeId: string; updatedAt: string }> {
+  return request<{ studentResumeId: string; updatedAt: string }>(
+    '/api/resume/draft',
+    {
+      method: 'POST',
+      body: JSON.stringify({ templateId, data }),
+    },
+    backendToken
+  );
 }
 
 export async function generateResume(
@@ -54,6 +70,7 @@ export async function fetchDraft(backendToken: string, templateId: string): Prom
   return request<Record<string, any> | null>(
     `/api/resume/draft?templateId=${encodeURIComponent(templateId)}`,
     { method: 'GET' },
-    backendToken
+    backendToken,
+    false
   );
 }

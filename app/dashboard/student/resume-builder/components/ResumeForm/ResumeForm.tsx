@@ -131,7 +131,7 @@ export function ResumeForm({ template, backendToken, onBack, onNext, onGenerate,
         <FormSection>
           {template.questions.map((question) => (
             <FormFieldRenderer
-              key={question.tag}
+               key={question._id || question.tag}
               question={question}
               value={formData[question.tag] || ''}
               onChange={(value) => handleChange(question.tag, value)}

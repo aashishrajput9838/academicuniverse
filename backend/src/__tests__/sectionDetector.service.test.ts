@@ -162,4 +162,35 @@ describe('SectionDetectorService', () => {
     expect(summarySection).toBeDefined();
     expect(summarySection!.fields.length).toBeGreaterThan(0);
   });
+
+  it('detects Heading1 paragraphs via keyword match without bold/fontSize', () => {
+    const paras: ExtractedParagraph[] = [
+      createParagraph('Education', { index: 0, runs: [createRun('Education', { formatting: { bold: false, italic: false, underline: false } })] }),
+      createParagraph('B.Tech Computer Science', { index: 1 }),
+      createParagraph('Skills', { index: 2, runs: [createRun('Skills', { formatting: { bold: false, italic: false, underline: false } })] }),
+      createParagraph('Java, Python, TypeScript', { index: 3 }),
+      createParagraph('Work Experience', { index: 4 }),
+      createParagraph('Senior Developer at Acme', { index: 5 }),
+    ];
+    const doc = createDocument(paras);
+    const { sections } = service.detect(doc);
+
+    const titles = sections.map(s => s.title.toLowerCase());
+    expect(titles).toContain('education');
+    expect(titles).toContain('skills');
+    expect(titles).toContain('work experience');
+  });
+
+  it('sets headingParagraphIndex on detected sections', () => {
+    const paras: ExtractedParagraph[] = [
+      createParagraph('Education', { index: 0 }),
+      createParagraph('B.Tech', { index: 1 }),
+    ];
+    const doc = createDocument(paras);
+    const { sections } = service.detect(doc);
+
+    const eduSection = sections.find(s => s.title.toLowerCase().includes('education'));
+    expect(eduSection).toBeDefined();
+    expect(eduSection!.headingParagraphIndex).toBe(0);
+  });
 });

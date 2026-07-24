@@ -4,10 +4,23 @@ import { useState, useEffect } from 'react';
 import { fetchAllTemplates, processTemplate } from '@/components/Resume/api/templateApi';
 import type { ResumeTemplateDTO } from '@/components/Resume/types/api';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
 interface TemplateListProps {
   refreshKey: number;
+}
+
+function getValidationStatusBadge(validationStatus?: string) {
+  switch (validationStatus) {
+    case 'valid':
+      return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">Valid</span>;
+    case 'invalid':
+      return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">Invalid</span>;
+    case 'pending':
+      return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">Pending</span>;
+    default:
+      return null;
+  }
 }
 
 export function TemplateList({ refreshKey }: TemplateListProps) {
@@ -127,6 +140,12 @@ export function TemplateList({ refreshKey }: TemplateListProps) {
                 Target
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                Mode
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                Validation
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Upload Date
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -141,6 +160,8 @@ export function TemplateList({ refreshKey }: TemplateListProps) {
             {templates.map((template) => {
               const isProcessing = processingIds.has(template._id);
               const meta = processedMeta[template._id];
+              const isPlaceholderFirst = template.processingMode === 'placeholder-first';
+              const validationStatus = template.validationStatus;
 
               return (
                 <tr key={template._id} className="hover:bg-slate-800/30 transition">
@@ -152,6 +173,18 @@ export function TemplateList({ refreshKey }: TemplateListProps) {
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">
                     {template.target || '-'}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm">
+                    <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+                      isPlaceholderFirst
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-slate-700 text-slate-400'
+                    }`}>
+                      {isPlaceholderFirst ? 'Placeholder-First' : 'Legacy'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm">
+                    {getValidationStatusBadge(validationStatus)}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">
                     {new Date(template.createdAt).toLocaleDateString()}

@@ -8,7 +8,8 @@ import {
   getSavedResumeController,
   generateResumeController,
   processTemplateController,
-  saveDraftController
+  saveDraftController,
+  validateTemplateController
 } from '../controllers/resumeController';
 
 const router = express.Router();
@@ -27,6 +28,7 @@ router.use(authenticateUser);
 // Faculty / Admin routes
 router.post('/templates', upload.single('templateFile'), uploadTemplateController);
 router.post('/templates/:id/process', processTemplateController);
+router.post('/templates/validate', upload.single('templateFile'), validateTemplateController);
 
 // Student routes
 router.get('/templates', getAvailableTemplatesController);

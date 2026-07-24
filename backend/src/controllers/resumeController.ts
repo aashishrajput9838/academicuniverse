@@ -4,6 +4,7 @@ import storageService from '../services/storageService';
 import resumeService from '../services/resumeService';
 import { TemplateProcessingOrchestrator } from '../services/templateProcessingOrchestrator.service';
 import { ResumeGenerationOrchestrator } from '../services/resumeGenerationOrchestrator.service';
+import { PlaceholderValidator } from '../services/placeholderValidator.service';
 import axios from 'axios';
 import ResumeTemplate from '../models/ResumeTemplate';
 import StudentResume from '../models/StudentResume';
@@ -58,6 +59,22 @@ export const uploadTemplateController = async (req: any, res: Response) => {
 
     const organizationId = req.user.organizationId;
     const uploadedBy = req.user.userId;
+
+    const validator = new PlaceholderValidator();
+    let validationReport;
+    try {
+      validationReport = await validator.validate(file.buffer);
+    } catch (validationError: any) {
+      logger.error('Placeholder validation failed:', validationError);
+      return sendError(res, 500, 'Failed to validate template');
+    }
+
+    if (!validationReport.valid) {
+      return sendResponse(res, 400, {
+        success: false,
+        data: validationReport,
+      }, 'Template validation failed');
+    }
 
     let finalBuffer = file.buffer;
 
@@ -131,11 +148,27 @@ export const uploadTemplateController = async (req: any, res: Response) => {
       organizationId,
       uploadedBy,
       questions,
+      processingMode: 'placeholder-first',
+      validationStatus: 'valid',
+      validationReport: validationReport,
     });
 
     await template.save();
 
-    return sendResponse(res, 201, template, 'Resume template uploaded successfully');
+    const responseData = {
+      templateName,
+      type,
+      target: target || '',
+      fileUrl,
+      organizationId,
+      uploadedBy,
+      questions,
+      processingMode: 'placeholder-first',
+      validationStatus: 'valid',
+      validationReport,
+    };
+
+    return sendResponse(res, 201, responseData, 'Resume template uploaded successfully');
   } catch (error: any) {
     logger.error('Error uploading template:', error);
     return sendError(res, 500, error.message || 'Failed to upload template');
@@ -481,5 +514,42 @@ export const generateResumeController = async (req: any, res: Response) => {
   } catch (error: any) {
     logger.error('Error generating resume:', error);
     return sendError(res, 500, error.message || 'Failed to generate resume');
+  }
+};
+
+export const validateTemplateController = async (req: any, res: Response) => {
+  try {
+    if (!req.user) {
+      return sendError(res, 401, 'Not authenticated');
+    }
+
+    const file = req.file;
+    if (!file) {
+      return sendError(res, 400, 'No template file provided.');
+    }
+
+    const acceptedTypes = [
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/zip',
+    ];
+
+    const isDocx =
+      acceptedTypes.includes(file.mimetype) ||
+      (file.originalname && file.originalname.toLowerCase().endsWith('.docx'));
+
+    if (!isDocx) {
+      return sendError(res, 400, 'Invalid file type. Only DOCX files are supported.');
+    }
+
+    const validator = new PlaceholderValidator();
+    const report = await validator.validate(file.buffer);
+
+    return sendResponse(res, 200, {
+      success: report.valid,
+      data: report,
+    }, report.valid ? 'Template validated successfully' : 'Template validation failed');
+  } catch (error: any) {
+    logger.error('Error validating template:', error);
+    return sendError(res, 500, error.message || 'Failed to validate template');
   }
 };

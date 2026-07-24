@@ -4,18 +4,9 @@ import {
   ExtractionIssue,
   ExtractionOptions,
 } from './milestone2.types';
-import { ExtractedDocument, ExtractedRun, ExtractedParagraph } from '../docxExtraction.service';
+import { ExtractedDocument, ExtractedRun } from '../docxExtraction.service';
 import { v4 as uuidv4 } from 'uuid';
-
-const KNOWN_SECTION_KEYWORDS: Record<string, string[]> = {
-  'summary': ['summary', 'objective', 'profile', 'about', 'about me'],
-  'skills': ['skills', 'technical skills', 'core competencies', 'competencies'],
-  'education': ['education', 'qualification', 'academic', 'academics'],
-  'experience': ['experience', 'work history', 'employment', 'work experience', 'professional experience'],
-  'projects': ['projects', 'publications', 'achievements'],
-  'certifications': ['certifications', 'certificates', 'certification'],
-  'languages': ['languages', 'hobbies', 'interests', 'references'],
-};
+import { HeadingDetector } from './headingDetector.service';
 
 const FIELD_INFERENCE: Record<string, TemplateField[]> = {
   'education': [
@@ -60,7 +51,8 @@ export class SectionDetectorService {
 
   detect(document: ExtractedDocument): { sections: DetectedSection[]; issues: ExtractionIssue[] } {
     const issues: ExtractionIssue[] = [];
-    const headingCandidates = this.findHeadingCandidates(document);
+    const headingDetector = new HeadingDetector(this.options);
+    const headingCandidates = headingDetector.findHeadingCandidates(document);
     
     if (headingCandidates.length === 0) {
       issues.push({
@@ -93,95 +85,13 @@ export class SectionDetectorService {
         order: 0,
         repeatable: false,
         fields: FIELD_INFERENCE['default'],
+        headingParagraphIndex: -1,
       };
       
       return { sections: [contentSection], issues };
     }
 
     return { sections, issues };
-  }
-
-  private findHeadingCandidates(document: ExtractedDocument): Array<{ index: number; title: string; paragraphIndex: number; runIndex?: number; runText: string; titleKey?: string; rawConfidence: number }> {
-    const candidates: Array<{ index: number; title: string; paragraphIndex: number; runIndex?: number; runText: string; titleKey?: string; rawConfidence: number }> = [];
-
-    for (let pIndex = 0; pIndex < document.paragraphs.length; pIndex++) {
-      const paragraph = document.paragraphs[pIndex];
-      const rawText = paragraph.rawText.trim();
-      
-      if (!rawText || rawText.length === 0) continue;
-      if (paragraph.runs.length === 0) continue;
-
-      const firstRun = paragraph.runs[0];
-      const isStyledHeading = firstRun.formatting.bold && (firstRun.formatting.fontSize || 0) >= 14;
-      const isAllCapsOrTitleCase = /^[A-Z][A-Z\s]+$/.test(rawText) || /^[A-Z][a-z]+(\s[A-Z][a-z]+)*$/.test(rawText);
-      const hasTrailingPunctuation = /[.:;!?]$/.test(rawText);
-      const isKeywordMatch = this.matchKeyword(rawText);
-      const startsWithBullet = /^[•\-\*\u2022\u2023\u2043\u204c\u204d]/.test(rawText) || /^(\d+\.\s|[a-zA-Z]\.\s)/.test(rawText);
-
-      const isHeading = !startsWithBullet && (isStyledHeading || (isKeywordMatch && !hasTrailingPunctuation) || (isAllCapsOrTitleCase && isKeywordMatch));
-
-      if (!isHeading && !isStyledHeading) continue;
-
-      let titleKey: string | undefined;
-      let confidence = 0.5;
-
-      if (isStyledHeading) {
-        confidence = 0.8;
-      }
-
-      const keywordMatch = this.matchKeywordWithKey(rawText);
-      if (keywordMatch) {
-        titleKey = keywordMatch.key;
-        confidence = Math.max(confidence, 0.9);
-      } else if (isStyledHeading && isAllCapsOrTitleCase) {
-        titleKey = this.normalizeTitle(rawText);
-        confidence = Math.max(confidence, 0.6);
-      }
-
-      const title = this.cleanTitle(rawText);
-      if (title.length < 2 || title.length > 100) continue;
-
-      if (confidence >= 0.6) {
-        candidates.push({
-          index: candidates.length,
-          title,
-          paragraphIndex: pIndex,
-          runIndex: firstRun.runIndex,
-          runText: rawText,
-          titleKey,
-          rawConfidence: confidence,
-        });
-      }
-    }
-
-    return candidates;
-  }
-
-  private matchKeyword(text: string): boolean {
-    const lower = text.toLowerCase();
-    return Object.values(KNOWN_SECTION_KEYWORDS).some(keywords =>
-      keywords.some(keyword => lower.includes(keyword))
-    );
-  }
-
-  private matchKeywordWithKey(text: string): { key: string; confidence: number } | null {
-    const lower = text.toLowerCase();
-    for (const [key, keywords] of Object.entries(KNOWN_SECTION_KEYWORDS)) {
-      for (const keyword of keywords) {
-        if (lower.includes(keyword)) {
-          return { key, confidence: 0.9 };
-        }
-      }
-    }
-    return null;
-  }
-
-  private cleanTitle(text: string): string {
-    return text.replace(/[:\-–—]+$/, '').trim();
-  }
-
-  private normalizeTitle(text: string): string {
-    return this.cleanTitle(text).toLowerCase();
   }
 
   private buildSectionsFromCandidates(
@@ -204,12 +114,7 @@ export class SectionDetectorService {
         continue;
       }
 
-      const startParagraph = current.paragraphIndex;
-      const endParagraph = next ? next.paragraphIndex : document.paragraphs.length;
-      
-      const sectionRuns = this.extractSectionRuns(document, startParagraph, endParagraph);
-
-      const titleKey = current.titleKey || this.normalizeTitle(current.title);
+      const titleKey = current.titleKey || current.title.toLowerCase().replace(/[:\-–—]+$/, '').trim();
       const repeatable = REPEATABLE_SECTIONS.has(titleKey);
       const minEntries = REQUIRED_SECTIONS.has(titleKey) ? 1 : undefined;
       
@@ -223,6 +128,7 @@ export class SectionDetectorService {
         maxEntries: repeatable ? undefined : 1,
         minEntries,
         fields: JSON.parse(JSON.stringify(fields)),
+        headingParagraphIndex: current.paragraphIndex,
         aiPrompt: `Extract structured data for section: ${current.title}`,
       };
 

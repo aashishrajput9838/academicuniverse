@@ -26,6 +26,34 @@ export interface IResumeTemplate extends Document {
     confidence?: number;
     reviewed?: boolean;
     reviewNotes?: string;
+    processingMode?: 'auto-inject' | 'placeholder-first';
+    validationStatus?: 'pending' | 'valid' | 'invalid' | 'deprecated';
+    validationReport?: {
+        valid: boolean;
+        placeholders: {
+            raw: string;
+            key: string;
+            location: string;
+            context: string;
+        }[];
+        issues: {
+            severity: 'info' | 'warning' | 'error';
+            code: string;
+            placeholder: string;
+            message: string;
+            suggestion?: string;
+            location?: string;
+        }[];
+        summary: {
+            total: number;
+            unique: number;
+            duplicates: number;
+            missingRequired: string[];
+            unknown: string[];
+            misspelled: string[];
+            reservedConflicts: string[];
+        };
+    };
 }
 
 export interface ITemplateSection {
@@ -150,6 +178,50 @@ const ResumeTemplateSchema = new Schema<IResumeTemplate>(
         reviewNotes: {
             type: String,
             default: '',
+        },
+        processingMode: {
+            type: String,
+            enum: ['auto-inject', 'placeholder-first'],
+            default: 'placeholder-first',
+            required: true,
+            index: true,
+        },
+        validationStatus: {
+            type: String,
+            enum: ['pending', 'valid', 'invalid', 'deprecated'],
+            default: 'pending',
+            required: true,
+            index: true,
+        },
+        validationReport: {
+            valid: { type: Boolean, default: false },
+            placeholders: [
+                {
+                    raw: String,
+                    key: String,
+                    location: String,
+                    context: String,
+                },
+            ],
+            issues: [
+                {
+                    severity: { type: String, enum: ['info', 'warning', 'error'] },
+                    code: String,
+                    placeholder: String,
+                    message: String,
+                    suggestion: String,
+                    location: String,
+                },
+            ],
+            summary: {
+                total: { type: Number, default: 0 },
+                unique: { type: Number, default: 0 },
+                duplicates: { type: Number, default: 0 },
+                missingRequired: [String],
+                unknown: [String],
+                misspelled: [String],
+                reservedConflicts: [String],
+            },
         },
     } as any,
     { timestamps: true }

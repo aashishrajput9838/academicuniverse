@@ -27,6 +27,7 @@ export interface DetectedSection {
   minEntries?: number;
   fields: TemplateField[];
   aiPrompt?: string;
+  headingParagraphIndex?: number;
 }
 
 export interface Milestone2Result {

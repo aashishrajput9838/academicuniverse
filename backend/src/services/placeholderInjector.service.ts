@@ -1,9 +1,11 @@
+"use strict";
+
+import { ExtractedDocument, DocxLocation } from '../docxExtraction.service';
+import { DetectedSection, TemplateField } from './milestone2.types';
+import { HeadingDetector, DetectionOptions } from './headingDetector.service';
 import PizZip from 'pizzip';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import { Logger } from '../utils/logger';
-import { ExtractedDocument, DocxLocation } from '../docxExtraction.service';
-import { DetectedSection, TemplateField } from './milestone2.types';
-
 const logger = new Logger('PlaceholderInjector');
 
 export interface InjectionResult {
@@ -19,8 +21,9 @@ export class PlaceholderInjector {
   private xmlBuilder: XMLBuilder;
   private debugMode = false;
   private debugLog: string[] = [];
+  private headingDetector: HeadingDetector;
 
-  constructor() {
+  constructor(options: DetectionOptions = { enableAiAssistance: false }) {
     this.xmlParser = new XMLParser({
       ignoreAttributes: false,
       attributeNamePrefix: '',
@@ -38,6 +41,8 @@ export class PlaceholderInjector {
       format: false,
       suppressBooleanAttributes: false,
     });
+
+    this.headingDetector = new HeadingDetector(options);
   }
 
   enableDebug() {
@@ -112,7 +117,7 @@ export class PlaceholderInjector {
         
         const leftoverOpen = (modifiedXml.match(/\{\{/g) || []).length;
         const leftoverClose = (modifiedXml.match(/\}\}/g) || []).length;
-        this.debugLog.push(`--- Brace Balance Check ---`);
+        this.debugLog.push('--- Brace Balance Check ---');
         this.debugLog.push(`  Open braces: ${leftoverOpen}`);
         this.debugLog.push(`  Close braces: ${leftoverClose}`);
         this.debugLog.push(`  Expected pairs: ${placeholdersInjected}`);
@@ -252,13 +257,22 @@ export class PlaceholderInjector {
   }
 
   private findSectionStart(extractedDoc: ExtractedDocument, section: DetectedSection): number {
-    for (let i = 0; i < extractedDoc.paragraphs.length; i++) {
-      const p = extractedDoc.paragraphs[i];
-      if (p.rawText.trim().toLowerCase().includes(section.title.toLowerCase()) && p.runs.length > 0) {
-        const hasHeadingFormatting = p.runs.some(run => run.formatting.bold || (run.formatting.fontSize || 0) >= 14);
-        if (hasHeadingFormatting) {
-          return i + 1;
-        }
+    if (typeof section.headingParagraphIndex === 'number' && section.headingParagraphIndex >= 0) {
+      const nextIndex = section.headingParagraphIndex + 1;
+      if (nextIndex < extractedDoc.paragraphs.length) {
+        return nextIndex;
+      }
+      return -1;
+    }
+
+    const paragraph = extractedDoc.paragraphs.find(p => p.rawText.toLowerCase().includes(section.title.toLowerCase()));
+    if (!paragraph) return -1;
+    
+    if (this.headingDetector.isHeading(paragraph, extractedDoc)) {
+      const index = extractedDoc.paragraphs.indexOf(paragraph);
+      const nextIndex = index + 1;
+      if (nextIndex < extractedDoc.paragraphs.length) {
+        return nextIndex;
       }
     }
     return -1;
@@ -270,7 +284,8 @@ export class PlaceholderInjector {
     startIdx: number,
     sectionIndex: number,
     rawKeysSeen: Set<string>,
-    dataKeyMapping: Record<string, string[]>
+    dataKeyMapping: Record<string, string[]>,
+    xmlParagraphs?: any[]
   ): Array<{ paragraphIndex: number; runIndex: number; fieldKey: string }> {
     const targets: Array<{ paragraphIndex: number; runIndex: number; fieldKey: string }> = [];
     const fields = section.fields;
@@ -282,6 +297,11 @@ export class PlaceholderInjector {
 
       const isNextSection = this.isSectionHeading(extractedDoc, pIdx);
       if (isNextSection) break;
+
+      const isHeading = this.headingDetector.isHeading(paragraph, extractedDoc);
+      if (isHeading) {
+        break;
+      }
 
       if (fieldIdx < fields.length && paragraph.runs.length > 0) {
         const rawKey = fields[fieldIdx].key;
@@ -304,6 +324,13 @@ export class PlaceholderInjector {
     return targets;
   }
 
+  private isSectionHeading(extractedDoc: ExtractedDocument, paragraphIndex: number): boolean {
+    if (paragraphIndex >= extractedDoc.paragraphs.length) return false;
+    const paragraph = extractedDoc.paragraphs[paragraphIndex];
+    if (paragraph.runs.length === 0) return false;
+    return this.headingDetector.isHeading(paragraph, extractedDoc);
+  }
+
   private getUniqueKey(rawKey: string, sectionIndex: number, rawKeysSeen: Set<string>): string {
     if (!rawKeysSeen.has(rawKey)) {
       rawKeysSeen.add(rawKey);
@@ -312,13 +339,6 @@ export class PlaceholderInjector {
     const scopedKey = `section_${sectionIndex}_${rawKey}`;
     rawKeysSeen.add(scopedKey);
     return scopedKey;
-  }
-
-  private isSectionHeading(extractedDoc: ExtractedDocument, paragraphIndex: number): boolean {
-    if (paragraphIndex >= extractedDoc.paragraphs.length) return false;
-    const paragraph = extractedDoc.paragraphs[paragraphIndex];
-    if (paragraph.runs.length === 0) return false;
-    return paragraph.runs.some(run => run.formatting.bold && (run.formatting.fontSize || 0) >= 14);
   }
 
   private replaceRunTextWithPlaceholder(paragraph: any, runIndex: number, placeholder: string): boolean {
@@ -372,8 +392,6 @@ export class PlaceholderInjector {
     if (node['#text'] && typeof node['#text'] === 'string' && node['#text'].trim() === '') {
       delete node['#text'];
     }
-
-    // Preserve XML namespace declarations (xmlns:*). Removing them breaks Mammoth/WordprocessingML.
 
     for (const key of Object.keys(node)) {
       if (key === '#text') continue;

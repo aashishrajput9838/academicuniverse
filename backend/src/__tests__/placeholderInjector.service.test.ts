@@ -236,4 +236,66 @@ describe('PlaceholderInjector', () => {
     expect(result.success).toBe(true);
     expect(result.placeholdersInjected).toBeGreaterThanOrEqual(1);
   });
+
+  it('injects placeholders when headingParagraphIndex is set (no fallback search)', async () => {
+    mockPizZip(SAMPLE_DOCX_XML);
+    const buffer = Buffer.from(SAMPLE_DOCX_XML);
+    const doc = createDocument([
+      createParagraph('Education', { index: 0, runs: [createRun('Education', {
+        formatting: { bold: false, italic: false, underline: false }
+      })] }),
+      createParagraph('B.Tech CSE', { index: 1, runs: [createRun('B.Tech CSE', {
+        formatting: { bold: false, italic: false, underline: false }
+      })] }),
+    ]);
+
+    const sections: DetectedSection[] = [
+      {
+        id: 'edu-section',
+        title: 'Education',
+        order: 0,
+        repeatable: false,
+        headingParagraphIndex: 0,
+        fields: [
+          { key: 'degree', label: 'Degree', type: 'text', required: true, aiEnhanceable: true },
+        ],
+      },
+    ];
+
+    const result = await injector.inject(buffer, doc, sections);
+    expect(result.success).toBe(true);
+    expect(result.placeholdersInjected).toBe(1);
+  });
+
+  it('injects placeholders for Heading1 keyword paragraphs without bold/fontSize', async () => {
+    mockPizZip(SAMPLE_DOCX_XML);
+    const buffer = Buffer.from(SAMPLE_DOCX_XML);
+    const doc = createDocument([
+      createParagraph('Skills', { index: 0, runs: [createRun('Skills', {
+        formatting: { bold: false, italic: false, underline: false }
+      })] }),
+      createParagraph('Java Python TypeScript', { index: 1, runs: [createRun('Java Python TypeScript', {
+        formatting: { bold: false, italic: false, underline: false }
+      })] }),
+    ]);
+
+    const sections: DetectedSection[] = [
+      {
+        id: 'skills-section',
+        title: 'Skills',
+        order: 0,
+        repeatable: false,
+        headingParagraphIndex: 0,
+        fields: [
+          { key: 'items', label: 'Skills', type: 'list', required: true, aiEnhanceable: true },
+        ],
+      },
+    ];
+
+    const result = await injector.inject(buffer, doc, sections);
+    expect(result.success).toBe(true);
+    expect(result.placeholdersInjected).toBe(1);
+    const xmlString = result.buffer.toString();
+    expect(xmlString).toContain('{{items}}');
+  });
 });

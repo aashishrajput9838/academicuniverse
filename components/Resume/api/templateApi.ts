@@ -1,4 +1,4 @@
-import type { ResumeTemplateDTO } from '../types/api';
+import type { ResumeTemplateDTO, ValidationReport } from '../types/api';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
 
@@ -23,6 +23,31 @@ async function request<T>(
   const payload = await response.json();
   if (!payload?.success || !payload?.data) {
     throw new Error('Invalid API response');
+  }
+
+  return payload.data;
+}
+
+export async function validateTemplate(
+  backendToken: string,
+  formData: FormData
+): Promise<ValidationReport> {
+  const response = await fetch(`${API_BASE_URL}/api/resume/templates/validate`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${backendToken}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message || 'Validation request failed');
+  }
+
+  const payload = await response.json();
+  if (!payload?.success && payload?.data === undefined) {
+    throw new Error('Invalid validation response');
   }
 
   return payload.data;

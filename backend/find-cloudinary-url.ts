@@ -14,6 +14,8 @@ async function main() {
     console.log('templateName:', t.templateName);
     console.log('fileUrl:', t.fileUrl);
     console.log('originalFileUrl:', t.originalFileUrl || 'N/A');
+    console.log('questions:', JSON.stringify(t.questions));
+    console.log('sections:', JSON.stringify(t.sections));
   });
 
   await mongoose.disconnect();

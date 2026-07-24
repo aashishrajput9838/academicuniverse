@@ -13,6 +13,8 @@ export enum UaipEvent {
   ResumeParseDeadLetter = "RESUME_PARSE_DEAD_LETTER",
   ResumeSectionDetected = "RESUME_SECTION_DETECTED",
   ResumeSectionDetectionFailed = "RESUME_SECTION_DETECTION_FAILED",
+  ResumeEntityExtracted = "RESUME_ENTITY_EXTRACTED",
+  ResumeEntityExtractionFailed = "RESUME_ENTITY_EXTRACTION_FAILED",
   // Human-in-the-Loop review workflow events
   CandidateDraftSaved = "CANDIDATE_DRAFT_SAVED",
   CandidateSubmitted = "CANDIDATE_SUBMITTED",

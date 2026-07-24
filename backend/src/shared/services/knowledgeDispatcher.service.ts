@@ -6,6 +6,7 @@ import { AuditEntry } from '../../models/AuditEntry';
 import { KnowledgeJobRepository } from '../repositories/knowledgeJob.repository';
 import { KnowledgeJobStatus } from '../enums/knowledgeJobStatus.enum';
 import { ResumeSectionDetector } from '../../services/resume/resumeSectionDetector.service';
+import { ResumeEntityExtractor } from '../../services/resume/resumeEntityExtractor.service';
 import { ResumeParseResult } from '../../models/ResumeParseResult';
 import { UaipEvent, UaipEventPayload } from '../../events/UaipEvents';
 import { IAIProvider } from '../../core/ai/ai.provider';
@@ -23,9 +24,11 @@ export class KnowledgeDispatcher {
   private experienceService = new ExperienceService();
   private jobRepo = new KnowledgeJobRepository();
   private sectionDetector: ResumeSectionDetector;
+  private entityExtractor: ResumeEntityExtractor;
 
   constructor(aiProvider?: IAIProvider) {
     this.sectionDetector = new ResumeSectionDetector(aiProvider);
+    this.entityExtractor = new ResumeEntityExtractor(aiProvider);
   }
 
   /**
@@ -213,11 +216,13 @@ export class KnowledgeDispatcher {
         });
         break;
       case 'entity_extraction':
-        await this.handleUnimplementedResumeStage({
+        await this.handleResumeEntityExtraction({
           organizationId,
+          personId,
           sourceDocumentId,
+          rawConfidence,
+          data,
           correlationId,
-          stage,
         });
         break;
       case 'ai_enhancement':
@@ -408,7 +413,142 @@ export class KnowledgeDispatcher {
   }
 
   /**
-   * Placeholder for unimplemented resume stages (Sprint 4-6).
+   * Stage 2: Entity extraction handler (Sprint 4).
+   */
+  private async handleResumeEntityExtraction(params: {
+    organizationId: string;
+    personId: string;
+    sourceDocumentId: string;
+    rawConfidence: number;
+    data: unknown;
+    correlationId?: string;
+  }): Promise<void> {
+    const { organizationId, sourceDocumentId, correlationId, data } = params;
+    const jobPayload = (data as any)?.payload || {};
+    const rawContent = typeof jobPayload.rawContent === 'string' ? jobPayload.rawContent : '';
+    const processingId = sourceDocumentId;
+
+    await AuditEntry.create({
+      organizationId,
+      recordId: sourceDocumentId,
+      collectionName: 'resume_records',
+      action: 'entity_extraction_started',
+      performedBy: 'dispatcher',
+      metadata: {
+        domain: 'resume',
+        stage: 'entity_extraction',
+        message: 'Entity extraction stage started',
+        correlationId,
+      },
+    });
+
+    const existing = await ResumeParseResult.findOne({ processingId }).lean().exec();
+    if (existing && (existing as any).entitiesExtracted > 0) {
+      return;
+    }
+
+    const sections = (existing as any)?.rawCandidateFields?.sections || [];
+
+    try {
+      const result = await this.entityExtractor.extract({
+        sections,
+        rawText: rawContent,
+      });
+
+      const mappedEntities = result.entities.map((e) => ({
+        type: e.type,
+        confidence: e.confidence,
+        sourceSection: e.sourceSection,
+        data: e.data,
+        extractedBy: e.extractedBy,
+        reviewStatus: e.reviewStatus,
+        mergedFrom: e.mergedFrom,
+      }));
+
+      await ResumeParseResult.findOneAndUpdate(
+        { processingId },
+        {
+          $set: {
+            entitiesExtracted: result.entities.length,
+            entityExtractionStrategy: result.strategy,
+            aiProviderUsed: result.aiFallbackUsed ? 'gemini' : (existing as any)?.aiProviderUsed || 'none',
+            failedOver: result.aiFallbackUsed,
+            rawCandidateFields: {
+              ...((existing as any)?.rawCandidateFields || {}),
+              entities: mappedEntities,
+              person: mappedEntities.find((e: any) => e.type === 'person')?.data || (existing as any)?.rawCandidateFields?.person,
+              experience: mappedEntities.filter((e: any) => e.type === 'experience').map((e: any) => e.data),
+              education: mappedEntities.filter((e: any) => e.type === 'education').map((e: any) => e.data),
+              skills: mappedEntities.filter((e: any) => e.type === 'skill').map((e: any) => e.data),
+              projects: mappedEntities.filter((e: any) => e.type === 'project').map((e: any) => e.data),
+              certifications: mappedEntities.filter((e: any) => e.type === 'certification').map((e: any) => e.data),
+              achievements: mappedEntities.filter((e: any) => e.type === 'achievement').map((e: any) => e.data),
+              languages: mappedEntities.filter((e: any) => e.type === 'language').map((e: any) => e.data),
+            },
+          },
+        },
+        { upsert: false }
+      );
+
+      await eventBus.publish(
+        UaipEvent.ResumeEntityExtracted,
+        {
+          processingId,
+          entitiesExtracted: result.entities.length,
+          strategy: result.strategy,
+          aiFallbackUsed: result.aiFallbackUsed,
+          entityTypes: [...new Set(result.entities.map((e) => e.type))],
+          confidenceSummary: {
+            min: result.entities.length > 0 ? Math.min(...result.entities.map((e) => e.confidence)) : 0,
+            max: result.entities.length > 0 ? Math.max(...result.entities.map((e) => e.confidence)) : 0,
+            average: result.entities.length > 0 ? result.entities.reduce((sum, e) => sum + e.confidence, 0) / result.entities.length : 0,
+            belowThreshold: result.entities.filter((e) => e.confidence < 0.5).length,
+          },
+          reviewStatus: existing?.reviewStatus || 'PENDING_REVIEW',
+          timestamp: new Date(),
+          correlationId,
+        } as UaipEventPayload
+      );
+    } catch (err: any) {
+      let reason: 'no_sections' | 'ai_exhausted' | 'malformed_response' | 'unknown' = 'unknown';
+      const message = err.message || '';
+      if (message.includes('AI') || message.includes('quota') || message.includes('rate limit')) {
+        reason = 'ai_exhausted';
+      } else if (message.includes('JSON') || message.includes('parse') || message.includes('malformed')) {
+        reason = 'malformed_response';
+      }
+
+      await AuditEntry.create({
+        organizationId,
+        recordId: sourceDocumentId,
+        collectionName: 'resume_records',
+        action: 'failed',
+        performedBy: 'dispatcher',
+        metadata: {
+          domain: 'resume',
+          stage: 'entity_extraction',
+          errorMessage: err.message,
+          correlationId,
+        },
+      });
+
+      await eventBus.publish(
+        UaipEvent.ResumeEntityExtractionFailed,
+        {
+          processingId,
+          errorMessage: err.message,
+          reason,
+          timestamp: new Date(),
+          correlationId,
+        } as UaipEventPayload
+      );
+
+      throw err;
+    }
+  }
+
+  /**
+   * Placeholder for unimplemented resume stages (Sprint 5-6).
    */
   private async handleUnimplementedResumeStage(params: {
     organizationId: string;

@@ -41,7 +41,7 @@ const ResumeParseResultSchema = new Schema<IResumeParseResult>({
   entitiesExtracted: { type: Number, default: 0 },
   normalizedSkills: { type: Number, default: 0 },
   sectionDetectionStrategy: { type: String, required: true, enum: ['heuristic', 'heuristic+ai', 'ai-only'] },
-  entityExtractionStrategy: { type: String, required: true, enum: ['regex', 'regex+ner', 'regex+ner+ai', 'ai-only'] },
+  entityExtractionStrategy: { type: String, required: true, enum: ['heuristic', 'heuristic+ai', 'ai-only'] },
   aiProviderUsed: { type: String, default: 'none' },
   failedOver: { type: Boolean, default: false },
   primaryTargetModule: { type: String, default: '' },

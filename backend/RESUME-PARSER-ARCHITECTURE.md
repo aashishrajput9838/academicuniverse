@@ -10,6 +10,7 @@
 | 1.0 | 2026-07-24 | Kilo | Initial architecture design |
 | 1.1 | 2026-07-24 | Kilo | Post-review revision addressing 7 must-fix findings: async pipeline via KnowledgeQueueService, OCR sequencing, unambiguous confidence scoring with penalties, stage-level retry/dead-letter, file content validation, person deduplication strategy, required-section AI fallback trigger. |
 | 1.2 | 2026-07-24 | Kilo | Sprint 1 implementation fixes: API contract mismatch ('PROCESSING' response), atomic duplicate upload detection via E11000 handling, queue architecture pragmatics — ResumeQueueService retained as temporary Sprint 1 compatibility layer with migration plan to KnowledgeQueueService in Sprint 2. |
+| 1.3 | 2026-07-24 | Kilo | Sprint 2 implementation: ResumeClassifier (stateless), ResumeClassificationEventListener (event-driven), queue migration to KnowledgeJobRepository, UaipEvents extensions, KnowledgeDispatcher resume stub, fast-path DocumentClassifier reuse, explicit reviewStatus mapping. Senior code review: APPROVED WITH FIXES → all findings resolved. |
 
 **Review reference:** `backend/RESUME-PARSER-ARCHITECTURE-REVIEW.md`
 

@@ -214,7 +214,7 @@ const RESERVED_WORDS = new Set([
 export class PlaceholderValidator {
   private readonly canonicalKeys: Map<string, CanonicalField>;
   private readonly canonicalAliases: Map<string, CanonicalField>;
-  private readonly canonicalSuggestions: Map<string, string[]>;
+  private readonly canonicalSuggestions: Map<string, string>;
 
   constructor() {
     this.canonicalKeys = new Map();

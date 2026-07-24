@@ -3,8 +3,8 @@
 
 **Date:** 2026-07-25  
 **Status:** Active  
-**Current Tag:** `v0.4.0`  
-**Baseline Architecture:** v1.5
+**Current Tag:** `v0.5.0`  
+**Baseline Architecture:** v1.6
 
 ---
 
@@ -15,8 +15,8 @@
 | Sprint 1 | Resume Parser Baseline | FROZEN | `v0.1.0` | `8b6b40c` | 2026-07-24 |
 | Sprint 2 | ResumeClassifier + Queue Migration | FROZEN | `v0.2.0` | `11feaa9` | 2026-07-24 |
 | Sprint 3 | ResumeSectionDetector (Stage 1) | FROZEN | `v0.3.0` | `5905900` | 2026-07-24 |
-| Sprint 4 | ResumeEntityExtractor (Stage 2) | FROZEN | `v0.4.0` | `5905900` | 2026-07-25 |
-| Sprint 5 | ResumeAIEnhancer (Stage 3) | PENDING | — | — | — |
+| Sprint 4 | ResumeEntityExtractor (Stage 2) | FROZEN | `v0.4.0` | `f1a43e6` | 2026-07-25 |
+| Sprint 5 | ResumeAIEnhancer (Stage 3) | FROZEN | `v0.5.0` | `f2a33ee` | 2026-07-25 |
 | Sprint 6 | ResumeConfidenceScorer (Stage 4) | PENDING | — | — | — |
 | Sprint 7 | DIC Integration + Canonical Writes | PENDING | — | — | — |
 
@@ -29,7 +29,8 @@
 | Resume Parser Architecture | v1.2 | Superseded | `backend/RESUME-PARSER-ARCHITECTURE.md` |
 | Resume Parser Architecture | v1.3 | Superseded | `backend/RESUME-PARSER-ARCHITECTURE.md` |
 | Resume Parser Architecture | v1.4 | Superseded | `backend/RESUME-PARSER-ARCHITECTURE.md` |
-| Resume Parser Architecture | v1.5 | CURRENT | `backend/RESUME-PARSER-ARCHITECTURE.md` |
+| Resume Parser Architecture | v1.5 | Superseded | `backend/RESUME-PARSER-ARCHITECTURE.md` |
+| Resume Parser Architecture | v1.6 | CURRENT | `backend/RESUME-PARSER-ARCHITECTURE.md` |
 | Architecture Review | v1.3 | Complete | `backend/RESUME-PARSER-ARCHITECTURE-REVIEW.md` |
 | Architecture Review Evidence | v1.3 | Complete | `backend/RESUME-PARSER-ARCHITECTURE-REVIEW-EVIDENCE.md` |
 | Architecture Revision Evidence | v1.3 | Complete | `backend/RESUME-PARSER-ARCHITECTURE-REVISION-EVIDENCE.md` |
@@ -94,7 +95,41 @@
 |----------|------|
 | Sprint 4 Plan | `backend/SPRINT-4-PLAN.md` |
 | Sprint 4 Plan Evidence | `backend/SPRINT-4-PLAN-EVIDENCE.md` |
-| *(Additional reports added during implementation)* | — |
+| Sprint 4 Plan Review | `backend/SPRINT-4-PLAN-REVIEW.md` |
+| Sprint 4 Plan Review Evidence | `backend/SPRINT-4-PLAN-REVIEW-EVIDENCE.md` |
+| Sprint 4 Plan Fix Report | `backend/SPRINT-4-PLAN-FIX-REPORT.md` |
+| Sprint 4 Plan Fix Evidence | `backend/SPRINT-4-PLAN-FIX-EVIDENCE.md` |
+| Sprint 4 Plan Re-Review | `backend/SPRINT-4-PLAN-RE-REVIEW.md` |
+| Sprint 4 Plan Re-Review Evidence | `backend/SPRINT-4-PLAN-RE-REVIEW-EVIDENCE.md` |
+| Sprint 4 Implementation Report | `backend/SPRINT-4-IMPLEMENTATION-REPORT.md` |
+| Sprint 4 Implementation Evidence | `backend/SPRINT-4-IMPLEMENTATION-EVIDENCE.md` |
+| Sprint 4 Code Review | `backend/SPRINT-4-CODE-REVIEW.md` |
+| Sprint 4 Code Review Evidence | `backend/SPRINT-4-CODE-REVIEW-EVIDENCE.md` |
+| Sprint 4 Review Fix Report | `backend/SPRINT-4-REVIEW-FIX-REPORT.md` |
+| Sprint 4 Review Fix Evidence | `backend/SPRINT-4-REVIEW-FIX-EVIDENCE.md` |
+| Sprint 4 Re-Review | `backend/SPRINT-4-RE-REVIEW.md` |
+| Sprint 4 Re-Review Evidence | `backend/SPRINT-4-RE-REVIEW-EVIDENCE.md` |
+| Sprint 4 Completion Report | `backend/SPRINT-4-COMPLETION-REPORT.md` |
+| Architecture v1.5 | `backend/RESUME-PARSER-ARCHITECTURE.md` |
+| Architecture v1.6 | `backend/RESUME-PARSER-ARCHITECTURE.md` |
+| Sprint 5 Plan | `backend/SPRINT-5-PLAN.md` |
+| Sprint 5 Plan Evidence | `backend/SPRINT-5-PLAN-EVIDENCE.md` |
+| Sprint 5 Plan Review | `backend/SPRINT-5-PLAN-REVIEW.md` |
+| Sprint 5 Plan Review Evidence | `backend/SPRINT-5-PLAN-REVIEW-EVIDENCE.md` |
+| Sprint 5 Plan Fix Report | `backend/SPRINT-5-PLAN-FIX-REPORT.md` |
+| Sprint 5 Plan Fix Evidence | `backend/SPRINT-5-PLAN-FIX-EVIDENCE.md` |
+| Sprint 5 Plan Re-Review | `backend/SPRINT-5-PLAN-RE-REVIEW.md` |
+| Sprint 5 Plan Re-Review Evidence | `backend/SPRINT-5-PLAN-RE-REVIEW-EVIDENCE.md` |
+| Sprint 5 Implementation Report | `backend/SPRINT-5-IMPLEMENTATION-REPORT.md` |
+| Sprint 5 Implementation Evidence | `backend/SPRINT-5-IMPLEMENTATION-EVIDENCE.md` |
+| Sprint 5 Code Review | `backend/SPRINT-5-CODE-REVIEW.md` |
+| Sprint 5 Code Review Evidence | `backend/SPRINT-5-CODE-REVIEW-EVIDENCE.md` |
+| Sprint 5 Review Fix Report | `backend/SPRINT-5-REVIEW-FIX-REPORT.md` |
+| Sprint 5 Review Fix Evidence | `backend/SPRINT-5-REVIEW-FIX-EVIDENCE.md` |
+| Sprint 5 Re-Review | `backend/SPRINT-5-RE-REVIEW.md` |
+| Sprint 5 Re-Review Evidence | `backend/SPRINT-5-RE-REVIEW-EVIDENCE.md` |
+| Sprint 5 Completion Report | `backend/SPRINT-5-COMPLETION-REPORT.md` |
+| Sprint 5 Completion Evidence | `backend/SPRINT-5-COMPLETION-EVIDENCE.md` |
 
 ---
 
@@ -146,6 +181,8 @@
 | `ResumeSectionDetectionFailed` | 3 | Stage 1 failed |
 | `ResumeEntityExtracted` | 4 | Stage 2 complete |
 | `ResumeEntityExtractionFailed` | 4 | Stage 2 failed |
+| `ResumeAIEnhanced` | 5 | Stage 3 complete |
+| `ResumeAIEnhancementFailed` | 5 | Stage 3 failed |
 | `ResumeStageRetry` | 3 | Stage retry scheduled |
 | `ResumeParseDeadLetter` | 3 | Stage failed after max retries |
 
@@ -156,8 +193,8 @@
 ```
 Stage 0: ResumeClassifier           [Sprint 2] DONE
 Stage 1: ResumeSectionDetector      [Sprint 3] DONE
-Stage 2: ResumeEntityExtractor      [Sprint 4] PLANNING
-Stage 3: ResumeAIEnhancer           [Sprint 5] PENDING
+Stage 2: ResumeEntityExtractor      [Sprint 4] DONE
+Stage 3: ResumeAIEnhancer           [Sprint 5] DONE
 Stage 4: ResumeConfidenceScorer     [Sprint 6] PENDING
 Stage 5: DIC Integration            [Sprint 7] PENDING
 Stage 6: Canonical Model Writes     [Sprint 7] PENDING
@@ -172,7 +209,8 @@ Stage 6: Canonical Model Writes     [Sprint 7] PENDING
 | Sprint 1 | 1 | 18 | Controller tests |
 | Sprint 2 | 55 | 404 | + classification + queue tests |
 | Sprint 3 | 57 | 418 | + section detector + dispatcher tests |
-| Sprint 4 | TBD | TBD | + entity extractor tests |
+| Sprint 4 | 58 | 437 | + entity extractor tests |
+| Sprint 5 | 60 | 461 | + AI enhancer + dispatcher tests |
 
 ---
 
@@ -185,6 +223,8 @@ Stage 6: Canonical Model Writes     [Sprint 7] PENDING
 | Edge-case tests (duplicate headers, etc.) | Low | 4+ | Backend | Backlogged |
 | Unimplemented stage retry noise | Low | 6+ | Backend | Backlogged |
 | Separate ResumeQueueService migration | Medium | 4+ | Backend | Planned |
+| `normalizeDate` regex ambiguity for DD-MM-YYYY | Low | 6 | Backend | Backlogged |
+| AI JSON parse error classification gap | Low | 6 | Backend | Backlogged |
 
 ---
 
@@ -228,8 +268,8 @@ Next Sprint Planning
 |----------|------|
 | Repository | https://github.com/aashishrajput9838/academicuniverse |
 | Architecture Document | `backend/RESUME-PARSER-ARCHITECTURE.md` |
-| Current Sprint Plan | `backend/SPRINT-4-PLAN.md` |
-| Sprint 3 Tag | `v0.3.0` |
+| Current Sprint Plan | `backend/SPRINT-6-PLAN.md` |
+| Sprint 5 Tag | `v0.5.0` |
 
 ---
 

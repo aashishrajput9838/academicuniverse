@@ -7,6 +7,7 @@ import { KnowledgeJobRepository } from '../repositories/knowledgeJob.repository'
 import { KnowledgeJobStatus } from '../enums/knowledgeJobStatus.enum';
 import { ResumeSectionDetector } from '../../services/resume/resumeSectionDetector.service';
 import { ResumeEntityExtractor } from '../../services/resume/resumeEntityExtractor.service';
+import { ResumeAIEnhancer } from '../../services/resume/resumeAIEnhancer.service';
 import { ResumeParseResult } from '../../models/ResumeParseResult';
 import { UaipEvent, UaipEventPayload } from '../../events/UaipEvents';
 import { IAIProvider } from '../../core/ai/ai.provider';
@@ -25,10 +26,12 @@ export class KnowledgeDispatcher {
   private jobRepo = new KnowledgeJobRepository();
   private sectionDetector: ResumeSectionDetector;
   private entityExtractor: ResumeEntityExtractor;
+  private aiEnhancer: ResumeAIEnhancer;
 
   constructor(aiProvider?: IAIProvider) {
     this.sectionDetector = new ResumeSectionDetector(aiProvider);
     this.entityExtractor = new ResumeEntityExtractor(aiProvider);
+    this.aiEnhancer = new ResumeAIEnhancer(aiProvider);
   }
 
   /**
@@ -226,11 +229,13 @@ export class KnowledgeDispatcher {
         });
         break;
       case 'ai_enhancement':
-        await this.handleUnimplementedResumeStage({
+        await this.handleResumeAiEnhancement({
           organizationId,
+          personId,
           sourceDocumentId,
+          rawConfidence,
+          data,
           correlationId,
-          stage,
         });
         break;
       case 'confidence_scoring':
@@ -548,7 +553,127 @@ export class KnowledgeDispatcher {
   }
 
   /**
-   * Placeholder for unimplemented resume stages (Sprint 5-6).
+   * Stage 3: AI enhancement handler (Sprint 5).
+   */
+  private async handleResumeAiEnhancement(params: {
+    organizationId: string;
+    personId: string;
+    sourceDocumentId: string;
+    rawConfidence: number;
+    data: unknown;
+    correlationId?: string;
+  }): Promise<void> {
+    const { organizationId, sourceDocumentId, correlationId, data } = params;
+    const jobPayload = (data as any)?.payload || {};
+    const rawContent = typeof jobPayload.rawContent === 'string' ? jobPayload.rawContent : '';
+    const processingId = sourceDocumentId;
+
+    await AuditEntry.create({
+      organizationId,
+      recordId: sourceDocumentId,
+      collectionName: 'resume_records',
+      action: 'ai_enhancement_started',
+      performedBy: 'dispatcher',
+      metadata: {
+        domain: 'resume',
+        stage: 'ai_enhancement',
+        message: 'AI enhancement stage started',
+        correlationId,
+      },
+    });
+
+    const existing = await ResumeParseResult.findOne({ processingId }).lean().exec();
+    if (existing && (existing as any)?.rawCandidateFields?.aiEnhanced === true) {
+      return;
+    }
+
+    const entities = (existing as any)?.rawCandidateFields?.entities || [];
+
+    try {
+      const result = await this.aiEnhancer.enhance({
+        entities,
+        rawText: rawContent,
+        existing: (existing as any)?.rawCandidateFields || {},
+      });
+
+      const skillEntities = result.entities.filter((e: any) => e.type === 'skill');
+      const normalizedSkillCount = (existing as any)?.normalizedSkills || 0;
+      const skillsActuallyNormalized = result.improvements.fieldsNormalized;
+
+      await ResumeParseResult.findOneAndUpdate(
+        { processingId },
+        {
+          $set: {
+            entityExtractionStrategy: result.strategy === 'normalized' ? (existing as any)?.entityExtractionStrategy || 'heuristic' : result.strategy,
+            aiProviderUsed: result.aiFallbackUsed ? 'gemini' : (existing as any)?.aiProviderUsed || 'none',
+            failedOver: result.aiFallbackUsed,
+            normalizedSkills: normalizedSkillCount + skillsActuallyNormalized,
+            rawCandidateFields: {
+              ...((existing as any)?.rawCandidateFields || {}),
+              entities: result.entities,
+              aiEnhanced: true,
+            },
+          },
+        },
+        { upsert: false }
+      );
+
+      await eventBus.publish(
+        UaipEvent.ResumeAIEnhanced,
+        {
+          processingId,
+          entitiesEnhanced: result.entities.length,
+          strategy: result.strategy,
+          aiFallbackUsed: result.aiFallbackUsed,
+          entityTypes: [...new Set(result.entities.map((e: any) => e.type))],
+          improvements: result.improvements,
+          reviewStatus: existing?.reviewStatus || 'PENDING_REVIEW',
+          timestamp: new Date(),
+          correlationId,
+        } as UaipEventPayload
+      );
+    } catch (err: any) {
+      let reason: 'no_entities' | 'ai_exhausted' | 'malformed_response' | 'unknown' = 'unknown';
+      const message = err.message || '';
+      if (message === 'no_entities') {
+        reason = 'no_entities';
+      } else if (message.includes('AI') || message.includes('quota') || message.includes('rate limit')) {
+        reason = 'ai_exhausted';
+      } else if (message.includes('JSON') || message.includes('parse') || message.includes('malformed')) {
+        reason = 'malformed_response';
+      }
+
+      await AuditEntry.create({
+        organizationId,
+        recordId: sourceDocumentId,
+        collectionName: 'resume_records',
+        action: 'failed',
+        performedBy: 'dispatcher',
+        metadata: {
+          domain: 'resume',
+          stage: 'ai_enhancement',
+          errorMessage: err.message,
+          correlationId,
+        },
+      });
+
+      await eventBus.publish(
+        UaipEvent.ResumeAIEnhancementFailed,
+        {
+          processingId,
+          errorMessage: err.message,
+          reason,
+          timestamp: new Date(),
+          correlationId,
+        } as UaipEventPayload
+      );
+
+      throw err;
+    }
+  }
+
+  /**
+   * Placeholder for unimplemented resume stages (Sprint 6-7).
    */
   private async handleUnimplementedResumeStage(params: {
     organizationId: string;

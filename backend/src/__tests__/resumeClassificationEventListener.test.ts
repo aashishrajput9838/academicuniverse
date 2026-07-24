@@ -4,11 +4,13 @@ import { ResumeClassificationEventListener } from '../services/resume/resumeClas
 import { ResumeParseResult } from '../models/ResumeParseResult';
 import { KnowledgeRecordModel } from '../models/KnowledgeRecord';
 import { ResumeClassifier } from '../services/resume/resumeClassifier.service';
+import { KnowledgeJobRepository } from '../shared/repositories/knowledgeJob.repository';
 
 jest.mock('../events/EventBus');
 jest.mock('../models/ResumeParseResult');
 jest.mock('../models/KnowledgeRecord');
 jest.mock('../services/resume/resumeClassifier.service');
+jest.mock('../shared/repositories/knowledgeJob.repository');
 
 const mockEventBusPublish = jest.fn().mockResolvedValue(undefined);
 const mockResumeParseResultFindOne = jest.fn();
@@ -16,6 +18,7 @@ const mockResumeParseResultFindOneAndUpdate = jest.fn();
 const mockKnowledgeRecordFindOne = jest.fn();
 const mockKnowledgeRecordUpdateOne = jest.fn();
 const mockResumeClassifierClassify = jest.fn();
+const mockKnowledgeJobRepoCreate = jest.fn();
 
 function mockKnowledgeRecord(data: any) {
   const mockQuery = {
@@ -34,6 +37,9 @@ beforeEach(() => {
   (KnowledgeRecordModel.updateOne as jest.Mock) = mockKnowledgeRecordUpdateOne;
   (ResumeClassifier as jest.MockedClass<typeof ResumeClassifier>).mockImplementation(() => ({
     classify: mockResumeClassifierClassify,
+  } as any));
+  (KnowledgeJobRepository as jest.MockedClass<typeof KnowledgeJobRepository>).mockImplementation(() => ({
+    create: mockKnowledgeJobRepoCreate,
   } as any));
 });
 
@@ -106,6 +112,84 @@ describe('ResumeClassificationEventListener', () => {
         confidenceScore: 0.9,
       })
     );
+  });
+
+  test('enqueues section detection job after successful classification', async () => {
+    mockKnowledgeRecordFindOne.mockReturnValue({
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue({ documentCategory: 'UNKNOWN', isScanned: false, rawContent: 'Education: ABC' }),
+    });
+    mockResumeParseResultFindOne.mockReturnValue({
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue(null),
+    });
+
+    mockResumeClassifierClassify.mockReturnValue({
+      documentCategory: 'RESUME',
+      confidenceScore: 0.85,
+      signals: { filenameMatch: true, mimeMatch: true, contentHeuristic: true },
+      reason: 'Classified',
+    });
+    mockResumeParseResultFindOneAndUpdate.mockResolvedValue({});
+    mockKnowledgeRecordUpdateOne.mockResolvedValue({});
+    mockKnowledgeJobRepoCreate.mockResolvedValue({ _id: 'job123' });
+
+    const listener = new ResumeClassificationEventListener();
+    listener.start();
+
+    await (listener as any).handleParsedOrOcrCompleted({
+      processingId: 'proc1',
+      rawContent: 'Education: ABC\nExperience: XYZ\nSkills: Java',
+      fileName: 'resume.pdf',
+      mimeType: 'application/pdf',
+    });
+
+    expect(mockKnowledgeJobRepoCreate).toHaveBeenCalledWith({
+      personId: 'proc1',
+      sourceDocumentId: 'proc1',
+      domain: 'resume',
+      payload: {
+        processingId: 'proc1',
+        stage: 'section_detection',
+        rawContent: 'Education: ABC\nExperience: XYZ\nSkills: Java',
+        mimeType: 'application/pdf',
+        fileName: 'resume.pdf',
+        organizationId: undefined,
+      },
+      maxRetries: 3,
+    });
+  });
+
+  test('respects OCR gate: does not enqueue if scanned and no OCR text', async () => {
+    mockKnowledgeRecordFindOne.mockReturnValue({
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue({ documentCategory: 'RESUME', isScanned: true, rawContent: undefined }),
+    });
+    mockResumeParseResultFindOne.mockReturnValue({
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue(null),
+    });
+
+    mockResumeClassifierClassify.mockReturnValue({
+      documentCategory: 'RESUME',
+      confidenceScore: 0.9,
+      signals: { filenameMatch: true, mimeMatch: true, contentHeuristic: true },
+      reason: 'Classified',
+    });
+    mockResumeParseResultFindOneAndUpdate.mockResolvedValue({});
+    mockKnowledgeRecordUpdateOne.mockResolvedValue({});
+
+    const listener = new ResumeClassificationEventListener();
+    listener.start();
+
+    await (listener as any).handleParsedOrOcrCompleted({
+      processingId: 'proc1',
+      rawContent: 'Education: ABC',
+      fileName: 'resume.pdf',
+      mimeType: 'application/pdf',
+    });
+
+    expect(mockKnowledgeJobRepoCreate).not.toHaveBeenCalled();
   });
 
   test('classifies document and publishes ResumeClassificationFailed for UNKNOWN', async () => {
@@ -206,6 +290,7 @@ describe('ResumeClassificationEventListener', () => {
     });
     mockResumeParseResultFindOneAndUpdate.mockResolvedValue({});
     mockKnowledgeRecordUpdateOne.mockResolvedValue({});
+    mockKnowledgeJobRepoCreate.mockResolvedValue({ _id: 'job123' });
 
     const listener = new ResumeClassificationEventListener();
     listener.start();

@@ -118,7 +118,7 @@ export class KnowledgeDispatcher {
           });
           break;
         case 'resume':
-          await this.handleResumeDomain({
+          await this.routeResumeStage({
             organizationId,
             personId,
             sourceDocumentId,
@@ -177,6 +177,71 @@ export class KnowledgeDispatcher {
   }
 
   /**
+   * Route resume jobs by stage.
+   * Permanent architecture for Sprint 3-7.
+   */
+  private async routeResumeStage(params: {
+    organizationId: string;
+    personId: string;
+    sourceDocumentId: string;
+    rawConfidence: number;
+    data: unknown;
+    correlationId?: string;
+  }): Promise<void> {
+    const { organizationId, sourceDocumentId, correlationId, data } = params;
+    const stage = (data as any)?.stage;
+
+    switch (stage) {
+      case 'section_detection':
+        await this.handleResumeSectionDetection({
+          organizationId,
+          sourceDocumentId,
+          correlationId,
+        });
+        break;
+      case 'entity_extraction':
+        await this.handleUnimplementedResumeStage({
+          organizationId,
+          sourceDocumentId,
+          correlationId,
+          stage,
+        });
+        break;
+      case 'ai_enhancement':
+        await this.handleUnimplementedResumeStage({
+          organizationId,
+          sourceDocumentId,
+          correlationId,
+          stage,
+        });
+        break;
+      case 'confidence_scoring':
+        await this.handleUnimplementedResumeStage({
+          organizationId,
+          sourceDocumentId,
+          correlationId,
+          stage,
+        });
+        break;
+      default:
+        await AuditEntry.create({
+          organizationId,
+          recordId: sourceDocumentId,
+          collectionName: 'resume_records',
+          action: 'failed',
+          performedBy: 'dispatcher',
+          metadata: {
+            domain: 'resume',
+            rawConfidence: params.rawConfidence,
+            errorMessage: `Unknown resume stage: ${stage}`,
+            correlationId,
+          },
+        });
+        throw new Error(`Unknown resume stage: ${stage}`);
+    }
+  }
+
+  /**
    * STUB: Sprint 7 will implement full ResumeService.merge().
    * For Sprint 2, this stub ensures the queue can process resume jobs
    * without failing, while clearly signaling incomplete implementation.
@@ -204,5 +269,57 @@ export class KnowledgeDispatcher {
         correlationId,
       },
     });
+  }
+
+  /**
+   * Stage 1: Section detection handler (Sprint 3).
+   */
+  private async handleResumeSectionDetection(params: {
+    organizationId: string;
+    sourceDocumentId: string;
+    correlationId?: string;
+  }): Promise<void> {
+    const { organizationId, sourceDocumentId, correlationId } = params;
+
+    await AuditEntry.create({
+      organizationId,
+      recordId: sourceDocumentId,
+      collectionName: 'resume_records',
+      action: 'section_detection_started',
+      performedBy: 'dispatcher',
+      metadata: {
+        domain: 'resume',
+        stage: 'section_detection',
+        message: 'Section detection stage started',
+        correlationId,
+      },
+    });
+  }
+
+  /**
+   * Placeholder for unimplemented resume stages (Sprint 4-6).
+   */
+  private async handleUnimplementedResumeStage(params: {
+    organizationId: string;
+    sourceDocumentId: string;
+    correlationId?: string;
+    stage: string;
+  }): Promise<void> {
+    const { organizationId, sourceDocumentId, correlationId, stage } = params;
+
+    await AuditEntry.create({
+      organizationId,
+      recordId: sourceDocumentId,
+      collectionName: 'resume_records',
+      action: 'failed',
+      performedBy: 'dispatcher',
+      metadata: {
+        domain: 'resume',
+        stage,
+        errorMessage: `${stage} not yet implemented`,
+        correlationId,
+      },
+    });
+    throw new Error(`${stage} not yet implemented`);
   }
 }

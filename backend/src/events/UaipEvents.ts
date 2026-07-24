@@ -11,6 +11,8 @@ export enum UaipEvent {
   ResumeClassificationFailed = "RESUME_CLASSIFICATION_FAILED",
   ResumeStageRetry = "RESUME_STAGE_RETRY",
   ResumeParseDeadLetter = "RESUME_PARSE_DEAD_LETTER",
+  ResumeSectionDetected = "RESUME_SECTION_DETECTED",
+  ResumeSectionDetectionFailed = "RESUME_SECTION_DETECTION_FAILED",
   // Human-in-the-Loop review workflow events
   CandidateDraftSaved = "CANDIDATE_DRAFT_SAVED",
   CandidateSubmitted = "CANDIDATE_SUBMITTED",

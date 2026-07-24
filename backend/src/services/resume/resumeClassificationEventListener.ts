@@ -3,6 +3,7 @@ import { UaipEvent, UaipEventPayload } from '../../events/UaipEvents';
 import { ResumeClassifier, ResumeClassificationOutput } from './resumeClassifier.service';
 import { ResumeParseResult } from '../../models/ResumeParseResult';
 import { KnowledgeRecordModel } from '../../models/KnowledgeRecord';
+import { KnowledgeJobRepository } from '../../shared/repositories/knowledgeJob.repository';
 import { Logger } from '../../utils/logger';
 
 const logger = new Logger('ResumeClassificationEventListener');
@@ -10,6 +11,7 @@ const logger = new Logger('ResumeClassificationEventListener');
 export class ResumeClassificationEventListener {
   private static initialized = false;
   private classifier = new ResumeClassifier();
+  private knowledgeJobRepo = new KnowledgeJobRepository();
   private started = false;
 
   constructor() {}
@@ -125,6 +127,34 @@ export class ResumeClassificationEventListener {
           reason: result.reason,
           timestamp: new Date(),
         } as UaipEventPayload);
+
+        // OCR gate: if scanned and no OCR text yet, do not enqueue section detection
+        const isScanned = knowledgeRecord?.isScanned === true;
+        const ocrText = payload.ocrText || knowledgeRecord?.rawContent || '';
+        if (isScanned && !ocrText) {
+          logger.debug(`ResumeClassificationEventListener: Scanned document ${processingId} waiting for OCR`);
+          return;
+        }
+
+        // Enqueue section detection job
+        try {
+          await this.knowledgeJobRepo.create({
+            personId: (payload as any).personId || processingId,
+            sourceDocumentId: processingId,
+            domain: 'resume',
+            payload: {
+              processingId,
+              stage: 'section_detection',
+              rawContent,
+              mimeType,
+              fileName,
+              organizationId: (payload as any).organizationId,
+            },
+            maxRetries: 3,
+          });
+        } catch (queueError: any) {
+          logger.error('ResumeClassificationEventListener: Failed to enqueue section detection job', queueError);
+        }
       } else {
         await eventBus.publish(UaipEvent.ResumeClassificationFailed, {
           processingId,

@@ -17,6 +17,8 @@ export enum UaipEvent {
   ResumeEntityExtractionFailed = "RESUME_ENTITY_EXTRACTION_FAILED",
   ResumeAIEnhanced = "RESUME_AI_ENHANCED",
   ResumeAIEnhancementFailed = "RESUME_AI_ENHANCEMENT_FAILED",
+  ResumeConfidenceScored = "RESUME_CONFIDENCE_SCORED",
+  ResumeConfidenceScoringFailed = "RESUME_CONFIDENCE_SCORING_FAILED",
   // Human-in-the-Loop review workflow events
   CandidateDraftSaved = "CANDIDATE_DRAFT_SAVED",
   CandidateSubmitted = "CANDIDATE_SUBMITTED",

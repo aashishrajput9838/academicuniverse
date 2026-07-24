@@ -14,6 +14,7 @@
 | 1.4 | 2026-07-24 | Kilo | Sprint 3 implementation: ResumeSectionDetector (stateless), permanent stage routing in KnowledgeDispatcher, OCR gate, section-detection events. Senior code review: APPROVED WITH FIXES → all findings resolved. |
 | 1.5 | 2026-07-24 | Kilo | Sprint 4 implementation: ResumeEntityExtractor (stateless), 8 entity types with schemas, entity-to-canonical model mapping, confidence aggregation rule, entity deduplication, event payload contracts for ResumeEntityExtracted/ResumeEntityExtractionFailed. Senior plan review: APPROVED WITH FINDINGS → all findings resolved. |
 | 1.6 | 2026-07-25 | Kilo | Sprint 5 implementation: ResumeAIEnhancer (stateless), normalization rules for 8 entity types, AI fallback via FailoverAIProvider, dispatcher ai_enhancement handler, ResumeAIEnhanced/ResumeAIEnhancementFailed events, idempotency via rawCandidateFields.aiEnhanced, 12+ unit tests + 3 integration tests. Senior plan review: APPROVED WITH FINDINGS → all findings resolved. |
+| 1.7 | 2026-07-25 | Kilo | Sprint 6 implementation: ResumeConfidenceScorer (stateless), 5-component confidence formula, penalty caps, reviewStatus determination, dispatcher confidence_scoring handler, ResumeConfidenceScored/ResumeConfidenceScoringFailed events, confidenceSummary persistence. Senior plan review: APPROVED. |
 
 **Review reference:** `backend/RESUME-PARSER-ARCHITECTURE-REVIEW.md`
 

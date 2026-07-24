@@ -4,7 +4,7 @@
 **Date:** 2026-07-25  
 **Status:** Active  
 **Current Tag:** `v0.5.0`  
-**Baseline Architecture:** v1.6
+**Baseline Architecture:** v1.7
 
 ---
 
@@ -16,8 +16,8 @@
 | Sprint 2 | ResumeClassifier + Queue Migration | FROZEN | `v0.2.0` | `11feaa9` | 2026-07-24 |
 | Sprint 3 | ResumeSectionDetector (Stage 1) | FROZEN | `v0.3.0` | `5905900` | 2026-07-24 |
 | Sprint 4 | ResumeEntityExtractor (Stage 2) | FROZEN | `v0.4.0` | `f1a43e6` | 2026-07-25 |
-| Sprint 5 | ResumeAIEnhancer (Stage 3) | FROZEN | `v0.5.0` | `f2a33ee` | 2026-07-25 |
-| Sprint 6 | ResumeConfidenceScorer (Stage 4) | PENDING | — | — | — |
+| Sprint 5 | ResumeAIEnhancer (Stage 3) | FROZEN | `v0.5.0` | `1642283` | 2026-07-25 |
+| Sprint 6 | ResumeConfidenceScorer (Stage 4) | IMPLEMENTED | — | — | — |
 | Sprint 7 | DIC Integration + Canonical Writes | PENDING | — | — | — |
 
 ---
@@ -29,8 +29,8 @@
 | Resume Parser Architecture | v1.2 | Superseded | `backend/RESUME-PARSER-ARCHITECTURE.md` |
 | Resume Parser Architecture | v1.3 | Superseded | `backend/RESUME-PARSER-ARCHITECTURE.md` |
 | Resume Parser Architecture | v1.4 | Superseded | `backend/RESUME-PARSER-ARCHITECTURE.md` |
-| Resume Parser Architecture | v1.5 | Superseded | `backend/RESUME-PARSER-ARCHITECTURE.md` |
-| Resume Parser Architecture | v1.6 | CURRENT | `backend/RESUME-PARSER-ARCHITECTURE.md` |
+| Resume Parser Architecture | v1.6 | Superseded | `backend/RESUME-PARSER-ARCHITECTURE.md` |
+| Resume Parser Architecture | v1.7 | CURRENT | `backend/RESUME-PARSER-ARCHITECTURE.md` |
 | Architecture Review | v1.3 | Complete | `backend/RESUME-PARSER-ARCHITECTURE-REVIEW.md` |
 | Architecture Review Evidence | v1.3 | Complete | `backend/RESUME-PARSER-ARCHITECTURE-REVIEW-EVIDENCE.md` |
 | Architecture Revision Evidence | v1.3 | Complete | `backend/RESUME-PARSER-ARCHITECTURE-REVISION-EVIDENCE.md` |
@@ -131,6 +131,19 @@
 | Sprint 5 Completion Report | `backend/SPRINT-5-COMPLETION-REPORT.md` |
 | Sprint 5 Completion Evidence | `backend/SPRINT-5-COMPLETION-EVIDENCE.md` |
 
+### Sprint 6
+
+| Artifact | Path |
+|----------|------|
+| Sprint 6 Plan | `backend/SPRINT-6-PLAN.md` |
+| Sprint 6 Plan Evidence | `backend/SPRINT-6-PLAN-EVIDENCE.md` |
+| Sprint 6 Plan Review | `backend/SPRINT-6-PLAN-REVIEW.md` |
+| Sprint 6 Plan Review Evidence | `backend/SPRINT-6-PLAN-REVIEW-EVIDENCE.md` |
+| Sprint 6 Plan Freeze | `backend/SPRINT-6-PLAN-FREEZE.md` |
+| Sprint 6 Plan Freeze Evidence | `backend/SPRINT-6-PLAN-FREEZE-EVIDENCE.md` |
+| Sprint 6 Implementation Report | `backend/SPRINT-6-IMPLEMENTATION-REPORT.md` |
+| Sprint 6 Implementation Evidence | `backend/SPRINT-6-IMPLEMENTATION-EVIDENCE.md` |
+
 ---
 
 ## 4. Key Source Files
@@ -150,6 +163,8 @@
 | `src/services/resume/resumeClassifier.service.ts` | Stage 0: classification (Sprint 2) |
 | `src/services/resume/resumeSectionDetector.service.ts` | Stage 1: section detection (Sprint 3) |
 | `src/services/resume/resumeEntityExtractor.service.ts` | Stage 2: entity extraction (Sprint 4) |
+| `src/services/resume/resumeAIEnhancer.service.ts` | Stage 3: AI enhancement (Sprint 5) |
+| `src/services/resume/resumeConfidenceScorer.service.ts` | Stage 4: confidence scoring (Sprint 6) |
 
 ### Event Listeners
 
@@ -183,6 +198,8 @@
 | `ResumeEntityExtractionFailed` | 4 | Stage 2 failed |
 | `ResumeAIEnhanced` | 5 | Stage 3 complete |
 | `ResumeAIEnhancementFailed` | 5 | Stage 3 failed |
+| `ResumeConfidenceScored` | 6 | Stage 4 complete |
+| `ResumeConfidenceScoringFailed` | 6 | Stage 4 failed |
 | `ResumeStageRetry` | 3 | Stage retry scheduled |
 | `ResumeParseDeadLetter` | 3 | Stage failed after max retries |
 
@@ -195,7 +212,7 @@ Stage 0: ResumeClassifier           [Sprint 2] DONE
 Stage 1: ResumeSectionDetector      [Sprint 3] DONE
 Stage 2: ResumeEntityExtractor      [Sprint 4] DONE
 Stage 3: ResumeAIEnhancer           [Sprint 5] DONE
-Stage 4: ResumeConfidenceScorer     [Sprint 6] PENDING
+Stage 4: ResumeConfidenceScorer     [Sprint 6] DONE
 Stage 5: DIC Integration            [Sprint 7] PENDING
 Stage 6: Canonical Model Writes     [Sprint 7] PENDING
 ```
@@ -211,6 +228,7 @@ Stage 6: Canonical Model Writes     [Sprint 7] PENDING
 | Sprint 3 | 57 | 418 | + section detector + dispatcher tests |
 | Sprint 4 | 58 | 437 | + entity extractor tests |
 | Sprint 5 | 60 | 461 | + AI enhancer + dispatcher tests |
+| Sprint 6 | 61 | 495 | + confidence scorer + dispatcher tests |
 
 ---
 

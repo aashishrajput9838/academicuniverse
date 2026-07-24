@@ -3,6 +3,7 @@ import { UaipEvent } from '../../../events/UaipEvents';
 import { ResumeParseResult } from '../../../models/ResumeParseResult';
 import { ResumeSectionDetector } from '../../../services/resume/resumeSectionDetector.service';
 import { ResumeAIEnhancer } from '../../../services/resume/resumeAIEnhancer.service';
+import { ResumeConfidenceScorer } from '../../../services/resume/resumeConfidenceScorer.service';
 import { AuditEntry } from '../../../models/AuditEntry';
 
 jest.mock('../../../events/EventBus');
@@ -10,12 +11,14 @@ jest.mock('../../../models/ResumeParseResult');
 jest.mock('../../../models/AuditEntry');
 jest.mock('../../../services/resume/resumeSectionDetector.service');
 jest.mock('../../../services/resume/resumeAIEnhancer.service');
+jest.mock('../../../services/resume/resumeConfidenceScorer.service');
 
 const mockEventBusPublish = jest.fn().mockResolvedValue(undefined);
 const mockResumeParseResultFindOne = jest.fn();
 const mockResumeParseResultFindOneAndUpdate = jest.fn();
 const mockResumeSectionDetectorDetect = jest.fn();
 const mockResumeAIEnhancerEnhance = jest.fn();
+const mockResumeConfidenceScorerScore = jest.fn();
 const mockAuditEntryCreate = jest.fn();
 
 beforeEach(() => {
@@ -28,6 +31,9 @@ beforeEach(() => {
   } as any));
   (ResumeAIEnhancer as jest.MockedClass<typeof ResumeAIEnhancer>).mockImplementation(() => ({
     enhance: mockResumeAIEnhancerEnhance,
+  } as any));
+  (ResumeConfidenceScorer as jest.MockedClass<typeof ResumeConfidenceScorer>).mockImplementation(() => ({
+    score: mockResumeConfidenceScorerScore,
   } as any));
   (AuditEntry.create as jest.Mock) = mockAuditEntryCreate;
 });
@@ -353,6 +359,172 @@ describe('KnowledgeDispatcher AI enhancement', () => {
         processingId: 'proc1',
         reason: 'ai_exhausted',
         errorMessage: 'AI quota exceeded',
+      })
+    );
+  });
+});
+
+describe('KnowledgeDispatcher confidence scoring', () => {
+  test('invokes ResumeConfidenceScorer and persists results', async () => {
+    const mockQuery = {
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue({
+        reviewStatus: 'PENDING_REVIEW',
+        sectionDetectionStrategy: 'heuristic',
+        entityExtractionStrategy: 'heuristic',
+        aiProviderUsed: 'none',
+        failedOver: false,
+        extractionIssues: [],
+        rawCandidateFields: {
+          sections: [{ title: 'HEADER', order: 0, startLine: 0, endLine: 3 }],
+          entities: [{ type: 'name', sourceSection: 'HEADER', data: { name: 'John Doe' }, extractedBy: 'heuristic' }],
+        },
+      }),
+    };
+    mockResumeParseResultFindOne.mockReturnValue(mockQuery);
+    mockResumeParseResultFindOneAndUpdate.mockResolvedValue({});
+
+    mockResumeConfidenceScorerScore.mockResolvedValue({
+      confidenceScore: 0.92,
+      reviewStatus: 'AUTO_APPROVED',
+      strategy: 'heuristic',
+      aiFallbackUsed: false,
+      confidenceSummary: {
+        sectionScore: 1.0,
+        entityScore: 1.0,
+        formatScore: 1.0,
+        aiAgreementScore: 1.0,
+        consistencyScore: 1.0,
+        rawScore: 1.0,
+        penaltyCap: 1.0,
+        finalScore: 0.92,
+      },
+      improvements: { fieldsNormalized: 0, fieldsCorrected: 0 },
+    });
+
+    const dispatcher = new KnowledgeDispatcher();
+    await (dispatcher as any).handleResumeConfidenceScoring({
+      organizationId: 'org1',
+      personId: 'person1',
+      sourceDocumentId: 'proc1',
+      rawConfidence: 0.9,
+      data: {
+        payload: {
+          processingId: 'proc1',
+          stage: 'confidence_scoring',
+        },
+      },
+      correlationId: 'corr1',
+    });
+
+    expect(mockResumeConfidenceScorerScore).toHaveBeenCalledWith(
+      expect.objectContaining({
+        processingId: 'proc1',
+        sectionDetectionStrategy: 'heuristic',
+        entityExtractionStrategy: 'heuristic',
+        aiProviderUsed: 'none',
+        failedOver: false,
+      })
+    );
+
+    expect(mockResumeParseResultFindOneAndUpdate).toHaveBeenCalledWith(
+      { processingId: 'proc1' },
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          confidenceScore: 0.92,
+          reviewStatus: 'AUTO_APPROVED',
+          rawCandidateFields: expect.objectContaining({
+            confidenceScore: 0.92,
+            reviewStatus: 'AUTO_APPROVED',
+            confidenceStrategy: 'heuristic',
+            confidenceSummary: expect.any(Object),
+          }),
+        }),
+      }),
+      { upsert: false }
+    );
+
+    expect(mockEventBusPublish).toHaveBeenCalledWith(
+      UaipEvent.ResumeConfidenceScored,
+      expect.objectContaining({
+        processingId: 'proc1',
+        confidenceScore: 0.92,
+        reviewStatus: 'AUTO_APPROVED',
+        strategy: 'heuristic',
+        correlationId: 'corr1',
+      })
+    );
+  });
+
+  test('skips processing if confidenceScore already set', async () => {
+    const mockQuery = {
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue({
+        confidenceScore: 0.85,
+        reviewStatus: 'AUTO_APPROVED',
+        rawCandidateFields: {},
+      }),
+    };
+    mockResumeParseResultFindOne.mockReturnValue(mockQuery);
+
+    const dispatcher = new KnowledgeDispatcher();
+    await (dispatcher as any).handleResumeConfidenceScoring({
+      organizationId: 'org1',
+      personId: 'person1',
+      sourceDocumentId: 'proc1',
+      rawConfidence: 0.9,
+      data: {
+        payload: {
+          processingId: 'proc1',
+          stage: 'confidence_scoring',
+        },
+      },
+    });
+
+    expect(mockResumeConfidenceScorerScore).not.toHaveBeenCalled();
+    expect(mockEventBusPublish).not.toHaveBeenCalled();
+  });
+
+  test('publishes ResumeConfidenceScoringFailed on error', async () => {
+    const mockQuery = {
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue({
+        reviewStatus: 'PENDING_REVIEW',
+        sectionDetectionStrategy: 'heuristic',
+        entityExtractionStrategy: 'heuristic',
+        aiProviderUsed: 'none',
+        failedOver: false,
+        extractionIssues: [],
+        rawCandidateFields: {},
+      }),
+    };
+    mockResumeParseResultFindOne.mockReturnValue(mockQuery);
+    mockResumeParseResultFindOneAndUpdate.mockResolvedValue({});
+
+    mockResumeConfidenceScorerScore.mockRejectedValue(new Error('no_sections'));
+
+    const dispatcher = new KnowledgeDispatcher();
+    await expect(
+      (dispatcher as any).handleResumeConfidenceScoring({
+        organizationId: 'org1',
+        personId: 'person1',
+        sourceDocumentId: 'proc1',
+        rawConfidence: 0.9,
+        data: {
+          payload: {
+            processingId: 'proc1',
+            stage: 'confidence_scoring',
+          },
+        },
+      })
+    ).rejects.toThrow('no_sections');
+
+    expect(mockEventBusPublish).toHaveBeenCalledWith(
+      UaipEvent.ResumeConfidenceScoringFailed,
+      expect.objectContaining({
+        processingId: 'proc1',
+        reason: 'no_sections',
+        errorMessage: 'no_sections',
       })
     );
   });

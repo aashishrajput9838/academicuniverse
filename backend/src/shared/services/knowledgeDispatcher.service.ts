@@ -8,6 +8,7 @@ import { KnowledgeJobStatus } from '../enums/knowledgeJobStatus.enum';
 import { ResumeSectionDetector } from '../../services/resume/resumeSectionDetector.service';
 import { ResumeEntityExtractor } from '../../services/resume/resumeEntityExtractor.service';
 import { ResumeAIEnhancer } from '../../services/resume/resumeAIEnhancer.service';
+import { ResumeConfidenceScorer } from '../../services/resume/resumeConfidenceScorer.service';
 import { ResumeParseResult } from '../../models/ResumeParseResult';
 import { UaipEvent, UaipEventPayload } from '../../events/UaipEvents';
 import { IAIProvider } from '../../core/ai/ai.provider';
@@ -27,11 +28,13 @@ export class KnowledgeDispatcher {
   private sectionDetector: ResumeSectionDetector;
   private entityExtractor: ResumeEntityExtractor;
   private aiEnhancer: ResumeAIEnhancer;
+  private confidenceScorer: ResumeConfidenceScorer;
 
   constructor(aiProvider?: IAIProvider) {
     this.sectionDetector = new ResumeSectionDetector(aiProvider);
     this.entityExtractor = new ResumeEntityExtractor(aiProvider);
     this.aiEnhancer = new ResumeAIEnhancer(aiProvider);
+    this.confidenceScorer = new ResumeConfidenceScorer(aiProvider);
   }
 
   /**
@@ -239,11 +242,13 @@ export class KnowledgeDispatcher {
         });
         break;
       case 'confidence_scoring':
-        await this.handleUnimplementedResumeStage({
+        await this.handleResumeConfidenceScoring({
           organizationId,
+          personId,
           sourceDocumentId,
+          rawConfidence,
+          data,
           correlationId,
-          stage,
         });
         break;
       default:
@@ -659,6 +664,127 @@ export class KnowledgeDispatcher {
 
       await eventBus.publish(
         UaipEvent.ResumeAIEnhancementFailed,
+        {
+          processingId,
+          errorMessage: err.message,
+          reason,
+          timestamp: new Date(),
+          correlationId,
+        } as UaipEventPayload
+      );
+
+      throw err;
+    }
+  }
+
+  /**
+   * Stage 4: Confidence scoring handler (Sprint 6).
+   */
+  private async handleResumeConfidenceScoring(params: {
+    organizationId: string;
+    personId: string;
+    sourceDocumentId: string;
+    rawConfidence: number;
+    data: unknown;
+    correlationId?: string;
+  }): Promise<void> {
+    const { organizationId, sourceDocumentId, correlationId, data } = params;
+    const jobPayload = (data as any)?.payload || {};
+    const processingId = sourceDocumentId;
+
+    await AuditEntry.create({
+      organizationId,
+      recordId: sourceDocumentId,
+      collectionName: 'resume_records',
+      action: 'confidence_scoring_started',
+      performedBy: 'dispatcher',
+      metadata: {
+        domain: 'resume',
+        stage: 'confidence_scoring',
+        message: 'Confidence scoring stage started',
+        correlationId,
+      },
+    });
+
+    const existing = await ResumeParseResult.findOne({ processingId }).lean().exec();
+    if (existing && (existing as any)?.confidenceScore > 0) {
+      return;
+    }
+
+    const rawCandidateFields = (existing as any)?.rawCandidateFields || {};
+
+    try {
+      const result = await this.confidenceScorer.score({
+        processingId,
+        rawCandidateFields,
+        sectionDetectionStrategy: (existing as any)?.sectionDetectionStrategy || 'heuristic',
+        entityExtractionStrategy: (existing as any)?.entityExtractionStrategy || 'heuristic',
+        aiProviderUsed: (existing as any)?.aiProviderUsed || 'none',
+        failedOver: (existing as any)?.failedOver || false,
+        extractionIssues: (existing as any)?.extractionIssues || [],
+      });
+
+      await ResumeParseResult.findOneAndUpdate(
+        { processingId },
+        {
+          $set: {
+            confidenceScore: result.confidenceScore,
+            reviewStatus: result.reviewStatus,
+            rawCandidateFields: {
+              ...rawCandidateFields,
+              confidenceScore: result.confidenceScore,
+              reviewStatus: result.reviewStatus,
+              confidenceStrategy: result.strategy,
+              confidenceSummary: result.confidenceSummary,
+            },
+          },
+        },
+        { upsert: false }
+      );
+
+      await eventBus.publish(
+        UaipEvent.ResumeConfidenceScored,
+        {
+          processingId,
+          confidenceScore: result.confidenceScore,
+          reviewStatus: result.reviewStatus,
+          strategy: result.strategy,
+          aiFallbackUsed: result.aiFallbackUsed,
+          confidenceSummary: result.confidenceSummary,
+          improvements: result.improvements,
+          timestamp: new Date(),
+          correlationId,
+        } as UaipEventPayload
+      );
+    } catch (err: any) {
+      let reason: 'no_sections' | 'no_entities' | 'ai_exhausted' | 'malformed_response' | 'unknown' = 'unknown';
+      const message = err.message || '';
+      if (message === 'no_sections') {
+        reason = 'no_sections';
+      } else if (message === 'no_entities') {
+        reason = 'no_entities';
+      } else if (message.includes('AI') || message.includes('quota') || message.includes('rate limit')) {
+        reason = 'ai_exhausted';
+      } else if (message.includes('JSON') || message.includes('parse') || message.includes('malformed')) {
+        reason = 'malformed_response';
+      }
+
+      await AuditEntry.create({
+        organizationId,
+        recordId: sourceDocumentId,
+        collectionName: 'resume_records',
+        action: 'failed',
+        performedBy: 'dispatcher',
+        metadata: {
+          domain: 'resume',
+          stage: 'confidence_scoring',
+          errorMessage: err.message,
+          correlationId,
+        },
+      });
+
+      await eventBus.publish(
+        UaipEvent.ResumeConfidenceScoringFailed,
         {
           processingId,
           errorMessage: err.message,

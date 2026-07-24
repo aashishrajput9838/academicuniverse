@@ -139,6 +139,43 @@ export class StorageService {
         }
     }
 
+    /**
+     * Uploads a parsed resume file to Cloudinary.
+     */
+    async uploadResumeFile(
+        buffer: Buffer,
+        originalName: string,
+        organizationId: string
+    ): Promise<string> {
+        try {
+            logger.info(`Uploading resume to Cloudinary: ${originalName}`);
+            
+            return await new Promise((resolve, reject) => {
+                const uploadStream = cloudinary.uploader.upload_stream(
+                    {
+                        resource_type: 'raw',
+                        folder: `academicuniverse/resumes/${organizationId}`,
+                        public_id: `resume_${Date.now()}_${originalName.replace(/[^a-zA-Z0-9.-]/g, '_')}`,
+                    },
+                    (error, result) => {
+                        if (error) {
+                            logger.error('Cloudinary resume upload failed', error);
+                            return reject(new Error(error.message || 'Cloudinary resume upload failed'));
+                        }
+                        if (!result) {
+                            return reject(new Error('No result returned from Cloudinary'));
+                        }
+                        resolve(result.secure_url);
+                    }
+                );
+                uploadStream.end(buffer);
+            });
+        } catch (error: any) {
+            logger.error('Failed to upload resume to Cloudinary', error);
+            throw new Error(`Storage upload failed: ${error.message}`);
+        }
+    }
+
     private getContentType(ext: string): string {
         switch (ext.toLowerCase()) {
             case '.pdf':

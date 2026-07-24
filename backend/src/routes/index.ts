@@ -5,6 +5,7 @@ import githubRoutes from './githubRoutes';
 import profileRoutes from './profileRoutes';
 import overlapRoutes from './overlapRoutes';
 import resumeRoutes from './resumeRoutes';
+import resumeParserRoutes from './resumeParserRoutes';
 
 import timetableRoutes from './timetableRoutes';
 import sectionRoutes from './sectionRoutes';
@@ -36,6 +37,7 @@ router.use('/github', githubRoutes);
 router.use('/profile', profileRoutes);
 router.use('/overlap-engine', overlapRoutes);
 router.use('/resume', resumeRoutes);
+router.use('/resume', resumeParserRoutes);
 router.use('/timetable', timetableRoutes);
 router.use('/academic-records', academicRecordRoutes);
 router.use('/academic-schedule', academicScheduleRoutes);

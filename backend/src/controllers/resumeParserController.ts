@@ -4,12 +4,13 @@ import { StorageService } from '../services/storageService';
 import { UaipUpload } from '../models/UaipUpload';
 import { ResumeParseResult } from '../models/ResumeParseResult';
 import { ResumePersonSuggestion } from '../models/ResumePersonSuggestion';
-import { resumeQueueService } from '../shared/services/resumeQueue.service';
+import { KnowledgeJobRepository } from '../shared/repositories/knowledgeJob.repository';
 import { Logger } from '../utils/logger';
 import * as crypto from 'crypto';
 
 const logger = new Logger('resumeParserController');
 const storageService = new StorageService();
+const knowledgeJobRepo = new KnowledgeJobRepository();
 
 /**
  * Validate PDF magic bytes.
@@ -166,7 +167,7 @@ export class ResumeParserController {
         failedOver: false,
         primaryTargetModule: '',
         secondaryTargetModules: [],
-        reviewStatus: 'NEEDS_REINDEX',
+        reviewStatus: 'PENDING_REVIEW',
         extractionIssues: [],
         rawCandidateFields: {},
       });
@@ -183,17 +184,20 @@ export class ResumeParserController {
       });
       await resumePersonSuggestion.save();
 
-      // ---- Enqueue resume parse job (Sprint 1: enqueue only, no processing) ----
+      // ---- Enqueue resume parse job via KnowledgeJobRepository (Sprint 2 migration) ----
       try {
-        await resumeQueueService.enqueue({
-          processingId,
-          organizationId,
-          userId,
-          storageId: fileUrl,
-          fileName: originalName,
-          mimeType,
-          size,
-          fileHash,
+        await knowledgeJobRepo.create({
+          personId: userId,
+          sourceDocumentId: processingId,
+          domain: 'resume',
+          payload: {
+            storageId: fileUrl,
+            fileName: originalName,
+            mimeType,
+            size,
+            fileHash,
+          },
+          maxRetries: 3,
         });
       } catch (queueError: any) {
         logger.error('Failed to enqueue resume job', queueError);
@@ -244,9 +248,19 @@ export class ResumeParserController {
         return sendError(res, 403, 'Access denied');
       }
 
+      const reviewStatus = result.reviewStatus;
+      const statusMap: Record<string, 'SUCCESS' | 'FAILED' | 'PENDING'> = {
+        'AUTO_APPROVED': 'SUCCESS',
+        'APPROVED': 'SUCCESS',
+        'PENDING_REVIEW': 'PENDING',
+        'NEEDS_REINDEX': 'FAILED',
+        'REJECTED': 'FAILED',
+      };
+      const apiStatus = statusMap[reviewStatus] ?? 'PENDING';
+
       return sendResponse(res, 200, {
         processingId: result.processingId,
-        status: result.reviewStatus === 'NEEDS_REINDEX' ? 'FAILED' : 'SUCCESS',
+        status: apiStatus,
         confidenceScore: result.confidenceScore,
         reviewStatus: result.reviewStatus,
         sectionCount: result.sectionsDetected,

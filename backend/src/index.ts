@@ -61,6 +61,7 @@ import routes from './routes';
 // Event-driven subsystem initialization (explicit bootstrap)
 import { skillsEventListener } from './shared/events/skillsEventListener';
 import { growthHubSkillsIntegration } from './modules/growth/growthHubSkillsIntegration';
+import { resumeClassificationEventListener } from './services/resume/resumeClassificationEventListener';
 
 const app = express();
 
@@ -196,6 +197,7 @@ const startServer = async () => {
         // Initialize event-driven subsystems after DB connection
         skillsEventListener.start();
         growthHubSkillsIntegration.start();
+        resumeClassificationEventListener.start();
         logger.info('Event-driven subsystems initialized');
 
         if (process.env.NODE_ENV !== 'test') {

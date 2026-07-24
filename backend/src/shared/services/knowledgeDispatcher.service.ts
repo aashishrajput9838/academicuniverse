@@ -117,6 +117,16 @@ export class KnowledgeDispatcher {
             correlationId,
           });
           break;
+        case 'resume':
+          await this.handleResumeDomain({
+            organizationId,
+            personId,
+            sourceDocumentId,
+            rawConfidence,
+            data,
+            correlationId,
+          });
+          break;
         default:
           // Unsupported domain – audit and schedule retry via repository
           await AuditEntry.create({
@@ -164,5 +174,35 @@ export class KnowledgeDispatcher {
         maxRetries: 3,
       });
     }
+  }
+
+  /**
+   * STUB: Sprint 7 will implement full ResumeService.merge().
+   * For Sprint 2, this stub ensures the queue can process resume jobs
+   * without failing, while clearly signaling incomplete implementation.
+   */
+  private async handleResumeDomain(params: {
+    organizationId: string;
+    personId: string;
+    sourceDocumentId: string;
+    rawConfidence: number;
+    data: unknown;
+    correlationId?: string;
+  }): Promise<void> {
+    const { organizationId, sourceDocumentId, correlationId } = params;
+
+    await AuditEntry.create({
+      organizationId,
+      recordId: sourceDocumentId,
+      collectionName: 'resume_records',
+      action: 'stubbed',
+      performedBy: 'dispatcher',
+      metadata: {
+        domain: 'resume',
+        rawConfidence: params.rawConfidence,
+        message: 'ResumeService.merge() not yet implemented (Sprint 7 stub)',
+        correlationId,
+      },
+    });
   }
 }

@@ -3,13 +3,13 @@ import { ResumeParserController } from '../controllers/resumeParserController';
 import { ResumeParseResult } from '../models/ResumeParseResult';
 import { ResumePersonSuggestion } from '../models/ResumePersonSuggestion';
 import { UaipUpload } from '../models/UaipUpload';
-import { resumeQueueService } from '../shared/services/resumeQueue.service';
+import { KnowledgeJobRepository } from '../shared/repositories/knowledgeJob.repository';
 import { StorageService } from '../services/storageService';
 
 jest.mock('../models/ResumeParseResult');
 jest.mock('../models/ResumePersonSuggestion');
 jest.mock('../models/UaipUpload');
-jest.mock('../shared/services/resumeQueue.service');
+jest.mock('../shared/repositories/knowledgeJob.repository');
 jest.mock('../services/storageService');
 
 const mockSendResponse = jest.fn();
@@ -28,6 +28,7 @@ describe('Sprint 1: Resume Parser Foundation', () => {
     jest.clearAllMocks();
     controller = new ResumeParserController();
     mockStorageService.prototype.uploadResumeFile = jest.fn().mockResolvedValue('https://cloudinary.com/resume/test.pdf');
+    (KnowledgeJobRepository as any).prototype.create = jest.fn().mockResolvedValue({ _id: 'job123' });
   });
 
   describe('ResumeParseResult model', () => {
@@ -293,33 +294,7 @@ describe('Sprint 1: Resume Parser Foundation', () => {
     });
   });
 
-  describe('ResumeQueueService integration', () => {
-    it('should enqueue a resume job', async () => {
-      await resumeQueueService.enqueue({
-        processingId: 'proc123',
-        organizationId: 'org123',
-        userId: 'user123',
-        storageId: 'storage123',
-        fileName: 'resume.pdf',
-        mimeType: 'application/pdf',
-        size: 1024,
-        fileHash: 'abc123',
-      });
-
-      expect(resumeQueueService.enqueue).toHaveBeenCalledWith({
-        processingId: 'proc123',
-        organizationId: 'org123',
-        userId: 'user123',
-        storageId: 'storage123',
-        fileName: 'resume.pdf',
-        mimeType: 'application/pdf',
-        size: 1024,
-        fileHash: 'abc123',
-      });
-    });
-  });
-
-  describe('Duplicate hash detection', () => {
+  describe('SHA-256 hashing', () => {
     it('should detect duplicate uploads within organization via fast path', async () => {
       const existingUpload = {
         processingId: 'existing_proc',

@@ -6,6 +6,11 @@ export enum UaipEvent {
   ParseFailed = "PARSE_FAILED",
   OCR_COMPLETED = "OCR_COMPLETED",
   OCR_FAILED = "OCR_FAILED",
+  // Resume Parser events
+  ResumeClassified = "RESUME_CLASSIFIED",
+  ResumeClassificationFailed = "RESUME_CLASSIFICATION_FAILED",
+  ResumeStageRetry = "RESUME_STAGE_RETRY",
+  ResumeParseDeadLetter = "RESUME_PARSE_DEAD_LETTER",
   // Human-in-the-Loop review workflow events
   CandidateDraftSaved = "CANDIDATE_DRAFT_SAVED",
   CandidateSubmitted = "CANDIDATE_SUBMITTED",

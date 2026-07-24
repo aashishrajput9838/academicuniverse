@@ -130,8 +130,8 @@ export class ResumeClassificationEventListener {
 
         // OCR gate: if scanned and no OCR text yet, do not enqueue section detection
         const isScanned = knowledgeRecord?.isScanned === true;
-        const ocrText = payload.ocrText || knowledgeRecord?.rawContent || '';
-        if (isScanned && !ocrText) {
+        const hasOcrText = !!payload.ocrText;
+        if (isScanned && !hasOcrText) {
           logger.debug(`ResumeClassificationEventListener: Scanned document ${processingId} waiting for OCR`);
           return;
         }

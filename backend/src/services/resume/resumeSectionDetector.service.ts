@@ -1,5 +1,5 @@
 import { ResumeSection, SectionDetectionOutput } from '../../models/ResumeSection';
-import { IAIProvider } from '../../core/ai/ai.provider';
+import { IAIProvider, AIConfig } from '../../core/ai/ai.provider';
 import { FailoverAIProvider } from '../../core/ai/failover.provider';
 import { Logger } from '../../utils/logger';
 
@@ -7,9 +7,11 @@ const logger = new Logger('ResumeSectionDetector');
 
 export class ResumeSectionDetector {
   private readonly aiProvider: IAIProvider | null;
+  private readonly aiModel?: string;
 
-  constructor(aiProvider?: IAIProvider) {
+  constructor(aiProvider?: IAIProvider, aiModel?: string) {
     this.aiProvider = aiProvider || null;
+    this.aiModel = aiModel;
   }
 
   /**
@@ -78,6 +80,10 @@ export class ResumeSectionDetector {
 
   /**
    * Apply heuristic rules to detect section boundaries.
+   *
+   * TODO(Sprint-5): Implement DOCX heading-style heuristics
+   * (e.g., Word paragraph styles, Heading 1/Heading 2 levels)
+   * when mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'.
    */
   private applyHeuristics(lines: string[], mimeType: string): ResumeSection[] {
     const sections: ResumeSection[] = [];
@@ -155,10 +161,12 @@ Rules:
 Resume text:
 ${rawText}`;
 
-    const response = await this.aiProvider.generateJSON<string>(prompt, {
-      model: 'gemini-2.0-flash',
-      temperature: 0.1,
-    });
+    const aiConfig: AIConfig = { temperature: 0.1 };
+    if (this.aiModel) {
+      aiConfig.model = this.aiModel;
+    }
+
+    const response = await this.aiProvider.generateJSON<string>(prompt, aiConfig);
 
     const parsed = JSON.parse(response);
     if (!Array.isArray(parsed)) {

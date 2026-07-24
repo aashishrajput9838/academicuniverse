@@ -5,6 +5,11 @@ import { AcademicRecordService } from './academicRecord.service';
 import { AuditEntry } from '../../models/AuditEntry';
 import { KnowledgeJobRepository } from '../repositories/knowledgeJob.repository';
 import { KnowledgeJobStatus } from '../enums/knowledgeJobStatus.enum';
+import { ResumeSectionDetector } from '../../services/resume/resumeSectionDetector.service';
+import { ResumeParseResult } from '../../models/ResumeParseResult';
+import { UaipEvent, UaipEventPayload } from '../../events/UaipEvents';
+import { IAIProvider } from '../../core/ai/ai.provider';
+import { eventBus } from '../../events/EventBus';
 
 /**
  * KnowledgeDispatcher orchestrates updates to the Knowledge Layer.
@@ -17,6 +22,11 @@ export class KnowledgeDispatcher {
   private certificateService = new CertificateService();
   private experienceService = new ExperienceService();
   private jobRepo = new KnowledgeJobRepository();
+  private sectionDetector: ResumeSectionDetector;
+
+  constructor(aiProvider?: IAIProvider) {
+    this.sectionDetector = new ResumeSectionDetector(aiProvider);
+  }
 
   /**
    * Dispatch a knowledge payload.
@@ -187,15 +197,18 @@ export class KnowledgeDispatcher {
     rawConfidence: number;
     data: unknown;
     correlationId?: string;
-  }): Promise<void> {
-    const { organizationId, sourceDocumentId, correlationId, data } = params;
+  }  ): Promise<void> {
+    const { organizationId, personId, sourceDocumentId, rawConfidence, correlationId, data } = params;
     const stage = (data as any)?.stage;
 
     switch (stage) {
       case 'section_detection':
         await this.handleResumeSectionDetection({
           organizationId,
+          personId,
           sourceDocumentId,
+          rawConfidence,
+          data,
           correlationId,
         });
         break;
@@ -276,10 +289,17 @@ export class KnowledgeDispatcher {
    */
   private async handleResumeSectionDetection(params: {
     organizationId: string;
+    personId: string;
     sourceDocumentId: string;
+    rawConfidence: number;
+    data: unknown;
     correlationId?: string;
   }): Promise<void> {
-    const { organizationId, sourceDocumentId, correlationId } = params;
+    const { organizationId, sourceDocumentId, correlationId, data } = params;
+    const jobPayload = (data as any)?.payload || {};
+    const rawContent = typeof jobPayload.rawContent === 'string' ? jobPayload.rawContent : '';
+    const mimeType = typeof jobPayload.mimeType === 'string' ? jobPayload.mimeType : '';
+    const processingId = sourceDocumentId;
 
     await AuditEntry.create({
       organizationId,
@@ -294,6 +314,97 @@ export class KnowledgeDispatcher {
         correlationId,
       },
     });
+
+    const existing = await ResumeParseResult.findOne({ processingId }).lean().exec();
+    if (existing && (existing as any).sectionsDetected > 0) {
+      return;
+    }
+
+    try {
+      const result = await this.sectionDetector.detect({
+        rawText: rawContent,
+        mimeType,
+      });
+
+      const mappedSections = result.sections.map((s) => ({
+        title: s.title,
+        order: s.order,
+        startLine: s.startLine,
+        endLine: s.endLine,
+        rawText: s.rawText,
+        entities: s.entities || [],
+        entries: s.entries || [],
+        repeatable: s.repeatable || false,
+      }));
+
+      await ResumeParseResult.findOneAndUpdate(
+        { processingId },
+        {
+          $set: {
+            sectionsDetected: result.sections.length,
+            sectionDetectionStrategy: result.strategy,
+            aiProviderUsed: result.aiFallbackUsed ? 'gemini' : 'none',
+            failedOver: false,
+            rawCandidateFields: {
+              ...((existing as any)?.rawCandidateFields || {}),
+              sections: mappedSections,
+            },
+          },
+        },
+        { upsert: false }
+      );
+
+      if (result.sections.length > 0) {
+        await eventBus.publish(
+          UaipEvent.ResumeSectionDetected,
+          {
+            processingId,
+            sectionsDetected: result.sections.length,
+            strategy: result.strategy,
+            aiFallbackUsed: result.aiFallbackUsed,
+            timestamp: new Date(),
+            correlationId,
+          } as UaipEventPayload
+        );
+      } else {
+        await eventBus.publish(
+          UaipEvent.ResumeSectionDetectionFailed,
+          {
+            processingId,
+            reason: 'No sections detected',
+            strategy: result.strategy,
+            timestamp: new Date(),
+            correlationId,
+          } as UaipEventPayload
+        );
+      }
+    } catch (err: any) {
+      await AuditEntry.create({
+        organizationId,
+        recordId: sourceDocumentId,
+        collectionName: 'resume_records',
+        action: 'failed',
+        performedBy: 'dispatcher',
+        metadata: {
+          domain: 'resume',
+          stage: 'section_detection',
+          errorMessage: err.message,
+          correlationId,
+        },
+      });
+
+      await eventBus.publish(
+        UaipEvent.ResumeSectionDetectionFailed,
+        {
+          processingId,
+          errorMessage: err.message,
+          timestamp: new Date(),
+          correlationId,
+        } as UaipEventPayload
+      );
+
+      throw err;
+    }
   }
 
   /**

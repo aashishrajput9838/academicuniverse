@@ -132,6 +132,33 @@ There are no headings or structured content here.`;
       expect(result.aiFallbackUsed).toBe(false);
       expect(result.strategy).toBe('heuristic');
     });
+
+    test('passes custom AI model to provider when configured', async () => {
+      const mockAiProvider = {
+        generateJSON: jest.fn().mockResolvedValue(
+          JSON.stringify([
+            { title: 'SUMMARY', startLine: 2, endLine: 3 },
+            { title: 'EXPERIENCE', startLine: 4, endLine: 5 },
+            { title: 'EDUCATION', startLine: 6, endLine: 7 },
+            { title: 'SKILLS', startLine: 8, endLine: 9 },
+          ])
+        ),
+        isAvailable: () => true,
+        getProviderName: () => 'MockAI',
+      };
+
+      const detectorWithCustomModel = new ResumeSectionDetector(mockAiProvider as any, 'custom-model');
+      const result = await detectorWithCustomModel.detect({
+        rawText: missingExperienceResume,
+        mimeType: 'application/pdf',
+      });
+
+      expect(result.aiFallbackUsed).toBe(true);
+      expect(mockAiProvider.generateJSON).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ model: 'custom-model', temperature: 0.1 })
+      );
+    });
   });
 
   describe('statelessness', () => {

@@ -2,32 +2,32 @@
 
 Scale | Mode      | Duration(ms) | Memory(MB) | Queries | Rebuilds
 ---------------------------------------------------------------------------
-    10 | Raw       |       192.56 |       4.76 |      11 |       10
-    10 | Canonical  |        53.50 |       3.16 |      21 |       20
-   100 | Raw       |       403.32 |      27.91 |     101 |      120
-   100 | Canonical  |         5.61 |       0.66 |     121 |      180
-  1000 | Raw       |        69.43 |       8.17 |    1001 |     1180
-  1000 | Canonical  |        82.95 |       4.81 |    1021 |     1690
- 10000 | Raw       |       551.08 |      51.14 |   10001 |    11690
- 10000 | Canonical  |       301.38 |      14.51 |   10021 |    16700
+    10 | Raw       |       297.38 |       4.77 |      11 |       10
+    10 | Canonical  |        28.33 |       3.42 |      21 |       20
+   100 | Raw       |       261.15 |      27.90 |     101 |      120
+   100 | Canonical  |         3.88 |       0.65 |     121 |      180
+  1000 | Raw       |        60.23 |       8.14 |    1001 |     1180
+  1000 | Canonical  |        69.14 |       4.80 |    1021 |     1690
+ 10000 | Raw       |       760.53 |      49.94 |   10001 |    11690
+ 10000 | Canonical  |       344.98 |      12.43 |   10021 |    16700
 
 === Scaling Analysis ===
 
 Raw Mode Scaling:
-  10 -> 100:  109.4% time increase
-  100 -> 1K:  -82.8% time increase
-  1K -> 10K:  693.8% time increase
+  10 -> 100:  -12.2% time increase
+  100 -> 1K:  -76.9% time increase
+  1K -> 10K:  1162.8% time increase
 
 Canonical Mode Scaling:
-  10 -> 100:  -89.5% time increase
-  100 -> 1K:  1378.0% time increase
-  1K -> 10K:  263.3% time increase
+  10 -> 100:  -86.3% time increase
+  100 -> 1K:  1684.0% time increase
+  1K -> 10K:  399.0% time increase
 
 Canonical vs Raw Overhead:
-  10 skills:   -72.2%
-  100 skills:  -98.6%
-  1K skills:   19.5%
-  10K skills:  -45.3%
+  10 skills:   -90.5%
+  100 skills:  -98.5%
+  1K skills:   14.8%
+  10K skills:  -54.6%
 
 Note: Query counts reflect mocked repository calls in test environment.
 Actual production query counts may differ based on DB indexes and network latency.

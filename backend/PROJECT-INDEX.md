@@ -3,7 +3,7 @@
 
 **Date:** 2026-07-25  
 **Status:** Active  
-**Current Tag:** `v0.5.0`  
+**Current Tag:** `v0.6.0`  
 **Baseline Architecture:** v1.7
 
 ---
@@ -17,7 +17,7 @@
 | Sprint 3 | ResumeSectionDetector (Stage 1) | FROZEN | `v0.3.0` | `5905900` | 2026-07-24 |
 | Sprint 4 | ResumeEntityExtractor (Stage 2) | FROZEN | `v0.4.0` | `f1a43e6` | 2026-07-25 |
 | Sprint 5 | ResumeAIEnhancer (Stage 3) | FROZEN | `v0.5.0` | `1642283` | 2026-07-25 |
-| Sprint 6 | ResumeConfidenceScorer (Stage 4) | IMPLEMENTED | — | — | — |
+| Sprint 6 | ResumeConfidenceScorer (Stage 4) | FROZEN | `v0.6.0` | `b4a006b` | 2026-07-25 |
 | Sprint 7 | DIC Integration + Canonical Writes | PENDING | — | — | — |
 
 ---
@@ -143,6 +143,14 @@
 | Sprint 6 Plan Freeze Evidence | `backend/SPRINT-6-PLAN-FREEZE-EVIDENCE.md` |
 | Sprint 6 Implementation Report | `backend/SPRINT-6-IMPLEMENTATION-REPORT.md` |
 | Sprint 6 Implementation Evidence | `backend/SPRINT-6-IMPLEMENTATION-EVIDENCE.md` |
+| Sprint 6 Code Review | `backend/SPRINT-6-CODE-REVIEW.md` |
+| Sprint 6 Code Review Evidence | `backend/SPRINT-6-CODE-REVIEW-EVIDENCE.md` |
+| Sprint 6 Review Fix Report | `backend/SPRINT-6-REVIEW-FIX-REPORT.md` |
+| Sprint 6 Review Fix Evidence | `backend/SPRINT-6-REVIEW-FIX-EVIDENCE.md` |
+| Sprint 6 Re-Review | `backend/SPRINT-6-RE-REVIEW.md` |
+| Sprint 6 Re-Review Evidence | `backend/SPRINT-6-RE-REVIEW-EVIDENCE.md` |
+| Sprint 6 Completion Report | `backend/SPRINT-6-COMPLETION-REPORT.md` |
+| Sprint 6 Completion Evidence | `backend/SPRINT-6-COMPLETION-EVIDENCE.md` |
 
 ---
 
@@ -286,8 +294,8 @@ Next Sprint Planning
 |----------|------|
 | Repository | https://github.com/aashishrajput9838/academicuniverse |
 | Architecture Document | `backend/RESUME-PARSER-ARCHITECTURE.md` |
-| Current Sprint Plan | `backend/SPRINT-6-PLAN.md` |
-| Sprint 5 Tag | `v0.5.0` |
+| Current Sprint Plan | `backend/SPRINT-7-PLAN.md` |
+| Sprint 6 Tag | `v0.6.0` |
 
 ---
 

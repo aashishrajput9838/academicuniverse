@@ -25,6 +25,9 @@ export interface IResumeParseResult extends Document {
     section?: string;
   }[];
   rawCandidateFields: Record<string, any>;
+  dicRoutedAt?: Date;
+  canonicalWrittenAt?: Date;
+  dicDocumentId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,6 +57,9 @@ const ResumeParseResultSchema = new Schema<IResumeParseResult>({
     section: { type: String },
   }],
   rawCandidateFields: { type: Schema.Types.Mixed, default: {} },
+  dicRoutedAt: { type: Date },
+  canonicalWrittenAt: { type: Date },
+  dicDocumentId: { type: String },
 } as any, { timestamps: true });
 
 ResumeParseResultSchema.index({ organizationId: 1, reviewStatus: 1, createdAt: -1 });

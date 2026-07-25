@@ -9,6 +9,8 @@ import { ResumeSectionDetector } from '../../services/resume/resumeSectionDetect
 import { ResumeEntityExtractor } from '../../services/resume/resumeEntityExtractor.service';
 import { ResumeAIEnhancer } from '../../services/resume/resumeAIEnhancer.service';
 import { ResumeConfidenceScorer } from '../../services/resume/resumeConfidenceScorer.service';
+import { DicIntegrationService } from '../../services/resume/dicIntegration.service';
+import { CanonicalWriteService } from '../../services/resume/canonicalWrite.service';
 import { ResumeParseResult } from '../../models/ResumeParseResult';
 import { UaipEvent, UaipEventPayload } from '../../events/UaipEvents';
 import { IAIProvider } from '../../core/ai/ai.provider';
@@ -29,12 +31,16 @@ export class KnowledgeDispatcher {
   private entityExtractor: ResumeEntityExtractor;
   private aiEnhancer: ResumeAIEnhancer;
   private confidenceScorer: ResumeConfidenceScorer;
+  private dicIntegrationService: DicIntegrationService;
+  private canonicalWriteService: CanonicalWriteService;
 
   constructor(aiProvider?: IAIProvider) {
     this.sectionDetector = new ResumeSectionDetector(aiProvider);
     this.entityExtractor = new ResumeEntityExtractor(aiProvider);
     this.aiEnhancer = new ResumeAIEnhancer(aiProvider);
     this.confidenceScorer = new ResumeConfidenceScorer(aiProvider);
+    this.dicIntegrationService = new DicIntegrationService();
+    this.canonicalWriteService = new CanonicalWriteService();
   }
 
   /**
@@ -243,6 +249,26 @@ export class KnowledgeDispatcher {
         break;
       case 'confidence_scoring':
         await this.handleResumeConfidenceScoring({
+          organizationId,
+          personId,
+          sourceDocumentId,
+          rawConfidence,
+          data,
+          correlationId,
+        });
+        break;
+      case 'dic_integration':
+        await this.handleResumeDicIntegration({
+          organizationId,
+          personId,
+          sourceDocumentId,
+          rawConfidence,
+          data,
+          correlationId,
+        });
+        break;
+      case 'canonical_write':
+        await this.handleResumeCanonicalWrite({
           organizationId,
           personId,
           sourceDocumentId,
@@ -756,6 +782,18 @@ export class KnowledgeDispatcher {
           correlationId,
         } as UaipEventPayload
       );
+
+      await eventBus.publish(
+        UaipEvent.ResumeParseCompleted,
+        {
+          processingId,
+          documentCategory: 'RESUME',
+          confidenceScore: result.confidenceScore,
+          reviewStatus: result.reviewStatus,
+          timestamp: new Date(),
+          correlationId,
+        } as UaipEventPayload
+      );
     } catch (err: any) {
       let reason: 'no_sections' | 'no_entities' | 'ai_exhausted' | 'malformed_response' | 'unknown' = 'unknown';
       const message = err.message || '';
@@ -789,6 +827,162 @@ export class KnowledgeDispatcher {
           processingId,
           errorMessage: err.message,
           reason,
+          timestamp: new Date(),
+          correlationId,
+        } as UaipEventPayload
+      );
+
+      throw err;
+    }
+  }
+
+  /**
+   * Stage 5: DIC Integration handler (Sprint 7).
+   */
+  private async handleResumeDicIntegration(params: {
+    organizationId: string;
+    personId: string;
+    sourceDocumentId: string;
+    rawConfidence: number;
+    data: unknown;
+    correlationId?: string;
+  }): Promise<void> {
+    const { organizationId, personId, sourceDocumentId, correlationId, data } = params;
+    const jobPayload = (data as any)?.payload || {};
+    const processingId = jobPayload.processingId || sourceDocumentId;
+
+    await AuditEntry.create({
+      organizationId,
+      recordId: sourceDocumentId,
+      collectionName: 'resume_records',
+      action: 'dic_integration_started',
+      performedBy: 'dispatcher',
+      metadata: {
+        domain: 'resume',
+        stage: 'dic_integration',
+        message: 'DIC integration stage started',
+        correlationId,
+      },
+    });
+
+    try {
+      const output = await this.dicIntegrationService.route({
+        processingId,
+        organizationId,
+        userId: personId,
+      });
+
+      await eventBus.publish(
+        UaipEvent.ResumeDICRouted,
+        {
+          processingId,
+          organizationId,
+          userId: personId,
+          action: output.action,
+          dicDocumentId: output.dicDocumentId,
+          timestamp: new Date(),
+          correlationId,
+        } as UaipEventPayload
+      );
+    } catch (err: any) {
+      await AuditEntry.create({
+        organizationId,
+        recordId: sourceDocumentId,
+        collectionName: 'resume_records',
+        action: 'failed',
+        performedBy: 'dispatcher',
+        metadata: {
+          domain: 'resume',
+          stage: 'dic_integration',
+          errorMessage: err.message,
+          correlationId,
+        },
+      });
+
+      throw err;
+    }
+  }
+
+  /**
+   * Stage 6: Canonical Write handler (Sprint 7).
+   */
+  private async handleResumeCanonicalWrite(params: {
+    organizationId: string;
+    personId: string;
+    sourceDocumentId: string;
+    rawConfidence: number;
+    data: unknown;
+    correlationId?: string;
+  }): Promise<void> {
+    const { organizationId, personId, sourceDocumentId, correlationId, data } = params;
+    const jobPayload = (data as any)?.payload || {};
+    const processingId = jobPayload.processingId || sourceDocumentId;
+
+    await AuditEntry.create({
+      organizationId,
+      recordId: sourceDocumentId,
+      collectionName: 'resume_records',
+      action: 'canonical_write_started',
+      performedBy: 'dispatcher',
+      metadata: {
+        domain: 'resume',
+        stage: 'canonical_write',
+        message: 'Canonical write stage started',
+        correlationId,
+      },
+    });
+
+    const result = await ResumeParseResult.findOne({ processingId }).lean().exec();
+    if (!result) {
+      throw new Error(`ResumeParseResult not found for canonical write: ${processingId}`);
+    }
+
+    try {
+      const output = await this.canonicalWriteService.write({
+        processingId,
+        organizationId,
+        userId: personId,
+        rawCandidateFields: (result as any).rawCandidateFields || {},
+        confidenceScore: (result as any).confidenceScore || 0,
+      });
+
+      await eventBus.publish(
+        UaipEvent.ResumeCanonicalWritten,
+        {
+          processingId,
+          organizationId,
+          userId: personId,
+          personId: output.personId,
+          recordsWritten: output.recordsWritten,
+          recordsSkipped: output.recordsSkipped,
+          strategy: output.strategy,
+          timestamp: new Date(),
+          correlationId,
+        } as UaipEventPayload
+      );
+    } catch (err: any) {
+      await AuditEntry.create({
+        organizationId,
+        recordId: sourceDocumentId,
+        collectionName: 'resume_records',
+        action: 'failed',
+        performedBy: 'dispatcher',
+        metadata: {
+          domain: 'resume',
+          stage: 'canonical_write',
+          errorMessage: err.message,
+          correlationId,
+        },
+      });
+
+      await eventBus.publish(
+        UaipEvent.ResumeCanonicalWriteFailed,
+        {
+          processingId,
+          organizationId,
+          userId: personId,
+          errorMessage: err.message,
+          reason: 'unknown',
           timestamp: new Date(),
           correlationId,
         } as UaipEventPayload

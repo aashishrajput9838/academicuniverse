@@ -1,0 +1,51 @@
+import { Logger } from '../../utils/logger';
+import { KnowledgeJobRepository } from '../../shared/repositories/knowledgeJob.repository';
+import { UaipEvent, UaipEventPayload } from '../../events/UaipEvents';
+import { eventBus } from '../../events/EventBus';
+import { ResumeParseResult } from '../../models/ResumeParseResult';
+
+const logger = new Logger('ResumeParseEventListener');
+
+export class ResumeParseEventListener {
+  private readonly knowledgeJobRepo: KnowledgeJobRepository;
+
+  constructor(jobRepo?: KnowledgeJobRepository) {
+    this.knowledgeJobRepo = jobRepo ?? new KnowledgeJobRepository();
+    this.start();
+  }
+
+  start() {
+    eventBus.subscribe(UaipEvent.ResumeParseCompleted, this.handleResumeParseCompleted.bind(this));
+  }
+
+  private async handleResumeParseCompleted(payload: UaipEventPayload): Promise<void> {
+    const processingId = payload.processingId;
+    if (!processingId) return;
+
+    try {
+      const result = await ResumeParseResult.findOne({ processingId }).lean().exec();
+      if (!result) return;
+
+      try {
+        await this.knowledgeJobRepo.create({
+          personId: (payload as any).userId || processingId,
+          sourceDocumentId: processingId,
+          domain: 'resume',
+          payload: {
+            processingId,
+            organizationId: (payload as any).organizationId,
+            userId: (payload as any).userId,
+            stage: 'dic_integration',
+          },
+          maxRetries: 3,
+        });
+      } catch (queueError: any) {
+        logger.error(`ResumeParseEventListener: Failed to enqueue dic_integration job for ${processingId}:`, queueError);
+      }
+    } catch (err: any) {
+      logger.error(`ResumeParseEventListener: Error handling ResumeParseCompleted for ${processingId}:`, err.message);
+    }
+  }
+}
+
+export const resumeParseEventListener = new ResumeParseEventListener();

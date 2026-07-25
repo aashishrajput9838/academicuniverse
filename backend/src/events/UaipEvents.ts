@@ -19,6 +19,11 @@ export enum UaipEvent {
   ResumeAIEnhancementFailed = "RESUME_AI_ENHANCEMENT_FAILED",
   ResumeConfidenceScored = "RESUME_CONFIDENCE_SCORED",
   ResumeConfidenceScoringFailed = "RESUME_CONFIDENCE_SCORING_FAILED",
+  ResumeParseCompleted = "RESUME_PARSE_COMPLETED",
+  ResumeDICRouted = "RESUME_DIC_ROUTED",
+  ResumeDICRoutingFailed = "RESUME_DIC_ROUTING_FAILED",
+  ResumeCanonicalWritten = "RESUME_CANONICAL_WRITTEN",
+  ResumeCanonicalWriteFailed = "RESUME_CANONICAL_WRITE_FAILED",
   // Human-in-the-Loop review workflow events
   CandidateDraftSaved = "CANDIDATE_DRAFT_SAVED",
   CandidateSubmitted = "CANDIDATE_SUBMITTED",

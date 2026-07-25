@@ -18,7 +18,7 @@
 | Sprint 4 | ResumeEntityExtractor (Stage 2) | FROZEN | `v0.4.0` | `f1a43e6` | 2026-07-25 |
 | Sprint 5 | ResumeAIEnhancer (Stage 3) | FROZEN | `v0.5.0` | `1642283` | 2026-07-25 |
 | Sprint 6 | ResumeConfidenceScorer (Stage 4) | FROZEN | `v0.6.0` | `b4a006b` | 2026-07-25 |
-| Sprint 7 | DIC Integration + Canonical Writes | PENDING | — | — | — |
+| Sprint 7 | DIC Integration + Canonical Writes | READY FOR CODE REVIEW | — | — | 2026-07-25 |
 
 ---
 
@@ -152,6 +152,23 @@
 | Sprint 6 Completion Report | `backend/SPRINT-6-COMPLETION-REPORT.md` |
 | Sprint 6 Completion Evidence | `backend/SPRINT-6-COMPLETION-EVIDENCE.md` |
 
+### Sprint 7
+
+| Artifact | Path |
+|----------|------|
+| Sprint 7 Plan | `backend/SPRINT-7-PLAN.md` |
+| Sprint 7 Plan Evidence | `backend/SPRINT-7-PLAN-EVIDENCE.md` |
+| Sprint 7 Plan Review | `backend/SPRINT-7-PLAN-REVIEW.md` |
+| Sprint 7 Plan Review Evidence | `backend/SPRINT-7-PLAN-REVIEW-EVIDENCE.md` |
+| Sprint 7 Plan Fix Report | `backend/SPRINT-7-PLAN-FIX-REPORT.md` |
+| Sprint 7 Plan Fix Evidence | `backend/SPRINT-7-PLAN-FIX-EVIDENCE.md` |
+| Sprint 7 Plan Re-Review | `backend/SPRINT-7-PLAN-RE-REVIEW.md` |
+| Sprint 7 Plan Re-Review Evidence | `backend/SPRINT-7-PLAN-RE-REVIEW-EVIDENCE.md` |
+| Sprint 7 Plan Freeze | `backend/SPRINT-7-PLAN-FREEZE.md` |
+| Sprint 7 Plan Freeze Evidence | `backend/SPRINT-7-PLAN-FREEZE-EVIDENCE.md` |
+| Sprint 7 Implementation Report | `backend/SPRINT-7-IMPLEMENTATION-REPORT.md` |
+| Sprint 7 Implementation Evidence | `backend/SPRINT-7-IMPLEMENTATION-EVIDENCE.md` |
+
 ---
 
 ## 4. Key Source Files
@@ -173,6 +190,9 @@
 | `src/services/resume/resumeEntityExtractor.service.ts` | Stage 2: entity extraction (Sprint 4) |
 | `src/services/resume/resumeAIEnhancer.service.ts` | Stage 3: AI enhancement (Sprint 5) |
 | `src/services/resume/resumeConfidenceScorer.service.ts` | Stage 4: confidence scoring (Sprint 6) |
+| `src/services/resume/dicIntegration.service.ts` | Stage 5: DIC routing (Sprint 7) |
+| `src/services/resume/canonicalWrite.service.ts` | Stage 6: canonical writes (Sprint 7) |
+| `src/services/resume/resumeParseEventListener.ts` | Enqueues dic_integration on parse completion (Sprint 7) |
 
 ### Event Listeners
 
@@ -180,6 +200,7 @@
 |------|---------|
 | `src/services/resume/resumeClassificationEventListener.ts` | Orchestrates Stage 0 → Stage 1 enqueue |
 | `src/services/resume/resumeEntityExtractionEventListener.ts` | Orchestrates Stage 1 → Stage 2 enqueue (Sprint 4) |
+| `src/services/resume/resumeParseEventListener.ts` | Orchestrates Stage 4 → Stage 5 enqueue (Sprint 7) |
 
 ### Infrastructure
 
@@ -208,6 +229,11 @@
 | `ResumeAIEnhancementFailed` | 5 | Stage 3 failed |
 | `ResumeConfidenceScored` | 6 | Stage 4 complete |
 | `ResumeConfidenceScoringFailed` | 6 | Stage 4 failed |
+| `ResumeParseCompleted` | 7 | Stage 4 complete / enqueue Stage 5 |
+| `ResumeDICRouted` | 7 | Stage 5 complete |
+| `ResumeDICRoutingFailed` | 7 | Stage 5 failed |
+| `ResumeCanonicalWritten` | 7 | Stage 6 complete |
+| `ResumeCanonicalWriteFailed` | 7 | Stage 6 failed |
 | `ResumeStageRetry` | 3 | Stage retry scheduled |
 | `ResumeParseDeadLetter` | 3 | Stage failed after max retries |
 
@@ -221,8 +247,8 @@ Stage 1: ResumeSectionDetector      [Sprint 3] DONE
 Stage 2: ResumeEntityExtractor      [Sprint 4] DONE
 Stage 3: ResumeAIEnhancer           [Sprint 5] DONE
 Stage 4: ResumeConfidenceScorer     [Sprint 6] DONE
-Stage 5: DIC Integration            [Sprint 7] PENDING
-Stage 6: Canonical Model Writes     [Sprint 7] PENDING
+Stage 5: DIC Integration            [Sprint 7] READY FOR CODE REVIEW
+Stage 6: Canonical Model Writes     [Sprint 7] READY FOR CODE REVIEW
 ```
 
 ---
@@ -237,6 +263,7 @@ Stage 6: Canonical Model Writes     [Sprint 7] PENDING
 | Sprint 4 | 58 | 437 | + entity extractor tests |
 | Sprint 5 | 60 | 461 | + AI enhancer + dispatcher tests |
 | Sprint 6 | 61 | 495 | + confidence scorer + dispatcher tests |
+| Sprint 7 | 64 | 514 | + DIC integration + canonical write tests |
 
 ---
 

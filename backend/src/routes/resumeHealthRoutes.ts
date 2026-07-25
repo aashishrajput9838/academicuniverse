@@ -1,7 +1,10 @@
 import express from 'express';
 import { checkResumeSubsystemHealth } from '../../utils/resumeHealthCheck';
+import { authenticateUser, enforceOrgIsolation } from '../middleware/auth';
 
 const router = express.Router();
+
+router.use(authenticateUser, enforceOrgIsolation);
 
 router.get('/health/resume', async (req, res) => {
   try {

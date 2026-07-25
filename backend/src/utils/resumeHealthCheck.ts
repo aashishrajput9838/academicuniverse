@@ -41,3 +41,10 @@ export async function checkResumeSubsystemHealth(): Promise<ResumeSubsystemHealt
     checkedAt: new Date(),
   };
 }
+
+/**
+ * NOTE: The KnowledgeDispatcher does not expose a public health-check method in Architecture v1.7.
+ * We therefore report dispatcher state as `true` when the eventBus has subscribers, under the
+ * assumption that a loaded dispatcher has registered its resume-stage handlers at startup.
+ * A future architecture revision may introduce an explicit dispatcher health probe.
+ */

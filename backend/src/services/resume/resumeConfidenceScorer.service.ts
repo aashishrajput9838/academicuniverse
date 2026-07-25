@@ -121,7 +121,6 @@ export class ResumeConfidenceScorer {
       },
       improvements: { fieldsNormalized: 0, fieldsCorrected: 0 },
     };
-    logStageExit(logger, 'confidence_scoring', { processingId: params.processingId, stage: 'confidence_scoring' });
   }
 
   private calculateSectionScore(sections: any[]): number {

@@ -36,6 +36,7 @@ export class DicIntegrationService {
       }
 
       if (result.dicRoutedAt) {
+        logStageExit(logger, 'dic_integration', { processingId, organizationId, userId, stage: 'dic_integration' });
         return {
           routedToDIC: true,
           dicDocumentId: result.dicDocumentId,

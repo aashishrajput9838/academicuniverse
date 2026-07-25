@@ -18,7 +18,7 @@
 | Sprint 4 | ResumeEntityExtractor (Stage 2) | FROZEN | `v0.4.0` | `f1a43e6` | 2026-07-25 |
 | Sprint 5 | ResumeAIEnhancer (Stage 3) | FROZEN | `v0.5.0` | `1642283` | 2026-07-25 |
 | Sprint 6 | ResumeConfidenceScorer (Stage 4) | FROZEN | `v0.6.0` | `b4a006b` | 2026-07-25 |
-| Sprint 7 | DIC Integration + Canonical Writes | READY FOR CODE REVIEW | — | — | 2026-07-25 |
+| Sprint 7 | DIC Integration + Canonical Writes | MERGED | `—` | `60aef88` | 2026-07-25 |
 
 ---
 
@@ -168,6 +168,12 @@
 | Sprint 7 Plan Freeze Evidence | `backend/SPRINT-7-PLAN-FREEZE-EVIDENCE.md` |
 | Sprint 7 Implementation Report | `backend/SPRINT-7-IMPLEMENTATION-REPORT.md` |
 | Sprint 7 Implementation Evidence | `backend/SPRINT-7-IMPLEMENTATION-EVIDENCE.md` |
+| Sprint 7 Code Review | `backend/SPRINT-7-CODE-REVIEW.md` |
+| Sprint 7 Code Review Evidence | `backend/SPRINT-7-CODE-REVIEW-EVIDENCE.md` |
+| Sprint 7 Review Fix Report | `backend/SPRINT-7-REVIEW-FIX-REPORT.md` |
+| Sprint 7 Review Fix Evidence | `backend/SPRINT-7-REVIEW-FIX-EVIDENCE.md` |
+| Sprint 7 Re-Review | `backend/SPRINT-7-CODE-RE-REVIEW.md` |
+| Sprint 7 Re-Review Evidence | `backend/SPRINT-7-CODE-RE-REVIEW-EVIDENCE.md` |
 
 ---
 
@@ -247,8 +253,8 @@ Stage 1: ResumeSectionDetector      [Sprint 3] DONE
 Stage 2: ResumeEntityExtractor      [Sprint 4] DONE
 Stage 3: ResumeAIEnhancer           [Sprint 5] DONE
 Stage 4: ResumeConfidenceScorer     [Sprint 6] DONE
-Stage 5: DIC Integration            [Sprint 7] READY FOR CODE REVIEW
-Stage 6: Canonical Model Writes     [Sprint 7] READY FOR CODE REVIEW
+Stage 5: DIC Integration            [Sprint 7] DONE
+Stage 6: Canonical Model Writes     [Sprint 7] DONE
 ```
 
 ---

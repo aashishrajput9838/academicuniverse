@@ -242,6 +242,8 @@
 | Release v0.8.0 Evidence | `backend/RELEASE-v0.8.0-EVIDENCE.md` |
 | Sprint 9 Plan | `backend/SPRINT-9-PLAN.md` |
 | Sprint 9 Plan Evidence | `backend/SPRINT-9-PLAN-EVIDENCE.md` |
+| Sprint 9 Plan Review | `backend/SPRINT-9-PLAN-REVIEW.md` |
+| Sprint 9 Plan Review Evidence | `backend/SPRINT-9-PLAN-REVIEW-EVIDENCE.md` |
 
 ---
 

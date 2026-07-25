@@ -246,6 +246,8 @@
 | Sprint 9 Plan Review Evidence | `backend/SPRINT-9-PLAN-REVIEW-EVIDENCE.md` |
 | Sprint 9 Plan Fix Report | `backend/SPRINT-9-PLAN-FIX-REPORT.md` |
 | Sprint 9 Plan Fix Evidence | `backend/SPRINT-9-PLAN-FIX-EVIDENCE.md` |
+| Sprint 9 Plan Re-Review | `backend/SPRINT-9-PLAN-RE-REVIEW.md` |
+| Sprint 9 Plan Re-Review Evidence | `backend/SPRINT-9-PLAN-RE-REVIEW-EVIDENCE.md` |
 
 ---
 

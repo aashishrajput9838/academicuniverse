@@ -2,7 +2,7 @@
 
 **Sprint:** 9 — DIC Review & Production Hardening  
 **Date:** 2026-07-26  
-**Status:** PLANNING (post-review fixes)  
+**Status:** APPROVED FOR PLAN FREEZE  
 **Architecture Version:** v1.7  
 **Baseline:** v0.8.0
 
@@ -113,8 +113,8 @@ Enable the DIC Review UI and harden the resume pipeline for production scale by 
 | Phase | Verdict | Findings |
 |-------|---------|----------|
 | Senior Plan Review | NEEDS FIXES | 4 HIGH, 6 MEDIUM, 4 LOW |
-| Plan Fixes | — | All findings addressed in SPRINT-9-PLAN-FIX-REPORT.md |
-| Plan Re-Review | TBD | TBD |
+| Plan Fixes | ALL FINDINGS ADDRESSED | See SPRINT-9-PLAN-FIX-REPORT.md |
+| Plan Re-Review | APPROVED FOR PLAN FREEZE | All findings verified resolved |
 | Plan Freeze | TBD | TBD |
 
 ---
@@ -157,4 +157,4 @@ Enable the DIC Review UI and harden the resume pipeline for production scale by 
 
 ---
 
-*Sprint 9 plan post-review fixes. Not frozen. Subject to plan re-review.*
+*Sprint 9 plan approved for freeze. Subject to final freeze confirmation.*

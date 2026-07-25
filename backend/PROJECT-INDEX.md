@@ -2,7 +2,7 @@
 ## Academic Universe — Resume Parser Engineering Artifacts
 
 **Date:** 2026-07-25  
-**Status:** Active — Sprint 7 Frozen  
+**Status:** Active — Sprint 7 Frozen, Sprint 8 Planning Frozen  
 **Current Tag:** `v0.7.0`  
 **Baseline Architecture:** v1.7
 
@@ -19,6 +19,7 @@
 | Sprint 5 | ResumeAIEnhancer (Stage 3) | FROZEN | `v0.5.0` | `1642283` | 2026-07-25 |
 | Sprint 6 | ResumeConfidenceScorer (Stage 4) | FROZEN | `v0.6.0` | `b4a006b` | 2026-07-25 |
 | Sprint 7 | DIC Integration + Canonical Writes | FROZEN | `v0.7.0` | `60aef88` | 2026-07-25 |
+| Sprint 8 | Production Readiness | PLAN FROZEN | `—` | `9ec0651` | 2026-07-25 |
 
 ---
 
@@ -181,6 +182,21 @@
 | Sprint 7 Completion Evidence | `backend/SPRINT-7-COMPLETION-EVIDENCE.md` |
 | Sprint 7 Freeze | `backend/SPRINT-7-FREEZE.md` |
 | Sprint 7 Freeze Evidence | `backend/SPRINT-7-FREEZE-EVIDENCE.md` |
+
+### Sprint 8
+
+| Artifact | Path |
+|----------|------|
+| Sprint 8 Plan | `backend/SPRINT-8-PLAN.md` |
+| Sprint 8 Plan Evidence | `backend/SPRINT-8-PLAN-EVIDENCE.md` |
+| Sprint 8 Plan Review | `backend/SPRINT-8-PLAN-REVIEW.md` |
+| Sprint 8 Plan Review Evidence | `backend/SPRINT-8-PLAN-REVIEW-EVIDENCE.md` |
+| Sprint 8 Plan Fix Report | `backend/SPRINT-8-PLAN-FIX-REPORT.md` |
+| Sprint 8 Plan Fix Evidence | `backend/SPRINT-8-PLAN-FIX-EVIDENCE.md` |
+| Sprint 8 Plan Re-Review | `backend/SPRINT-8-PLAN-RE-REVIEW.md` |
+| Sprint 8 Plan Re-Review Evidence | `backend/SPRINT-8-PLAN-RE-REVIEW-EVIDENCE.md` |
+| Sprint 8 Plan Freeze | `backend/SPRINT-8-PLAN-FREEZE.md` |
+| Sprint 8 Plan Freeze Evidence | `backend/SPRINT-8-PLAN-FREEZE-EVIDENCE.md` |
 
 ---
 

@@ -2,7 +2,7 @@
 ## Academic Universe — Resume Parser Engineering Artifacts
 
 **Date:** 2026-07-26  
-**Status:** Active — Sprint 7 Frozen, Sprint 8 Milestone 4 Merged  
+**Status:** Active — Sprint 8 COMPLETE  
 **Current Tag:** `v0.7.0`  
 **Baseline Architecture:** v1.7
 
@@ -19,7 +19,7 @@
 | Sprint 5 | ResumeAIEnhancer (Stage 3) | FROZEN | `v0.5.0` | `1642283` | 2026-07-25 |
 | Sprint 6 | ResumeConfidenceScorer (Stage 4) | FROZEN | `v0.6.0` | `b4a006b` | 2026-07-25 |
 | Sprint 7 | DIC Integration + Canonical Writes | FROZEN | `v0.7.0` | `60aef88` | 2026-07-25 |
-| Sprint 8 | Production Readiness | Milestone 4 MERGED | `—` | `c07ff4e` | 2026-07-26 |
+| Sprint 8 | Production Readiness | COMPLETE | `v0.8.0` | `8de6da9` | 2026-07-26 |
 
 ---
 
@@ -233,6 +233,8 @@
 | Sprint 8 M4 Code Review Evidence | `backend/SPRINT-8-M4-CODE-REVIEW-EVIDENCE.md` |
 | Sprint 8 M4 Merge Report | `backend/SPRINT-8-M4-MERGE-REPORT.md` |
 | Sprint 8 M4 Merge Evidence | `backend/SPRINT-8-M4-MERGE-EVIDENCE.md` |
+| Sprint 8 Completion Report | `backend/SPRINT-8-COMPLETION-REPORT.md` |
+| Sprint 8 Completion Evidence | `backend/SPRINT-8-COMPLETION-EVIDENCE.md` |
 
 ---
 

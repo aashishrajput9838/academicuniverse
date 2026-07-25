@@ -3,7 +3,7 @@
 
 **Date:** 2026-07-25  
 **Status:** Active  
-**Current Tag:** `v0.6.0`  
+**Current Tag:** `v0.7.0`  
 **Baseline Architecture:** v1.7
 
 ---
@@ -18,7 +18,7 @@
 | Sprint 4 | ResumeEntityExtractor (Stage 2) | FROZEN | `v0.4.0` | `f1a43e6` | 2026-07-25 |
 | Sprint 5 | ResumeAIEnhancer (Stage 3) | FROZEN | `v0.5.0` | `1642283` | 2026-07-25 |
 | Sprint 6 | ResumeConfidenceScorer (Stage 4) | FROZEN | `v0.6.0` | `b4a006b` | 2026-07-25 |
-| Sprint 7 | DIC Integration + Canonical Writes | MERGED | `—` | `60aef88` | 2026-07-25 |
+| Sprint 7 | DIC Integration + Canonical Writes | RELEASED | `v0.7.0` | `60aef88` | 2026-07-25 |
 
 ---
 

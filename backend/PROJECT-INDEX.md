@@ -19,7 +19,7 @@
 | Sprint 5 | ResumeAIEnhancer (Stage 3) | FROZEN | `v0.5.0` | `1642283` | 2026-07-25 |
 | Sprint 6 | ResumeConfidenceScorer (Stage 4) | FROZEN | `v0.6.0` | `b4a006b` | 2026-07-25 |
 | Sprint 7 | DIC Integration + Canonical Writes | FROZEN | `v0.7.0` | `60aef88` | 2026-07-25 |
-| Sprint 8 | Production Readiness | Milestone 1 MERGED | `—` | `c1d872f` | 2026-07-25 |
+| Sprint 8 | Production Readiness | Milestone 2 IMPLEMENTED | `—` | `c0b5c60` | 2026-07-25 |
 
 ---
 
@@ -207,6 +207,8 @@
 | Sprint 8 M1 Re-Review Evidence | `backend/SPRINT-8-M1-CODE-RE-REVIEW-EVIDENCE.md` |
 | Sprint 8 M1 Merge Report | `backend/SPRINT-8-M1-MERGE-REPORT.md` |
 | Sprint 8 M1 Merge Evidence | `backend/SPRINT-8-M1-MERGE-EVIDENCE.md` |
+| Sprint 8 M2 Implementation Report | `backend/SPRINT-8-M2-IMPLEMENTATION-REPORT.md` |
+| Sprint 8 M2 Implementation Evidence | `backend/SPRINT-8-M2-IMPLEMENTATION-EVIDENCE.md` |
 
 ---
 

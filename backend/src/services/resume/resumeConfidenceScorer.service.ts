@@ -1,6 +1,6 @@
-import { Logger } from '../../utils/logger';
+import { createResumeLogger, logStageEntry, logStageExit, scrubPII } from '../../utils/structuredLogging';
 
-const logger = new Logger('ResumeConfidenceScorer');
+const logger = createResumeLogger('ResumeConfidenceScorer');
 
 export interface ConfidenceScorerOutput {
   confidenceScore: number;
@@ -32,41 +32,43 @@ const REQUIRED_ENTITIES: Record<string, string[]> = {
 };
 
 export class ResumeConfidenceScorer {
-  async score(params: {
-    processingId: string;
-    rawCandidateFields: Record<string, any>;
-    sectionDetectionStrategy: string;
-    entityExtractionStrategy: string;
-    aiProviderUsed: string;
-    failedOver: boolean;
-    extractionIssues: Array<{
-      severity: string;
-      code: string;
-      message: string;
-      section?: string;
-    }>;
-  }): Promise<ConfidenceScorerOutput> {
-    const { rawCandidateFields, sectionDetectionStrategy, entityExtractionStrategy, aiProviderUsed, failedOver, extractionIssues } = params;
+   async score(params: {
+     processingId: string;
+     rawCandidateFields: Record<string, any>;
+     sectionDetectionStrategy: string;
+     entityExtractionStrategy: string;
+     aiProviderUsed: string;
+     failedOver: boolean;
+     extractionIssues: Array<{
+       severity: string;
+       code: string;
+       message: string;
+       section?: string;
+     }>;
+   }): Promise<ConfidenceScorerOutput> {
+     const { rawCandidateFields, sectionDetectionStrategy, entityExtractionStrategy, aiProviderUsed, failedOver, extractionIssues } = params;
+     logStageEntry(logger, 'confidence_scoring', { processingId: params.processingId, stage: 'confidence_scoring' });
 
-    if (rawCandidateFields.confidenceScore !== undefined && rawCandidateFields.confidenceScore > 0) {
-      return {
-        confidenceScore: rawCandidateFields.confidenceScore,
-        reviewStatus: rawCandidateFields.reviewStatus || 'PENDING_REVIEW',
-        strategy: rawCandidateFields.confidenceStrategy || 'heuristic',
-        aiFallbackUsed: failedOver,
-        confidenceSummary: rawCandidateFields.confidenceSummary || {
-          sectionScore: 0,
-          entityScore: 0,
-          formatScore: 0,
-          aiAgreementScore: 0,
-          consistencyScore: 0,
-          rawScore: 0,
-          penaltyCap: 1.0,
-          finalScore: rawCandidateFields.confidenceScore || 0,
-        },
-        improvements: { fieldsNormalized: 0, fieldsCorrected: 0 },
-      };
-    }
+     if (rawCandidateFields.confidenceScore !== undefined && rawCandidateFields.confidenceScore > 0) {
+       logStageExit(logger, 'confidence_scoring', { processingId: params.processingId, stage: 'confidence_scoring' });
+       return {
+         confidenceScore: rawCandidateFields.confidenceScore,
+         reviewStatus: rawCandidateFields.reviewStatus || 'PENDING_REVIEW',
+         strategy: rawCandidateFields.confidenceStrategy || 'heuristic',
+         aiFallbackUsed: failedOver,
+         confidenceSummary: rawCandidateFields.confidenceSummary || {
+           sectionScore: 0,
+           entityScore: 0,
+           formatScore: 0,
+           aiAgreementScore: 0,
+           consistencyScore: 0,
+           rawScore: 0,
+           penaltyCap: 1.0,
+           finalScore: rawCandidateFields.confidenceScore || 0,
+         },
+         improvements: { fieldsNormalized: 0, fieldsCorrected: 0 },
+       };
+     }
 
     const sections = Array.isArray(rawCandidateFields.sections) ? rawCandidateFields.sections : [];
     const entities = Array.isArray(rawCandidateFields.entities) ? rawCandidateFields.entities : [];
@@ -119,6 +121,7 @@ export class ResumeConfidenceScorer {
       },
       improvements: { fieldsNormalized: 0, fieldsCorrected: 0 },
     };
+    logStageExit(logger, 'confidence_scoring', { processingId: params.processingId, stage: 'confidence_scoring' });
   }
 
   private calculateSectionScore(sections: any[]): number {

@@ -1,8 +1,8 @@
+import { createResumeLogger, logStageEntry, logStageExit, scrubPII } from '../../utils/structuredLogging';
 import { ResumeEntity } from '../../models/ResumeEntity';
 import { IAIProvider, AIConfig } from '../../core/ai/ai.provider';
-import { Logger } from '../../utils/logger';
 
-const logger = new Logger('ResumeAIEnhancer');
+const logger = createResumeLogger('ResumeAIEnhancer');
 
 export interface AIEnhancementOutput {
   entities: ResumeEntity[];
@@ -38,21 +38,23 @@ export class ResumeAIEnhancer {
     this.aiModel = aiModel;
   }
 
-  async enhance(params: {
-    entities: ResumeEntity[];
-    rawText?: string;
-    existing?: Record<string, any>;
-  }): Promise<AIEnhancementOutput> {
-    const { entities, rawText, existing } = params;
+   async enhance(params: {
+     entities: ResumeEntity[];
+     rawText?: string;
+     existing?: Record<string, any>;
+   }): Promise<AIEnhancementOutput> {
+     const { entities, rawText, existing } = params;
+     logStageEntry(logger, 'ai_enhancement', { stage: 'ai_enhancement' });
 
-    if (existing?.aiEnhanced === true) {
-      return {
-        entities,
-        strategy: 'normalized',
-        aiFallbackUsed: false,
-        improvements: { fieldsAdded: 0, fieldsNormalized: 0, fieldsCorrected: 0 },
-      };
-    }
+     if (existing?.aiEnhanced === true) {
+       logStageExit(logger, 'ai_enhancement', { stage: 'ai_enhancement' });
+       return {
+         entities,
+         strategy: 'normalized',
+         aiFallbackUsed: false,
+         improvements: { fieldsAdded: 0, fieldsNormalized: 0, fieldsCorrected: 0 },
+       };
+     }
 
     if (!entities || entities.length === 0) {
       throw new Error('no_entities');
@@ -105,6 +107,7 @@ export class ResumeAIEnhancer {
         fieldsCorrected: totalFieldsCorrected,
       },
     };
+    logStageExit(logger, 'ai_enhancement', { stage: 'ai_enhancement' });
   }
 
   private normalizeEntity(entity: ResumeEntity): { entity: ResumeEntity; fieldsNormalized: number; fieldsCorrected: number } {

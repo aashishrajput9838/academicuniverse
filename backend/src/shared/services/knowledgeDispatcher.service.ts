@@ -15,6 +15,9 @@ import { ResumeParseResult } from '../../models/ResumeParseResult';
 import { UaipEvent, UaipEventPayload } from '../../events/UaipEvents';
 import { IAIProvider } from '../../core/ai/ai.provider';
 import { eventBus } from '../../events/EventBus';
+import { logStageEntry, logStageExit, logStateTransition, createResumeLogger, scrubPII } from '../../utils/structuredLogging';
+
+const logger = createResumeLogger('KnowledgeDispatcher');
 
 /**
  * KnowledgeDispatcher orchestrates updates to the Knowledge Layer.
@@ -335,12 +338,13 @@ export class KnowledgeDispatcher {
     rawConfidence: number;
     data: unknown;
     correlationId?: string;
-  }): Promise<void> {
+   }): Promise<void> {
     const { organizationId, sourceDocumentId, correlationId, data } = params;
-    const jobPayload = (data as any)?.payload || {};
-    const rawContent = typeof jobPayload.rawContent === 'string' ? jobPayload.rawContent : '';
-    const mimeType = typeof jobPayload.mimeType === 'string' ? jobPayload.mimeType : '';
-    const processingId = sourceDocumentId;
+     const jobPayload = (data as any)?.payload || {};
+     const rawContent = typeof jobPayload.rawContent === 'string' ? jobPayload.rawContent : '';
+     const mimeType = typeof jobPayload.mimeType === 'string' ? jobPayload.mimeType : '';
+     const processingId = sourceDocumentId;
+     logStageEntry(logger, 'section_detection', { processingId, organizationId, stage: 'section_detection' });
 
     await AuditEntry.create({
       organizationId,
@@ -356,10 +360,11 @@ export class KnowledgeDispatcher {
       },
     });
 
-    const existing = await ResumeParseResult.findOne({ processingId }).lean().exec();
-    if (existing && (existing as any).sectionsDetected > 0) {
-      return;
-    }
+     const existing = await ResumeParseResult.findOne({ processingId }).lean().exec();
+     if (existing && (existing as any).sectionsDetected > 0) {
+       logStageExit(logger, 'section_detection', { processingId, organizationId, stage: 'section_detection' });
+       return;
+     }
 
     try {
       const result = await this.sectionDetector.detect({
@@ -444,12 +449,13 @@ export class KnowledgeDispatcher {
         } as UaipEventPayload
       );
 
-      throw err;
-    }
-  }
+       throw err;
+     }
+     logStageExit(logger, 'section_detection', { processingId, organizationId, stage: 'section_detection' });
+   }
 
-  /**
-   * Stage 2: Entity extraction handler (Sprint 4).
+   /**
+    * Stage 2: Entity extraction handler (Sprint 4).
    */
   private async handleResumeEntityExtraction(params: {
     organizationId: string;
@@ -478,10 +484,11 @@ export class KnowledgeDispatcher {
       },
     });
 
-    const existing = await ResumeParseResult.findOne({ processingId }).lean().exec();
-    if (existing && (existing as any).entitiesExtracted > 0) {
-      return;
-    }
+     const existing = await ResumeParseResult.findOne({ processingId }).lean().exec();
+     if (existing && (existing as any).entitiesExtracted > 0) {
+       logStageExit(logger, 'entity_extraction', { processingId, organizationId, stage: 'entity_extraction' });
+       return;
+     }
 
     const sections = (existing as any)?.rawCandidateFields?.sections || [];
 
@@ -579,12 +586,13 @@ export class KnowledgeDispatcher {
         } as UaipEventPayload
       );
 
-      throw err;
-    }
-  }
+       throw err;
+     }
+     logStageExit(logger, 'entity_extraction', { processingId, organizationId, stage: 'entity_extraction' });
+   }
 
-  /**
-   * Stage 3: AI enhancement handler (Sprint 5).
+   /**
+    * Stage 3: AI enhancement handler (Sprint 5).
    */
   private async handleResumeAiEnhancement(params: {
     organizationId: string;
@@ -715,8 +723,10 @@ export class KnowledgeDispatcher {
     correlationId?: string;
   }): Promise<void> {
     const { organizationId, sourceDocumentId, correlationId, data } = params;
-    const jobPayload = (data as any)?.payload || {};
-    const processingId = sourceDocumentId;
+     const jobPayload = (data as any)?.payload || {};
+     const rawContent = typeof jobPayload.rawContent === 'string' ? jobPayload.rawContent : '';
+     const processingId = sourceDocumentId;
+     logStageEntry(logger, 'entity_extraction', { processingId, organizationId, stage: 'entity_extraction' });
 
     await AuditEntry.create({
       organizationId,
@@ -732,10 +742,11 @@ export class KnowledgeDispatcher {
       },
     });
 
-    const existing = await ResumeParseResult.findOne({ processingId }).lean().exec();
-    if (existing && (existing as any)?.confidenceScore > 0) {
-      return;
-    }
+     const existing = await ResumeParseResult.findOne({ processingId }).lean().exec();
+     if (existing && (existing as any)?.confidenceScore > 0) {
+       logStageExit(logger, 'confidence_scoring', { processingId, organizationId, stage: 'confidence_scoring' });
+       return;
+     }
 
     const rawCandidateFields = (existing as any)?.rawCandidateFields || {};
 
@@ -832,12 +843,13 @@ export class KnowledgeDispatcher {
         } as UaipEventPayload
       );
 
-      throw err;
-    }
-  }
+       throw err;
+     }
+     logStageExit(logger, 'confidence_scoring', { processingId, organizationId, stage: 'confidence_scoring' });
+   }
 
-  /**
-   * Stage 5: DIC Integration handler (Sprint 7).
+   /**
+    * Stage 5: DIC Integration handler (Sprint 7).
    */
   private async handleResumeDicIntegration(params: {
     organizationId: string;
@@ -849,62 +861,66 @@ export class KnowledgeDispatcher {
   }): Promise<void> {
     const { organizationId, personId, sourceDocumentId, correlationId, data } = params;
     const jobPayload = (data as any)?.payload || {};
-    const processingId = jobPayload.processingId || sourceDocumentId;
+     const processingId = jobPayload.processingId || sourceDocumentId;
+     logStageEntry(logger, 'dic_integration', { processingId, organizationId, stage: 'dic_integration' });
 
-    await AuditEntry.create({
-      organizationId,
-      recordId: sourceDocumentId,
-      collectionName: 'resume_records',
-      action: 'dic_integration_started',
-      performedBy: 'dispatcher',
-      metadata: {
-        domain: 'resume',
-        stage: 'dic_integration',
-        message: 'DIC integration stage started',
-        correlationId,
-      },
-    });
+     await AuditEntry.create({
+       organizationId,
+       recordId: sourceDocumentId,
+       collectionName: 'resume_records',
+       action: 'dic_integration_started',
+       performedBy: 'dispatcher',
+       metadata: {
+         domain: 'resume',
+         stage: 'dic_integration',
+         message: 'DIC integration stage started',
+         correlationId,
+       },
+     });
 
-    try {
-      const output = await this.dicIntegrationService.route({
-        processingId,
-        organizationId,
-        userId: personId,
-      });
+     try {
+       const output = await this.dicIntegrationService.route({
+         processingId,
+         organizationId,
+         userId: personId,
+       });
 
-      await eventBus.publish(
-        UaipEvent.ResumeDICRouted,
-        {
-          processingId,
-          organizationId,
-          userId: personId,
-          action: output.action,
-          dicDocumentId: output.dicDocumentId,
-          timestamp: new Date(),
-          correlationId,
-        } as UaipEventPayload
-      );
-    } catch (err: any) {
-      await AuditEntry.create({
-        organizationId,
-        recordId: sourceDocumentId,
-        collectionName: 'resume_records',
-        action: 'failed',
-        performedBy: 'dispatcher',
-        metadata: {
-          domain: 'resume',
-          stage: 'dic_integration',
-          errorMessage: err.message,
-          correlationId,
-        },
-      });
+       logStateTransition(logger, 'dicRoutedAt', { processingId, organizationId, stage: 'dic_integration' });
 
-      throw err;
-    }
-  }
+       await eventBus.publish(
+         UaipEvent.ResumeDICRouted,
+         {
+           processingId,
+           organizationId,
+           userId: personId,
+           action: output.action,
+           dicDocumentId: output.dicDocumentId,
+           timestamp: new Date(),
+           correlationId,
+         } as UaipEventPayload
+       );
+     } catch (err: any) {
+       await AuditEntry.create({
+         organizationId,
+         recordId: sourceDocumentId,
+         collectionName: 'resume_records',
+         action: 'failed',
+         performedBy: 'dispatcher',
+         metadata: {
+           domain: 'resume',
+           stage: 'dic_integration',
+           errorMessage: err.message,
+           correlationId,
+         },
+       });
 
-  /**
-   * Stage 6: Canonical Write handler (Sprint 7).
+       throw err;
+     }
+     logStageExit(logger, 'dic_integration', { processingId, organizationId, stage: 'dic_integration' });
+   }
+
+   /**
+    * Stage 6: Canonical Write handler (Sprint 7).
    */
   private async handleResumeCanonicalWrite(params: {
     organizationId: string;
@@ -914,86 +930,92 @@ export class KnowledgeDispatcher {
     data: unknown;
     correlationId?: string;
   }): Promise<void> {
-    const { organizationId, personId, sourceDocumentId, correlationId, data } = params;
-    const jobPayload = (data as any)?.payload || {};
-    const processingId = jobPayload.processingId || sourceDocumentId;
+     const { organizationId, personId, sourceDocumentId, correlationId, data } = params;
+     const jobPayload = (data as any)?.payload || {};
+     const processingId = jobPayload.processingId || sourceDocumentId;
+     logStageEntry(logger, 'canonical_write', { processingId, organizationId, stage: 'canonical_write' });
 
-    await AuditEntry.create({
-      organizationId,
-      recordId: sourceDocumentId,
-      collectionName: 'resume_records',
-      action: 'canonical_write_started',
-      performedBy: 'dispatcher',
-      metadata: {
-        domain: 'resume',
-        stage: 'canonical_write',
-        message: 'Canonical write stage started',
-        correlationId,
-      },
-    });
+     await AuditEntry.create({
+       organizationId,
+       recordId: sourceDocumentId,
+       collectionName: 'resume_records',
+       action: 'canonical_write_started',
+       performedBy: 'dispatcher',
+       metadata: {
+         domain: 'resume',
+         stage: 'canonical_write',
+         message: 'Canonical write stage started',
+         correlationId,
+       },
+     });
 
-    const result = await ResumeParseResult.findOne({ processingId }).lean().exec();
-    if (!result) {
-      throw new Error(`ResumeParseResult not found for canonical write: ${processingId}`);
-    }
+     const result = await ResumeParseResult.findOne({ processingId }).lean().exec();
+     if (!result) {
+       logStageExit(logger, 'canonical_write', { processingId, organizationId, stage: 'canonical_write' });
+       throw new Error(`ResumeParseResult not found for canonical write: ${processingId}`);
+     }
 
-    try {
-      const output = await this.canonicalWriteService.write({
-        processingId,
-        organizationId,
-        userId: personId,
-        rawCandidateFields: (result as any).rawCandidateFields || {},
-        confidenceScore: (result as any).confidenceScore || 0,
-      });
+     try {
+       const output = await this.canonicalWriteService.write({
+         processingId,
+         organizationId,
+         userId: personId,
+         rawCandidateFields: (result as any).rawCandidateFields || {},
+         confidenceScore: (result as any).confidenceScore || 0,
+       });
 
-      await eventBus.publish(
-        UaipEvent.ResumeCanonicalWritten,
-        {
-          processingId,
-          organizationId,
-          userId: personId,
-          personId: output.personId,
-          recordsWritten: output.recordsWritten,
-          recordsSkipped: output.recordsSkipped,
-          strategy: output.strategy,
-          timestamp: new Date(),
-          correlationId,
-        } as UaipEventPayload
-      );
-    } catch (err: any) {
-      await AuditEntry.create({
-        organizationId,
-        recordId: sourceDocumentId,
-        collectionName: 'resume_records',
-        action: 'failed',
-        performedBy: 'dispatcher',
-        metadata: {
-          domain: 'resume',
-          stage: 'canonical_write',
-          errorMessage: err.message,
-          correlationId,
-        },
-      });
+       logStateTransition(logger, 'canonicalWrittenAt', { processingId, organizationId, stage: 'canonical_write' });
 
-      await eventBus.publish(
-        UaipEvent.ResumeCanonicalWriteFailed,
-        {
-          processingId,
-          organizationId,
-          userId: personId,
-          errorMessage: err.message,
-          reason: 'unknown',
-          timestamp: new Date(),
-          correlationId,
-        } as UaipEventPayload
-      );
+       await eventBus.publish(
+         UaipEvent.ResumeCanonicalWritten,
+         {
+           processingId,
+           organizationId,
+           userId: personId,
+           personId: output.personId,
+           recordsWritten: output.recordsWritten,
+           recordsSkipped: output.recordsSkipped,
+           strategy: output.strategy,
+           timestamp: new Date(),
+           correlationId,
+         } as UaipEventPayload
+       );
+     } catch (err: any) {
+       await AuditEntry.create({
+         organizationId,
+         recordId: sourceDocumentId,
+         collectionName: 'resume_records',
+         action: 'failed',
+         performedBy: 'dispatcher',
+         metadata: {
+           domain: 'resume',
+           stage: 'canonical_write',
+           errorMessage: err.message,
+           correlationId,
+         },
+       });
 
-      throw err;
-    }
-  }
+       await eventBus.publish(
+         UaipEvent.ResumeCanonicalWriteFailed,
+         {
+           processingId,
+           organizationId,
+           userId: personId,
+           errorMessage: err.message,
+           reason: 'unknown',
+           timestamp: new Date(),
+           correlationId,
+         } as UaipEventPayload
+       );
 
-  /**
-   * Placeholder for unimplemented resume stages (Sprint 6-7).
+       logStageExit(logger, 'canonical_write', { processingId, organizationId, stage: 'canonical_write' });
+       throw err;
+     }
+     logStageExit(logger, 'canonical_write', { processingId, organizationId, stage: 'canonical_write' });
+   }
+
+   /**
+    * Placeholder for unimplemented resume stages (Sprint 6-7).
    */
   private async handleUnimplementedResumeStage(params: {
     organizationId: string;

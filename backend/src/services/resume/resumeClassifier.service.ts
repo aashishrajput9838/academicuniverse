@@ -1,4 +1,5 @@
 import { DocumentCategory } from '../classification/DocumentClassifier';
+import { createResumeLogger, logStageEntry, logStageExit, scrubPII } from '../../utils/structuredLogging';
 
 export interface ResumeClassificationOutput {
   documentCategory: DocumentCategory;
@@ -11,6 +12,8 @@ export interface ResumeClassificationOutput {
   reason: string;
 }
 
+const logger = createResumeLogger('ResumeClassifier');
+
 export class ResumeClassifier {
   /**
    * Stateless resume classification.
@@ -21,11 +24,12 @@ export class ResumeClassifier {
    * No DB writes, no event publishing, no queue interaction.
    */
   classify(params: {
-    rawText: string;
-    fileName: string;
-    mimeType: string;
-  }): ResumeClassificationOutput {
-    const { rawText, fileName, mimeType } = params;
+     rawText: string;
+     fileName: string;
+     mimeType: string;
+   }): ResumeClassificationOutput {
+      const { rawText, fileName, mimeType } = params;
+      logStageEntry(logger, 'classification', { stage: 'classification' });
 
     // Signal 1: Filename pattern (weight 0.6)
     const filenameMatch = /resume|cv|curriculum.vitae|biodata/i.test(fileName);
@@ -58,6 +62,8 @@ export class ResumeClassifier {
     } else {
       reason = `Confidence ${confidence.toFixed(2)} below 0.5 threshold; classified as UNKNOWN for Stage 2 AI recovery`;
     }
+
+    logStageExit(logger, 'classification', { stage: 'classification' });
 
     return {
       documentCategory,

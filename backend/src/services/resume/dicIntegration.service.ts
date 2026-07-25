@@ -1,10 +1,10 @@
-import { Logger } from '../../utils/logger';
+import { createResumeLogger, logStageEntry, logStageExit, scrubPII } from '../../utils/structuredLogging';
 import { KnowledgeJobRepository } from '../../shared/repositories/knowledgeJob.repository';
 import { ResumeParseResult } from '../../models/ResumeParseResult';
 import { UaipEvent, UaipEventPayload } from '../../events/UaipEvents';
 import { eventBus } from '../../events/EventBus';
 
-const logger = new Logger('DicIntegrationService');
+const logger = createResumeLogger('DicIntegrationService');
 
 export interface DicIntegrationInput {
   processingId: string;
@@ -25,8 +25,9 @@ export class DicIntegrationService {
     this.jobRepo = jobRepo ?? new KnowledgeJobRepository();
   }
 
-  async route(params: DicIntegrationInput): Promise<DicIntegrationOutput> {
-    const { processingId, organizationId, userId } = params;
+   async route(params: DicIntegrationInput): Promise<DicIntegrationOutput> {
+     const { processingId, organizationId, userId } = params;
+     logStageEntry(logger, 'dic_integration', { processingId, organizationId, userId, stage: 'dic_integration' });
 
     try {
       const result = await ResumeParseResult.findOne({ processingId }).lean().exec();
@@ -55,73 +56,77 @@ export class DicIntegrationService {
         }
       );
 
-      if (result.reviewStatus === 'AUTO_APPROVED') {
-        await eventBus.publish(UaipEvent.ResumeDICRouted, {
-          processingId,
-          organizationId,
-          userId,
-          action: 'auto_approved',
-          dicDocumentId,
-          timestamp: new Date(),
-        } as UaipEventPayload);
+       if (result.reviewStatus === 'AUTO_APPROVED') {
+         await eventBus.publish(UaipEvent.ResumeDICRouted, {
+           processingId,
+           organizationId,
+           userId,
+           action: 'auto_approved',
+           dicDocumentId,
+           timestamp: new Date(),
+         } as UaipEventPayload);
 
-        await this.enqueueCanonicalWrite(processingId, organizationId, userId);
+         await this.enqueueCanonicalWrite(processingId, organizationId, userId);
 
-        return {
-          routedToDIC: true,
-          dicDocumentId,
-          action: 'auto_approved',
-        };
-      }
+         logStageExit(logger, 'dic_integration', { processingId, organizationId, userId, stage: 'dic_integration' });
+         return {
+           routedToDIC: true,
+           dicDocumentId,
+           action: 'auto_approved',
+         };
+       }
 
-      if (result.reviewStatus === 'PENDING_REVIEW') {
-        await eventBus.publish(UaipEvent.ResumeDICRouted, {
-          processingId,
-          organizationId,
-          userId,
-          action: 'queued_review',
-          dicDocumentId,
-          timestamp: new Date(),
-        } as UaipEventPayload);
+       if (result.reviewStatus === 'PENDING_REVIEW') {
+         await eventBus.publish(UaipEvent.ResumeDICRouted, {
+           processingId,
+           organizationId,
+           userId,
+           action: 'queued_review',
+           dicDocumentId,
+           timestamp: new Date(),
+         } as UaipEventPayload);
 
-        return {
-          routedToDIC: true,
-          dicDocumentId,
-          action: 'queued_review',
-        };
-      }
+         logStageExit(logger, 'dic_integration', { processingId, organizationId, userId, stage: 'dic_integration' });
+         return {
+           routedToDIC: true,
+           dicDocumentId,
+           action: 'queued_review',
+         };
+       }
 
-      if (result.reviewStatus === 'NEEDS_REINDEX') {
-        await eventBus.publish(UaipEvent.ResumeDICRouted, {
-          processingId,
-          organizationId,
-          userId,
-          action: 'needs_reindex',
-          dicDocumentId,
-          timestamp: new Date(),
-        } as UaipEventPayload);
+       if (result.reviewStatus === 'NEEDS_REINDEX') {
+         await eventBus.publish(UaipEvent.ResumeDICRouted, {
+           processingId,
+           organizationId,
+           userId,
+           action: 'needs_reindex',
+           dicDocumentId,
+           timestamp: new Date(),
+         } as UaipEventPayload);
 
-        return {
-          routedToDIC: true,
-          dicDocumentId,
-          action: 'needs_reindex',
-        };
-      }
+         logStageExit(logger, 'dic_integration', { processingId, organizationId, userId, stage: 'dic_integration' });
+         return {
+           routedToDIC: true,
+           dicDocumentId,
+           action: 'needs_reindex',
+         };
+       }
 
-      throw new Error(`Unknown reviewStatus: ${(result as any).reviewStatus}`);
-    } catch (err: any) {
-      await eventBus.publish(UaipEvent.ResumeDICRoutingFailed, {
-        processingId,
-        organizationId,
-        userId,
-        errorMessage: err.message,
-        reason: 'unknown',
-        timestamp: new Date(),
-      } as UaipEventPayload);
+       throw new Error(`Unknown reviewStatus: ${(result as any).reviewStatus}`);
+     } catch (err: any) {
+       logStageExit(logger, 'dic_integration', { processingId, organizationId, userId, stage: 'dic_integration' });
+       await eventBus.publish(UaipEvent.ResumeDICRoutingFailed, {
+         processingId,
+         organizationId,
+         userId,
+         errorMessage: err.message,
+         reason: 'unknown',
+         timestamp: new Date(),
+       } as UaipEventPayload);
 
-      throw err;
-    }
-  }
+       throw err;
+     }
+   }
 
   async handleReviewAction(params: {
     processingId: string;

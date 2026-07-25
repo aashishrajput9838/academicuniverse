@@ -1,9 +1,9 @@
+import { createResumeLogger, logStageEntry, logStageExit, scrubPII } from '../../utils/structuredLogging';
 import { ResumeSection, SectionDetectionOutput } from '../../models/ResumeSection';
 import { ResumeEntity, EntityExtractionOutput } from '../../models/ResumeEntity';
 import { IAIProvider, AIConfig } from '../../core/ai/ai.provider';
-import { Logger } from '../../utils/logger';
 
-const logger = new Logger('ResumeEntityExtractor');
+const logger = createResumeLogger('ResumeEntityExtractor');
 
 const SECTION_ORDER = [
   'HEADER',
@@ -39,14 +39,16 @@ export class ResumeEntityExtractor {
     this.aiModel = aiModel;
   }
 
-  async extract(params: {
-    sections: ResumeSection[];
-    rawText: string;
-  }): Promise<EntityExtractionOutput> {
-    const { sections, rawText } = params;
+   async extract(params: {
+     sections: ResumeSection[];
+     rawText: string;
+   }): Promise<EntityExtractionOutput> {
+     const { sections, rawText } = params;
+     logStageEntry(logger, 'entity_extraction', { stage: 'entity_extraction' });
 
     if (!sections || sections.length === 0) {
       if (!rawText || rawText.trim().length === 0) {
+        logStageExit(logger, 'entity_extraction', { stage: 'entity_extraction' });
         return { entities: [], strategy: 'heuristic', aiFallbackUsed: false };
       }
     }
@@ -95,6 +97,7 @@ export class ResumeEntityExtractor {
       strategy,
       aiFallbackUsed,
     };
+    logStageExit(logger, 'entity_extraction', { stage: 'entity_extraction' });
   }
 
   private extractSection(section: ResumeSection): ResumeEntity[] {

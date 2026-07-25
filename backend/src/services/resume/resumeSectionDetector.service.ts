@@ -1,9 +1,9 @@
+import { createResumeLogger, logStageEntry, logStageExit, scrubPII } from '../../utils/structuredLogging';
 import { ResumeSection, SectionDetectionOutput } from '../../models/ResumeSection';
 import { IAIProvider, AIConfig } from '../../core/ai/ai.provider';
 import { FailoverAIProvider } from '../../core/ai/failover.provider';
-import { Logger } from '../../utils/logger';
 
-const logger = new Logger('ResumeSectionDetector');
+const logger = createResumeLogger('ResumeSectionDetector');
 
 export class ResumeSectionDetector {
   private readonly aiProvider: IAIProvider | null;
@@ -19,13 +19,15 @@ export class ResumeSectionDetector {
    * Input: raw text, MIME type
    * Output: detected sections with strategy metadata
    */
-  async detect(params: {
-    rawText: string;
-    mimeType: string;
-  }): Promise<SectionDetectionOutput> {
-    const { rawText, mimeType } = params;
+   async detect(params: {
+     rawText: string;
+     mimeType: string;
+   }): Promise<SectionDetectionOutput> {
+     const { rawText, mimeType } = params;
+     logStageEntry(logger, 'section_detection', { stage: 'section_detection' });
 
     if (!rawText || rawText.trim().length === 0) {
+      logStageExit(logger, 'section_detection', { stage: 'section_detection' });
       return {
         sections: [],
         strategy: 'heuristic',
@@ -76,6 +78,7 @@ export class ResumeSectionDetector {
       strategy,
       aiFallbackUsed,
     };
+    logStageExit(logger, 'section_detection', { stage: 'section_detection' });
   }
 
   /**

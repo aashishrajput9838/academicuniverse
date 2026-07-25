@@ -28,6 +28,7 @@ import skillsRoutes from './skillsRoutes';
 import { researchRoutes } from '../modules/research';
 import { ezoneRoutes } from '../modules/ezone';
 import moduleHealthRoutes from './moduleHealthRoutes';
+import resumeHealthRoutes from './resumeHealthRoutes';
 
 const router = express.Router();
 
@@ -57,5 +58,6 @@ router.use('/export', exportRoutes);
 router.use('/review', reviewRoutes);
 router.use('/document-intelligence', documentIntelligenceRoutes);
 router.use('/module-health', moduleHealthRoutes);
+router.use('/resume-health', resumeHealthRoutes);
 
 export default router;

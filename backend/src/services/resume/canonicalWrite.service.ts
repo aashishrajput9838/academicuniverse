@@ -1,4 +1,4 @@
-import { Logger } from '../../utils/logger';
+import { createResumeLogger, logStageEntry, logStageExit, scrubPII } from '../../utils/structuredLogging';
 import { ResumeParseResult } from '../../models/ResumeParseResult';
 import { ResumePersonSuggestion } from '../../models/ResumePersonSuggestion';
 import { Person } from '../../models/Person';
@@ -11,7 +11,7 @@ import { UaipEvent, UaipEventPayload } from '../../events/UaipEvents';
 import { eventBus } from '../../events/EventBus';
 import { Types } from 'mongoose';
 
-const logger = new Logger('CanonicalWriteService');
+const logger = createResumeLogger('CanonicalWriteService');
 
 export interface CanonicalWriteInput {
   processingId: string;
@@ -87,8 +87,9 @@ function jaroWinkler(s1: string, s2: string): number {
 }
 
 export class CanonicalWriteService {
-  async write(params: CanonicalWriteInput): Promise<CanonicalWriteOutput> {
-    const { processingId, organizationId, userId, rawCandidateFields, confidenceScore } = params;
+   async write(params: CanonicalWriteInput): Promise<CanonicalWriteOutput> {
+     const { processingId, organizationId, userId, rawCandidateFields, confidenceScore } = params;
+     logStageEntry(logger, 'canonical_write', { processingId, organizationId, userId, stage: 'canonical_write' });
 
     let personId: Types.ObjectId;
     let strategy: 'new_person' | 'existing_person';
@@ -101,15 +102,16 @@ export class CanonicalWriteService {
         throw new Error(`ResumeParseResult not found: ${processingId}`);
       }
 
-      if (result.canonicalWrittenAt) {
-        return {
-          success: true,
-          personId: (result as any).personId?.toString(),
-          recordsWritten: 0,
-          recordsSkipped: 0,
-          strategy: 'existing_person',
-        };
-      }
+       if (result.canonicalWrittenAt) {
+         logStageExit(logger, 'canonical_write', { processingId, organizationId, userId, stage: 'canonical_write' });
+         return {
+           success: true,
+           personId: (result as any).personId?.toString(),
+           recordsWritten: 0,
+           recordsSkipped: 0,
+           strategy: 'existing_person',
+         };
+       }
 
       const sections = Array.isArray(rawCandidateFields.sections) ? rawCandidateFields.sections : [];
       const personSection = sections.find((s: any) => s.title === 'HEADER');
@@ -312,25 +314,28 @@ export class CanonicalWriteService {
         }
       );
 
-      await eventBus.publish(UaipEvent.ResumeCanonicalWritten, {
-        processingId,
-        organizationId,
-        userId,
-        personId: personId.toString(),
-        recordsWritten,
-        recordsSkipped,
-        strategy,
-        timestamp: new Date(),
-      } as UaipEventPayload);
+       await eventBus.publish(UaipEvent.ResumeCanonicalWritten, {
+         processingId,
+         organizationId,
+         userId,
+         personId: personId.toString(),
+         recordsWritten,
+         recordsSkipped,
+         strategy,
+         timestamp: new Date(),
+       } as UaipEventPayload);
 
-      return {
-        success: true,
-        personId: personId.toString(),
-        recordsWritten,
-        recordsSkipped,
-        strategy,
-      };
-    } catch (err: any) {
+       logStageExit(logger, 'canonical_write', { processingId, organizationId, userId, stage: 'canonical_write' });
+
+       return {
+         success: true,
+         personId: personId.toString(),
+         recordsWritten,
+         recordsSkipped,
+         strategy,
+       };
+     } catch (err: any) {
+       logStageExit(logger, 'canonical_write', { processingId, organizationId, userId, stage: 'canonical_write' });
       await eventBus.publish(UaipEvent.ResumeCanonicalWriteFailed, {
         processingId,
         organizationId,

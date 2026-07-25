@@ -1,12 +1,12 @@
+import { createResumeLogger, logStageEntry, logStageExit, scrubPII } from '../../utils/structuredLogging';
 import { eventBus } from '../../events/EventBus';
 import { UaipEvent, UaipEventPayload } from '../../events/UaipEvents';
 import { ResumeClassifier, ResumeClassificationOutput } from './resumeClassifier.service';
 import { ResumeParseResult } from '../../models/ResumeParseResult';
 import { KnowledgeRecordModel } from '../../models/KnowledgeRecord';
 import { KnowledgeJobRepository } from '../../shared/repositories/knowledgeJob.repository';
-import { Logger } from '../../utils/logger';
 
-const logger = new Logger('ResumeClassificationEventListener');
+const logger = createResumeLogger('ResumeClassificationEventListener');
 
 export class ResumeClassificationEventListener {
   private static initialized = false;
@@ -45,7 +45,8 @@ export class ResumeClassificationEventListener {
   }
 
   private async handleParsedOrOcrCompleted(payload: UaipEventPayload): Promise<void> {
-    const { processingId } = payload;
+     const { processingId } = payload;
+     logStageEntry(logger, 'resume_classification', { processingId, stage: 'resume_classification' });
 
     if (!processingId) {
       logger.warn('ResumeClassificationEventListener: Missing processingId in event payload');
@@ -53,25 +54,27 @@ export class ResumeClassificationEventListener {
     }
 
     try {
-      // Idempotency: skip if already classified
-      const existing = await ResumeParseResult.findOne({ processingId }).lean().exec();
-      if (existing && existing.confidenceScore > 0) {
-        logger.debug(`ResumeClassificationEventListener: Already classified ${processingId}. Skipping.`);
-        return;
-      }
+       // Idempotency: skip if already classified
+       const existing = await ResumeParseResult.findOne({ processingId }).lean().exec();
+       if (existing && existing.confidenceScore > 0) {
+         logger.debug(`ResumeClassificationEventListener: Already classified ${processingId}. Skipping.`);
+         logStageExit(logger, 'resume_classification', { processingId, stage: 'resume_classification' });
+         return;
+       }
 
-      // Always read KnowledgeRecord for fast-path check and rawContent fallback
-      const knowledgeRecord = await KnowledgeRecordModel.findOne({ processingId }).lean().exec();
+       // Always read KnowledgeRecord for fast-path check and rawContent fallback
+       const knowledgeRecord = await KnowledgeRecordModel.findOne({ processingId }).lean().exec();
 
-      let rawContent = payload.rawContent;
-      if (!rawContent) {
-        rawContent = knowledgeRecord?.rawContent;
-      }
+       let rawContent = payload.rawContent;
+       if (!rawContent) {
+         rawContent = knowledgeRecord?.rawContent;
+       }
 
-      if (!rawContent) {
-        logger.warn(`ResumeClassificationEventListener: No rawContent available for ${processingId}`);
-        return;
-      }
+       if (!rawContent) {
+         logger.warn(`ResumeClassificationEventListener: No rawContent available for ${processingId}`);
+         logStageExit(logger, 'resume_classification', { processingId, stage: 'resume_classification' });
+         return;
+       }
 
       const fileName = payload.fileName || '';
       const mimeType = payload.mimeType || '';
@@ -128,13 +131,14 @@ export class ResumeClassificationEventListener {
           timestamp: new Date(),
         } as UaipEventPayload);
 
-        // OCR gate: if scanned and no OCR text yet, do not enqueue section detection
-        const isScanned = knowledgeRecord?.isScanned === true;
-        const hasOcrText = !!payload.ocrText;
-        if (isScanned && !hasOcrText) {
-          logger.debug(`ResumeClassificationEventListener: Scanned document ${processingId} waiting for OCR`);
-          return;
-        }
+         // OCR gate: if scanned and no OCR text yet, do not enqueue section detection
+         const isScanned = knowledgeRecord?.isScanned === true;
+         const hasOcrText = !!payload.ocrText;
+         if (isScanned && !hasOcrText) {
+           logger.debug(`ResumeClassificationEventListener: Scanned document ${processingId} waiting for OCR`);
+           logStageExit(logger, 'resume_classification', { processingId, stage: 'resume_classification' });
+           return;
+         }
 
         // Enqueue section detection job
         try {
@@ -155,25 +159,27 @@ export class ResumeClassificationEventListener {
         } catch (queueError: any) {
           logger.error('ResumeClassificationEventListener: Failed to enqueue section detection job', queueError);
         }
-      } else {
-        await eventBus.publish(UaipEvent.ResumeClassificationFailed, {
-          processingId,
-          documentCategory: result.documentCategory,
-          confidenceScore: result.confidenceScore,
-          reason: result.reason,
-          timestamp: new Date(),
-        } as UaipEventPayload);
-      }
-    } catch (err: any) {
-      logger.error(`ResumeClassificationEventListener: Failed to classify ${processingId}:`, err.message);
-      await eventBus.publish(UaipEvent.ResumeClassificationFailed, {
-        processingId,
-        errorMessage: err.message,
-        timestamp: new Date(),
-      } as UaipEventPayload);
-    }
-  }
-}
+       } else {
+         await eventBus.publish(UaipEvent.ResumeClassificationFailed, {
+           processingId,
+           documentCategory: result.documentCategory,
+           confidenceScore: result.confidenceScore,
+           reason: result.reason,
+           timestamp: new Date(),
+         } as UaipEventPayload);
+       }
+       logStageExit(logger, 'resume_classification', { processingId, stage: 'resume_classification' });
+     } catch (err: any) {
+       logger.error(`ResumeClassificationEventListener: Failed to classify ${processingId}:`, err.message);
+       logStageExit(logger, 'resume_classification', { processingId, stage: 'resume_classification' });
+       await eventBus.publish(UaipEvent.ResumeClassificationFailed, {
+         processingId,
+         errorMessage: err.message,
+         timestamp: new Date(),
+       } as UaipEventPayload);
+     }
+   }
+ }
 
 export const resumeClassificationEventListener = new ResumeClassificationEventListener();
 resumeClassificationEventListener.start();

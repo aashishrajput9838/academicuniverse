@@ -115,7 +115,7 @@ Enable the DIC Review UI and harden the resume pipeline for production scale by 
 | Senior Plan Review | NEEDS FIXES | 4 HIGH, 6 MEDIUM, 4 LOW |
 | Plan Fixes | ALL FINDINGS ADDRESSED | See SPRINT-9-PLAN-FIX-REPORT.md |
 | Plan Re-Review | APPROVED FOR PLAN FREEZE | All findings verified resolved |
-| Plan Freeze | TBD | TBD |
+| Plan Freeze | FROZEN | All findings verified resolved; scope locked |
 
 ---
 

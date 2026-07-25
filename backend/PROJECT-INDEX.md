@@ -20,7 +20,7 @@
 | Sprint 6 | ResumeConfidenceScorer (Stage 4) | FROZEN | `v0.6.0` | `b4a006b` | 2026-07-25 |
 | Sprint 7 | DIC Integration + Canonical Writes | FROZEN | `v0.7.0` | `60aef88` | 2026-07-25 |
 | Sprint 8 | Production Readiness | RELEASED | `v0.8.0` | `8de6da9` | 2026-07-26 |
-| Sprint 9 | DIC Review & Production Hardening | PLANNING | `—` | `—` | 2026-07-26 |
+| Sprint 9 | DIC Review & Production Hardening | FROZEN | `—` | `—` | 2026-07-26 |
 
 ---
 
@@ -248,6 +248,8 @@
 | Sprint 9 Plan Fix Evidence | `backend/SPRINT-9-PLAN-FIX-EVIDENCE.md` |
 | Sprint 9 Plan Re-Review | `backend/SPRINT-9-PLAN-RE-REVIEW.md` |
 | Sprint 9 Plan Re-Review Evidence | `backend/SPRINT-9-PLAN-RE-REVIEW-EVIDENCE.md` |
+| Sprint 9 Plan Freeze | `backend/SPRINT-9-PLAN-FREEZE.md` |
+| Sprint 9 Plan Freeze Evidence | `backend/SPRINT-9-PLAN-FREEZE-EVIDENCE.md` |
 
 ---
 

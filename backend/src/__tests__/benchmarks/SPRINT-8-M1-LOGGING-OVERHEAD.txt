@@ -1,0 +1,13 @@
+=== Sprint 8 Milestone 1 — Logging Overhead Measurement ===
+
+Baseline (no logging):     7.60ms
+With simulated logging:    6.40ms
+Overhead:                  -15.79%
+Threshold:                 < 5%
+Status:                    PASS
+
+Memory baseline: 0.94MB
+Memory with logging: 0.90MB
+
+Note: Simulated logging overhead reflects JSON serialization cost.
+Actual structured-logging implementation in Milestone 2 must stay within this budget.

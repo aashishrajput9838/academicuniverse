@@ -2,7 +2,7 @@
 ## Academic Universe — Resume Parser Engineering Artifacts
 
 **Date:** 2026-07-25  
-**Status:** Active  
+**Status:** Active — Sprint 7 Frozen  
 **Current Tag:** `v0.7.0`  
 **Baseline Architecture:** v1.7
 
@@ -18,7 +18,7 @@
 | Sprint 4 | ResumeEntityExtractor (Stage 2) | FROZEN | `v0.4.0` | `f1a43e6` | 2026-07-25 |
 | Sprint 5 | ResumeAIEnhancer (Stage 3) | FROZEN | `v0.5.0` | `1642283` | 2026-07-25 |
 | Sprint 6 | ResumeConfidenceScorer (Stage 4) | FROZEN | `v0.6.0` | `b4a006b` | 2026-07-25 |
-| Sprint 7 | DIC Integration + Canonical Writes | RELEASED | `v0.7.0` | `60aef88` | 2026-07-25 |
+| Sprint 7 | DIC Integration + Canonical Writes | FROZEN | `v0.7.0` | `60aef88` | 2026-07-25 |
 
 ---
 
@@ -172,8 +172,15 @@
 | Sprint 7 Code Review Evidence | `backend/SPRINT-7-CODE-REVIEW-EVIDENCE.md` |
 | Sprint 7 Review Fix Report | `backend/SPRINT-7-REVIEW-FIX-REPORT.md` |
 | Sprint 7 Review Fix Evidence | `backend/SPRINT-7-REVIEW-FIX-EVIDENCE.md` |
-| Sprint 7 Re-Review | `backend/SPRINT-7-CODE-RE-REVIEW.md` |
 | Sprint 7 Re-Review Evidence | `backend/SPRINT-7-CODE-RE-REVIEW-EVIDENCE.md` |
+| Sprint 7 Merge Report | `backend/SPRINT-7-MERGE-REPORT.md` |
+| Sprint 7 Merge Evidence | `backend/SPRINT-7-MERGE-EVIDENCE.md` |
+| Sprint 7 Release v0.7.0 | `backend/RELEASE-v0.7.0.md` |
+| Sprint 7 Release Evidence | `backend/RELEASE-v0.7.0-EVIDENCE.md` |
+| Sprint 7 Completion Report | `backend/SPRINT-7-COMPLETION-REPORT.md` |
+| Sprint 7 Completion Evidence | `backend/SPRINT-7-COMPLETION-EVIDENCE.md` |
+| Sprint 7 Freeze | `backend/SPRINT-7-FREEZE.md` |
+| Sprint 7 Freeze Evidence | `backend/SPRINT-7-FREEZE-EVIDENCE.md` |
 
 ---
 
@@ -328,7 +335,7 @@ Next Sprint Planning
 | Repository | https://github.com/aashishrajput9838/academicuniverse |
 | Architecture Document | `backend/RESUME-PARSER-ARCHITECTURE.md` |
 | Current Sprint Plan | `backend/SPRINT-7-PLAN.md` |
-| Sprint 6 Tag | `v0.6.0` |
+| Sprint 7 Tag | `v0.7.0` |
 
 ---
 

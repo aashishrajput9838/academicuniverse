@@ -19,7 +19,7 @@
 | Sprint 5 | ResumeAIEnhancer (Stage 3) | FROZEN | `v0.5.0` | `1642283` | 2026-07-25 |
 | Sprint 6 | ResumeConfidenceScorer (Stage 4) | FROZEN | `v0.6.0` | `b4a006b` | 2026-07-25 |
 | Sprint 7 | DIC Integration + Canonical Writes | FROZEN | `v0.7.0` | `60aef88` | 2026-07-25 |
-| Sprint 8 | Production Readiness | PLAN FROZEN | `—` | `9ec0651` | 2026-07-25 |
+| Sprint 8 | Production Readiness | Milestone 1 MERGED | `—` | `c1d872f` | 2026-07-25 |
 
 ---
 
@@ -197,6 +197,16 @@
 | Sprint 8 Plan Re-Review Evidence | `backend/SPRINT-8-PLAN-RE-REVIEW-EVIDENCE.md` |
 | Sprint 8 Plan Freeze | `backend/SPRINT-8-PLAN-FREEZE.md` |
 | Sprint 8 Plan Freeze Evidence | `backend/SPRINT-8-PLAN-FREEZE-EVIDENCE.md` |
+| Sprint 8 M1 Implementation Report | `backend/SPRINT-8-M1-IMPLEMENTATION-REPORT.md` |
+| Sprint 8 M1 Implementation Evidence | `backend/SPRINT-8-M1-IMPLEMENTATION-EVIDENCE.md` |
+| Sprint 8 M1 Code Review | `backend/SPRINT-8-M1-CODE-REVIEW.md` |
+| Sprint 8 M1 Code Review Evidence | `backend/SPRINT-8-M1-CODE-REVIEW-EVIDENCE.md` |
+| Sprint 8 M1 Review Fix Report | `backend/SPRINT-8-M1-REVIEW-FIX-REPORT.md` |
+| Sprint 8 M1 Review Fix Evidence | `backend/SPRINT-8-M1-REVIEW-FIX-EVIDENCE.md` |
+| Sprint 8 M1 Re-Review | `backend/SPRINT-8-M1-CODE-RE-REVIEW.md` |
+| Sprint 8 M1 Re-Review Evidence | `backend/SPRINT-8-M1-CODE-RE-REVIEW-EVIDENCE.md` |
+| Sprint 8 M1 Merge Report | `backend/SPRINT-8-M1-MERGE-REPORT.md` |
+| Sprint 8 M1 Merge Evidence | `backend/SPRINT-8-M1-MERGE-EVIDENCE.md` |
 
 ---
 

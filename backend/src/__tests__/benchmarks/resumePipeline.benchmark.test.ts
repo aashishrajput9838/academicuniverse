@@ -136,13 +136,6 @@ Employee of the Year 2023
 - Recognized for outstanding technical contributions
 `;
 
-const QUIET_LOGGER = {
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn(),
-};
-
 const simulateStructuredLogging = () => {
   const payload = {
     processingId: 'benchmark-proc',
@@ -605,7 +598,11 @@ describe('Sprint 8 Milestone 1 — Resume Pipeline Benchmark', () => {
 
       const fs = require('fs');
       const path = require('path');
-      const outputPath = path.join(__dirname, 'SPRINT-8-M1-BENCHMARK-RESULTS.txt');
+      const outputDir = path.resolve(__dirname, '../../../../build/benchmarks');
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+      const outputPath = path.join(outputDir, 'SPRINT-8-M1-BENCHMARK-RESULTS.txt');
       const lines = [
         '=== Sprint 8 Milestone 1 — Resume Pipeline Benchmark ===',
         '',
@@ -645,109 +642,95 @@ describe('Sprint 8 Milestone 1 — Resume Pipeline Benchmark', () => {
       const enhancer = new ResumeAIEnhancer();
       const scorer = new ResumeConfidenceScorer();
 
-      const memBefore = process.memoryUsage();
-      const startTime = performance.now();
+      const rounds = 10;
+      const baselineDurations: number[] = [];
+      const loggingDurations: number[] = [];
 
-      for (let i = 0; i < 10; i++) {
-        const sections = await detector.detect({
-          rawText: SAMPLE_RESUME,
-          mimeType: 'application/pdf',
-        });
-        const entities = await extractor.extract({
-          sections: sections.sections,
-          rawText: SAMPLE_RESUME,
-        });
-        await enhancer.enhance({
-          entities: entities.entities,
-          rawText: SAMPLE_RESUME,
-        });
-        scorer.score({
-          processingId: 'benchmark-proc',
-          rawCandidateFields: {
-            sections: sections.sections,
-            entities: entities.entities,
-            person: { name: 'John Doe', email: 'john@example.com' },
-            experience: [{ title: 'Engineer', company: 'Corp' }],
-            education: [{ degree: 'BS', institution: 'University' }],
-            skills: [{ name: 'JavaScript' }],
-          },
-          sectionDetectionStrategy: 'heuristic',
-          entityExtractionStrategy: 'heuristic',
-          aiProviderUsed: 'none',
-          failedOver: false,
-          extractionIssues: [],
-        });
+      for (let i = 0; i < rounds; i++) {
+        const memBeforeBase = process.memoryUsage();
+        const startBase = performance.now();
+        await runPipelineOnce(detector, extractor, enhancer, scorer, false);
+        const endBase = performance.now();
+        baselineDurations.push(endBase - startBase);
+        const memBase = process.memoryUsage().heapUsed - memBeforeBase.heapUsed;
+
+        const memBeforeLog = process.memoryUsage();
+        const startLog = performance.now();
+        await runPipelineOnce(detector, extractor, enhancer, scorer, true);
+        const endLog = performance.now();
+        loggingDurations.push(endLog - startLog);
+        const memLog = process.memoryUsage().heapUsed - memBeforeLog.heapUsed;
       }
 
-      const endTime = performance.now();
-      const memAfter = process.memoryUsage();
-      const baselineDuration = endTime - startTime;
-      const memUsed = memAfter.heapUsed - memBefore.heapUsed;
-
-      const memBefore2 = process.memoryUsage();
-      const startTime2 = performance.now();
-
-      for (let i = 0; i < 10; i++) {
-        const sections = await detector.detect({
-          rawText: SAMPLE_RESUME,
-          mimeType: 'application/pdf',
-        });
-        const entities = await extractor.extract({
-          sections: sections.sections,
-          rawText: SAMPLE_RESUME,
-        });
-        await enhancer.enhance({
-          entities: entities.entities,
-          rawText: SAMPLE_RESUME,
-        });
-        scorer.score({
-          processingId: 'benchmark-proc',
-          rawCandidateFields: {
-            sections: sections.sections,
-            entities: entities.entities,
-            person: { name: 'John Doe', email: 'john@example.com' },
-            experience: [{ title: 'Engineer', company: 'Corp' }],
-            education: [{ degree: 'BS', institution: 'University' }],
-            skills: [{ name: 'JavaScript' }],
-          },
-          sectionDetectionStrategy: 'heuristic',
-          entityExtractionStrategy: 'heuristic',
-          aiProviderUsed: 'none',
-          failedOver: false,
-          extractionIssues: [],
-        });
-
-        simulateStructuredLogging();
-      }
-
-      const endTime2 = performance.now();
-      const memAfter2 = process.memoryUsage();
-      const loggingDuration = endTime2 - startTime2;
-      const overheadPercent = ((loggingDuration - baselineDuration) / baselineDuration) * 100;
-      const memUsed2 = memAfter2.heapUsed - memBefore2.heapUsed;
+      const medianBaseline = baselineDurations.slice().sort((a, b) => a - b)[Math.floor(rounds / 2)];
+      const medianLogging = loggingDurations.slice().sort((a, b) => a - b)[Math.floor(rounds / 2)];
+      const overheadPercent = ((medianLogging - medianBaseline) / medianBaseline) * 100;
 
       expect(overheadPercent).toBeLessThan(5);
 
       const fs = require('fs');
       const path = require('path');
-      const outputPath = path.join(__dirname, 'SPRINT-8-M1-LOGGING-OVERHEAD.txt');
+      const outputDir = path.resolve(__dirname, '../../../../build/benchmarks');
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+      const outputPath = path.join(outputDir, 'SPRINT-8-M1-LOGGING-OVERHEAD.txt');
       const lines = [
         '=== Sprint 8 Milestone 1 — Logging Overhead Measurement ===',
         '',
-        `Baseline (no logging):     ${baselineDuration.toFixed(2)}ms`,
-        `With simulated logging:    ${loggingDuration.toFixed(2)}ms`,
-        `Overhead:                  ${overheadPercent.toFixed(2)}%`,
-        `Threshold:                 < 5%`,
-        `Status:                    ${overheadPercent < 5 ? 'PASS' : 'FAIL'}`,
+        `Methodology: ${rounds} alternating baseline/logging rounds, median comparison`,
+        `Median baseline (no logging):    ${medianBaseline.toFixed(2)}ms`,
+        `Median with logging:             ${medianLogging.toFixed(2)}ms`,
+        `Overhead:                        ${overheadPercent.toFixed(2)}%`,
+        `Threshold:                       < 5%`,
+        `Status:                          ${overheadPercent < 5 ? 'PASS' : 'FAIL'}`,
         '',
-        `Memory baseline: ${(memUsed / 1024 / 1024).toFixed(2)}MB`,
-        `Memory with logging: ${(memUsed2 / 1024 / 1024).toFixed(2)}MB`,
-        '',
-        'Note: Simulated logging overhead reflects JSON serialization cost.',
+        'Note: Alternating-round methodology reduces JIT warm-up and CPU scheduling bias.',
         'Actual structured-logging implementation in Milestone 2 must stay within this budget.',
       ];
       fs.writeFileSync(outputPath, lines.join('\n'));
       console.log('\n' + lines.join('\n') + '\n');
     });
   });
+
+  async function runPipelineOnce(
+    detector: ResumeSectionDetector,
+    extractor: ResumeEntityExtractor,
+    enhancer: ResumeAIEnhancer,
+    scorer: ResumeConfidenceScorer,
+    simulateLogging: boolean
+  ): Promise<void> {
+    const sections = await detector.detect({
+      rawText: SAMPLE_RESUME,
+      mimeType: 'application/pdf',
+    });
+    const entities = await extractor.extract({
+      sections: sections.sections,
+      rawText: SAMPLE_RESUME,
+    });
+    await enhancer.enhance({
+      entities: entities.entities,
+      rawText: SAMPLE_RESUME,
+    });
+    scorer.score({
+      processingId: 'benchmark-proc',
+      rawCandidateFields: {
+        sections: sections.sections,
+        entities: entities.entities,
+        person: { name: 'John Doe', email: 'john@example.com' },
+        experience: [{ title: 'Engineer', company: 'Corp' }],
+        education: [{ degree: 'BS', institution: 'University' }],
+        skills: [{ name: 'JavaScript' }],
+      },
+      sectionDetectionStrategy: 'heuristic',
+      entityExtractionStrategy: 'heuristic',
+      aiProviderUsed: 'none',
+      failedOver: false,
+      extractionIssues: [],
+    });
+
+    if (simulateLogging) {
+      simulateStructuredLogging();
+    }
+  }
 });

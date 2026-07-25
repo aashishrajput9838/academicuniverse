@@ -73,13 +73,13 @@ Milestone 1 of Sprint 8 implements the performance benchmarking infrastructure f
 
 | Metric | Value |
 |--------|-------|
-| Baseline (no logging) | 7.60ms |
-| With simulated logging | 6.40ms |
-| Overhead | -15.79% |
+| Median baseline (no logging) | 0.18ms |
+| Median with logging | 0.17ms |
+| Overhead | -4.93% |
 | Threshold | < 5% |
 | Status | PASS |
 
-**Note:** Negative overhead is within test-environment variance. The measurement framework is validated and ready for Milestone 2 comparison.
+**Methodology:** 10 alternating baseline/logging rounds with median comparison to reduce JIT warm-up and CPU scheduling bias.
 
 ---
 

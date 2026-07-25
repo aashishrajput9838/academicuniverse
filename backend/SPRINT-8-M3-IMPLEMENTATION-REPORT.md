@@ -100,7 +100,7 @@ Added 2 integration tests:
 
 | Check | Status |
 |-------|--------|
-| Tests passing | 539/537 (67 suites) |
+| Tests passing | 539/539 (67 suites) |
 | No new dependencies | YES |
 | Architecture v1.7 unchanged | YES |
 | Backward compatibility | YES |

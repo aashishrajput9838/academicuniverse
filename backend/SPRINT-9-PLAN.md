@@ -2,7 +2,7 @@
 
 **Sprint:** 9 — DIC Review & Production Hardening  
 **Date:** 2026-07-26  
-**Status:** PLANNING  
+**Status:** PLANNING (post-review fixes)  
 **Architecture Version:** v1.7  
 **Baseline:** v0.8.0
 
@@ -18,10 +18,10 @@ Enable the DIC Review UI and harden the resume pipeline for production scale by 
 
 | Milestone | Deliverable | Acceptance |
 |-----------|-------------|------------|
-| M1 | DIC Reviewer Override Hooks | `matchBasis` records `manual` when reviewer overrides person match |
-| M2 | DIC Review API Enhancement | New endpoints for review actions, routing info, and suggestion management |
-| M3 | Rate Limiting & Production Hardening | Rate-limited `/api/resume/parse-upload`, memory optimization for large PDFs |
-| M4 | Production Benchmark Execution | Benchmark suite run in production-like environment, SLA validation |
+| M1 | DIC Reviewer Override Hooks | `ResumePersonSuggestion.matchBasis` records `manual` when reviewer overrides; event `ResumePersonSuggestionUpdated` emitted; `ReviewAuditLog` appended |
+| M2 | DIC Review API Enhancement | New endpoints `override-person`, `suggestion`, enhanced `routing`; all protected by role guard; idempotent with optimistic locking |
+| M3 | Rate Limiting & Production Hardening | Rate-limited `/api/resume/parse-upload` via MongoDB-backed store; PDF streaming via async `pdf-to-img` generator; DOCX unzipped size validated |
+| M4 | Production Benchmark Execution | Staging benchmark measures time-to-acknowledge < 500ms and pipeline completion < 5s; results documented |
 
 ---
 
@@ -30,28 +30,32 @@ Enable the DIC Review UI and harden the resume pipeline for production scale by 
 ### In Scope
 
 #### M1: DIC Reviewer Override Hooks
-- Update `handleReviewAction` in `DicIntegrationService` to update `ResumePersonSuggestion` when reviewer overrides
-- Record `manual` in `matchBasis` array when reviewer changes person match
-- Update `ResumePersonSuggestion.status` based on reviewer action
-- Add event `ResumePersonSuggestionUpdated` for downstream consumers
+- Add `applyPersonOverride` method to `reviewService` (NOT `DicIntegrationService.handleReviewAction`) for HTTP review actions
+- Record `manual` in `ResumePersonSuggestion.matchBasis` array when reviewer changes person match
+- Add `version` field to `ResumePersonSuggestion` for optimistic concurrency
+- Publish new event `ResumePersonSuggestionUpdated` after successful override
+- Append `ReviewAuditLog` entry on every reviewer override
 
 #### M2: DIC Review API Enhancement
-- New endpoint: `POST /review/:processingId/override-person` — reviewer overrides suggested person
+- New endpoint: `POST /review/:processingId/override-person` — reviewer overrides suggested person; protected by `authorize('REVIEW_RESUME', 'OVERRIDE_PERSON_MATCH')`
 - New endpoint: `GET /review/:processingId/suggestion` — returns current `ResumePersonSuggestion` with match details
 - Enhanced `GET /review/:processingId/routing` — includes person suggestion data
-- All endpoints require authentication + org isolation
+- All endpoints require authentication + org isolation + role guard
+- `override-person` requires `Idempotency-Key` header; rejects duplicate submissions with same key
+- Optimistic locking: reject with `409 Conflict` if `version` mismatch
 
 #### M3: Rate Limiting & Production Hardening
-- Add rate limiting middleware to `/api/resume/parse-upload`
+- Add rate-limiting middleware to `/api/resume/parse-upload` using MongoDB `RateLimitAttempt` collection with TTL index (multi-instance safe)
 - Rate limit: 10 uploads per 15 minutes per organization
-- Memory optimization for PDFs > 20 pages: stream via `pdf-to-img` instead of loading full buffer
-- Add request-size validation (10MB guardrail)
+- Memory optimization for PDFs > 20 pages: async generator refactor of `DocumentExtractionEngine.renderPdfPages`
+- Request-size validation: verify existing 10MB multer guardrail is active; add DOCX unzipped size check (cap at 50MB)
 
 #### M4: Production Benchmark Execution
-- Run benchmark suite in staging environment matching production profile
-- Validate `< 5s` end-to-end SLA
-- Document production benchmark results
-- Update benchmark hardware profile if needed
+- Run benchmark suite in staging environment matching production hardware profile
+- SLA definitions:
+  - Time-to-acknowledge: `POST /resume/parse-upload` API response < 500ms
+  - Pipeline completion: `ResumeParseCompleted` event publish within < 5s for PDFs < 10 pages
+- Document production benchmark results; update hardware profile if needed
 
 ### Out of Scope
 - Frontend DIC Review UI implementation
@@ -67,9 +71,10 @@ Enable the DIC Review UI and harden the resume pipeline for production scale by 
 
 - No breaking changes to existing APIs
 - All new endpoints follow existing auth + org isolation patterns
-- MongoDB indexes remain compatible
-- Event contracts extend existing `UaipEvents` where needed
+- MongoDB indexes remain compatible; add TTL index for `RateLimitAttempt`
+- Event contracts extend `UaipEvents` with `ResumePersonSuggestionUpdated`
 - Backward compatible with v0.8.0
+- Multi-tenant safe: all endpoints enforce org context + role guard
 
 ---
 
@@ -79,8 +84,12 @@ Enable the DIC Review UI and harden the resume pipeline for production scale by 
 |--------------|----------|
 | Rate limit exceeded | Return `429 Too Many Requests` with `Retry-After` header |
 | Reviewer override validation fails | Return `400` with error details |
+| Reviewer unauthorized | Return `403 Forbidden` |
+| Optimistic lock conflict | Return `409 Conflict` with current version |
+| Duplicate idempotency key | Return `200` with cached result |
 | Production benchmark exceeds SLA | Document result, do not block release |
-| Large PDF memory spike | Stream pages via `pdf-to-img`, log warning |
+| Large PDF memory spike | Stream pages via `pdf-to-img` async generator; log warning |
+| DOCX unzipped size exceeds 50MB | Return `413 Payload Too Large` |
 
 ---
 
@@ -88,12 +97,14 @@ Enable the DIC Review UI and harden the resume pipeline for production scale by 
 
 | Layer | Test focus |
 |-------|------------|
-| Unit | `handleReviewAction` updates `ResumePersonSuggestion` with `manual` matchBasis |
-| Unit | Rate limiter middleware rejects excess requests |
-| Unit | PDF streaming handles >20 pages without memory spike |
-| Integration | Reviewer override flow end-to-end |
-| Integration | DIC review API endpoints with auth + org isolation |
-| Regression | Full suite remains green |
+| Unit | `applyPersonOverride` updates `ResumePersonSuggestion` atomically with `manual` matchBasis |
+| Unit | Rate limiter rejects excess requests per organization using MongoDB store |
+| Unit | PDF async generator handles >20 pages without loading full buffer |
+| Integration | Reviewer override flow end-to-end with role guard |
+| Integration | Idempotency: duplicate `override-person` returns same result within 24h |
+| Integration | Optimistic locking rejects concurrent override with `409` |
+| Integration | DIC review API endpoints return 403 for unauthorized roles |
+| Regression | Full regression suite remains green; zero dropped test cases |
 
 ---
 
@@ -101,8 +112,8 @@ Enable the DIC Review UI and harden the resume pipeline for production scale by 
 
 | Phase | Verdict | Findings |
 |-------|---------|----------|
-| Senior Plan Review | TBD | TBD |
-| Plan Fixes | TBD | TBD |
+| Senior Plan Review | NEEDS FIXES | 4 HIGH, 6 MEDIUM, 4 LOW |
+| Plan Fixes | — | All findings addressed in SPRINT-9-PLAN-FIX-REPORT.md |
 | Plan Re-Review | TBD | TBD |
 | Plan Freeze | TBD | TBD |
 
@@ -113,11 +124,11 @@ Enable the DIC Review UI and harden the resume pipeline for production scale by 
 | Workstream | Effort |
 |------------|--------|
 | M1: Reviewer override hooks | 0.5 day |
-| M2: DIC Review API | 0.5 day |
+| M2: DIC Review API | 0.75 day |
 | M3: Rate limiting + hardening | 0.5 day |
 | M4: Production benchmark | 0.5 day |
-| Documentation | 0.25 day |
-| **Total** | **~2.25 days** |
+| Fixes & Documentation | 0.25 day |
+| **Total** | **~2.5 days** |
 
 ---
 
@@ -126,18 +137,24 @@ Enable the DIC Review UI and harden the resume pipeline for production scale by 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
 | Rate limiting blocks legitimate users | Medium | Medium | Configurable limits per org; admin override |
-| Reviewer override data loss | Low | High | Atomic DB update with event publish |
+| Reviewer unauthorized override | High | High | Role guard + permission check |
+| Event publish fails due to missing enum | High | High | Add enum + consumer before implementation |
+| Optimistic lock rejection UX | Medium | Low | Return current state in 409 response |
+| Concurrent override lost update | Medium | Medium | Optimistic locking via version field |
+| Rate limit bypass on multi-instance | Medium | Medium | MongoDB store with TTL |
 | Production benchmark flakiness | Medium | Medium | Retry policy; deterministic fixtures |
-| Large PDF memory spike persists | Low | Medium | Fallback to chunked processing; log alert |
+| Large PDF memory spike persists | Low | Medium | Async generator; fallback to chunked processing |
+| DOCX unzipped memory spike | Low | Medium | Unzipped size cap at 50MB |
 
 ---
 
 ## 10. Rollback Strategy
 
-1. Revert rate-limit middleware via feature flag
-2. Revert reviewer override changes via commit revert
-3. Rollback target: v0.8.0
+1. Disable rate-limit middleware via feature flag
+2. Disable `override-person` endpoint via feature flag
+3. Revert reviewer override changes via commit revert
+4. Rollback target: v0.8.0
 
 ---
 
-*Sprint 9 plan draft. Not frozen. Subject to senior plan review.*
+*Sprint 9 plan post-review fixes. Not frozen. Subject to plan re-review.*

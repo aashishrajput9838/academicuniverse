@@ -2,7 +2,7 @@
 ## Academic Universe — Resume Parser Engineering Artifacts
 
 **Date:** 2026-07-26  
-**Status:** Active — Sprint 7 Frozen, Sprint 8 Milestone 3 Implemented  
+**Status:** Active — Sprint 7 Frozen, Sprint 8 Milestone 3 Merged  
 **Current Tag:** `v0.7.0`  
 **Baseline Architecture:** v1.7
 
@@ -19,7 +19,7 @@
 | Sprint 5 | ResumeAIEnhancer (Stage 3) | FROZEN | `v0.5.0` | `1642283` | 2026-07-25 |
 | Sprint 6 | ResumeConfidenceScorer (Stage 4) | FROZEN | `v0.6.0` | `b4a006b` | 2026-07-25 |
 | Sprint 7 | DIC Integration + Canonical Writes | FROZEN | `v0.7.0` | `60aef88` | 2026-07-25 |
-| Sprint 8 | Production Readiness | Milestone 3 IMPLEMENTED | `—` | `ae8ad75` | 2026-07-26 |
+| Sprint 8 | Production Readiness | Milestone 3 MERGED | `—` | `d087d11` | 2026-07-26 |
 
 ---
 
@@ -219,6 +219,14 @@
 | Sprint 8 M2 Merge Evidence | `backend/SPRINT-8-M2-MERGE-EVIDENCE.md` |
 | Sprint 8 M3 Implementation Report | `backend/SPRINT-8-M3-IMPLEMENTATION-REPORT.md` |
 | Sprint 8 M3 Implementation Evidence | `backend/SPRINT-8-M3-IMPLEMENTATION-EVIDENCE.md` |
+| Sprint 8 M3 Code Review | `backend/SPRINT-8-M3-CODE-REVIEW.md` |
+| Sprint 8 M3 Code Review Evidence | `backend/SPRINT-8-M3-CODE-REVIEW-EVIDENCE.md` |
+| Sprint 8 M3 Review Fix Report | `backend/SPRINT-8-M3-REVIEW-FIX-REPORT.md` |
+| Sprint 8 M3 Review Fix Evidence | `backend/SPRINT-8-M3-REVIEW-FIX-EVIDENCE.md` |
+| Sprint 8 M3 Code Re-Review | `backend/SPRINT-8-M3-CODE-RE-REVIEW.md` |
+| Sprint 8 M3 Code Re-Review Evidence | `backend/SPRINT-8-M3-CODE-RE-REVIEW-EVIDENCE.md` |
+| Sprint 8 M3 Merge Report | `backend/SPRINT-8-M3-MERGE-REPORT.md` |
+| Sprint 8 M3 Merge Evidence | `backend/SPRINT-8-M3-MERGE-EVIDENCE.md` |
 
 ---
 

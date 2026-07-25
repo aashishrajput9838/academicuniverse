@@ -356,21 +356,36 @@ export class CanonicalWriteService {
     const rawEmail = headerEntities.find((e: any) => e.type === 'email')?.data?.value || '';
     const rawPhone = headerEntities.find((e: any) => e.type === 'phone')?.data?.value || '';
     const rawName = this.extractName(personSection) || '';
+    const normalizedEmail = normalizeEmail(rawEmail);
 
-    const existingPerson = await Person.findOne({ organizationId }).lean().exec();
+    let existingPerson: any = null;
+    let matchedByIndex = false;
+
+    if (normalizedEmail) {
+      existingPerson = await Person.findOne({ organizationId, primaryEmail: normalizedEmail }).lean().exec();
+      if (existingPerson) {
+        matchedByIndex = true;
+      }
+    }
+
+    if (!existingPerson) {
+      existingPerson = await Person.findOne({ organizationId }).lean().exec();
+    }
     if (!existingPerson) return null;
 
     const emailMatch = normalizeEmail(rawEmail) === normalizeEmail(existingPerson.primaryEmail);
     const phoneMatch = normalizePhone(rawPhone) === normalizePhone('');
     const nameScore = jaroWinkler(rawName, existingPerson.primaryName);
 
-    const institutionRaw = this.extractInstitutionFromSections(sections);
     let institutionScore = 0;
-    if (institutionRaw) {
-      const academicRecords = await AcademicRecord.find({ organizationId }).lean().exec();
-      for (const record of academicRecords) {
-        const score = jaroWinkler(institutionRaw, (record as any).subjectName || '');
-        institutionScore = Math.max(institutionScore, score);
+    if (!matchedByIndex) {
+      const institutionRaw = this.extractInstitutionFromSections(sections);
+      if (institutionRaw) {
+        const academicRecords = await AcademicRecord.find({ organizationId }).lean().exec();
+        for (const record of academicRecords) {
+          const score = jaroWinkler(institutionRaw, (record as any).subjectName || '');
+          institutionScore = Math.max(institutionScore, score);
+        }
       }
     }
 

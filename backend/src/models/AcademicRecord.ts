@@ -49,4 +49,6 @@ AcademicRecordSchema.index(
   { unique: true, name: 'uniqueAcademicRecord' } as any
 );
 
+AcademicRecordSchema.index({ organizationId: 1, subjectName: 1 }, { name: 'academic_org_subject_1' });
+
 export const AcademicRecord = model<IAcademicRecord>('AcademicRecord', AcademicRecordSchema);

@@ -22,6 +22,6 @@ const PersonSchema = new Schema<IPerson>(
   { timestamps: true }
 );
 
-PersonSchema.index({ organizationId: 1, primaryEmail: 1 }, { name: 'person_org_email_1' });
+PersonSchema.index({ organizationId: 1, primaryEmail: 1 }, { name: 'person_org_email_1' } as any);
 
 export const Person = model<IPerson>('Person', PersonSchema);

@@ -41,7 +41,7 @@ export class KnowledgeDispatcher {
     this.sectionDetector = new ResumeSectionDetector(aiProvider);
     this.entityExtractor = new ResumeEntityExtractor(aiProvider);
     this.aiEnhancer = new ResumeAIEnhancer(aiProvider);
-    this.confidenceScorer = new ResumeConfidenceScorer(aiProvider);
+    this.confidenceScorer = new ResumeConfidenceScorer();
     this.dicIntegrationService = new DicIntegrationService();
     this.canonicalWriteService = new CanonicalWriteService();
   }

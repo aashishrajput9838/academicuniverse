@@ -1,5 +1,5 @@
 import express from 'express';
-import { checkResumeSubsystemHealth } from '../../utils/resumeHealthCheck';
+import { checkResumeSubsystemHealth } from '../utils/resumeHealthCheck';
 import { authenticateUser, enforceOrgIsolation } from '../middleware/auth';
 
 const router = express.Router();

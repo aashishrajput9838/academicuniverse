@@ -262,6 +262,8 @@
 | Sprint 9 M1 Merge Evidence | `backend/SPRINT-9-M1-MERGE-EVIDENCE.md` |
 | Sprint 9 M2 Implementation Report | `backend/SPRINT-9-M2-IMPLEMENTATION-REPORT.md` |
 | Sprint 9 M2 Implementation Evidence | `backend/SPRINT-9-M2-IMPLEMENTATION-EVIDENCE.md` |
+| Sprint 9 M2 Code Review | `backend/SPRINT-9-M2-CODE-REVIEW.md` |
+| Sprint 9 M2 Code Review Evidence | `backend/SPRINT-9-M2-CODE-REVIEW-EVIDENCE.md` |
 
 ---
 

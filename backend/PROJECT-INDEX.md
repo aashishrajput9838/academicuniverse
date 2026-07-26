@@ -252,6 +252,8 @@
 | Sprint 9 Plan Freeze Evidence | `backend/SPRINT-9-PLAN-FREEZE-EVIDENCE.md` |
 | Sprint 9 M1 Implementation Report | `backend/SPRINT-9-M1-IMPLEMENTATION-REPORT.md` |
 | Sprint 9 M1 Implementation Evidence | `backend/SPRINT-9-M1-IMPLEMENTATION-EVIDENCE.md` |
+| Sprint 9 M1 Code Review | `backend/SPRINT-9-M1-CODE-REVIEW.md` |
+| Sprint 9 M1 Code Review Evidence | `backend/SPRINT-9-M1-CODE-REVIEW-EVIDENCE.md` |
 
 ---
 

@@ -74,12 +74,21 @@ describe('ReviewController M2', () => {
       expect(mockApplyPersonOverride).not.toHaveBeenCalled();
     });
 
+    it('should return 400 when expectedVersion is not a number', async () => {
+      mockReq.body = { suggestedPersonId: 'person1', expectedVersion: 'abc' };
+
+      await overridePerson(mockReq, mockRes, mockNext);
+
+      expect(mockSendError).toHaveBeenCalledWith(mockRes, 400, 'expectedVersion must be a number');
+      expect(mockApplyPersonOverride).not.toHaveBeenCalled();
+    });
+
     it('should return 400 when expectedVersion is missing', async () => {
       mockReq.body = { suggestedPersonId: 'person1' };
 
       await overridePerson(mockReq, mockRes, mockNext);
 
-      expect(mockSendError).toHaveBeenCalledWith(mockRes, 400, 'expectedVersion is required');
+      expect(mockSendError).toHaveBeenCalledWith(mockRes, 400, 'expectedVersion must be a number');
       expect(mockApplyPersonOverride).not.toHaveBeenCalled();
     });
 
@@ -156,6 +165,28 @@ describe('ReviewController M2', () => {
         expect.objectContaining({
           processingId: 'proc1',
           personSuggestion: mockSuggestion,
+        }),
+        'Routing info retrieved'
+      );
+    });
+
+    it('should include null personSuggestion when none exists', async () => {
+      const mockState = { processingId: 'proc1', routingDecision: null };
+      mockGetCandidateState.mockResolvedValue(mockState);
+      mockGetPersonSuggestion.mockResolvedValue(null);
+
+      jest.doMock('../shared/application/routingEngine', () => ({
+        moduleRegistry: [],
+      }));
+
+      await getRoutingInfo(mockReq, mockRes, mockNext);
+
+      expect(mockSendResponse).toHaveBeenCalledWith(
+        mockRes,
+        200,
+        expect.objectContaining({
+          processingId: 'proc1',
+          personSuggestion: null,
         }),
         'Routing info retrieved'
       );

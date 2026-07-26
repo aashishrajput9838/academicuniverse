@@ -5,12 +5,15 @@
  * Always derives identity from the authenticated JWT — never trusts client-supplied IDs.
  *
  * Routes (all authenticated):
- *   GET    /review/:processingId          → getCandidateState
- *   POST   /review/:processingId/draft    → saveDraft
- *   POST   /review/:processingId/reject   → reject
- *   POST   /review/:processingId/approve  → approve
- *   POST   /review/:processingId/rollback → rollback  (ADMIN or document owner)
- *   GET    /review/:processingId/history  → getHistory
+ *   GET    /review/:processingId                  → getCandidateState
+ *   POST   /review/:processingId/draft            → saveDraft
+ *   POST   /review/:processingId/reject           → reject
+ *   POST   /review/:processingId/approve          → approve
+ *   POST   /review/:processingId/rollback         → rollback  (ADMIN or document owner)
+ *   GET    /review/:processingId/history           → getHistory
+ *   GET    /review/:processingId/routing           → getRoutingInfo
+ *   POST   /review/:processingId/override-person   → overridePerson
+ *   GET    /review/:processingId/suggestion        → getSuggestion
  */
 
 import { Response, NextFunction } from 'express';
@@ -159,6 +162,10 @@ export const getReviewHistory = async (req: any, res: Response, next: NextFuncti
  * GET /review/:processingId/routing
  * Returns the AI routing decision and module registry for this document.
  * Allows the review UI to display routing recommendations and offer manual override.
+ *
+ * NOTE: This endpoint intentionally queries ResumePersonSuggestion on every call.
+ * For non-resume documents or early-stage processing, personSuggestion may be null.
+ * This is acceptable for M2. Optimize in M3 if profiling shows impact.
  */
 export const getRoutingInfo = async (req: any, res: Response, next: NextFunction) => {
   try {
@@ -205,8 +212,8 @@ export const overridePerson = async (req: any, res: Response, next: NextFunction
     if (!suggestedPersonId || typeof suggestedPersonId !== 'string') {
       return sendError(res, 400, 'suggestedPersonId is required');
     }
-    if (expectedVersion === undefined || expectedVersion === null) {
-      return sendError(res, 400, 'expectedVersion is required');
+    if (typeof expectedVersion !== 'number') {
+      return sendError(res, 400, 'expectedVersion must be a number');
     }
 
     const result = await reviewService.applyPersonOverride({
@@ -223,9 +230,6 @@ export const overridePerson = async (req: any, res: Response, next: NextFunction
     if (err.message?.includes('Forbidden')) return sendError(res, 403, err.message);
     if (err.message?.includes('not found')) return sendError(res, 404, err.message);
     if (err.message?.includes('Conflict')) return sendError(res, 409, err.message);
-    if (err.message?.includes('version mismatch') || err.message?.includes('concurrent update')) {
-      return sendError(res, 409, err.message);
-    }
     next(err);
   }
 };
@@ -243,7 +247,8 @@ export const getSuggestion = async (req: any, res: Response, next: NextFunction)
       return sendError(res, 404, 'ResumePersonSuggestion not found for processingId: ' + processingId);
     }
 
-    return sendResponse(res, 200, suggestion, 'Person suggestion retrieved');
+    const { _id, __v, ...sanitized } = suggestion as any;
+    return sendResponse(res, 200, sanitized, 'Person suggestion retrieved');
   } catch (err: any) {
     if (err.message?.includes('Forbidden')) return sendError(res, 403, err.message);
     if (err.message?.includes('not found')) return sendError(res, 404, err.message);

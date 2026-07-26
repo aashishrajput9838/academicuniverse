@@ -264,6 +264,8 @@
 | Sprint 9 M2 Implementation Evidence | `backend/SPRINT-9-M2-IMPLEMENTATION-EVIDENCE.md` |
 | Sprint 9 M2 Code Review | `backend/SPRINT-9-M2-CODE-REVIEW.md` |
 | Sprint 9 M2 Code Review Evidence | `backend/SPRINT-9-M2-CODE-REVIEW-EVIDENCE.md` |
+| Sprint 9 M2 Review Fix Report | `backend/SPRINT-9-M2-REVIEW-FIX-REPORT.md` |
+| Sprint 9 M2 Review Fix Evidence | `backend/SPRINT-9-M2-REVIEW-FIX-EVIDENCE.md` |
 
 ---
 

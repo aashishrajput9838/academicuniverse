@@ -24,6 +24,7 @@ export enum UaipEvent {
   ResumeDICRoutingFailed = "RESUME_DIC_ROUTING_FAILED",
   ResumeCanonicalWritten = "RESUME_CANONICAL_WRITTEN",
   ResumeCanonicalWriteFailed = "RESUME_CANONICAL_WRITE_FAILED",
+  ResumePersonSuggestionUpdated = "RESUME_PERSON_SUGGESTION_UPDATED",
   // Human-in-the-Loop review workflow events
   CandidateDraftSaved = "CANDIDATE_DRAFT_SAVED",
   CandidateSubmitted = "CANDIDATE_SUBMITTED",
@@ -92,6 +93,10 @@ export interface UaipEventPayload {
   proficiencyScore?: number;
   evidenceCount?: number;
   skillsRebuilt?: number;
+  // Resume parser review fields
+  suggestedPersonId?: string;
+  previousSuggestedPersonId?: string;
+  matchBasis?: string[];
   // GitHub-specific fields
   repositories?: any[];
   languages?: Record<string, number>;

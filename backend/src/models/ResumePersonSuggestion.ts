@@ -8,6 +8,7 @@ export interface IResumePersonSuggestion extends Document {
   matchBasis: ('email' | 'phone' | 'name+jaro' | 'institution' | 'manual')[];
   isNewPerson: boolean;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  version: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,6 +21,7 @@ const ResumePersonSuggestionSchema = new Schema<IResumePersonSuggestion>({
   matchBasis: [{ type: String, required: true, enum: ['email', 'phone', 'name+jaro', 'institution', 'manual'] }],
   isNewPerson: { type: Boolean, default: true },
   status: { type: String, required: true, enum: ['PENDING', 'ACCEPTED', 'REJECTED'], default: 'PENDING' },
+  version: { type: Number, required: true, default: 1 },
 }, { timestamps: true });
 
 ResumePersonSuggestionSchema.index({ organizationId: 1, suggestedPersonId: 1, status: 1 });

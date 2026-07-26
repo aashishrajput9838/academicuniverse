@@ -24,6 +24,8 @@ import { ExperienceRecord } from '../../models/ExperienceRecord';
 import { Person } from '../../models/Person';
 import { AcademicSchedule } from '../../models/AcademicSchedule';
 import { UaipUpload } from '../../models/UaipUpload';
+import { ResumePersonSuggestion } from '../../models/ResumePersonSuggestion';
+import { ReviewAuditLog } from '../../models/ReviewAuditLog';
 import { eventBus } from '../../events/EventBus';
 import { UaipEvent } from '../../events/UaipEvents';
 import { normalizeScheduleDates, normalizeDate } from '../utils/dateNormalizer';
@@ -65,6 +67,15 @@ export interface ApproveParams {
 export interface RollbackParams {
   processingId: string;
   reviewer: ReviewerContext;
+}
+
+export interface ApplyPersonOverrideParams {
+  processingId: string;
+  organizationId: string;
+  reviewer: ReviewerContext;
+  suggestedPersonId: string;
+  expectedVersion: number;
+  idempotencyKey?: string;
 }
 
 export interface ReviewHistoryResult {
@@ -987,6 +998,94 @@ export class ReviewService {
       primaryTargetModule: (kr as any).primaryTargetModule,
       routingDecision: (kr as any).routingDecision ?? null,
       routingStatus: (kr as any).routingStatus ?? null,
+    };
+  }
+
+  async applyPersonOverride(params: ApplyPersonOverrideParams): Promise<{ suggestion: any; version: number }> {
+    const { processingId, organizationId, reviewer, suggestedPersonId, expectedVersion, idempotencyKey } = params;
+
+    await assertOwnership(processingId, organizationId);
+
+    const suggestion = await ResumePersonSuggestion.findOne({ processingId }).lean();
+    if (!suggestion) {
+      throw new Error('ResumePersonSuggestion not found for processingId: ' + processingId);
+    }
+
+    if (idempotencyKey) {
+      const existingLog = await ReviewAuditLog.findOne({ idempotencyKey, action: 'PERSON_OVERRIDE' }).lean();
+      if (existingLog) {
+        const currentSuggestion = await ResumePersonSuggestion.findOne({ processingId }).lean();
+        if (!currentSuggestion) {
+          throw new Error('ResumePersonSuggestion not found after idempotency check');
+        }
+        return {
+          suggestion: currentSuggestion,
+          version: (currentSuggestion as any).version,
+        };
+      }
+    }
+
+    const currentVersion = (suggestion as any).version ?? 1;
+
+    if (expectedVersion !== currentVersion) {
+      throw new Error('Conflict: version mismatch. Expected ' + expectedVersion + ', got ' + currentVersion);
+    }
+
+    const orgOid = toObjectId(organizationId);
+    const personOid = toObjectId(suggestedPersonId);
+
+    const previousMatchBasis = (suggestion as any).matchBasis || [];
+    const previousPersonId = (suggestion as any).suggestedPersonId;
+    const newMatchBasis = Array.from(new Set([...previousMatchBasis, 'manual']));
+    const newVersion = currentVersion + 1;
+
+    await ResumePersonSuggestion.findOneAndUpdate(
+      { processingId, version: currentVersion },
+      {
+        $set: {
+          suggestedPersonId: personOid,
+          matchBasis: newMatchBasis,
+          status: 'ACCEPTED',
+          version: newVersion,
+        },
+      }
+    );
+
+    const updatedSuggestion = await ResumePersonSuggestion.findOne({ processingId }).lean();
+    if (!updatedSuggestion) {
+      throw new Error('ResumePersonSuggestion not found after update');
+    }
+
+    await ReviewAuditLog.create({
+      processingId,
+      organizationId: orgOid,
+      action: 'PERSON_OVERRIDE',
+      actorId: reviewer.userId,
+      actorRole: reviewer.role,
+      previousSuggestedPersonId: previousPersonId ? toObjectId(String(previousPersonId)) : undefined,
+      newSuggestedPersonId: personOid,
+      previousMatchBasis,
+      newMatchBasis,
+      previousVersion: currentVersion,
+      newVersion,
+      idempotencyKey,
+      timestamp: new Date(),
+    });
+
+    void eventBus.publish(UaipEvent.ResumePersonSuggestionUpdated, {
+      processingId,
+      organizationId,
+      userId: reviewer.userId,
+      reviewerId: reviewer.userId,
+      suggestedPersonId,
+      previousSuggestedPersonId: previousPersonId ? String(previousPersonId) : undefined,
+      matchBasis: newMatchBasis,
+      version: newVersion,
+    });
+
+    return {
+      suggestion: updatedSuggestion,
+      version: newVersion,
     };
   }
 }

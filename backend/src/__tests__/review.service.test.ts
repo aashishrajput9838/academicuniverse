@@ -3,18 +3,21 @@ import { UaipEvent } from '../events/UaipEvents';
 import { ResumePersonSuggestion } from '../models/ResumePersonSuggestion';
 import { ReviewAuditLog } from '../models/ReviewAuditLog';
 import { UaipUpload } from '../models/UaipUpload';
+import { Person } from '../models/Person';
 import { Types } from 'mongoose';
 
 jest.mock('../events/EventBus');
 jest.mock('../models/ResumePersonSuggestion');
 jest.mock('../models/ReviewAuditLog');
 jest.mock('../models/UaipUpload');
+jest.mock('../models/Person');
 
 const mockEventBusPublish = jest.fn().mockResolvedValue(undefined);
 const mockResumePersonSuggestionFindOne = jest.fn();
 const mockResumePersonSuggestionFindOneAndUpdate = jest.fn();
 const mockReviewAuditLogCreate = jest.fn();
 const mockUaipUploadFindOne = jest.fn();
+const mockPersonFindOne = jest.fn();
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -23,6 +26,7 @@ beforeEach(() => {
   (ResumePersonSuggestion.findOneAndUpdate as jest.Mock) = mockResumePersonSuggestionFindOneAndUpdate;
   (ReviewAuditLog.create as jest.Mock) = mockReviewAuditLogCreate;
   (UaipUpload.findOne as jest.Mock) = mockUaipUploadFindOne;
+  (Person.findOne as jest.Mock) = mockPersonFindOne;
 });
 
 const mockFindOneQuery = (doc: any) => {
@@ -47,6 +51,9 @@ describe('ReviewService.applyPersonOverride', () => {
     mockUaipUploadFindOne.mockReturnValue(
       mockFindOneQuery({ processingId: 'proc1', organizationId: orgId, status: 'PROCESSING' })
     );
+    mockPersonFindOne.mockReturnValue(
+      mockFindOneQuery({ _id: newPersonId, organizationId: orgId })
+    );
     mockResumePersonSuggestionFindOne
       .mockReturnValueOnce(
         mockFindOneQuery({
@@ -68,7 +75,9 @@ describe('ReviewService.applyPersonOverride', () => {
           status: 'ACCEPTED',
         })
       );
-    mockResumePersonSuggestionFindOneAndUpdate.mockResolvedValue({});
+    mockResumePersonSuggestionFindOneAndUpdate.mockReturnValue(
+      mockFindOneQuery({ processingId: 'proc1', version: 1 })
+    );
 
     const result = await service.applyPersonOverride({
       processingId: 'proc1',
@@ -83,12 +92,15 @@ describe('ReviewService.applyPersonOverride', () => {
       { processingId: 'proc1', version: 1 },
       expect.objectContaining({
         $set: expect.objectContaining({
-          suggestedPersonId: expect.anything(),
+          suggestedPersonId: expect.any(Types.ObjectId),
           matchBasis: ['email', 'manual'],
           status: 'ACCEPTED',
           version: 2,
         }),
       })
+    );
+    expect(Person.findOne).toHaveBeenCalledWith(
+      { _id: expect.any(Types.ObjectId), organizationId: expect.any(Types.ObjectId) }
     );
     expect(ReviewAuditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -103,6 +115,8 @@ describe('ReviewService.applyPersonOverride', () => {
         newMatchBasis: ['email', 'manual'],
         previousVersion: 1,
         newVersion: 2,
+        previousStatus: 'PENDING',
+        newStatus: 'ACCEPTED',
       })
     );
     expect(mockEventBusPublish).toHaveBeenCalledWith(
@@ -120,9 +134,40 @@ describe('ReviewService.applyPersonOverride', () => {
     );
   });
 
+  it('should reject cross-org suggestedPersonId', async () => {
+    mockUaipUploadFindOne.mockReturnValue(
+      mockFindOneQuery({ processingId: 'proc1', organizationId: orgId, status: 'PROCESSING' })
+    );
+    mockResumePersonSuggestionFindOne.mockReturnValue(
+      mockFindOneQuery({
+        processingId: 'proc1',
+        suggestedPersonId: oldPersonId,
+        matchBasis: ['email'],
+        version: 1,
+        status: 'PENDING',
+      })
+    );
+    mockPersonFindOne.mockReturnValue(
+      mockFindOneQuery(null)
+    );
+
+    await expect(
+      service.applyPersonOverride({
+        processingId: 'proc1',
+        organizationId: orgId,
+        reviewer,
+        suggestedPersonId: newPersonId,
+        expectedVersion: 1,
+      })
+    ).rejects.toThrow('Forbidden: target person not found in organization');
+  });
+
   it('should throw ConflictError when version mismatches', async () => {
     mockUaipUploadFindOne.mockReturnValue(
       mockFindOneQuery({ processingId: 'proc1', organizationId: orgId, status: 'PROCESSING' })
+    );
+    mockPersonFindOne.mockReturnValue(
+      mockFindOneQuery({ _id: newPersonId, organizationId: orgId })
     );
     mockResumePersonSuggestionFindOne.mockReturnValue(
       mockFindOneQuery({
@@ -142,9 +187,19 @@ describe('ReviewService.applyPersonOverride', () => {
     ).rejects.toThrow('Conflict: version mismatch');
   });
 
-  it('should return cached result for duplicate idempotency key', async () => {
+  it('should return cached result for duplicate idempotency key within 24h', async () => {
     mockUaipUploadFindOne.mockReturnValue(
       mockFindOneQuery({ processingId: 'proc1', organizationId: orgId, status: 'PROCESSING' })
+    );
+    mockPersonFindOne.mockReturnValue(
+      mockFindOneQuery({ _id: newPersonId, organizationId: orgId })
+    );
+    mockResumePersonSuggestionFindOne.mockReturnValue(
+      mockFindOneQuery({
+        processingId: 'proc1',
+        suggestedPersonId: newPersonId,
+        version: 1,
+      })
     );
 
     const existingLog = {
@@ -152,6 +207,7 @@ describe('ReviewService.applyPersonOverride', () => {
       processingId: 'proc1',
       action: 'PERSON_OVERRIDE',
       idempotencyKey: 'idem-1',
+      timestamp: new Date(),
     };
     (ReviewAuditLog.findOne as jest.Mock).mockReturnValue(
       mockFindOneQuery({
@@ -159,14 +215,7 @@ describe('ReviewService.applyPersonOverride', () => {
         processingId: 'proc1',
         action: 'PERSON_OVERRIDE',
         idempotencyKey: 'idem-1',
-      })
-    );
-
-    mockResumePersonSuggestionFindOne.mockReturnValue(
-      mockFindOneQuery({
-        processingId: 'proc1',
-        suggestedPersonId: newPersonId,
-        version: 2,
+        timestamp: new Date(),
       })
     );
 
@@ -179,15 +228,73 @@ describe('ReviewService.applyPersonOverride', () => {
       idempotencyKey: 'idem-1',
     });
 
-    expect(result.version).toBe(2);
+    expect(result.version).toBe(1);
     expect(mockResumePersonSuggestionFindOneAndUpdate).not.toHaveBeenCalled();
     expect(ReviewAuditLog.create).not.toHaveBeenCalled();
     expect(mockEventBusPublish).not.toHaveBeenCalled();
   });
 
+  it('should throw ConflictError when idempotency key has stale version', async () => {
+    mockUaipUploadFindOne.mockReturnValue(
+      mockFindOneQuery({ processingId: 'proc1', organizationId: orgId, status: 'PROCESSING' })
+    );
+    mockPersonFindOne.mockReturnValue(
+      mockFindOneQuery({ _id: newPersonId, organizationId: orgId })
+    );
+    mockResumePersonSuggestionFindOne.mockReturnValue(
+      mockFindOneQuery({
+        processingId: 'proc1',
+        version: 2,
+      })
+    );
+
+    await expect(
+      service.applyPersonOverride({
+        processingId: 'proc1',
+        organizationId: orgId,
+        reviewer,
+        suggestedPersonId: newPersonId,
+        expectedVersion: 1,
+        idempotencyKey: 'idem-1',
+      })
+    ).rejects.toThrow('Conflict: version mismatch');
+  });
+
+  it('should throw ConflictError on concurrent update when findOneAndUpdate modifies 0 docs', async () => {
+    mockUaipUploadFindOne.mockReturnValue(
+      mockFindOneQuery({ processingId: 'proc1', organizationId: orgId, status: 'PROCESSING' })
+    );
+    mockPersonFindOne.mockReturnValue(
+      mockFindOneQuery({ _id: newPersonId, organizationId: orgId })
+    );
+    mockResumePersonSuggestionFindOne.mockReturnValue(
+      mockFindOneQuery({
+        processingId: 'proc1',
+        suggestedPersonId: oldPersonId,
+        matchBasis: ['email'],
+        version: 1,
+        status: 'PENDING',
+      })
+    );
+    (ResumePersonSuggestion.findOneAndUpdate as jest.Mock).mockResolvedValue(null);
+
+    await expect(
+      service.applyPersonOverride({
+        processingId: 'proc1',
+        organizationId: orgId,
+        reviewer,
+        suggestedPersonId: newPersonId,
+        expectedVersion: 1,
+      })
+    ).rejects.toThrow('Conflict: concurrent update detected');
+  });
+
   it('should throw when ResumePersonSuggestion not found', async () => {
     mockUaipUploadFindOne.mockReturnValue(
       mockFindOneQuery({ processingId: 'proc1', organizationId: orgId, status: 'PROCESSING' })
+    );
+    mockPersonFindOne.mockReturnValue(
+      mockFindOneQuery({ _id: newPersonId, organizationId: orgId })
     );
     mockResumePersonSuggestionFindOne.mockReturnValue(
       mockFindOneQuery(null)

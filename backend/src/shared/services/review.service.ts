@@ -1011,8 +1011,26 @@ export class ReviewService {
       throw new Error('ResumePersonSuggestion not found for processingId: ' + processingId);
     }
 
+    const currentVersion = (suggestion as any).version ?? 1;
+
+    if (expectedVersion !== currentVersion) {
+      throw new Error('Conflict: version mismatch. Expected ' + expectedVersion + ', got ' + currentVersion);
+    }
+
+    const orgOid = toObjectId(organizationId);
+    const personOid = toObjectId(suggestedPersonId);
+    const targetPerson = await Person.findOne({ _id: personOid, organizationId: orgOid }).lean();
+    if (!targetPerson) {
+      throw new Error('Forbidden: target person not found in organization');
+    }
+
     if (idempotencyKey) {
-      const existingLog = await ReviewAuditLog.findOne({ idempotencyKey, action: 'PERSON_OVERRIDE' }).lean();
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const existingLog = await ReviewAuditLog.findOne({
+        idempotencyKey,
+        action: 'PERSON_OVERRIDE',
+        timestamp: { $gte: oneDayAgo },
+      }).lean();
       if (existingLog) {
         const currentSuggestion = await ResumePersonSuggestion.findOne({ processingId }).lean();
         if (!currentSuggestion) {
@@ -1025,21 +1043,13 @@ export class ReviewService {
       }
     }
 
-    const currentVersion = (suggestion as any).version ?? 1;
-
-    if (expectedVersion !== currentVersion) {
-      throw new Error('Conflict: version mismatch. Expected ' + expectedVersion + ', got ' + currentVersion);
-    }
-
-    const orgOid = toObjectId(organizationId);
-    const personOid = toObjectId(suggestedPersonId);
-
     const previousMatchBasis = (suggestion as any).matchBasis || [];
     const previousPersonId = (suggestion as any).suggestedPersonId;
     const newMatchBasis = Array.from(new Set([...previousMatchBasis, 'manual']));
+    const previousStatus = (suggestion as any).status;
     const newVersion = currentVersion + 1;
 
-    await ResumePersonSuggestion.findOneAndUpdate(
+    const updateResult = await ResumePersonSuggestion.findOneAndUpdate(
       { processingId, version: currentVersion },
       {
         $set: {
@@ -1050,6 +1060,10 @@ export class ReviewService {
         },
       }
     );
+
+    if (!updateResult) {
+      throw new Error('Conflict: concurrent update detected');
+    }
 
     const updatedSuggestion = await ResumePersonSuggestion.findOne({ processingId }).lean();
     if (!updatedSuggestion) {
@@ -1066,6 +1080,8 @@ export class ReviewService {
       newSuggestedPersonId: personOid,
       previousMatchBasis,
       newMatchBasis,
+      previousStatus,
+      newStatus: 'ACCEPTED',
       previousVersion: currentVersion,
       newVersion,
       idempotencyKey,
@@ -1081,6 +1097,12 @@ export class ReviewService {
       previousSuggestedPersonId: previousPersonId ? String(previousPersonId) : undefined,
       matchBasis: newMatchBasis,
       version: newVersion,
+    }).catch((err: any) => {
+      logger.error('[ReviewService] applyPersonOverride event publish failed', {
+        processingId,
+        reviewerId: reviewer.userId,
+        error: err.message,
+      });
     });
 
     return {

@@ -12,6 +12,8 @@ export interface IReviewAuditLog extends Document {
   newMatchBasis: string[];
   previousVersion: number;
   newVersion: number;
+  previousStatus?: string;
+  newStatus: string;
   idempotencyKey?: string;
   timestamp: Date;
 }
@@ -28,6 +30,8 @@ const ReviewAuditLogSchema = new Schema<IReviewAuditLog>({
   newMatchBasis: [{ type: String, required: true }],
   previousVersion: { type: Number, required: true },
   newVersion: { type: Number, required: true },
+  previousStatus: { type: String },
+  newStatus: { type: String, required: true },
   idempotencyKey: { type: String, index: true, sparse: true },
   timestamp: { type: Date, default: Date.now, index: true },
 } as any, { timestamps: false });

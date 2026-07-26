@@ -1001,6 +1001,15 @@ export class ReviewService {
     };
   }
 
+  async getPersonSuggestion(processingId: string, organizationId: string) {
+    await assertOwnership(processingId, organizationId);
+
+    const suggestion = await ResumePersonSuggestion.findOne({ processingId }).lean();
+    if (!suggestion) return null;
+
+    return suggestion;
+  }
+
   async applyPersonOverride(params: ApplyPersonOverrideParams): Promise<{ suggestion: any; version: number }> {
     const { processingId, organizationId, reviewer, suggestedPersonId, expectedVersion, idempotencyKey } = params;
 

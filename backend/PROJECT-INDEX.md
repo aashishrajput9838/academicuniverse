@@ -260,6 +260,8 @@
 | Sprint 9 M1 Re-Review Evidence | `backend/SPRINT-9-M1-RE-REVIEW-EVIDENCE.md` |
 | Sprint 9 M1 Merge Report | `backend/SPRINT-9-M1-MERGE-REPORT.md` |
 | Sprint 9 M1 Merge Evidence | `backend/SPRINT-9-M1-MERGE-EVIDENCE.md` |
+| Sprint 9 M2 Implementation Report | `backend/SPRINT-9-M2-IMPLEMENTATION-REPORT.md` |
+| Sprint 9 M2 Implementation Evidence | `backend/SPRINT-9-M2-IMPLEMENTATION-EVIDENCE.md` |
 
 ---
 

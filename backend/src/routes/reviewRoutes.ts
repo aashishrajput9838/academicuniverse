@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateUser, enforceOrgIsolation } from '../middleware/auth';
+import { authenticateUser, enforceOrgIsolation, authorize } from '../middleware/auth';
 import {
   getCandidateState,
   saveDraft,
@@ -9,6 +9,8 @@ import {
   canRollback,
   getReviewHistory,
   getRoutingInfo,
+  overridePerson,
+  getSuggestion,
 } from '../controllers/reviewController';
 
 const router = express.Router();
@@ -76,5 +78,20 @@ router.get('/:processingId/history', getReviewHistory);
  * Accessible by: STUDENT (own), FACULTY, ADMIN
  */
 router.get('/:processingId/routing', getRoutingInfo);
+
+/**
+ * POST /review/:processingId/override-person
+ * Body: { suggestedPersonId: string, expectedVersion: number, idempotencyKey?: string }
+ * Reviewer overrides the AI-suggested person match.
+ * Accessible by: FACULTY, ADMIN with REVIEW_RESUME and OVERRIDE_PERSON_MATCH permissions
+ */
+router.post('/:processingId/override-person', authorize('REVIEW_RESUME', 'OVERRIDE_PERSON_MATCH'), overridePerson);
+
+/**
+ * GET /review/:processingId/suggestion
+ * Returns current ResumePersonSuggestion with match details.
+ * Accessible by: STUDENT (own), FACULTY, ADMIN
+ */
+router.get('/:processingId/suggestion', getSuggestion);
 
 export default router;

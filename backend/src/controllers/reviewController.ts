@@ -169,6 +169,7 @@ export const getRoutingInfo = async (req: any, res: Response, next: NextFunction
     if (!organizationId) return sendError(res, 403, 'Organization context required');
 
     const state = await reviewService.getCandidateState(processingId, organizationId);
+    const personSuggestion = await reviewService.getPersonSuggestion(processingId, organizationId);
     const { moduleRegistry } = require('../shared/application/routingEngine');
 
     return sendResponse(res, 200, {
@@ -184,7 +185,65 @@ export const getRoutingInfo = async (req: any, res: Response, next: NextFunction
         canonicalCollection: m.canonicalCollection,
         priority: m.priority,
       })),
+      personSuggestion,
     }, 'Routing info retrieved');
+  } catch (err: any) {
+    if (err.message?.includes('Forbidden')) return sendError(res, 403, err.message);
+    if (err.message?.includes('not found')) return sendError(res, 404, err.message);
+    next(err);
+  }
+};
+
+export const overridePerson = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const { processingId } = req.params;
+    const { suggestedPersonId, expectedVersion, idempotencyKey } = req.body;
+    const reviewer = getReviewerContext(req);
+
+    if (!reviewer.userId) return sendError(res, 401, 'Authentication required');
+    if (!reviewer.organizationId) return sendError(res, 403, 'Organization context required');
+    if (!suggestedPersonId || typeof suggestedPersonId !== 'string') {
+      return sendError(res, 400, 'suggestedPersonId is required');
+    }
+    if (expectedVersion === undefined || expectedVersion === null) {
+      return sendError(res, 400, 'expectedVersion is required');
+    }
+
+    const result = await reviewService.applyPersonOverride({
+      processingId,
+      organizationId: reviewer.organizationId,
+      reviewer,
+      suggestedPersonId,
+      expectedVersion,
+      idempotencyKey,
+    });
+
+    return sendResponse(res, 200, result, 'Person override applied successfully');
+  } catch (err: any) {
+    if (err.message?.includes('Forbidden')) return sendError(res, 403, err.message);
+    if (err.message?.includes('not found')) return sendError(res, 404, err.message);
+    if (err.message?.includes('Conflict')) return sendError(res, 409, err.message);
+    if (err.message?.includes('version mismatch') || err.message?.includes('concurrent update')) {
+      return sendError(res, 409, err.message);
+    }
+    next(err);
+  }
+};
+
+export const getSuggestion = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const { processingId } = req.params;
+    const { userId, organizationId } = getReviewerContext(req);
+
+    if (!userId) return sendError(res, 401, 'Authentication required');
+    if (!organizationId) return sendError(res, 403, 'Organization context required');
+
+    const suggestion = await reviewService.getPersonSuggestion(processingId, organizationId);
+    if (!suggestion) {
+      return sendError(res, 404, 'ResumePersonSuggestion not found for processingId: ' + processingId);
+    }
+
+    return sendResponse(res, 200, suggestion, 'Person suggestion retrieved');
   } catch (err: any) {
     if (err.message?.includes('Forbidden')) return sendError(res, 403, err.message);
     if (err.message?.includes('not found')) return sendError(res, 404, err.message);

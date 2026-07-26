@@ -268,6 +268,8 @@
 | Sprint 9 M2 Review Fix Evidence | `backend/SPRINT-9-M2-REVIEW-FIX-EVIDENCE.md` |
 | Sprint 9 M2 Re-Review | `backend/SPRINT-9-M2-RE-REVIEW.md` |
 | Sprint 9 M2 Re-Review Evidence | `backend/SPRINT-9-M2-RE-REVIEW-EVIDENCE.md` |
+| Sprint 9 M2 Merge Report | `backend/SPRINT-9-M2-MERGE-REPORT.md` |
+| Sprint 9 M2 Merge Evidence | `backend/SPRINT-9-M2-MERGE-EVIDENCE.md` |
 
 ---
 

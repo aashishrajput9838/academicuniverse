@@ -15,19 +15,17 @@ const knowledgeJobRepo = new KnowledgeJobRepository();
 /**
  * Validate PDF magic bytes.
  */
-function isPdfMagic(buffer: Buffer): boolean {
+export function isPdfMagic(buffer: Buffer): boolean {
   return buffer.length >= 4 && buffer.slice(0, 4).toString('ascii') === '%PDF';
 }
 
 /**
  * Validate DOCX magic bytes (ZIP header with [Content_Types].xml).
  */
-async function isDocxMagic(buffer: Buffer): Promise<boolean> {
-  if (buffer.length < 4 || buffer.slice(0, 4).toString('ascii') !== 'PK' ) {
+export async function isDocxMagic(buffer: Buffer): Promise<boolean> {
+  if (buffer.length < 4 || buffer.slice(0, 2).toString('ascii') !== 'PK') {
     return false;
   }
-  // Minimal check: try to find [Content_Types].xml in the ZIP central directory area.
-  // For Sprint 1, we do a lightweight string search instead of full ZIP parsing.
   const text = buffer.toString('utf8', 0, Math.min(buffer.length, 65536));
   return text.includes('[Content_Types].xml');
 }
@@ -92,6 +90,10 @@ export class ResumeParserController {
         if (!validDocx) {
           logger.warn('Invalid DOCX magic bytes', { fileName: originalName, userId, organizationId });
           return sendError(res, 400, 'Unsupported file format. Expected a valid DOCX file.');
+        }
+        if (buffer.length > 50 * 1024 * 1024) {
+          logger.warn('DOCX file exceeds safe unzipped size threshold', { fileName: originalName, size: buffer.length, userId, organizationId });
+          return sendError(res, 413, 'DOCX file too large. Unzipped size may exceed 50MB limit.');
         }
       } else {
         return sendError(res, 400, 'Invalid file type. Only PDF and DOCX are supported.');

@@ -156,15 +156,17 @@ export class DocumentExtractionEngine implements IDocumentExtractionEngine {
     }
 
     if (mimeType === 'application/pdf') {
-      return this.renderPdfPages(buffer);
+      const images: Array<{ buffer: Buffer; pageNumber: number; width: number; height: number }> = [];
+      for await (const page of this.renderPdfPages(buffer)) {
+        images.push(page);
+      }
+      return images;
     }
 
     return [];
   }
 
-  protected async renderPdfPages(buffer: Buffer): Promise<Array<{ buffer: Buffer; pageNumber: number; width: number; height: number }>> {
-    const images: Array<{ buffer: Buffer; pageNumber: number; width: number; height: number }> = [];
-    
+  protected async *renderPdfPages(buffer: Buffer): AsyncGenerator<{ buffer: Buffer; pageNumber: number; width: number; height: number }> {
     try {
       const { pdf } = await import('pdf-to-img');
       const pages = await pdf(buffer, { scale: 300 / 72 });
@@ -175,21 +177,19 @@ export class DocumentExtractionEngine implements IDocumentExtractionEngine {
         const width = (page as any).width || 2481;
         const height = (page as any).height || 3508;
         
-        images.push({
+        logger.info(`DocumentExtractionEngine: Rendered page ${pageNum} (${width}x${height}px)`);
+        
+        yield {
           buffer: page as Buffer,
           pageNumber: pageNum,
           width,
           height,
-        });
-        
-        logger.info(`DocumentExtractionEngine: Rendered page ${pageNum} (${width}x${height}px)`);
+        };
       }
 
-      logger.info(`DocumentExtractionEngine: Rendered ${images.length} pages from PDF`);
+      logger.info(`DocumentExtractionEngine: Rendered ${pageNum} pages from PDF`);
     } catch (e) {
       logger.error(`DocumentExtractionEngine: Failed to render PDF pages: ${e}`);
     }
-
-    return images;
   }
 }

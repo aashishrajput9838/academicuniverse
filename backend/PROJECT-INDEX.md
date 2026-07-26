@@ -20,7 +20,7 @@
 | Sprint 6 | ResumeConfidenceScorer (Stage 4) | FROZEN | `v0.6.0` | `b4a006b` | 2026-07-25 |
 | Sprint 7 | DIC Integration + Canonical Writes | FROZEN | `v0.7.0` | `60aef88` | 2026-07-25 |
 | Sprint 8 | Production Readiness | RELEASED | `v0.8.0` | `8de6da9` | 2026-07-26 |
-| Sprint 9 | DIC Review & Production Hardening | FROZEN | `—` | `—` | 2026-07-26 |
+| Sprint 9 | DIC Review & Production Hardening | M3 IMPLEMENTED | `—` | `—` | 2026-07-26 |
 
 ---
 
@@ -270,6 +270,8 @@
 | Sprint 9 M2 Re-Review Evidence | `backend/SPRINT-9-M2-RE-REVIEW-EVIDENCE.md` |
 | Sprint 9 M2 Merge Report | `backend/SPRINT-9-M2-MERGE-REPORT.md` |
 | Sprint 9 M2 Merge Evidence | `backend/SPRINT-9-M2-MERGE-EVIDENCE.md` |
+| Sprint 9 M3 Implementation Report | `backend/SPRINT-9-M3-IMPLEMENTATION-REPORT.md` |
+| Sprint 9 M3 Implementation Evidence | `backend/SPRINT-9-M3-IMPLEMENTATION-EVIDENCE.md` |
 
 ---
 

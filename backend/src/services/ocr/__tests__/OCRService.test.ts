@@ -55,8 +55,8 @@ jest.mock('pdf-to-img', () => ({
 }));
 
 class TestableDocumentExtractionEngine extends DocumentExtractionEngine {
-  async renderPdfPages(buffer: Buffer): Promise<Array<{ buffer: Buffer; pageNumber: number; width: number; height: number }>> {
-    return [{ buffer: Buffer.from('mock-pdf-image'), pageNumber: 1, width: 2481, height: 3508 }];
+  async *renderPdfPages(buffer: Buffer): AsyncGenerator<{ buffer: Buffer; pageNumber: number; width: number; height: number }> {
+    yield { buffer: Buffer.from('mock-pdf-image'), pageNumber: 1, width: 2481, height: 3508 };
   }
 }
 

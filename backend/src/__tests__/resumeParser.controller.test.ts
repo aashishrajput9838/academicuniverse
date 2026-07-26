@@ -162,6 +162,23 @@ describe('Sprint 1: Resume Parser Foundation', () => {
       expect(mockSendError).toHaveBeenCalledWith(res, 400, 'Unsupported file format. Expected a valid DOCX file.');
     });
 
+    it('should return 413 for DOCX file exceeding unzipped size threshold', async () => {
+      const docxBuffer = Buffer.from('PK\x03\x04[Content_Types].xml</Types>', 'utf8');
+      const largeBuffer = Buffer.alloc(51 * 1024 * 1024, 0);
+      docxBuffer.copy(largeBuffer);
+      const req = {
+        file: { buffer: largeBuffer, mimetype: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', originalname: 'resume.docx', size: 51 * 1024 * 1024 },
+        organizationId: 'org1',
+        user: { userId: 'user1' },
+      } as any;
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() } as any;
+      const next = jest.fn();
+
+      await controller.parseUpload(req, res, next);
+
+      expect(mockSendError).toHaveBeenCalledWith(res, 413, 'DOCX file too large. Unzipped size may exceed 50MB limit.');
+    });
+
     it('should return 201 for a valid PDF upload with correct response shape', async () => {
       const pdfBuffer = Buffer.from('%PDF-1.4\n');
       const req = {

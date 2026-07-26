@@ -4,7 +4,7 @@ export interface IRateLimitAttempt extends Document {
   organizationId: Types.ObjectId;
   endpoint: string;
   attempts: number;
-  windowStart: Date;
+  windowCreatedAt: Date;
   lastAttemptAt: Date;
 }
 
@@ -12,11 +12,11 @@ const RateLimitAttemptSchema = new Schema<IRateLimitAttempt>({
   organizationId: { type: Schema.Types.ObjectId, required: true, ref: 'Organization', index: true } as any,
   endpoint: { type: String, required: true, index: true },
   attempts: { type: Number, required: true, default: 1 },
-  windowStart: { type: Date, required: true, index: true },
+  windowCreatedAt: { type: Date, required: true, index: true, description: 'Timestamp when this rate-limit window record was created' },
   lastAttemptAt: { type: Date, required: true, default: Date.now },
 }, { timestamps: false });
 
-RateLimitAttemptSchema.index({ organizationId: 1, endpoint: 1, windowStart: -1 }, { unique: true });
-RateLimitAttemptSchema.index({ windowStart: 1 }, { expireAfterSeconds: 0 } as any);
+RateLimitAttemptSchema.index({ organizationId: 1, endpoint: 1, windowCreatedAt: -1 }, { unique: true });
+RateLimitAttemptSchema.index({ windowCreatedAt: 1 }, { expireAfterSeconds: 0 } as any);
 
 export const RateLimitAttempt = model<IRateLimitAttempt>('RateLimitAttempt', RateLimitAttemptSchema);

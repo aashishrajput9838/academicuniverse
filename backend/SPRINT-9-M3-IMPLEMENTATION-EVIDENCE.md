@@ -138,6 +138,7 @@ private async getImagesToProcess(buffer: Buffer, mimeType: string): Promise<Arra
 **Verification:**
 - Multer 10MB `fileSize` guardrail remains active.
 - DOCX buffer size check added at 50MB threshold.
+- **Known limitation:** `buffer.length` reflects compressed upload size, not true unzipped size. A 51MB compressed DOCX can unzip to >100MB. True unzipped-size validation requires lightweight ZIP central-directory parsing or downstream pipeline safeguards. Documented as technical debt.
 - Test covers the 413 response path.
 
 ### 4.5 Bug Fix: `isDocxMagic`
@@ -153,6 +154,17 @@ buffer.slice(0, 2).toString('ascii') !== 'PK'
 **Verification:**
 - ZIP/DOCX files start with `PK` (2 bytes), not 4 bytes.
 - Fix aligns implementation with existing magic-byte test expectations.
+- `isPdfMagic` and `isDocxMagic` moved to `src/utils/fileValidation.ts` to enforce separation of concerns.
+
+---
+
+### 4.6 Async Generator Limitation
+
+**Observation:** `renderPdfPages` now yields pages lazily, but `getImagesToProcess` immediately iterates the generator and accumulates all pages into an array. The downstream `processImages` still iterates the full array synchronously.
+
+**Impact:** For a 100-page PDF at 300 DPI, all rendered images are still held in memory simultaneously. The generator pattern only helps if consumers process pages lazily.
+
+**Decision:** Acceptable for M3 scope. M4 or a future milestone should refactor `processImages` to consume pages lazily. Documented here as known interim state.
 
 ---
 

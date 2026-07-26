@@ -6,29 +6,12 @@ import { ResumeParseResult } from '../models/ResumeParseResult';
 import { ResumePersonSuggestion } from '../models/ResumePersonSuggestion';
 import { KnowledgeJobRepository } from '../shared/repositories/knowledgeJob.repository';
 import { Logger } from '../utils/logger';
+import { isPdfMagic, isDocxMagic } from '../utils/fileValidation';
 import * as crypto from 'crypto';
 
 const logger = new Logger('resumeParserController');
 const storageService = new StorageService();
 const knowledgeJobRepo = new KnowledgeJobRepository();
-
-/**
- * Validate PDF magic bytes.
- */
-export function isPdfMagic(buffer: Buffer): boolean {
-  return buffer.length >= 4 && buffer.slice(0, 4).toString('ascii') === '%PDF';
-}
-
-/**
- * Validate DOCX magic bytes (ZIP header with [Content_Types].xml).
- */
-export async function isDocxMagic(buffer: Buffer): Promise<boolean> {
-  if (buffer.length < 4 || buffer.slice(0, 2).toString('ascii') !== 'PK') {
-    return false;
-  }
-  const text = buffer.toString('utf8', 0, Math.min(buffer.length, 65536));
-  return text.includes('[Content_Types].xml');
-}
 
 /**
  * Compute SHA-256 hex digest of a buffer.

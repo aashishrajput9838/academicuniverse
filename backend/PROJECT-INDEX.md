@@ -266,6 +266,8 @@
 | Sprint 9 M2 Code Review Evidence | `backend/SPRINT-9-M2-CODE-REVIEW-EVIDENCE.md` |
 | Sprint 9 M2 Review Fix Report | `backend/SPRINT-9-M2-REVIEW-FIX-REPORT.md` |
 | Sprint 9 M2 Review Fix Evidence | `backend/SPRINT-9-M2-REVIEW-FIX-EVIDENCE.md` |
+| Sprint 9 M2 Re-Review | `backend/SPRINT-9-M2-RE-REVIEW.md` |
+| Sprint 9 M2 Re-Review Evidence | `backend/SPRINT-9-M2-RE-REVIEW-EVIDENCE.md` |
 
 ---
 

@@ -16,7 +16,17 @@ import {
   Github,
   Link as LinkIcon,
 } from 'lucide-react';
-import { ISSUE_CATEGORIES, IssueCategory, IssueDifficulty } from '@/backend/src/models/CodeArenaIssue';
+const ISSUE_CATEGORIES = [
+  'Frontend', 'Backend', 'Full Stack', 'Java', 'Python', 'C++',
+  'JavaScript', 'TypeScript', 'React', 'Next.js', 'Node.js', 'Express',
+  'Spring Boot', 'Android', 'Flutter', 'AI', 'Machine Learning',
+  'Data Science', 'Docker', 'DevOps', 'Cloud', 'MongoDB', 'MySQL',
+  'PostgreSQL', 'Firebase', 'Git', 'Cyber Security', 'Blockchain',
+  'Research', 'Other',
+] as const;
+
+type IssueCategory = typeof ISSUE_CATEGORIES[number];
+type IssueDifficulty = 'EASY' | 'MEDIUM' | 'HARD' | 'EXPERT';
 import { apiRequest } from '@/utils/api';
 
 interface IssueFormWizardProps {
@@ -94,7 +104,7 @@ export const IssueFormWizard: React.FC<IssueFormWizardProps> = ({
       setAttachments([...attachments, data.data]);
     } catch (err: any) {
       setErrorMsg(err.message || 'File upload failed');
-    } font: {
+    } finally {
       setUploadingFile(false);
     }
   };

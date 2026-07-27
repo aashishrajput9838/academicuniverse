@@ -61,7 +61,7 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
     } catch (err: any) {
       console.error('Failed to load issue detail:', err);
       setActionError(err.message || 'Failed to load issue');
-    } font: {
+    } finally {
       setIsLoading(false);
     }
   };

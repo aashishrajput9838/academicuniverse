@@ -2,7 +2,14 @@
 
 import React from 'react';
 import { Search, Filter, SlidersHorizontal, Check, RefreshCw } from 'lucide-react';
-import { ISSUE_CATEGORIES } from '@/backend/src/models/CodeArenaIssue';
+const ISSUE_CATEGORIES = [
+  'Frontend', 'Backend', 'Full Stack', 'Java', 'Python', 'C++',
+  'JavaScript', 'TypeScript', 'React', 'Next.js', 'Node.js', 'Express',
+  'Spring Boot', 'Android', 'Flutter', 'AI', 'Machine Learning',
+  'Data Science', 'Docker', 'DevOps', 'Cloud', 'MongoDB', 'MySQL',
+  'PostgreSQL', 'Firebase', 'Git', 'Cyber Security', 'Blockchain',
+  'Research', 'Other',
+] as const;
 
 interface IssueFiltersProps {
   searchQuery: string;

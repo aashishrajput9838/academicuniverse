@@ -124,10 +124,10 @@ export const CertificateThumbnailGallery: React.FC<CertificateThumbnailGalleryPr
 
   return (
     <>
-      {/* 12. Responsive Layout Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {certificates.map((cert, index) => {
-          const certKey = cert.id || `cert-${index}`;
+          const rawKey = cert.id || cert.processingId || cert.sourceDocumentId;
+          const certKey = rawKey ? `${rawKey}-${index}` : `cert-${index}`;
           const brand = getIssuerBrand(cert.issuer);
 
           const fullThumb = cert.thumbnailUrl

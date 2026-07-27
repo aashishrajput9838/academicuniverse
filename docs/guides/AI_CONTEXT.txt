@@ -1,0 +1,46 @@
+# Academic Universe - Master AI Context (Token-Optimized)
+
+## 1. Project Essence
+Multi-tenant student development SaaS. Tracks holistic growth (IQ/EQ, wellness, credentials).
+Core Logic: Domain-based RBAC (@ug.sharda.ac.in=STUDENT, @fa.sharda.ac.in=FACULTY).
+
+## 2. Technical Stack
+- **Frontend**: Next.js 16 (App Router, Turbopack), React 19, Tailwind 4, Radix UI.
+- **Backend**: Node.js, Express 5, TypeScript. Modular architecture (DDD/DI pattern).
+- **Hybrid DB**: 
+  - **MongoDB**: Primary (Users, Orgs, Marks, Resumes).
+  - **Firestore**: Real-time (Detected Events, Logs, Research state).
+- **Services**: Google Gemini (gemini-2.5-flash), Cloudinary (Storage), Sentry (Monitoring).
+- **External APIs**: GitHub (Coding Analytics), Gmail (Event Extraction via sync).
+
+## 3. Architecture & Conventions
+- **Multi-Tenancy**: Mandatory `organizationId` isolation on ALL schemas and queries.
+- **Auth**: JWT with embedded permissions and synchronized `firebaseUid`. Verified via `authenticateUser` middleware.
+- **Realtime Logs**: Secure `ezoneLogs/{sessionId}/entries` structure authorized via `firebaseUid` and `organizationId` matching.
+- **Modular Backend**: New features go to `/backend/src/modules/[feature]/` using Controller-Service-Repository pattern.
+- **Core AI**: `/backend/src/core/ai/` provides a unified factory for AI providers (Gemini default).
+
+## 4. Key Modules & Features
+- **Research Wing**: Modular AI pipeline (Topic -> Outline -> Content -> Export). Firestore-backed state.
+- **Overlap Engine**: Finds common free slots across sections (max 5) for scheduling.
+- **Gmail Sync**: Background sync filtering spam/marketing to extract hackathons/exams.
+- **GitHub Sync**: Periodic (6h) sync of dev stats (commits, languages, repo growth).
+- **Soft Skills**: AI analysis of communication/behavior via specific student inputs.
+- **Resume Builder**: AI-enhanced template system for verified achievement resumes.
+- **Ezone Sync**: Playwright-based ERP integration for automated academic data syncing.
+
+## 5. Critical Directory Map
+- `/app/dashboard/[role]/`: Role-based frontend UI.
+- `/backend/src/modules/`: New modular features (DDD/DI). (e.g., Research, Ezone Sync).
+- `/backend/src/controllers/`: Legacy API endpoints (being migrated).
+- `/backend/src/models/`: Mongoose schemas.
+- `/backend/src/services/`: Legacy business logic services.
+- `/components/`: Shared UI components (Chat, Research, SoftSkills, UI-shared).
+- `/lib/`: Shared frontend utilities (AuthContext, DB config, hooks).
+
+## 6. Engineering Rules
+- **Ports**: 3000 (FE), 5000 (BE).
+- **Auth**: Always use `authenticateUser` (JWT) or `authenticateFirebaseUser` as required.
+- **DB**: Prefer `organizationId` filtering at the repository/model level.
+- **UI**: Glassmorphism, Dark Theme, Zero-flicker hydration. Strict CSP compliance.
+- **Deployment**: Vercel (FE), Render (BE), Firebase (Firestore Rules/Indexes).

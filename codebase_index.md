@@ -38,7 +38,8 @@ Academic Universe is a high-performance, multi-tenant SaaS platform built for un
 | `hooks/` | dir | Custom React hooks (`useCopyToClipboard`, `useDebounce`, `useAsyncState`) |
 | `constants/` | dir | Centralized application constants (`app.ts`) |
 | `utils/` | dir | Shared frontend utilities (`formatters.ts`, `api.ts`, `api/`) |
-| `docs/` | dir | Documentation & sprint reports (`docs/reports/`) |
+| `docs/` | dir | Documentation, setup guides (`docs/guides/`) & sprint reports (`docs/reports/`) |
+| `scripts/` | dir | Build, migration, and launcher scripts (`start-dev.bat`, `start-dev.ps1`) |
 | `tmp/` | dir | Temporary files & inspection scratchpad (`tmp/scratch/`, `tmp/inspection/`) |
 | `backend/` | dir | Express.js backend API server & DDD modules |
 

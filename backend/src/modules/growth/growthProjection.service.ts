@@ -75,13 +75,14 @@ const latestTimestamp = (values: Array<Date | string | undefined | null>): strin
 export class GrowthProjectionService {
   async buildProjection(userId: string, organizationId: string): Promise<GrowthProjection> {
     const startTime = Date.now();
-    const [profileId, marksMetrics, canonicalMetrics, ezoneMetrics, githubMetrics, skillsMetrics] = await Promise.all([
+    const [profileId, marksMetrics, canonicalMetrics, ezoneMetrics, githubMetrics, skillsMetrics, codeArenaMetrics] = await Promise.all([
       this.resolveProfileId(userId, organizationId),
       this.getMarksMetrics(userId, organizationId),
       this.getCanonicalProfileMetrics(userId, organizationId),
       this.getEzoneMetrics(userId, organizationId),
       this.getGithubMetrics(userId, organizationId),
       this.getSkillsMetrics(userId, organizationId),
+      this.getCodeArenaMetrics(userId, organizationId),
     ]);
 
     const sourceVersions = {
@@ -92,6 +93,7 @@ export class GrowthProjectionService {
       certificates: canonicalMetrics.sources.certificates.updatedAt,
       experience: canonicalMetrics.sources.experience.updatedAt,
       skillsTracker: skillsMetrics.source.updatedAt,
+      codeArena: codeArenaMetrics.source.updatedAt,
     };
 
     const projection = {
@@ -111,6 +113,7 @@ export class GrowthProjectionService {
         certificatesCount: canonicalMetrics.certificatesCount,
         experienceCount: canonicalMetrics.experienceCount,
         skills: skillsMetrics.skills,
+        codeArena: codeArenaMetrics.metric,
       },
       sources: {
         academicRecords: canonicalMetrics.sources.academicRecords,
@@ -120,6 +123,7 @@ export class GrowthProjectionService {
         certificates: canonicalMetrics.sources.certificates,
         experience: canonicalMetrics.sources.experience,
         skillsTracker: skillsMetrics.source,
+        codeArena: codeArenaMetrics.source,
       },
       sourceVersions,
     };
@@ -465,5 +469,37 @@ export class GrowthProjectionService {
       weakestSkills: [],
       lastProjectionAt: null,
     };
+  }
+
+  private async getCodeArenaMetrics(userId: string, organizationId: string) {
+    try {
+      const { CodeArenaReputation } = await import('../../models/CodeArenaReputation');
+      const { toObjectId } = await import('../../utils/mongooseHelpers');
+      const orgObjId = toObjectId(organizationId);
+
+      const rep = await CodeArenaReputation.findOne({ organizationId: orgObjId, userId });
+      const updatedAt = rep ? toTimestamp(rep.updatedAt) : null;
+      const source = createSourceState(rep ? 'AVAILABLE' : 'EMPTY', updatedAt, false, rep ? null : 'NO_DATA');
+
+      const value = {
+        totalPoints: rep?.totalPoints || 0,
+        issuesPosted: rep?.issuesPosted || 0,
+        issuesSolved: rep?.issuesSolved || 0,
+        acceptanceRate: rep?.acceptanceRate || 0,
+        totalRewardsEarned: rep?.totalRewardsEarned || 0,
+        badges: rep?.badges || [],
+      };
+
+      return {
+        source,
+        metric: createMetric('AVAILABLE', value, updatedAt, false, null),
+      };
+    } catch {
+      const errorSource = createSourceState('ERROR', null, false, 'SOURCE_ERROR');
+      return {
+        source: errorSource,
+        metric: createMetric('ERROR', { totalPoints: 0, issuesPosted: 0, issuesSolved: 0, acceptanceRate: 0, totalRewardsEarned: 0, badges: [] }, null, null, 'SOURCE_ERROR'),
+      };
+    }
   }
 }

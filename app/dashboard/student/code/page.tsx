@@ -1,212 +1,239 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
+import { apiRequest } from '@/utils/api';
+import { CodeArenaNav } from '@/components/codeArena/CodeArenaNav';
+import { CodeArenaStatsBar } from '@/components/codeArena/CodeArenaStatsBar';
+import { MyWalletWidget } from '@/components/codeArena/MyWalletWidget';
+import { IssueCard } from '@/components/codeArena/IssueCard';
+import Link from 'next/link';
+import { PlusCircle, Compass, Award, ArrowRight, RefreshCw, Flame, CheckCircle2 } from 'lucide-react';
 
-export default function StudentCodeArena() {
-  const { user, backendUser, loading } = useAuth();
+export default function CodeArenaDashboard() {
+  const { user, backendUser, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!loading && (!user || !backendUser)) {
-      router.push('/login');
-    } else if (!loading && backendUser && backendUser.role !== 'STUDENT' && backendUser.role !== 'FACULTY') {
-      // For unauthorized role, redirect to home
-      router.push('/');
-    }
-  }, [user, backendUser, loading, router]);
+  const [stats, setStats] = useState<any>(null);
+  const [recentIssues, setRecentIssues] = useState<any[]>([]);
+  const [myIssues, setMyIssues] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Show loading state while checking authentication
-  if (loading) {
+  // Authentication check
+  useEffect(() => {
+    if (!authLoading && (!user || !backendUser)) {
+      router.push('/login');
+    }
+  }, [user, backendUser, authLoading, router]);
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const [statsRes, recentRes, myIssuesRes] = await Promise.all([
+        apiRequest('/api/code-arena/dashboard/stats'),
+        apiRequest('/api/code-arena/issues?limit=6&status=OPEN'),
+        apiRequest('/api/code-arena/issues?limit=4&myIssuesOnly=true'),
+      ]);
+
+      setStats(statsRes.data);
+      setRecentIssues(recentRes.data?.issues || []);
+      setMyIssues(myIssuesRes.data?.issues || []);
+    } catch (err) {
+      console.error('Failed to load Code Arena dashboard data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && backendUser) {
+      fetchData();
+    }
+  }, [user, backendUser]);
+
+  if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-400 border-opacity-50" />
       </div>
     );
   }
 
-  // Don't render content until user is authenticated and is a student
   if (!user || !backendUser || backendUser.role !== 'STUDENT') {
     return null;
   }
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Code Arena</h1>
-        <p className="text-slate-400">Compete and enhance your coding skills</p>
+    <div className="space-y-8 pb-12">
+      {/* Navigation Header */}
+      <CodeArenaNav walletBalance={stats?.myWallet?.balance || 0} />
+
+      {/* Hero Header Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950/60 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-2xl relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold mb-3">
+            <Flame className="w-3.5 h-3.5" /> Peer-to-Peer Developer Issue Marketplace
+          </div>
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight mb-3">
+            Solve Real Technical Issues. <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
+              Earn Peer Rewards & Reputation.
+            </span>
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-300 mb-6 leading-relaxed">
+            Need help debugging a project? Post your issue with a credit reward locked in escrow. Have technical expertise? Submit solutions and build your verified developer reputation.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/dashboard/student/code/issues/new"
+              className="px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-emerald-500/20 flex items-center gap-2"
+            >
+              <PlusCircle className="w-4 h-4" /> Post an Issue
+            </Link>
+
+            <Link
+              href="/dashboard/student/code/issues"
+              className="px-5 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-white font-semibold text-xs transition flex items-center gap-2"
+            >
+              <Compass className="w-4 h-4 text-emerald-400" /> Browse Open Issues
+            </Link>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Coding Challenges */}
-        <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-bold text-emerald-400 mb-4">Coding Challenges</h2>
-          <div className="space-y-4">
-            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-semibold text-white mb-2">Algorithm Problems</h3>
-              <p className="text-slate-400 text-sm mb-3">Practice algorithms and data structures</p>
-              <div className="flex justify-between items-center">
-                <span className="text-emerald-400 text-sm">Level: Intermediate</span>
-                <button className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm transition">
-                  Start Challenge
-                </button>
+      {/* Metrics Stats Bar */}
+      <CodeArenaStatsBar
+        openIssues={stats?.openIssues}
+        solvedToday={stats?.solvedToday}
+        activeDevelopers={stats?.activeDevelopers}
+        totalRewardPool={stats?.totalRewardPool}
+        isLoading={isLoading}
+      />
+
+      {/* Main Grid: Wallet & Reputation + Recent Issues */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column (1 col): Wallet Widget & Reputation Badge */}
+        <div className="space-y-6">
+          {/* Wallet Card */}
+          <MyWalletWidget
+            balance={stats?.myWallet?.balance}
+            lockedBalance={stats?.myWallet?.lockedBalance}
+            totalEarned={stats?.myWallet?.totalEarned}
+            totalSpent={stats?.myWallet?.totalSpent}
+            onDepositSuccess={fetchData}
+          />
+
+          {/* Reputation Summary Card */}
+          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl text-white">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <Award className="w-4 h-4 text-emerald-400" /> Developer Reputation
+              </h3>
+              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
+                {stats?.myReputation?.totalPoints || 0} PTS
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs mb-4">
+              <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-800">
+                <span className="text-[10px] text-slate-400 block">Issues Solved</span>
+                <span className="font-bold text-white text-base">{stats?.myReputation?.issuesSolved || 0}</span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-800">
+                <span className="text-[10px] text-slate-400 block">Acceptance Rate</span>
+                <span className="font-bold text-emerald-400 text-base">{stats?.myReputation?.acceptanceRate || 0}%</span>
               </div>
             </div>
-            
-            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-semibold text-white mb-2">System Design</h3>
-              <p className="text-slate-400 text-sm mb-3">Design scalable systems and architectures</p>
-              <div className="flex justify-between items-center">
-                <span className="text-emerald-400 text-sm">Level: Advanced</span>
-                <button className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm transition">
-                  Start Challenge
-                </button>
+
+            {/* Badges */}
+            {stats?.myReputation?.badges && stats.myReputation.badges.length > 0 ? (
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1.5">Earned Badges</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {stats.myReputation.badges.map((badge: string, idx: number) => (
+                    <span
+                      key={idx}
+                      className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold"
+                    >
+                      🏆 {badge.replace('_', ' ')}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-            
-            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-semibold text-white mb-2">Real-World Projects</h3>
-              <p className="text-slate-400 text-sm mb-3">Apply skills to practical scenarios</p>
-              <div className="flex justify-between items-center">
-                <span className="text-emerald-400 text-sm">Level: Expert</span>
-                <button className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm transition">
-                  Start Challenge
-                </button>
-              </div>
-            </div>
+            ) : (
+              <p className="text-xs text-slate-500 italic">Submit your first solution to earn developer badges!</p>
+            )}
           </div>
         </div>
 
-        {/* Performance Stats */}
-        <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-bold text-emerald-400 mb-4">Performance Stats</h2>
-          <div className="space-y-6">
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-slate-300">Challenges Completed</span>
-                <span className="text-emerald-400 font-semibold">42</span>
+        {/* Right Column (2 cols): Open Issues Feed & My Issues */}
+        <div className="lg:col-span-2 space-y-8">
+          {/* Open Issues Section */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-white">Trending Open Issues</h3>
+                <p className="text-xs text-slate-400">Issues looking for solutions right now</p>
               </div>
-              <div className="w-full bg-slate-700 rounded-full h-2">
-                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '70%' }}></div>
-              </div>
-            </div>
-            
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-slate-300">Success Rate</span>
-                <span className="text-emerald-400 font-semibold">85%</span>
-              </div>
-              <div className="w-full bg-slate-700 rounded-full h-2">
-                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '85%' }}></div>
-              </div>
-            </div>
-            
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-slate-300">Ranking</span>
-                <span className="text-emerald-400 font-semibold">#24</span>
-              </div>
-              <div className="w-full bg-slate-700 rounded-full h-2">
-                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '65%' }}></div>
-              </div>
-            </div>
-            
-            <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-600">
-              <h3 className="font-semibold text-white mb-2">Languages Used</h3>
-              <div className="flex flex-wrap gap-2">
-                <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-1 rounded">JavaScript</span>
-                <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-1 rounded">Python</span>
-                <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-1 rounded">Java</span>
-                <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-1 rounded">C++</span>
-                <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-1 rounded">React</span>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Leaderboard */}
-        <div className="md:col-span-2 bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-bold text-emerald-400 mb-4">Leaderboard</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-700">
-              <thead>
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Rank</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Student</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Points</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Challenges</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Win Rate</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-700">
-                <tr>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-yellow-400">#1</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">Ananya Sharma</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">1,240</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">68</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">92%</td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-300">#2</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">Raj Patel</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">1,180</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">65</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">89%</td>
-                </tr>
-                <tr className="bg-emerald-500/10">
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-emerald-400">#24</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">You</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-emerald-400">780</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">42</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">85%</td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-400">#25</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">Priya Singh</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">750</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">40</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">82%</td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-400">#26</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-white">Arjun Kumar</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">720</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">38</td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400">78%</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+              <Link
+                href="/dashboard/student/code/issues"
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition"
+              >
+                View All <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
 
-        {/* Recent Activity */}
-        <div className="md:col-span-2 bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <h2 className="text-xl font-bold text-emerald-400 mb-4">Recent Activity</h2>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-              <div>
-                <h3 className="font-medium text-white">Completed "Dynamic Programming" challenge</h3>
-                <p className="text-slate-400 text-sm">2 hours ago</p>
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-44 bg-slate-800/60 rounded-2xl animate-pulse border border-slate-700/50" />
+                ))}
               </div>
-              <span className="text-emerald-400 text-sm">+25 pts</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-              <div>
-                <h3 className="font-medium text-white">Joined "Weekly Algorithm Contest"</h3>
-                <p className="text-slate-400 text-sm">1 day ago</p>
+            ) : recentIssues.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {recentIssues.map((issue) => (
+                  <IssueCard key={issue._id} issue={issue} currentUserId={backendUser?.id} />
+                ))}
               </div>
-              <span className="text-emerald-400 text-sm">+10 pts</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-600">
-              <div>
-                <h3 className="font-medium text-white">Achieved "Silver Rank" milestone</h3>
-                <p className="text-slate-400 text-sm">3 days ago</p>
+            ) : (
+              <div className="p-8 text-center bg-slate-900/60 border border-slate-800 rounded-2xl text-slate-400">
+                <p className="text-xs">No open issues at the moment.</p>
+                <Link
+                  href="/dashboard/student/code/issues/new"
+                  className="inline-block mt-3 px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
+                >
+                  Be the first to post an issue!
+                </Link>
               </div>
-              <span className="text-emerald-400 text-sm">+50 pts</span>
-            </div>
+            )}
           </div>
+
+          {/* My Issues Section */}
+          {myIssues.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-white">My Posted Issues</h3>
+                <Link
+                  href="/dashboard/student/code/issues?tab=my-issues"
+                  className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition"
+                >
+                  Manage <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {myIssues.map((issue) => (
+                  <IssueCard key={issue._id} issue={issue} currentUserId={backendUser?.id} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

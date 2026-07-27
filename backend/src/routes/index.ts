@@ -15,6 +15,23 @@ import academicScheduleRoutes from './academicScheduleRoutes';
 import dashboardRoutes from './dashboardRoutes';
 import aiRoutes from './aiRoutes';
 import logRoutes from './logRoutes';
+import express from 'express';
+import authRoutes from './authRoutes';
+import marksRoutes from './marksRoutes';
+import githubRoutes from './githubRoutes';
+import profileRoutes from './profileRoutes';
+import overlapRoutes from './overlapRoutes';
+import resumeRoutes from './resumeRoutes';
+import resumeParserRoutes from './resumeParserRoutes';
+
+import timetableRoutes from './timetableRoutes';
+import sectionRoutes from './sectionRoutes';
+import usersRoutes from './usersRoutes';
+import academicRecordRoutes from './academicRecordRoutes';
+import academicScheduleRoutes from './academicScheduleRoutes';
+import dashboardRoutes from './dashboardRoutes';
+import aiRoutes from './aiRoutes';
+import logRoutes from './logRoutes';
 import gmailRoutes from './gmailRoutes';
 import softSkillsRoutes from './softSkillsRoutes';
 import documentRegistryRoutes from './documentRegistryRoutes';
@@ -23,6 +40,7 @@ import growthRoutes from './growthRoutes';
 import reviewRoutes from './reviewRoutes';
 import documentIntelligenceRoutes from './documentIntelligenceRoutes';
 import skillsRoutes from './skillsRoutes';
+import codeArenaRoutes from './codeArenaRoutes';
 
 import { researchRoutes } from '../modules/research';
 import { ezoneRoutes } from '../modules/ezone';
@@ -67,6 +85,7 @@ router.use('/growth', moduleGuard('growth-hub'), growthRoutes);
 router.use('/softskills', moduleGuard('soft-skills-lab'), softSkillsRoutes);
 router.use('/skills', moduleGuard('skills-tracker'), skillsRoutes);
 router.use('/document-intelligence', moduleGuard('document-intelligence'), documentIntelligenceRoutes);
+router.use('/code-arena', moduleGuard('code-arena'), codeArenaRoutes);
 
 // Note: /resume routes serve both faculty (template management) and students (resume generation).
 // Student endpoints should be guarded individually within resumeRoutes.ts using moduleGuard('resume-builder').

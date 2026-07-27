@@ -56,6 +56,15 @@ export interface SkillsMetrics {
   lastProjectionAt: string | null;
 }
 
+export interface CodeArenaSummary {
+  totalPoints: number;
+  issuesPosted: number;
+  issuesSolved: number;
+  acceptanceRate: number;
+  totalRewardsEarned: number;
+  badges: string[];
+}
+
 export interface GrowthProjection {
   projectionVersion: number;
   generatedAt: string;
@@ -73,6 +82,7 @@ export interface GrowthProjection {
     certificatesCount: GrowthMetric<number>;
     experienceCount: GrowthMetric<number>;
     skills: GrowthMetric<SkillsMetrics>;
+    codeArena?: GrowthMetric<CodeArenaSummary>;
   };
   sources: {
     academicRecords: GrowthSourceState;
@@ -82,6 +92,7 @@ export interface GrowthProjection {
     certificates: GrowthSourceState;
     experience: GrowthSourceState;
     skillsTracker: GrowthSourceState;
+    codeArena?: GrowthSourceState;
   };
   sourceVersions: Record<string, string | null>;
 }

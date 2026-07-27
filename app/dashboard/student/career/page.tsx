@@ -33,6 +33,7 @@ import {
   Trash2,
   Layers,
 } from 'lucide-react';
+import { CertificateThumbnailGallery } from '@/components/certificates/CertificateThumbnailGallery';
 
 interface UserProfileData {
   id?: string;
@@ -80,11 +81,22 @@ interface SkillItem {
 }
 
 interface CertItem {
-  name: string;
+  id?: string;
+  name?: string;
+  title: string;
   issuer?: string;
   issueDate?: string;
+  issuedDate?: string;
   expiryDate?: string;
   status: 'Verified' | 'Uploaded' | 'In Progress';
+  rawConfidence?: number;
+  credentialId?: string;
+  sourceDocumentId?: string;
+  processingId?: string;
+  fileUrl?: string;
+  thumbnailUrl?: string;
+  mimeType?: string;
+  fileName?: string;
 }
 
 interface TimelineEvent {
@@ -246,38 +258,60 @@ export default function StudentCareerProfile() {
       const certList: CertItem[] = [];
       const seenCerts = new Set<string>();
 
-      const addCert = (name?: string, issuer?: string, date?: string, status = 'Verified') => {
-        if (!name || !name.trim()) return;
-        const key = `${name.trim().toLowerCase()}-${(issuer || '').trim().toLowerCase()}`;
+      const addCert = (cObj: any) => {
+        const titleStr = cObj.title || cObj.name;
+        if (!titleStr || !titleStr.trim()) return;
+        const key = `${titleStr.trim().toLowerCase()}-${(cObj.issuer || '').trim().toLowerCase()}`;
         if (!seenCerts.has(key)) {
           seenCerts.add(key);
           certList.push({
-            name: name.trim(),
-            issuer: issuer || 'Verified Issuer',
-            issueDate: date,
-            status,
+            id: cObj.id,
+            title: titleStr.trim(),
+            name: titleStr.trim(),
+            issuer: cObj.issuer || 'Verified Authority',
+            issuedDate: cObj.issuedDate || cObj.issueDate,
+            issueDate: cObj.issuedDate || cObj.issueDate,
+            status: cObj.status || 'Verified',
+            rawConfidence: cObj.rawConfidence,
+            credentialId: cObj.credentialId,
+            sourceDocumentId: cObj.sourceDocumentId,
+            processingId: cObj.processingId,
+            fileUrl: cObj.fileUrl,
+            thumbnailUrl: cObj.thumbnailUrl,
+            mimeType: cObj.mimeType,
+            fileName: cObj.fileName,
           });
         }
       };
 
       // 6a. Check GET /api/profile response
       if (prof?.certifications && Array.isArray(prof.certifications)) {
-        prof.certifications.forEach((c: any) => addCert(c.name || c.title, c.issuer, c.issueDate, c.status || 'Verified'));
+        prof.certifications.forEach((c: any) => addCert({ ...c, title: c.name || c.title }));
       }
       if (prof?.certificates && Array.isArray(prof.certificates)) {
-        prof.certificates.forEach((c: any) => addCert(c.name || c.title, c.issuer, c.issueDate, c.status || 'Verified'));
+        prof.certificates.forEach((c: any) => addCert({ ...c, title: c.name || c.title }));
       }
 
       // 6b. Check StudentResume filledData.certifications array
       if (resData?.filledData?.certifications && Array.isArray(resData.filledData.certifications)) {
         resData.filledData.certifications.forEach((c: any) => {
-          addCert(c.certification_name || c.name || c.title, c.certification_issuer || c.issuer, c.certification_issue_date || c.issueDate, 'Verified');
+          addCert({
+            title: c.certification_name || c.name || c.title,
+            issuer: c.certification_issuer || c.issuer,
+            issuedDate: c.certification_issue_date || c.issueDate,
+            status: 'Verified',
+          });
         });
       }
 
       // 6c. Check StudentResume filledData scalar fields
       if (resData?.filledData?.certification_name) {
-        addCert(resData.filledData.certification_name, resData.filledData.certification_issuer, resData.filledData.certification_issue_date, 'Verified');
+        addCert({
+          title: resData.filledData.certification_name,
+          issuer: resData.filledData.certification_issuer,
+          issuedDate: resData.filledData.certification_issue_date,
+          status: 'Verified',
+        });
       }
 
       // 6d. Fetch canonical CertificateRecords from Growth Profile API
@@ -287,7 +321,12 @@ export default function StudentCareerProfile() {
         const certificates = growthData.certificates || [];
         if (Array.isArray(certificates)) {
           certificates.forEach((c: any) => {
-            addCert(c.title || c.name, c.issuer, c.issuedDate ? new Date(c.issuedDate).toLocaleDateString() : undefined, 'Verified');
+            addCert({
+              ...c,
+              title: c.title || c.name,
+              issuedDate: c.issuedDate,
+              status: 'Verified',
+            });
           });
         }
       } catch (err) {
@@ -304,7 +343,18 @@ export default function StudentCareerProfile() {
               const fields = u.candidateFields || {};
               const title = fields.title || fields.certificateTitle || u.fileName || 'Uploaded Certificate';
               const issuer = fields.issuer || fields.issuingOrganization || 'Growth Hub';
-              addCert(title, issuer, undefined, u.reviewStatus === 'APPROVED' ? 'Verified' : 'Uploaded');
+              addCert({
+                id: u._id,
+                title,
+                issuer,
+                sourceDocumentId: u._id,
+                processingId: u.processingId,
+                fileUrl: `/api/growth/documents/${u._id}/file`,
+                thumbnailUrl: `/api/growth/documents/${u._id}/thumbnail`,
+                mimeType: u.mimeType,
+                fileName: u.fileName,
+                status: u.reviewStatus === 'APPROVED' ? 'Verified' : 'Uploaded',
+              });
             }
           });
         }
@@ -969,31 +1019,7 @@ export default function StudentCareerProfile() {
               </Link>
             </div>
 
-            {certifications.length > 0 ? (
-              <div className="space-y-3">
-                {certifications.map((cert, index) => (
-                  <div key={index} className="p-4 bg-slate-800/50 rounded-xl border border-slate-700/60 flex items-center justify-between gap-4">
-                    <div>
-                      <h3 className="font-bold text-white text-sm">{cert.name}</h3>
-                      <p className="text-slate-400 text-xs mt-0.5">{cert.issuer || 'Academic Institution'}</p>
-                    </div>
-                    <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
-                      {cert.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-6 bg-slate-800/30 rounded-xl border border-slate-800 text-center">
-                <p className="text-slate-400 text-sm mb-3">No verified certifications found.</p>
-                <Link
-                  href="/dashboard/student/growth?upload=certificate"
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition inline-block"
-                >
-                  Upload Your First Certificate
-                </Link>
-              </div>
-            )}
+            <CertificateThumbnailGallery certificates={certifications} isLoading={isLoading} />
           </section>
         </div>
 

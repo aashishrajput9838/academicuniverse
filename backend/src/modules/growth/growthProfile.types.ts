@@ -26,6 +26,12 @@ export interface PersonDTO {
 export interface CertificateDTO {
   id: string;
   sourceDocumentId: string;
+  processingId?: string;
+  fileUrl?: string;
+  thumbnailUrl?: string;
+  mimeType?: string;
+  fileName?: string;
+  credentialId?: string;
   rawConfidence: number;
   title: string;
   issuer: string;

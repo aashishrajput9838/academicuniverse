@@ -66,24 +66,44 @@ export class GrowthProfileService {
       updatedAt: toIso(rec.updatedAt),
     }));
 
-    // Load certificates
+    // Load certificates and populate source UaipUpload metadata
     const certRecs = await CertificateRecord.find({ organizationId: toObjectId(organizationId), personId: person._id }).lean();
+    const sourceDocIds = certRecs.map(c => c.sourceDocumentId).filter(Boolean);
+
+    const { UaipUpload } = await import('../../models/UaipUpload');
+    const uploads = await UaipUpload.find({ _id: { $in: sourceDocIds } }).lean();
+    const uploadMap = new Map<string, any>();
+    uploads.forEach(u => uploadMap.set(u._id.toString(), u));
+
     console.log('[DIAGNOSTIC_LOG] Growth profile query:', {
       organizationId,
       personId: person._id.toString(),
       certRecsFound: certRecs.length,
       certRecsDetails: certRecs.map(c => ({ id: c._id.toString(), title: c.title, issuer: c.issuer })),
     });
-    const certificates: CertificateDTO[] = certRecs.map((c) => ({
-      id: c._id.toString(),
-      sourceDocumentId: c.sourceDocumentId.toString(),
-      rawConfidence: c.rawConfidence,
-      title: c.title,
-      issuer: c.issuer,
-      issuedDate: toIso(c.issuedDate),
-      createdAt: toIso(c.createdAt),
-      updatedAt: toIso(c.updatedAt),
-    }));
+
+    const certificates: CertificateDTO[] = certRecs.map((c) => {
+      const srcId = c.sourceDocumentId.toString();
+      const upload = uploadMap.get(srcId);
+      const procId = upload?.processingId || srcId;
+
+      return {
+        id: c._id.toString(),
+        sourceDocumentId: srcId,
+        processingId: procId,
+        fileUrl: `/api/growth/documents/${srcId}/file`,
+        thumbnailUrl: `/api/growth/documents/${srcId}/thumbnail`,
+        mimeType: upload?.mimeType,
+        fileName: upload?.fileName,
+        credentialId: (c as any).credentialId,
+        rawConfidence: c.rawConfidence,
+        title: c.title,
+        issuer: c.issuer,
+        issuedDate: toIso(c.issuedDate),
+        createdAt: toIso(c.createdAt),
+        updatedAt: toIso(c.updatedAt),
+      };
+    });
 
     // Load experiences
     const expRecs = await ExperienceRecord.find({ organizationId: toObjectId(organizationId), personId: person._id }).lean();

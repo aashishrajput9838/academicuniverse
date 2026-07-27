@@ -28,6 +28,8 @@ export interface IUaipUpload {
   fileHash?: string;
   /** GridFS file identifier for the uploaded binary. */
   storageId?: string;
+  /** GridFS file identifier for the cached thumbnail preview. */
+  thumbnailStorageId?: string;
   /** Timestamp when the upload request was created. */
   createdAt: Date;
   /** Timestamp when the pipeline completed (success or failure). */
@@ -56,6 +58,7 @@ const UaipUploadSchema = new Schema(
     errorMessage: { type: String, default: undefined },
     fileHash: { type: String, required: false },
     storageId: { type: String, required: false },
+    thumbnailStorageId: { type: String, required: false },
     createdAt: { type: Date, default: Date.now },
     completedAt: { type: Date },
     deletedAt: { type: Date },
@@ -65,9 +68,14 @@ const UaipUploadSchema = new Schema(
   { timestamps: false }
 );
 
-// Index for quick lookup by processingId and organization scoped queries.
-UaipUploadSchema.index({ processingId: 1 }, { unique: true } as any );
+// Indexes
 UaipUploadSchema.index({ organizationId: 1, userId: 1, createdAt: -1 });
-UaipUploadSchema.index({ organizationId: 1, fileHash: 1 }, { unique: true, sparse: true } as any);
+
+// Ensure organizationId + fileHash is unique among active uploads
+// Soft-deleted uploads have fileHash set to undefined, so they don't collide
+UaipUploadSchema.index(
+  { organizationId: 1, fileHash: 1 },
+  { unique: true, name: 'uniqueFileHashPerOrg' } as any
+);
 
 export const UaipUpload = models.UaipUpload || model<IUaipUpload>('UaipUpload', UaipUploadSchema);

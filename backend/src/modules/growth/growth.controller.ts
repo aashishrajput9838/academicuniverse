@@ -137,4 +137,73 @@ export class GrowthController {
       next(err);
     }
   };
+
+  public streamDocumentFile = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const organizationId = (req as any).organizationId;
+      const { id } = req.params;
+
+      const { UaipUpload } = await import('../../models/UaipUpload');
+      const { GridFSProvider } = await import('../../storage/GridFSProvider');
+      const { toObjectId } = await import('../../utils/mongooseHelpers');
+
+      // Find by _id or processingId
+      const query: any = { organizationId };
+      if (id && id.length === 24) {
+        query.$or = [{ _id: toObjectId(id) }, { processingId: id }];
+      } else {
+        query.processingId = id;
+      }
+
+      const upload = await UaipUpload.findOne(query);
+      if (!upload || !upload.storageId) {
+        return res.status(404).json({ success: false, message: 'Document file not found' });
+      }
+
+      const gridFs = new GridFSProvider();
+      const buffer = await gridFs.getFile(upload.storageId);
+
+      res.setHeader('Content-Type', upload.mimeType || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `inline; filename="${upload.fileName}"`);
+      res.setHeader('Content-Length', buffer.length);
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.send(buffer);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  public streamDocumentThumbnail = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const organizationId = (req as any).organizationId;
+      const { id } = req.params;
+
+      const { UaipUpload } = await import('../../models/UaipUpload');
+      const { thumbnailService } = await import('../../services/thumbnailService');
+      const { toObjectId } = await import('../../utils/mongooseHelpers');
+
+      const query: any = { organizationId };
+      if (id && id.length === 24) {
+        query.$or = [{ _id: toObjectId(id) }, { processingId: id }];
+      } else {
+        query.processingId = id;
+      }
+
+      const upload = await UaipUpload.findOne(query);
+      if (!upload || !upload.storageId) {
+        return res.status(404).json({ success: false, message: 'Document not found' });
+      }
+
+      const { buffer, mimeType } = await thumbnailService.getOrCreateThumbnail(upload._id.toString());
+
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Disposition', `inline; filename="thumb_${upload.fileName}.webp"`);
+      res.setHeader('Content-Length', buffer.length);
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.send(buffer);
+    } catch (err) {
+      next(err);
+    }
+  };
 }
+

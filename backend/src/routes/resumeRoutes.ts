@@ -6,6 +6,7 @@ import {
   getAvailableTemplatesController,
   processResumeController,
   getSavedResumeController,
+  getAllStudentResumesController,
   generateResumeController,
   processTemplateController,
   saveDraftController,
@@ -35,6 +36,7 @@ router.get('/templates', getAvailableTemplatesController);
 router.post('/generate', processResumeController);
 router.post('/generate-resume', generateResumeController);
 router.get('/draft', getSavedResumeController);
+router.get('/all', getAllStudentResumesController);
 router.post('/draft', saveDraftController);
 
 export default router;

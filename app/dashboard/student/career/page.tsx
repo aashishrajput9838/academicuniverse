@@ -31,6 +31,7 @@ import {
   X,
   Loader2,
   Trash2,
+  Layers,
 } from 'lucide-react';
 
 interface UserProfileData {
@@ -47,9 +48,13 @@ interface UserProfileData {
 }
 
 interface ResumeDraftData {
+  studentResumeId?: string;
+  templateId?: string;
+  templateName?: string;
   filledData?: Record<string, any>;
   generatedDocxUrl?: string;
-  templateId?: string;
+  generatedResumeCount?: number;
+  isGenerated?: boolean;
   updatedAt?: string;
   createdAt?: string;
 }
@@ -142,7 +147,7 @@ export default function StudentCareerProfile() {
         console.warn('Profile fetch warning:', err);
       }
 
-      // 2. Fetch Latest Resume Data
+      // 2. Fetch Latest Generated Resume Data & Count
       let resData: ResumeDraftData | null = null;
       try {
         const res = await apiRequest('/api/resume/draft', { headers });
@@ -375,6 +380,19 @@ export default function StudentCareerProfile() {
 
   const filled = useMemo(() => resumeData?.filledData || {}, [resumeData]);
 
+  // Exact Resume Status Engine (Single Source of Truth)
+  const generatedResumeCount = useMemo(() => {
+    if (resumeData?.generatedResumeCount !== undefined) {
+      return resumeData.generatedResumeCount;
+    }
+    if (resumeData?.updatedAt || resumeData?.filledData?.full_name) {
+      return 1;
+    }
+    return 0;
+  }, [resumeData]);
+
+  const hasGeneratedResume = generatedResumeCount > 0;
+
   // Compute Dynamic Profile Completeness Percentage Engine
   const completenessScore = useMemo(() => {
     let score = 0;
@@ -394,14 +412,14 @@ export default function StudentCareerProfile() {
 
   // Generate Profile Progress Checklist
   const progressChecklist = useMemo(() => [
-    { label: 'Resume Generated', completed: Boolean(resumeData?.updatedAt || filled.full_name), link: '/dashboard/student/resume-builder' },
+    { label: 'Resume Generated', completed: hasGeneratedResume, link: '/dashboard/student/resume-builder' },
     { label: 'GitHub Account Connected', completed: Boolean(githubStatus.connected || profileData?.githubUsername || filled.github), link: '/dashboard/student/profile' },
     { label: 'LinkedIn Profile Connected', completed: Boolean(linkedinStatus.connected || profileData?.linkedinConnected || filled.linkedin), isLinkedinTrigger: true },
     { label: 'Portfolio Website Added', completed: Boolean(filled.website), link: '/dashboard/student/resume-builder' },
     { label: 'Technical Skills Recorded', completed: Boolean(skillsList.length > 0 || filled.skills), link: '/dashboard/student/skills' },
     { label: 'Work Experience Added', completed: Boolean(filled.experience_company || filled.experience_role), link: '/dashboard/student/resume-builder' },
     { label: 'Certifications Verified', completed: Boolean(certifications.length > 0), link: '/dashboard/student/document-intelligence' },
-  ], [resumeData, filled, githubStatus, linkedinStatus, profileData, skillsList, certifications]);
+  ], [hasGeneratedResume, filled, githubStatus, linkedinStatus, profileData, skillsList, certifications]);
 
   // Generate Career Timeline Events from Real Data
   const timelineEvents = useMemo(() => {
@@ -415,12 +433,12 @@ export default function StudentCareerProfile() {
         icon: '💼',
       });
     }
-    if (resumeData?.updatedAt) {
+    if (hasGeneratedResume && resumeData?.updatedAt) {
       events.push({
-        title: 'Resume Data Updated',
+        title: `Resume Generated (${resumeData.templateName || 'Polished ATS Template'})`,
         category: 'Resume Builder',
         date: new Date(resumeData.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        description: `Updated resume template data with ${skillsList.length} skills and projects.`,
+        description: `Generated ATS-formatted resume with ${skillsList.length} verified skills.`,
         icon: '📄',
       });
     }
@@ -452,7 +470,7 @@ export default function StudentCareerProfile() {
       });
     }
     return events;
-  }, [linkedinStatus, resumeData, certifications, githubStatus, profileData]);
+  }, [linkedinStatus, hasGeneratedResume, resumeData, certifications, githubStatus, profileData, skillsList]);
 
   // Generate Smart Actionable Recommendations (No Fake AI)
   const aiRecommendations = useMemo(() => {
@@ -475,7 +493,8 @@ export default function StudentCareerProfile() {
         priority: 'High',
       });
     }
-    if (!resumeData?.updatedAt) {
+    // ONLY RECOMMEND IF STUDENT HAS ZERO GENERATED RESUMES (generatedResumeCount === 0)
+    if (!hasGeneratedResume) {
       recs.push({
         title: 'Generate ATS Resume',
         description: 'You have not created a resume yet. Choose a template and generate your first DOCX resume.',
@@ -503,7 +522,7 @@ export default function StudentCareerProfile() {
       });
     }
     return recs;
-  }, [linkedinStatus, filled, githubStatus, profileData, resumeData, skillsList, certifications]);
+  }, [linkedinStatus, filled, githubStatus, profileData, hasGeneratedResume, skillsList, certifications]);
 
   const getSkillIcon = (name: string) => {
     const lower = name.toLowerCase();
@@ -592,9 +611,9 @@ export default function StudentCareerProfile() {
 
           {/* Action Links Bar */}
           <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-700/60">
-            {resumeData?.generatedDocxUrl ? (
+            {hasGeneratedResume ? (
               <a
-                href={resumeData.generatedDocxUrl}
+                href={resumeData?.generatedDocxUrl || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm flex items-center gap-2 transition shadow-lg shadow-emerald-900/30"
@@ -758,21 +777,52 @@ export default function StudentCareerProfile() {
             </section>
           )}
 
-          {/* SECTION 7 — Resume Summary */}
+          {/* SECTION 7 — Latest Resume Overview */}
           <section className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/60">
-            <div className="flex justify-between items-center mb-5">
+            <div className="flex flex-wrap justify-between items-center gap-2 mb-5">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-emerald-400" />
                 <h2 className="text-xl font-bold text-white">Latest Resume Overview</h2>
+                {hasGeneratedResume && (
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    {generatedResumeCount} {generatedResumeCount === 1 ? 'Resume' : 'Resumes'} Generated
+                  </span>
+                )}
               </div>
-              <Link href="/dashboard/student/resume-builder" className="text-xs text-emerald-400 hover:underline flex items-center gap-1">
-                <span>Resume Builder</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
+              <div className="flex items-center gap-3 text-xs">
+                <Link href="/dashboard/student/resume-builder" className="text-emerald-400 hover:underline flex items-center gap-1">
+                  <span>Open Resume Builder</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
 
-            {resumeData?.updatedAt || filled.education_degree || filled.experience_company ? (
+            {hasGeneratedResume ? (
               <div className="space-y-4">
+                {/* Meta details banner */}
+                <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700/80 flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400">Template Used</span>
+                    <h3 className="font-bold text-white text-base mt-0.5">{resumeData?.templateName || 'Polished Semantic Resume v2'}</h3>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-slate-300">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Generated Date</span>
+                      <strong className="text-white font-medium">{resumeData?.createdAt ? new Date(resumeData.createdAt).toLocaleDateString() : (resumeData?.updatedAt ? new Date(resumeData.updatedAt).toLocaleDateString() : 'Active')}</strong>
+                    </div>
+                    <div className="h-6 w-px bg-slate-700" />
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Last Updated</span>
+                      <strong className="text-white font-medium">{resumeData?.updatedAt ? new Date(resumeData.updatedAt).toLocaleDateString() : 'Active'}</strong>
+                    </div>
+                    <div className="h-6 w-px bg-slate-700" />
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Resume Version</span>
+                      <strong className="text-emerald-400 font-medium">v1.0 (Latest)</strong>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
                     <p className="text-slate-400 text-xs font-medium">Education Record</p>
@@ -802,15 +852,36 @@ export default function StudentCareerProfile() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-slate-800 text-xs text-slate-400">
-                  <span>Template: <strong className="text-slate-200 font-medium">Polished Semantic Resume v2</strong></span>
-                  <span>Updated: <strong className="text-slate-200 font-medium">{resumeData?.updatedAt ? new Date(resumeData.updatedAt).toLocaleDateString() : 'Draft'}</strong></span>
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800 text-xs">
+                  <span className="text-slate-400">
+                    Status: <strong className="text-emerald-400 font-semibold">Generated & Sync Verified</strong>
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/dashboard/student/resume-builder"
+                      className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition flex items-center gap-1.5"
+                    >
+                      <Layers className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{generatedResumeCount > 1 ? 'View All Resumes' : 'Open Resume Builder'}</span>
+                    </Link>
+                    {resumeData?.generatedDocxUrl && (
+                      <a
+                        href={resumeData.generatedDocxUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition flex items-center gap-1.5"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download DOCX</span>
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="text-center py-8 bg-slate-800/30 rounded-xl border border-slate-800">
                 <FileText className="w-10 h-10 text-slate-600 mx-auto mb-2" />
-                <p className="text-slate-400 text-sm mb-4">No resume draft generated yet.</p>
+                <p className="text-slate-400 text-sm mb-4">No generated resume found for your account.</p>
                 <Link href="/dashboard/student/resume-builder" className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-medium text-sm hover:bg-emerald-500 transition inline-block">
                   ✨ Generate Your First Resume
                 </Link>

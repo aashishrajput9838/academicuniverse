@@ -323,7 +323,7 @@ export const processResumeController = async (req: any, res: Response) => {
 };
 
 /**
- * Get previously saved draft
+ * Get saved resume draft / latest generated resume status
  */
 export const getSavedResumeController = async (req: any, res: Response) => {
   try {
@@ -332,19 +332,73 @@ export const getSavedResumeController = async (req: any, res: Response) => {
     }
 
     const { templateId } = req.query;
-    if (!templateId) {
-      return sendError(res, 400, 'Template ID is required.');
+
+    const allResumes = await StudentResume.find({ userId: req.user.userId })
+      .sort({ updatedAt: -1 })
+      .populate('templateId')
+      .lean();
+
+    if (templateId) {
+      const targetResume = allResumes.find((r: any) => String(r.templateId?._id || r.templateId) === String(templateId));
+      return sendResponse(res, 200, targetResume ? targetResume.filledData : null, 'Draft retrieved successfully');
     }
 
-    const studentResume = await StudentResume.findOne({
-      userId: req.user.userId,
-      templateId
-    });
+    // If templateId is not provided, return the latest resume + metadata for Career Profile & Dashboard
+    const latestResume: any = allResumes[0] || null;
 
-    return sendResponse(res, 200, studentResume ? studentResume.filledData : null, 'Draft retrieved successfully');
+    const responsePayload = latestResume ? {
+      studentResumeId: latestResume._id,
+      templateId: latestResume.templateId?._id || latestResume.templateId,
+      templateName: latestResume.templateId?.templateName || 'Academic Resume Template',
+      filledData: latestResume.filledData || {},
+      generatedDocxUrl: latestResume.generatedDocxUrl || '',
+      generatedResumeCount: allResumes.length,
+      isGenerated: Boolean(latestResume.filledData && Object.keys(latestResume.filledData).length > 0),
+      updatedAt: latestResume.updatedAt,
+      createdAt: latestResume.createdAt,
+    } : {
+      generatedResumeCount: 0,
+      isGenerated: false,
+    };
+
+    return sendResponse(res, 200, responsePayload, 'Resume status retrieved successfully');
   } catch (error: any) {
     logger.error('Error fetching resume draft:', error);
     return sendError(res, 500, 'Failed to fetch resume draft');
+  }
+};
+
+/**
+ * Get all generated resumes for student
+ */
+export const getAllStudentResumesController = async (req: any, res: Response) => {
+  try {
+    if (!req.user) {
+      return sendError(res, 401, 'Not authenticated');
+    }
+
+    const allResumes = await StudentResume.find({ userId: req.user.userId })
+      .sort({ updatedAt: -1 })
+      .populate('templateId')
+      .lean();
+
+    const formattedList = allResumes.map((r: any) => ({
+      studentResumeId: r._id,
+      templateId: r.templateId?._id || r.templateId,
+      templateName: r.templateId?.templateName || 'Academic Resume Template',
+      filledData: r.filledData || {},
+      generatedDocxUrl: r.generatedDocxUrl || '',
+      updatedAt: r.updatedAt,
+      createdAt: r.createdAt,
+    }));
+
+    return sendResponse(res, 200, {
+      totalCount: formattedList.length,
+      resumes: formattedList,
+    }, 'All student resumes retrieved successfully');
+  } catch (error: any) {
+    logger.error('Error fetching all student resumes:', error);
+    return sendError(res, 500, 'Failed to fetch student resumes');
   }
 };
 

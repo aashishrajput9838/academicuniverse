@@ -112,11 +112,55 @@ export const getProfileController = async (req: AuthenticatedRequest, res: Respo
       return sendError(res, 404, 'User not found');
     }
 
-    // Fetch Person for admissionYear
+    // Fetch Person for admissionYear and canonical records
     const person = await Person.findOne({
       organizationId: toObjectId(req.user.organizationId),
       userIds: toObjectId(req.user.userId),
     }).lean();
+
+    const certList: Array<{ id: string; name: string; issuer: string; issueDate?: string; status: string }> = [];
+    const seenCerts = new Set<string>();
+
+    const addCertItem = (name?: string, issuer?: string, date?: string) => {
+      if (!name || !name.trim()) return;
+      const key = `${name.trim().toLowerCase()}-${(issuer || '').trim().toLowerCase()}`;
+      if (!seenCerts.has(key)) {
+        seenCerts.add(key);
+        certList.push({
+          id: `cert-${seenCerts.size}`,
+          name: name.trim(),
+          issuer: issuer || 'Verified Issuer',
+          issueDate: date || '',
+          status: 'Verified',
+        });
+      }
+    };
+
+    if (person) {
+      const { CertificateRecord } = await import('../models/CertificateRecord');
+      const certRecs = await CertificateRecord.find({
+        organizationId: toObjectId(req.user.organizationId),
+        personId: person._id,
+      }).lean();
+
+      certRecs.forEach((c) => {
+        addCertItem(c.title, c.issuer, c.issuedDate ? c.issuedDate.toISOString().split('T')[0] : '');
+      });
+    }
+
+    try {
+      const StudentResume = (await import('../models/StudentResume')).default;
+      const resume = await StudentResume.findOne({ userId: req.user.userId }).lean();
+      const resumeCerts = Array.isArray(resume?.filledData?.certifications) ? resume.filledData.certifications : [];
+      resumeCerts.forEach((rc: any) => {
+        addCertItem(rc.certification_name || rc.name || rc.title, rc.certification_issuer || rc.issuer, rc.certification_issue_date || rc.issueDate);
+      });
+      if (resume?.filledData?.certification_name) {
+        addCertItem(resume.filledData.certification_name, resume.filledData.certification_issuer, resume.filledData.certification_issue_date);
+      }
+    } catch (e) {
+      logger.warn('Failed to load resume draft certifications in getProfileController', e);
+    }
 
     return sendResponse(res, 200, {
       id: user._id,
@@ -129,6 +173,8 @@ export const getProfileController = async (req: AuthenticatedRequest, res: Respo
       linkedinLastUpdated: user.linkedinLastUpdated,
       role: (user.roleId as any)?.name || 'USER',
       admissionYear: person?.admissionYear,
+      certifications: certList,
+      certificates: certList,
     }, 'Profile retrieved successfully');
   } catch (error: any) {
     logger.error('Error retrieving profile:', error);

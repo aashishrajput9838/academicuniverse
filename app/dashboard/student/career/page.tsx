@@ -242,35 +242,74 @@ export default function StudentCareerProfile() {
 
       setSkillsList(aggregatedSkills);
 
-      // 6. Fetch Certifications
+      // 6. Fetch Certifications (Canonical CertificateRecords + Resume Builder + Growth Hub)
       const certList: CertItem[] = [];
+      const seenCerts = new Set<string>();
 
-      if (resData?.filledData?.certification_name) {
-        certList.push({
-          name: resData.filledData.certification_name,
-          issuer: resData.filledData.certification_issuer,
-          issueDate: resData.filledData.certification_issue_date,
-          expiryDate: resData.filledData.certification_expiry_date,
-          status: 'Verified',
+      const addCert = (name?: string, issuer?: string, date?: string, status = 'Verified') => {
+        if (!name || !name.trim()) return;
+        const key = `${name.trim().toLowerCase()}-${(issuer || '').trim().toLowerCase()}`;
+        if (!seenCerts.has(key)) {
+          seenCerts.add(key);
+          certList.push({
+            name: name.trim(),
+            issuer: issuer || 'Verified Issuer',
+            issueDate: date,
+            status,
+          });
+        }
+      };
+
+      // 6a. Check GET /api/profile response
+      if (prof?.certifications && Array.isArray(prof.certifications)) {
+        prof.certifications.forEach((c: any) => addCert(c.name || c.title, c.issuer, c.issueDate, c.status || 'Verified'));
+      }
+      if (prof?.certificates && Array.isArray(prof.certificates)) {
+        prof.certificates.forEach((c: any) => addCert(c.name || c.title, c.issuer, c.issueDate, c.status || 'Verified'));
+      }
+
+      // 6b. Check StudentResume filledData.certifications array
+      if (resData?.filledData?.certifications && Array.isArray(resData.filledData.certifications)) {
+        resData.filledData.certifications.forEach((c: any) => {
+          addCert(c.certification_name || c.name || c.title, c.certification_issuer || c.issuer, c.certification_issue_date || c.issueDate, 'Verified');
         });
       }
 
+      // 6c. Check StudentResume filledData scalar fields
+      if (resData?.filledData?.certification_name) {
+        addCert(resData.filledData.certification_name, resData.filledData.certification_issuer, resData.filledData.certification_issue_date, 'Verified');
+      }
+
+      // 6d. Fetch canonical CertificateRecords from Growth Profile API
       try {
-        const res = await apiRequest('/api/document-intelligence/documents', { headers });
-        const docList = res.data?.documents || res.documents || [];
-        if (Array.isArray(docList)) {
-          docList.forEach((d: any) => {
-            if (d.category?.toLowerCase().includes('certif') || d.originalName?.toLowerCase().includes('cert')) {
-              certList.push({
-                name: d.originalName || d.title || 'Uploaded Certificate',
-                issuer: d.issuer || 'Document Intelligence',
-                status: d.status === 'processed' || d.status === 'verified' ? 'Verified' : 'Uploaded',
-              });
+        const res = await apiRequest('/api/growth/profile/me', { headers });
+        const growthData = res.data || res;
+        const certificates = growthData.certificates || [];
+        if (Array.isArray(certificates)) {
+          certificates.forEach((c: any) => {
+            addCert(c.title || c.name, c.issuer, c.issuedDate ? new Date(c.issuedDate).toLocaleDateString() : undefined, 'Verified');
+          });
+        }
+      } catch (err) {
+        console.warn('Growth Profile API warning:', err);
+      }
+
+      // 6e. Fallback: Check Growth Hub Uploads
+      try {
+        const res = await apiRequest('/api/growth/uploads', { headers });
+        const uploads = res.data?.uploads || res.uploads || [];
+        if (Array.isArray(uploads)) {
+          uploads.forEach((u: any) => {
+            if (u.documentCategory === 'CERTIFICATE' || u.fileName?.toLowerCase().includes('cert')) {
+              const fields = u.candidateFields || {};
+              const title = fields.title || fields.certificateTitle || u.fileName || 'Uploaded Certificate';
+              const issuer = fields.issuer || fields.issuingOrganization || 'Growth Hub';
+              addCert(title, issuer, undefined, u.reviewStatus === 'APPROVED' ? 'Verified' : 'Uploaded');
             }
           });
         }
       } catch (err) {
-        console.warn('Document Intelligence API warning:', err);
+        console.warn('Growth Uploads API warning:', err);
       }
 
       setCertifications(certList);

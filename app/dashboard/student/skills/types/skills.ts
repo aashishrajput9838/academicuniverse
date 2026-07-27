@@ -4,6 +4,10 @@ export type SkillStatus = 'ACTIVE' | 'DRAFT' | 'ARCHIVED';
 
 export type SkillCategory = 'TECHNICAL' | 'SOFT' | 'LANGUAGE' | 'TOOL' | 'DOMAIN_SPECIFIC';
 
+/** Source channel through which a skill was added */
+export type SkillSource = 'MANUAL' | 'AI_SUGGESTED' | 'IMPORTED';
+
+
 export type EvidenceSourceType =
   | 'ACADEMIC_RECORD'
   | 'GITHUB'

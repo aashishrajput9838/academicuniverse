@@ -2267,6 +2267,295 @@ function ReviewTab({
 }
 
 
+// ── Document Preview Tab Component ──────────────────────────────────────────
+
+function DocumentPreviewTab({
+  item,
+  backendToken,
+}: {
+  item: GrowthUploadHistoryItem;
+  backendToken: string;
+}) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const fileUrl = `${apiBase}/api/growth/documents/${item.processingId}/file`;
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchFile() {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch(fileUrl, {
+          headers: {
+            Authorization: `Bearer ${backendToken}`,
+          },
+        });
+        if (!res.ok) {
+          throw new Error(`Failed to fetch document (HTTP ${res.status})`);
+        }
+        const blob = await res.blob();
+        if (!cancelled) {
+          const url = URL.createObjectURL(blob);
+          setBlobUrl(url);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          console.warn('Document preview fetch warning:', err);
+          setBlobUrl(fileUrl);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchFile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fileUrl, backendToken]);
+
+  const mimeType = item.mimeType || '';
+  const fileName = item.fileName || 'document';
+  const isImage = mimeType.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/i.test(fileName);
+  const isPdf = mimeType === 'application/pdf' || /\.pdf$/i.test(fileName);
+
+  const handleZoomIn = () => setZoom((z) => Math.min(3, Math.round((z + 0.25) * 100) / 100));
+  const handleZoomOut = () => setZoom((z) => Math.max(0.5, Math.round((z - 0.25) * 100) / 100));
+  const handleRotateLeft = () => setRotation((r) => (r - 90 + 360) % 360);
+  const handleRotateRight = () => setRotation((r) => (r + 90) % 360);
+  const handleReset = () => {
+    setZoom(1);
+    setRotation(0);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (!isImage) return;
+    if (e.deltaY < 0) {
+      handleZoomIn();
+    } else {
+      handleZoomOut();
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!isImage || zoom <= 1) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setPan({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    });
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  const handleDownload = () => {
+    const targetUrl = blobUrl || fileUrl;
+    const a = document.createElement('a');
+    a.href = targetUrl;
+    a.download = fileName;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen().catch(() => {});
+      setIsFullscreen(false);
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="px-6 py-5 space-y-4 select-none">
+      {/* Header & Subtitle */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-slate-700/60">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-base font-bold text-white">📄 Document Preview</span>
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
+              Original Asset
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Inspecting original file: <span className="font-mono text-slate-200">{fileName}</span>
+          </p>
+        </div>
+
+        {/* Toolbar Controls */}
+        <div className="flex items-center gap-1.5 flex-wrap bg-slate-900/90 p-1.5 rounded-xl border border-slate-700/80 shadow-lg">
+          <button
+            type="button"
+            onClick={handleZoomOut}
+            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+            title="Zoom Out (-25%)"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" /></svg>
+          </button>
+          <span className="text-xs font-mono font-bold text-emerald-400 px-2 min-w-[45px] text-center">
+            {Math.round(zoom * 100)}%
+          </span>
+          <button
+            type="button"
+            onClick={handleZoomIn}
+            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+            title="Zoom In (+25%)"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+          </button>
+
+          <div className="w-px h-5 bg-slate-700/80 mx-0.5" />
+
+          <button
+            type="button"
+            onClick={handleRotateLeft}
+            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+            title="Rotate Left (-90°)"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 15l-6 6m0 0l-6-6m6 6V3" /></svg>
+          </button>
+          <button
+            type="button"
+            onClick={handleRotateRight}
+            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+            title="Rotate Right (+90°)"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 9l6-6m0 0l6 6m-6-6v18" /></svg>
+          </button>
+          <button
+            type="button"
+            onClick={handleReset}
+            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 hover:text-white transition-colors"
+            title="Reset Zoom & Rotation"
+          >
+            ⟳ Reset
+          </button>
+
+          <div className="w-px h-5 bg-slate-700/80 mx-0.5" />
+
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors flex items-center gap-1 shadow-md shadow-emerald-950/40"
+            title="Download Original File"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            <span>Download</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+            title="Toggle Fullscreen"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Preview Container */}
+      <div
+        className="w-full h-[55vh] min-h-[380px] bg-slate-950 rounded-2xl border border-slate-800/90 overflow-hidden relative flex items-center justify-center shadow-inner"
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onDoubleClick={handleReset}
+        style={{
+          cursor: isImage && zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)',
+          backgroundSize: '24px 24px',
+        }}
+      >
+        {loading ? (
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
+            <span className="text-xs text-slate-400">Loading original document...</span>
+          </div>
+        ) : isImage && blobUrl ? (
+          <div
+            className="transition-transform duration-200 ease-out flex items-center justify-center p-4 max-w-full max-h-full"
+            style={{
+              transform: `scale(${zoom}) rotate(${rotation}deg) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
+            }}
+          >
+            <img
+              src={blobUrl}
+              alt={fileName}
+              className="max-h-[50vh] max-w-[80vw] object-contain rounded-xl bg-white shadow-2xl border border-slate-700/80"
+            />
+          </div>
+        ) : isPdf && blobUrl ? (
+          <iframe
+            src={`${blobUrl}#toolbar=0`}
+            className="w-full h-full rounded-xl bg-white border border-slate-700/80 shadow-2xl"
+            title={fileName}
+          />
+        ) : (
+          /* Unsupported document type fallback */
+          <div className="text-center p-8 max-w-md">
+            <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-700 flex items-center justify-center mx-auto mb-4 text-emerald-400 shadow-xl">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+            </div>
+            <h4 className="text-base font-bold text-white mb-1">Preview Not Available</h4>
+            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+              This document type ({mimeType || 'binary'}) cannot be previewed directly in the browser viewer. Download the original asset below.
+            </p>
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition inline-flex items-center gap-2 shadow-lg shadow-emerald-950/40"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              <span>Download Original Document</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Footer Bar */}
+      <div className="flex items-center justify-between text-xs text-slate-400 px-2 pt-1 border-t border-slate-800/60">
+        <div className="flex items-center gap-4">
+          <span>Zoom: <strong className="text-emerald-400 font-mono">{Math.round(zoom * 100)}%</strong></span>
+          <span>Rotation: <strong className="text-slate-300 font-mono">{rotation}°</strong></span>
+        </div>
+        <div className="flex items-center gap-3 text-[11px] text-slate-500">
+          <span>{formatFileSize(item.size)}</span>
+          <span>•</span>
+          <span className="uppercase font-mono text-slate-400">{mimeType || 'File'}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 // ── Extracted Data Modal ───────────────────────────────────────────────────
 
 function ExtractedDataModal({
@@ -2282,7 +2571,7 @@ function ExtractedDataModal({
   onClose: () => void;
   onReviewComplete?: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<'summary' | 'metadata' | 'entities' | 'excel' | 'raw' | 'review' | 'routing'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary' | 'metadata' | 'entities' | 'excel' | 'raw' | 'review' | 'routing' | 'preview'>('summary');
   const classification = status?.classification;
   const candidateFields = (classification?.candidateFields ?? {}) as Record<string, unknown>;
   const extractedEntities = (classification?.extractedEntities ?? {}) as Record<string, unknown>;
@@ -2320,7 +2609,7 @@ function ExtractedDataModal({
     };
   }, []);
 
-  const tabs: { id: 'summary' | 'metadata' | 'entities' | 'excel' | 'raw' | 'review' | 'routing'; label: string }[] = [
+  const tabs: { id: 'summary' | 'metadata' | 'entities' | 'excel' | 'raw' | 'routing' | 'review' | 'preview'; label: string }[] = [
     { id: 'summary',  label: '✦ AI Summary' },
     { id: 'metadata', label: '⊡ Metadata' },
     { id: 'entities', label: '≡ Entities' },
@@ -2328,6 +2617,7 @@ function ExtractedDataModal({
     { id: 'raw',      label: '</> Raw Data' },
     { id: 'routing',  label: '◆ Routing' },
     { id: 'review',   label: '✎ Review' },
+    { id: 'preview',  label: '📄 Document Preview' },
   ];
 
   const metadataRows: { label: string; value: React.ReactNode }[] = [
@@ -2721,6 +3011,14 @@ function ExtractedDataModal({
               onRejected={() => { onReviewComplete?.(); onClose(); }}
             />
           )}
+
+          {/* Tab 8: Document Preview */}
+          <div style={{ display: activeTab === 'preview' ? 'block' : 'none' }}>
+            <DocumentPreviewTab
+              item={item}
+              backendToken={backendToken}
+            />
+          </div>
         </div>
 
         {/* ── Footer (hidden on Review tab — it has its own action bar) ── */}

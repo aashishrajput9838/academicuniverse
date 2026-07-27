@@ -418,7 +418,7 @@ export default function StudentCareerProfile() {
     { label: 'Portfolio Website Added', completed: Boolean(filled.website), link: '/dashboard/student/resume-builder' },
     { label: 'Technical Skills Recorded', completed: Boolean(skillsList.length > 0 || filled.skills), link: '/dashboard/student/skills' },
     { label: 'Work Experience Added', completed: Boolean(filled.experience_company || filled.experience_role), link: '/dashboard/student/resume-builder' },
-    { label: 'Certifications Verified', completed: Boolean(certifications.length > 0), link: '/dashboard/student/document-intelligence' },
+    { label: 'Certifications Verified', completed: Boolean(certifications.length > 0), link: '/dashboard/student/growth?upload=certificate' },
   ], [hasGeneratedResume, filled, githubStatus, linkedinStatus, profileData, skillsList, certifications]);
 
   // Generate Career Timeline Events from Real Data
@@ -515,9 +515,9 @@ export default function StudentCareerProfile() {
     if (certifications.length === 0) {
       recs.push({
         title: 'Upload Course Certificates',
-        description: 'Upload course certificates in Document Intelligence for automated verification.',
+        description: 'Upload course certificates in Growth Hub for automated verification.',
         action: 'Upload Certs',
-        link: '/dashboard/student/document-intelligence',
+        link: '/dashboard/student/growth?upload=certificate',
         priority: 'Medium',
       });
     }
@@ -924,8 +924,8 @@ export default function StudentCareerProfile() {
                 <Award className="w-5 h-5 text-emerald-400" />
                 <h2 className="text-xl font-bold text-white">Verified Certifications</h2>
               </div>
-              <Link href="/dashboard/student/document-intelligence" className="text-xs text-emerald-400 hover:underline flex items-center gap-1">
-                <span>Document Intelligence</span>
+              <Link href="/dashboard/student/growth?upload=certificate" className="text-xs text-emerald-400 hover:underline flex items-center gap-1">
+                <span>Growth Hub Upload</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -948,7 +948,7 @@ export default function StudentCareerProfile() {
               <div className="p-6 bg-slate-800/30 rounded-xl border border-slate-800 text-center">
                 <p className="text-slate-400 text-sm mb-3">No verified certifications found.</p>
                 <Link
-                  href="/dashboard/student/document-intelligence"
+                  href="/dashboard/student/growth?upload=certificate"
                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition inline-block"
                 >
                   Upload Your First Certificate

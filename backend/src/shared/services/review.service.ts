@@ -207,15 +207,19 @@ async function writeCertificateRecord(
 ): Promise<string[]> {
   const orgOid = toObjectId(reviewer.organizationId);
   const sourceOid = upload._id;
+  const title = fields.title ?? fields.certificateName ?? fields.name ?? 'Unknown Certificate';
+  const issuer = fields.issuer ?? fields.issuingOrganization ?? 'Unknown';
+  const issuedDate = fields.issueDate ? new Date(normalizeDate(fields.issueDate).isoDateTime) : new Date();
+
   const filter = {
     organizationId: orgOid,
     personId,
-    title: fields.title ?? fields.certificateName ?? 'Unknown Certificate',
-    issuer: fields.issuer ?? fields.issuingOrganization ?? 'Unknown',
+    title,
+    issuer,
   };
   const update = {
     $set: {
-      issuedDate: fields.issueDate ? new Date(normalizeDate(fields.issueDate).isoDateTime) : new Date(),
+      issuedDate,
       rawConfidence: Number(kr.confidenceScore ?? 0),
       sourceDocumentId: sourceOid,
     },
@@ -225,6 +229,37 @@ async function writeCertificateRecord(
     new: true,
     session,
   });
+
+  // Cross-Module Synchronization with Resume Builder!
+  try {
+    const StudentResume = (await import('../../models/StudentResume')).default;
+    const certObj = {
+      certification_name: title,
+      certification_issuer: issuer,
+      certification_issue_date: issuedDate ? new Date(issuedDate).toISOString().split('T')[0] : '',
+    };
+
+    const resume = await StudentResume.findOne({ userId: upload.userId });
+    if (resume) {
+      const filled = resume.filledData || {};
+      const existingCerts: any[] = Array.isArray(filled.certifications) ? filled.certifications : [];
+      const exists = existingCerts.some(c => c.certification_name?.toLowerCase() === title.toLowerCase());
+      if (!exists) {
+        existingCerts.push(certObj);
+      }
+      filled.certifications = existingCerts;
+      if (!filled.certification_name) {
+        filled.certification_name = title;
+        filled.certification_issuer = issuer;
+        filled.certification_issue_date = certObj.certification_issue_date;
+      }
+      resume.filledData = filled;
+      await resume.save();
+    }
+  } catch (e) {
+    logger.warn('Failed to sync certificate to StudentResume draft', e);
+  }
+
   return [String(result._id)];
 }
 

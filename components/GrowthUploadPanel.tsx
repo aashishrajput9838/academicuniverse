@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { useGrowthUploadStore } from '@/app/dashboard/student/growth/store/growthUploadStore';
 import {
@@ -3112,6 +3113,10 @@ interface GrowthUploadPanelProps {
 }
 
 export function GrowthUploadPanel({ backendToken }: GrowthUploadPanelProps) {
+  const searchParams = useSearchParams();
+  const uploadMode = searchParams?.get('upload');
+  const isCertificateMode = uploadMode === 'certificate';
+
   const {
     uploads,
     historyLoading,
@@ -3126,11 +3131,22 @@ export function GrowthUploadPanel({ backendToken }: GrowthUploadPanelProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [showAllVersions, setShowAllVersions] = useState(false);
   const dragCounter = useRef(0);
+  const hasAutoOpened = useRef(false);
 
   useEffect(() => {
     loadHistory(backendToken);
     return () => { stopAllPolling(); };
   }, [backendToken, loadHistory, stopAllPolling]);
+
+  useEffect(() => {
+    if (isCertificateMode && !hasAutoOpened.current) {
+      hasAutoOpened.current = true;
+      const timer = setTimeout(() => {
+        fileInputRef.current?.click();
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [isCertificateMode]);
 
   const handleFileSelect = useCallback(async (file: File) => {
     if (!ACCEPTED_MIME_TYPES.has(file.type)) {
@@ -3178,6 +3194,12 @@ export function GrowthUploadPanel({ backendToken }: GrowthUploadPanelProps) {
 
   const hasUploads = uploads.length > 0;
 
+  const supportedCertificates = [
+    'Coursera', 'Udemy', 'NPTEL', 'Cisco', 'AWS',
+    'Microsoft', 'Google', 'Internship Certificates',
+    'Hackathons', 'Workshop Certificates',
+  ];
+
   return (
     <div className="space-y-6">
       {/* ── Upload CTA ── */}
@@ -3185,6 +3207,8 @@ export function GrowthUploadPanel({ backendToken }: GrowthUploadPanelProps) {
         className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
           isDragging
             ? 'border-emerald-400/60 bg-emerald-500/5'
+            : isCertificateMode
+            ? 'border-emerald-500/60 bg-gradient-to-br from-slate-900/90 via-emerald-950/30 to-slate-900/90 shadow-xl shadow-emerald-950/20'
             : 'border-slate-700/70 bg-gradient-to-br from-slate-900/80 via-slate-800/50 to-emerald-900/20'
         }`}
         onDragEnter={handleDragEnter}
@@ -3196,14 +3220,39 @@ export function GrowthUploadPanel({ backendToken }: GrowthUploadPanelProps) {
         <div className="relative p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-xl font-bold text-white">
-                {hasUploads ? 'Upload Academic Documents' : 'Build Your Growth Profile'}
-              </h2>
+              <div className="flex items-center gap-2 mb-1">
+                {isCertificateMode && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Certificate Mode
+                  </span>
+                )}
+                <h2 className="text-xl font-bold text-white">
+                  {isCertificateMode
+                    ? 'Upload Course Certificate'
+                    : hasUploads
+                    ? 'Upload Academic Documents'
+                    : 'Build Your Growth Profile'}
+                </h2>
+              </div>
               <p className="mt-1 text-sm text-slate-400">
-                {hasUploads
+                {isCertificateMode
+                  ? 'Upload course, workshop, or training certificates. Gemini AI will classify and extract certificate details automatically.'
+                  : hasUploads
                   ? 'Drag & drop or click to upload additional documents. Gemini AI will classify and extract data automatically.'
                   : 'Upload your marksheets, transcripts, certificates, or timetables. AI will classify and extract structured data.'}
               </p>
+              {isCertificateMode && (
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {supportedCertificates.map((cert) => (
+                    <span
+                      key={cert}
+                      className="px-2.5 py-1 rounded-lg bg-slate-800/80 text-emerald-300/90 border border-slate-700 text-xs font-medium"
+                    >
+                      📜 {cert}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-3">
               {uploading && (
@@ -3219,7 +3268,7 @@ export function GrowthUploadPanel({ backendToken }: GrowthUploadPanelProps) {
                 onClick={() => fileInputRef.current?.click()}
                 className="rounded-xl bg-emerald-500/20 px-5 py-2.5 text-sm font-semibold text-emerald-300 ring-1 ring-emerald-500/40 transition-all hover:bg-emerald-500/30 hover:ring-emerald-400/60 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {hasUploads ? 'Upload More' : 'Upload Document'}
+                {isCertificateMode ? 'Select Certificate File' : hasUploads ? 'Upload More' : 'Upload Document'}
               </button>
             </div>
           </div>

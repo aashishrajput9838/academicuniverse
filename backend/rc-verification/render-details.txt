@@ -1,5 +1,0 @@
-resume templet 2 conv.docx: RENDER_FAIL - Multi error | tags: {{text, text}}, {{comp, pany}}, {{role, role}}, {{item, tems}}, {{sect, role}}, {{name, name}}, {{degr, gree}}, {{inst, tion}}, {{cgpa, cgpa}}
-resume templet 3 conv.docx: RENDER_FAIL - Multi error | tags: {{degr, gree}}, {{inst, tion}}, {{year, year}}, {{cgpa, cgpa}}, {{name, name}}, {{desc, tion}}, {{tech, tack}}, {{sect, name}}, {{sect, tion}}, {{sect, tack}}
-resume templet 4 conv.docx: RENDER_FAIL - Multi error | tags: {{cate, gory}}, {{inst, tion}}
-resume templet 5 conv.docx: RENDER_FAIL - Multi error | tags: {{degr, gree}}, {{cgpa, cgpa}}, {{comp, pany}}, {{dura, tion}}, {{resp, ties}}, {{name, name}}, {{desc, tion}}, {{tech, tack}}, {{sect, name}}, {{sect, tion}}, {{sect, tack}}
-resume templet kushagra conv.docx: RENDER_FAIL - Multi error | tags: {{name, name}}, {{tech, tack}}, {{sect, name}}, {{issu, suer}}, {{sect, name}}, {{sect, tion}}, {{sect, tack}}, {{degr, gree}}, {{inst, tion}}, {{year, year}}

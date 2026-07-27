@@ -7,7 +7,8 @@ export interface ICertificateRecord extends Document {
   rawConfidence: number;          // 0‑1 confidence from AI extraction
   title: string;                  // Certificate title
   issuer: string;                 // Issuing authority
-  issuedDate: Date;               // Date of issuance
+  issuedDate?: Date;              // Date of issuance (optional — many certificates omit this)
+  credentialId?: string;          // Optional credential/certificate ID
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,7 +21,8 @@ const CertificateRecordSchema = new Schema<ICertificateRecord>(
     rawConfidence: { type: Number, required: true },
     title: { type: String, required: true },
     issuer: { type: String, required: true },
-    issuedDate: { type: Date, required: true },
+    issuedDate: { type: Date, required: false },  // optional — many certificates omit issue date
+    credentialId: { type: String, required: false }, // optional credential/cert ID
   } as any,
   { timestamps: true }
 );

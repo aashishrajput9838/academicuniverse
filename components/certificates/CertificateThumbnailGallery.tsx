@@ -35,6 +35,112 @@ export interface CertificateItem {
   fileName?: string;
 }
 
+function AuthenticatedImage({
+  src,
+  alt,
+  className,
+  onError,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  onError?: () => void;
+}) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    let createdUrl: string | null = null;
+
+    if (!src) {
+      setFailed(true);
+      setLoading(false);
+      onError?.();
+      return;
+    }
+
+    if (src.startsWith('data:') || src.startsWith('blob:')) {
+      setBlobUrl(src);
+      setLoading(false);
+      return;
+    }
+
+    async function fetchImage() {
+      try {
+        setLoading(true);
+        setFailed(false);
+
+        const token =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('authToken') || localStorage.getItem('token')
+            : null;
+
+        const headers: Record<string, string> = {};
+        if (token && token !== 'null') {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const res = await fetch(src, { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) throw new Error('JSON response');
+
+        const blob = await res.blob();
+        if (blob.size === 0) throw new Error('0 bytes');
+
+        if (!cancelled) {
+          createdUrl = URL.createObjectURL(blob);
+          setBlobUrl(createdUrl);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setFailed(true);
+          onError?.();
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchImage();
+
+    return () => {
+      cancelled = true;
+      if (createdUrl) {
+        URL.revokeObjectURL(createdUrl);
+      }
+    };
+  }, [src, onError]);
+
+  if (loading) {
+    return (
+      <div className="w-full h-full bg-slate-900/80 animate-pulse flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (failed || !blobUrl) {
+    return null;
+  }
+
+  return (
+    <img
+      src={blobUrl}
+      alt={alt}
+      loading="lazy"
+      onError={() => {
+        setFailed(true);
+        onError?.();
+      }}
+      className={className}
+    />
+  );
+}
+
 interface CertificateThumbnailGalleryProps {
   certificates: CertificateItem[];
   isLoading?: boolean;
@@ -185,12 +291,10 @@ export const CertificateThumbnailGallery: React.FC<CertificateThumbnailGalleryPr
                 {/* 3. Real Thumbnail Image */}
                 {hasImage ? (
                   <div className="w-full h-full rounded-xl overflow-hidden bg-slate-900 border border-slate-800/80 shadow-md flex items-center justify-center relative">
-                    <img
+                    <AuthenticatedImage
                       src={fullThumb!}
                       alt={cert.title}
-                      loading="lazy"
                       onError={() => handleImageError(certKey)}
-                      /* 11. Certificate Image Styling — Never stretch, smooth zoom on hover */
                       className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-500 ease-out"
                     />
                   </div>

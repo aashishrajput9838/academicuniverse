@@ -264,7 +264,26 @@ export default function StudentCareerProfile() {
         const titleStr = cObj.title || cObj.name;
         if (!titleStr || !titleStr.trim()) return;
         const key = `${titleStr.trim().toLowerCase()}-${(cObj.issuer || '').trim().toLowerCase()}`;
-        if (!seenCerts.has(key)) {
+        
+        const existingIdx = certList.findIndex(item => {
+          const itemKey = `${item.title.trim().toLowerCase()}-${(item.issuer || '').trim().toLowerCase()}`;
+          return itemKey === key;
+        });
+
+        if (existingIdx >= 0) {
+          certList[existingIdx] = {
+            ...certList[existingIdx],
+            id: cObj.id || certList[existingIdx].id,
+            sourceDocumentId: cObj.sourceDocumentId || certList[existingIdx].sourceDocumentId,
+            processingId: cObj.processingId || certList[existingIdx].processingId,
+            fileUrl: cObj.fileUrl || certList[existingIdx].fileUrl,
+            thumbnailUrl: cObj.thumbnailUrl || certList[existingIdx].thumbnailUrl,
+            mimeType: cObj.mimeType || certList[existingIdx].mimeType,
+            fileName: cObj.fileName || certList[existingIdx].fileName,
+            rawConfidence: cObj.rawConfidence ?? certList[existingIdx].rawConfidence,
+            credentialId: cObj.credentialId || certList[existingIdx].credentialId,
+          };
+        } else {
           seenCerts.add(key);
           certList.push({
             id: cObj.id,

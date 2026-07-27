@@ -81,18 +81,19 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
     };
   }, [isOpen, handleKeyDown]);
 
-  if (!isOpen || !certificate) return null;
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loadingMedia, setLoadingMedia] = useState(false);
 
-  const brand = getIssuerBrand(certificate.issuer);
+  const brand = certificate ? getIssuerBrand(certificate.issuer) : getIssuerBrand('');
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-  const fullFileUrl = certificate.fileUrl
+  const fullFileUrl = certificate?.fileUrl
     ? certificate.fileUrl.startsWith('http')
       ? certificate.fileUrl
       : `${apiBase}${certificate.fileUrl}`
     : null;
 
-  const fullThumbUrl = certificate.thumbnailUrl
+  const fullThumbUrl = certificate?.thumbnailUrl
     ? certificate.thumbnailUrl.startsWith('http')
       ? certificate.thumbnailUrl
       : `${apiBase}${certificate.thumbnailUrl}`
@@ -101,12 +102,73 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
   // Prefer full file for modal preview, fall back to thumbnail
   const mediaSource = fullFileUrl || fullThumbUrl;
 
+  // Fetch authenticated Blob URL when modal opens or certificate changes
+  useEffect(() => {
+    let cancelled = false;
+    let createdUrl: string | null = null;
+
+    if (!isOpen || !mediaSource) {
+      setBlobUrl(null);
+      return;
+    }
+
+    async function loadMedia() {
+      try {
+        setLoadingMedia(true);
+        setImageError(false);
+
+        const token =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('authToken') || localStorage.getItem('token')
+            : null;
+
+        const headers: Record<string, string> = {};
+        if (token && token !== 'null') {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const res = await fetch(mediaSource!, { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) throw new Error('JSON response');
+
+        const blob = await res.blob();
+        if (blob.size === 0) throw new Error('0 bytes');
+
+        if (!cancelled) {
+          createdUrl = URL.createObjectURL(blob);
+          setBlobUrl(createdUrl);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.warn('Certificate modal media fetch error:', err);
+          setImageError(true);
+          setBlobUrl(null);
+        }
+      } finally {
+        if (!cancelled) setLoadingMedia(false);
+      }
+    }
+
+    loadMedia();
+
+    return () => {
+      cancelled = true;
+      if (createdUrl) {
+        URL.revokeObjectURL(createdUrl);
+      }
+    };
+  }, [isOpen, mediaSource]);
+
+  if (!isOpen || !certificate) return null;
+
   const handleDownload = () => {
-    if (!mediaSource) return;
+    const targetUrl = blobUrl || mediaSource;
+    if (!targetUrl) return;
     const link = document.createElement('a');
-    link.href = mediaSource;
-    link.download = `${certificate.title.replace(/[^a-zA-Z0-9]/g, '_')}_Certificate`;
-    link.target = '_blank';
+    link.href = targetUrl;
+    link.download = `${certificate?.title?.replace(/[^a-zA-Z0-9]/g, '_') || 'Certificate'}_Document`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -249,7 +311,12 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
             }}
           />
 
-          {mediaSource && !imageError ? (
+          {loadingMedia ? (
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
+              <span className="text-xs text-slate-400">Loading certificate document...</span>
+            </div>
+          ) : blobUrl && !imageError ? (
             <div
               className="transition-transform duration-300 ease-out flex items-center justify-center"
               style={{
@@ -257,7 +324,7 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
               }}
             >
               <img
-                src={mediaSource}
+                src={blobUrl}
                 alt={`${certificate.title} — Certificate issued by ${certificate.issuer}`}
                 onError={() => setImageError(true)}
                 className="max-h-[72vh] max-w-[85vw] object-contain rounded-xl shadow-2xl shadow-slate-950/60 border border-slate-800/60 bg-white"

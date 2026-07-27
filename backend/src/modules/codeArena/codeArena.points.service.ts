@@ -42,8 +42,8 @@ export class CodeArenaPointsService {
         acceptanceRate: 0,
         favoriteTechnologies: [],
         badges: [],
-        loginStreak: 1,
-        lastDailyRewardDate: new Date(),
+        loginStreak: 0,
+        lastDailyRewardDate: undefined,
       });
 
       // Record welcome bonus transaction in Arena Point Ledger

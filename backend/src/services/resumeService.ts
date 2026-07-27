@@ -4,16 +4,83 @@ import mammoth from 'mammoth';
 import axios from 'axios';
 import { Logger } from '../utils/logger';
 import aiService from './aiService';
+import { RESUME_PLACEHOLDERS } from '../config/resumePlaceholders';
 import fs from 'fs';
 import path from 'path';
 
 const logger = new Logger('resumeService');
 
 export class ResumeService {
+  private normalizeData(data: Record<string, any>): Record<string, any> {
+    const normalized: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value === undefined || value === null) {
+        normalized[key] = '';
+      } else if (typeof value === 'string') {
+        normalized[key] = value;
+      } else {
+        normalized[key] = value;
+      }
+    }
+    return normalized;
+  }
+
+  private expandAliasesAndNormalize(data: Record<string, any>): Record<string, any> {
+    const normalized = this.normalizeData(data);
+
+    for (const p of RESUME_PLACEHOLDERS) {
+      let foundVal: string | undefined = undefined;
+      if (data[p.key] !== undefined && data[p.key] !== null) {
+        foundVal = String(data[p.key]);
+      } else if (p.aliases) {
+        for (const alias of p.aliases) {
+          if (data[alias] !== undefined && data[alias] !== null) {
+            foundVal = String(data[alias]);
+            break;
+          }
+        }
+      }
+
+      if (foundVal !== undefined) {
+        normalized[p.key] = foundVal;
+        if (p.aliases) {
+          for (const alias of p.aliases) {
+            normalized[alias] = foundVal;
+          }
+        }
+      }
+    }
+
+    return normalized;
+  }
+
+  private deterministicCleanup(html: string, data: Record<string, any>): string {
+    let cleaned = html;
+    const seen = new Set<string>();
+    for (const value of Object.values(data)) {
+      if (typeof value === 'string' && value.trim().length > 0) {
+        const trimmed = value.trim();
+        if (seen.has(trimmed)) continue;
+        seen.add(trimmed);
+        const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\{${escaped}\\}`, 'g');
+        cleaned = cleaned.replace(regex, trimmed);
+      }
+    }
+    return cleaned;
+  }
+
+  private async cleanupRendererArtifacts(data: Record<string, any>, html: string): Promise<string> {
+    if (!html) return html;
+    const deterministic = this.deterministicCleanup(html, data);
+    if (deterministic === html) return html;
+    return deterministic;
+  }
+
   /**
    * Generates a filled DOCX and its HTML preview from a template URL and data.
    */
-  async processResumeTemplate(templateUrl: string, data: any, tone?: string, enhanceableTags?: string[]): Promise<{ docxBuffer: Buffer; htmlPreview: string }> {
+  async processResumeTemplate(templateUrl: string, data: any, tone?: string, enhanceableTags?: string[]): Promise<{ docxBuffer: Buffer; htmlPreview: string; knownLimitations: { docxArtifacts: boolean } }> {
     try {
       logger.info(`Fetching template from ${templateUrl}`);
       // 1. Fetch the DOCX template from Firebase Storage (or any public URL)
@@ -31,6 +98,12 @@ export class ResumeService {
       const doc = new Docxtemplater(zip, {
         paragraphLoop: true,
         linebreaks: true,
+        delimiters: { start: '{{', end: '}}' },
+        syntax: {
+          allowUnclosedTag: true,
+          allowUnopenedTag: true,
+        },
+        nullGetter: () => '',
       });
 
       // AI Enhancement Phase
@@ -40,14 +113,12 @@ export class ResumeService {
           finalData = await aiService.enhanceResumeFields(data, tone, enhanceableTags);
       }
 
-      doc.setData(finalData);
+      const normalizedData = this.expandAliasesAndNormalize(finalData);
 
-      try {
-        doc.render();
-      } catch (error: any) {
-        logger.error('Error rendering template with docxtemplater:', error);
-        throw new Error('Template processing failed. Ensure template placeholders match data.');
-      }
+      logger.info('[DEBUG] Submitted answers:', JSON.stringify(data, null, 2));
+      logger.info('[DEBUG] Placeholder map:', JSON.stringify(normalizedData, null, 2));
+
+      doc.render(normalizedData);
 
       // 4. Generate the filled DOCX buffer
       const docxBuffer = doc.getZip().generate({
@@ -63,9 +134,20 @@ export class ResumeService {
       logger.info('Converting generated DOCX to HTML sequence for preview.');
       const mammothResult = await mammoth.convertToHtml({ buffer: docxBuffer });
 
+      // 6. Clean up Docxtemplater brace artifacts from the generated text.
+      const cleanedHtml = await this.cleanupRendererArtifacts(normalizedData, mammothResult.value);
+
+      const unresolvedPlaceholders = (cleanedHtml.match(/\{\{[^}]+\}\}/g) || []).filter(
+        (val, idx, arr) => arr.indexOf(val) === idx
+      );
+      logger.info('[DEBUG] Unresolved placeholders after replacement:', unresolvedPlaceholders);
+
       return {
         docxBuffer,
-        htmlPreview: mammothResult.value, // The generated HTML
+        htmlPreview: cleanedHtml,
+        knownLimitations: {
+          docxArtifacts: true,
+        },
       };
     } catch (error: any) {
       logger.error('Error in processResumeTemplate:', error);

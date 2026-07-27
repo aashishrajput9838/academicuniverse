@@ -24,11 +24,12 @@ import reviewRoutes from './reviewRoutes';
 import documentIntelligenceRoutes from './documentIntelligenceRoutes';
 import skillsRoutes from './skillsRoutes';
 
-// Import modular routes (new architecture)
 import { researchRoutes } from '../modules/research';
 import { ezoneRoutes } from '../modules/ezone';
 import moduleHealthRoutes from './moduleHealthRoutes';
 import resumeHealthRoutes from './resumeHealthRoutes';
+import moduleVisibilityRoutes from './moduleVisibilityRoutes';
+import { moduleGuard } from '../middleware/moduleVisibility.middleware';
 
 const router = express.Router();
 
@@ -36,7 +37,6 @@ router.use('/auth', authRoutes);
 router.use('/marks', marksRoutes);
 router.use('/github', githubRoutes);
 router.use('/profile', profileRoutes);
-router.use('/overlap-engine', overlapRoutes);
 router.use('/resume', resumeRoutes);
 router.use('/resume', resumeParserRoutes);
 router.use('/timetable', timetableRoutes);
@@ -49,7 +49,7 @@ router.use('/ai', aiRoutes);
 router.use('/logs', logRoutes);
 router.use('/gmail', gmailRoutes);
 router.use('/softskills', softSkillsRoutes);
-router.use('/research', researchRoutes); // New modular route
+router.use('/research', researchRoutes);
 router.use('/ezone', ezoneRoutes);
 router.use('/growth', growthRoutes);
 router.use('/document-registry', documentRegistryRoutes);
@@ -59,5 +59,16 @@ router.use('/review', reviewRoutes);
 router.use('/document-intelligence', documentIntelligenceRoutes);
 router.use('/module-health', moduleHealthRoutes);
 router.use('/resume-health', resumeHealthRoutes);
+router.use('/module-visibility', moduleVisibilityRoutes);
+
+// Module-specific route guards (student-facing modules)
+router.use('/overlap-engine', moduleGuard('overlap-engine'), overlapRoutes);
+router.use('/growth', moduleGuard('growth-hub'), growthRoutes);
+router.use('/softskills', moduleGuard('soft-skills-lab'), softSkillsRoutes);
+router.use('/skills', moduleGuard('skills-tracker'), skillsRoutes);
+router.use('/document-intelligence', moduleGuard('document-intelligence'), documentIntelligenceRoutes);
+
+// Note: /resume routes serve both faculty (template management) and students (resume generation).
+// Student endpoints should be guarded individually within resumeRoutes.ts using moduleGuard('resume-builder').
 
 export default router;

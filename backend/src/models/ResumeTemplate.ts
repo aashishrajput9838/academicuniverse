@@ -12,6 +12,7 @@ export interface IResumeTemplate extends Document {
         question: string;
         type: 'text' | 'textarea';
         aiEnhanceable: boolean;
+        section?: string;
     }[];
     createdAt: Date;
     updatedAt: Date;
@@ -152,6 +153,7 @@ const ResumeTemplateSchema = new Schema<IResumeTemplate>(
                 question: { type: String, required: true },
                 type: { type: String, enum: ['text', 'textarea'], default: 'text' },
                 aiEnhanceable: { type: Boolean, default: false },
+                section: { type: String, default: 'other' },
             },
         ],
         originalFileUrl: {

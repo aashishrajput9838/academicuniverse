@@ -1,6 +1,6 @@
 export interface ValidationIssue {
   severity: 'error' | 'warning' | 'info';
-  code: 'MISSING' | 'DUPLICATE' | 'UNKNOWN' | 'MISSPELLED' | 'RESERVED_CONFLICT' | 'STYLE_MISMATCH';
+  code: 'MISSING' | 'DUPLICATE' | 'UNKNOWN' | 'MISSPELLED' | 'RESERVED_CONFLICT' | 'STYLE_MISMATCH' | 'DEPRECATED';
   placeholder: string;
   message: string;
   suggestion?: string;
@@ -15,6 +15,7 @@ export interface ValidationSummary {
   unknown: string[];
   misspelled: string[];
   reservedConflicts: string[];
+  deprecated: string[];
 }
 
 export interface ValidationReport {
@@ -84,8 +85,9 @@ export interface TemplateQuestion {
   _id?: string;
   tag: string;
   question: string;
-  type: 'text' | 'textarea';
+  type: 'text' | 'textarea' | 'date' | 'email' | 'phone' | 'url' | 'select' | 'list';
   aiEnhanceable: boolean;
+  section?: string;
 }
 
 export interface GenerateResumeRequest {

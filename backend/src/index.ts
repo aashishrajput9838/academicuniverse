@@ -62,6 +62,7 @@ import routes from './routes';
 import { skillsEventListener } from './shared/events/skillsEventListener';
 import { growthHubSkillsIntegration } from './modules/growth/growthHubSkillsIntegration';
 import { resumeClassificationEventListener } from './services/resume/resumeClassificationEventListener';
+import { moduleVisibilityService } from './services/moduleVisibility.service';
 
 const app = express();
 
@@ -193,6 +194,10 @@ const startServer = async () => {
     try {
         await connectDB();
         logger.info('Connected to MongoDB');
+
+        // Initialize module visibility cache
+        await moduleVisibilityService.initialize();
+        logger.info('Module visibility cache initialized');
 
         // Initialize event-driven subsystems after DB connection
         skillsEventListener.start();

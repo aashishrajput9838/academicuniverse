@@ -20,6 +20,7 @@ const mockValidReport: ValidationReport = {
     unknown: [],
     misspelled: [],
     reservedConflicts: [],
+    deprecated: [],
   },
 };
 
@@ -47,6 +48,7 @@ const mockWarningReport: ValidationReport = {
     unknown: [],
     misspelled: ['nam'],
     reservedConflicts: [],
+    deprecated: [],
   },
 };
 
@@ -72,6 +74,7 @@ const mockErrorReport: ValidationReport = {
     unknown: [],
     misspelled: [],
     reservedConflicts: [],
+    deprecated: [],
   },
 };
 
@@ -138,7 +141,7 @@ describe('ValidationResultsPanel', () => {
       valid: true,
       placeholders: [],
       issues: [],
-      summary: { total: 0, unique: 0, duplicates: 0, missingRequired: [], unknown: [], misspelled: [], reservedConflicts: [] },
+      summary: { total: 0, unique: 0, duplicates: 0, missingRequired: [], unknown: [], misspelled: [], reservedConflicts: [], deprecated: [] },
     };
     render(<ValidationResultsPanel report={emptyReport} />);
     expect(screen.getByText('No placeholders detected.')).toBeInTheDocument();

@@ -12,6 +12,21 @@ interface FormFieldRendererProps {
 export function FormFieldRenderer({ question, value, onChange, error }: FormFieldRendererProps) {
   const isTextarea = question.type === 'textarea';
 
+  const inputType = (() => {
+    switch (question.type) {
+      case 'email':
+        return 'email';
+      case 'phone':
+        return 'tel';
+      case 'url':
+        return 'url';
+      case 'date':
+        return 'date';
+      default:
+        return 'text';
+    }
+  })();
+
   return (
     <div className="space-y-2">
       <label className="text-sm font-medium text-white flex items-center gap-1">
@@ -31,7 +46,7 @@ export function FormFieldRenderer({ question, value, onChange, error }: FormFiel
         />
       ) : (
         <input
-          type="text"
+          type={inputType}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={`Enter ${question.question.toLowerCase()}...`}

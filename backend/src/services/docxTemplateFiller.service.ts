@@ -56,16 +56,23 @@ export class DocxTemplateFiller {
 
       const expandedData = this.expandDataWithMapping(validation.data, dataKeyMapping);
 
+      logger.info('[DEBUG] Submitted answers:', JSON.stringify(studentData, null, 2));
+      logger.info('[DEBUG] Placeholder map:', JSON.stringify(expandedData, null, 2));
+
       const zip = new PizZip(templateBuffer);
       const doc = new Docxtemplater(zip, {
         paragraphLoop: true,
         linebreaks: true,
+        delimiters: { start: '{{', end: '}}' },
+        syntax: {
+          allowUnclosedTag: true,
+          allowUnopenedTag: true,
+        },
+        nullGetter: () => '',
       });
 
-      doc.setData(expandedData);
-
       try {
-        doc.render();
+        doc.render(expandedData);
       } catch (error: any) {
         logger.error('Error rendering template with docxtemplater:', error);
         return {
@@ -87,6 +94,11 @@ export class DocxTemplateFiller {
         const mammoth = await import('mammoth');
         const result = await mammoth.convertToHtml({ buffer: docxBuffer });
         htmlPreview = result.value;
+
+        const unresolvedPlaceholders = (htmlPreview.match(/\{\{[^}]+\}\}/g) || []).filter(
+          (val, idx, arr) => arr.indexOf(val) === idx
+        );
+        logger.info('[DEBUG] Unresolved placeholders after replacement:', unresolvedPlaceholders);
       } catch (error: any) {
         logger.warn('HTML preview generation failed:', error);
       }

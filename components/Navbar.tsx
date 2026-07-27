@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/AuthContext'
 import { useRouter } from 'next/navigation'
+import { useModuleVisibility } from '@/lib/moduleVisibility'
 
 interface DropdownItem {
   label: string
@@ -22,10 +23,32 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, backendUser, logout } = useAuth()
   const router = useRouter()
+  const { isModuleVisible, loading } = useModuleVisibility()
 
   const handleLogout = async () => {
     await logout()
     router.push('/login')
+  }
+
+  const MODULE_MAP: Record<string, string> = {
+    '/dashboard/student/growth': 'growth-hub',
+    '/dashboard/student/career': 'career-profile',
+    '/dashboard/student/records': 'academic-records',
+    '/dashboard/student/chatbot': 'ai-chatbot',
+    '/dashboard/student/research': 'research-wing',
+    '/dashboard/student/code': 'code-arena',
+    '/dashboard/student/soft-skills': 'soft-skills-lab',
+  }
+
+  const isNavItemVisible = (item: NavItem): boolean => {
+    if (loading) return true
+    if (item.href && MODULE_MAP[item.href]) {
+      return isModuleVisible(MODULE_MAP[item.href])
+    }
+    if (item.dropdown) {
+      return item.dropdown.some(sub => MODULE_MAP[sub.href] ? isModuleVisible(MODULE_MAP[sub.href]) : true)
+    }
+    return true
   }
 
   // Dynamically create nav items based on user role
@@ -60,7 +83,6 @@ export function Navbar() {
       },
     ];
 
-    // Add dashboard item based on user role
     if (backendUser && backendUser.role) {
       const isAdmin = (
         backendUser.role === 'ADMIN' ||
@@ -69,7 +91,6 @@ export function Navbar() {
       );
 
       if (isAdmin) {
-        // Add admin dashboard item for admin users
         baseItems.unshift({
           label: 'Admin Dashboard',
           dropdown: [
@@ -78,6 +99,7 @@ export function Navbar() {
             { label: 'Assign Representatives', href: '/admin/assign-representative' },
             { label: 'Timetable Status', href: '/admin/timetable-status' },
             { label: 'User Management', href: '/admin/users' },
+            { label: 'Module Management', href: '/admin/module-management' },
           ]
         });
       } else if (backendUser.role === 'FACULTY') {
@@ -88,7 +110,6 @@ export function Navbar() {
           ]
         });
       } else {
-        // For STUDENT or other roles
         baseItems.unshift({
           label: 'Dashboard',
           dropdown: [
@@ -97,8 +118,6 @@ export function Navbar() {
         });
       }
     } else if (user) {
-      // If Firebase user exists but backend user is not yet loaded, show a loading state or a single option based on email
-      // For now, we'll try to infer from the Firebase user's email
       const userEmail = user.email;
       if (userEmail && (userEmail.includes('@ug.sharda.ac.in') || userEmail.includes('@pg.sharda.ac.in'))) {
         baseItems.unshift({
@@ -115,7 +134,6 @@ export function Navbar() {
           ]
         });
       } else {
-        // If user exists but doesn't match known patterns, show both as fallback
         baseItems.unshift({
           label: 'Dashboard',
           dropdown: [
@@ -125,7 +143,6 @@ export function Navbar() {
         });
       }
     } else {
-      // If user is not authenticated, show both (fallback)
       baseItems.unshift({
         label: 'Dashboard',
         dropdown: [
@@ -138,7 +155,8 @@ export function Navbar() {
     return baseItems;
   };
 
-  const navItems = getNavItems();
+  const allNavItems = getNavItems();
+  const navItems = allNavItems.filter(item => isNavItemVisible(item));
 
   return (
     <nav className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-6 py-4 sticky top-0 z-50 shadow-lg">

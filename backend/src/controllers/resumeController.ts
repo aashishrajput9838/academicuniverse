@@ -5,6 +5,7 @@ import resumeService from '../services/resumeService';
 import { TemplateProcessingOrchestrator } from '../services/templateProcessingOrchestrator.service';
 import { ResumeGenerationOrchestrator } from '../services/resumeGenerationOrchestrator.service';
 import { PlaceholderValidator } from '../services/placeholderValidator.service';
+import { DEPRECATED_PLACEHOLDERS, RESUME_PLACEHOLDERS } from '../config/resumePlaceholders';
 import axios from 'axios';
 import ResumeTemplate from '../models/ResumeTemplate';
 import StudentResume from '../models/StudentResume';
@@ -69,7 +70,9 @@ export const uploadTemplateController = async (req: any, res: Response) => {
       return sendError(res, 500, 'Failed to validate template');
     }
 
-    if (!validationReport.valid) {
+    const hasDeprecated = validationReport.summary.deprecated.length > 0;
+
+    if (!validationReport.valid && !hasDeprecated) {
       return sendResponse(res, 400, {
         success: false,
         data: validationReport,
@@ -149,7 +152,7 @@ export const uploadTemplateController = async (req: any, res: Response) => {
       uploadedBy,
       questions,
       processingMode: 'placeholder-first',
-      validationStatus: 'valid',
+      validationStatus: hasDeprecated ? 'warning' : 'valid',
       validationReport: validationReport,
     });
 
@@ -291,7 +294,7 @@ export const processResumeController = async (req: any, res: Response) => {
       : [];
 
     // Process using ResumeService
-    const { docxBuffer, htmlPreview } = await resumeService.processResumeTemplate(template.fileUrl, data, tone, enhanceableTags);
+    const { docxBuffer, htmlPreview, knownLimitations } = await resumeService.processResumeTemplate(template.fileUrl, data, tone, enhanceableTags);
 
     // Save draft in DB
     const studentResume = await StudentResume.findOneAndUpdate(
@@ -309,7 +312,8 @@ export const processResumeController = async (req: any, res: Response) => {
     return sendResponse(res, 200, {
       htmlPreview,
       docxBase64,
-      studentResumeId: studentResume._id
+      studentResumeId: studentResume._id,
+      knownLimitations,
     }, 'Resume generated successfully');
     
   } catch (error: any) {
@@ -421,12 +425,19 @@ export const processTemplateController = async (req: any, res: Response) => {
       organizationId
     );
 
+    // Build a lookup map for canonical placeholder section assignments
+    const placeholderSectionMap = new Map<string, string>();
+    for (const p of RESUME_PLACEHOLDERS) {
+      placeholderSectionMap.set(p.key.toLowerCase(), p.section);
+    }
+
     const questions = result.milestone2Result.sections.flatMap((section: any) =>
       section.fields.map((field: any) => ({
         tag: field.key,
         question: field.label,
         type: field.type === 'textarea' ? 'textarea' : 'text',
         aiEnhanceable: field.aiEnhanceable || false,
+        section: placeholderSectionMap.get(field.key.toLowerCase()) || 'other',
       }))
     );
 

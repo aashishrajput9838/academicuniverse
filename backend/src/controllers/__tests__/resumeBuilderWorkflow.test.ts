@@ -254,7 +254,7 @@ describe('Resume Builder Workflow Integration', () => {
         maxEntries: 1,
         minEntries: 1,
         fields: [
-          { key: 'text', label: 'Summary', type: 'textarea', required: true, aiEnhanceable: true, extraProp: 'should-be-removed' },
+          { key: 'professional_summary', label: 'Summary', type: 'textarea', required: true, aiEnhanceable: true, extraProp: 'should-be-removed' },
         ],
         aiPrompt: 'Extract summary',
         extraSectionProp: 'should-be-removed',
@@ -301,7 +301,7 @@ describe('Resume Builder Workflow Integration', () => {
     expect(persistedSections[0]).not.toHaveProperty('extraSectionProp');
     expect(persistedSections[0].fields[0]).not.toHaveProperty('extraProp');
     expect(persistedSections[0].fields[0]).toEqual({
-      key: 'text',
+      key: 'professional_summary',
       label: 'Summary',
       type: 'textarea',
       required: true,
@@ -335,7 +335,7 @@ describe('Resume Builder Workflow Integration', () => {
           valid: false,
           placeholders: [],
           issues: [{ severity: 'error', code: 'MISSING', placeholder: '{{name}}', message: 'Required field name is missing', suggestion: 'Add {{name}}' }],
-          summary: { total: 0, unique: 0, duplicates: 0, missingRequired: ['name'], unknown: [], misspelled: [], reservedConflicts: [] },
+          summary: { total: 0, unique: 0, duplicates: 0, missingRequired: ['name'], unknown: [], misspelled: [], reservedConflicts: [], deprecated: [] },
         }),
       } as any));
 
@@ -363,7 +363,7 @@ describe('Resume Builder Workflow Integration', () => {
         valid: true,
         placeholders: [{ raw: '{{name}}', key: 'name', location: 'p[0]/r[0]/t[0]', context: 'Full Name: name' }],
         issues: [],
-        summary: { total: 1, unique: 1, duplicates: 0, missingRequired: [], unknown: [], misspelled: [], reservedConflicts: [] },
+        summary: { total: 1, unique: 1, duplicates: 0, missingRequired: [], unknown: [], misspelled: [], reservedConflicts: [], deprecated: [] },
       };
 
       MockedPlaceholderValidator.mockImplementation(() => ({
@@ -406,7 +406,7 @@ describe('Resume Builder Workflow Integration', () => {
           valid: true,
           placeholders: [],
           issues: [],
-          summary: { total: 0, unique: 0, duplicates: 0, missingRequired: [], unknown: [], misspelled: [], reservedConflicts: [] },
+          summary: { total: 0, unique: 0, duplicates: 0, missingRequired: [], unknown: [], misspelled: [], reservedConflicts: [], deprecated: [] },
         }),
       } as any));
 

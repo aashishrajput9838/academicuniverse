@@ -83,7 +83,7 @@ describe('validateTemplateController', () => {
       valid: true,
       placeholders: [{ raw: '{{name}}', key: 'name', location: 'p[0]/r[0]/t[0]', context: 'Full Name: name' }],
       issues: [],
-      summary: { total: 1, unique: 1, duplicates: 0, missingRequired: [], unknown: [], misspelled: [], reservedConflicts: [] },
+      summary: { total: 1, unique: 1, duplicates: 0, missingRequired: [], unknown: [], misspelled: [], reservedConflicts: [], deprecated: [] },
     };
 
     MockedPlaceholderValidator.mockImplementation(() => ({
@@ -112,7 +112,7 @@ describe('validateTemplateController', () => {
       valid: false,
       placeholders: [],
       issues: [{ severity: 'error', code: 'MISSING', placeholder: '{{name}}', message: 'Required field name is missing', suggestion: 'Add {{name}}' }],
-      summary: { total: 0, unique: 0, duplicates: 0, missingRequired: ['name'], unknown: [], misspelled: [], reservedConflicts: [] },
+      summary: { total: 0, unique: 0, duplicates: 0, missingRequired: ['name'], unknown: [], misspelled: [], reservedConflicts: [], deprecated: [] },
     };
 
     MockedPlaceholderValidator.mockImplementation(() => ({
@@ -159,7 +159,7 @@ describe('validateTemplateController', () => {
       valid: true,
       placeholders: [],
       issues: [],
-      summary: { total: 0, unique: 0, duplicates: 0, missingRequired: [], unknown: [], misspelled: [], reservedConflicts: [] },
+      summary: { total: 0, unique: 0, duplicates: 0, missingRequired: [], unknown: [], misspelled: [], reservedConflicts: [], deprecated: [] },
     };
 
     MockedPlaceholderValidator.mockImplementation(() => ({

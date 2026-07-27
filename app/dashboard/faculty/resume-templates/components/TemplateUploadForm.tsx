@@ -159,7 +159,8 @@ export function TemplateUploadForm({ onUploadSuccess }: TemplateUploadFormProps)
     }
   }, [file, templateName, type, target, validationReport, toast, onUploadSuccess]);
 
-  const hasErrors = validationReport ? validationReport.issues.some((i) => i.severity === 'error') : false;
+  const issues = validationReport?.issues ?? [];
+  const hasErrors = issues.some((i) => i.severity === 'error');
   const canUpload = file && templateName && (!validationReport || validationReport.valid) && !isUploading;
 
   return (

@@ -6,6 +6,7 @@ import {
   Role,
   RolePermission,
   User,
+  ModuleVisibility,
 } from '../src/models';
 import { resolveMongoUri } from '../src/config/database';
 
@@ -92,6 +93,11 @@ async function seed() {
         name: 'USE_CHATBOT',
         description: 'Use AI chatbot',
         category: 'CHATBOT',
+      },
+      {
+        name: 'MANAGE_MODULES',
+        description: 'Manage module visibility and feature flags',
+        category: 'ADMIN',
       },
     ];
 
@@ -287,6 +293,61 @@ async function seed() {
       await organization.save();
       console.log('✓ Set super admin for organization');
     }
+
+    // Ensure initial Super Admin user exists
+    const initialSuperAdminEmail = '2023329421.aashish@ug.sharda.ac.in';
+    let initialSuperAdmin = await User.findOne({ email: initialSuperAdminEmail });
+    if (!initialSuperAdmin) {
+      initialSuperAdmin = await User.create({
+        name: 'Aashish Rajput',
+        email: initialSuperAdminEmail,
+        password: 'SuperAdmin123',
+        organizationId: organization._id,
+        roleId: superAdminRole!._id,
+      });
+      console.log(`✓ Created initial Super Admin: ${initialSuperAdminEmail}`);
+    } else {
+      // Ensure they have SUPER_ADMIN role
+      if (initialSuperAdmin.roleId?.toString() !== superAdminRole!._id.toString()) {
+        initialSuperAdmin.roleId = superAdminRole!._id;
+        await initialSuperAdmin.save();
+        console.log(`✓ Updated role to SUPER_ADMIN for: ${initialSuperAdminEmail}`);
+      }
+      console.log(`✓ Initial Super Admin already exists: ${initialSuperAdminEmail}`);
+    }
+
+    // 5. Register Module Visibility entries
+    const moduleVisibilityEntries = [
+      { key: 'dashboard', name: 'Dashboard', category: 'core', isEnabled: true, isVisible: true, sortOrder: 0 },
+      { key: 'profile', name: 'Profile', category: 'personal', isEnabled: true, isVisible: true, sortOrder: 1 },
+      { key: 'events', name: 'Events from Gmail', category: 'communication', isEnabled: true, isVisible: true, sortOrder: 2 },
+      { key: 'mail', name: 'Mail Explorer', category: 'communication', isEnabled: true, isVisible: true, sortOrder: 3 },
+      { key: 'growth-hub', name: 'Growth Hub', category: 'academic', isEnabled: true, isVisible: true, sortOrder: 4 },
+      { key: 'document-intelligence', name: 'Document Intelligence', category: 'productivity', isEnabled: true, isVisible: true, sortOrder: 5 },
+      { key: 'academic-schedule', name: 'Academic Schedule', category: 'academic', isEnabled: true, isVisible: true, sortOrder: 6 },
+      { key: 'career-profile', name: 'Career Profile', category: 'career', isEnabled: true, isVisible: true, sortOrder: 7 },
+      { key: 'ai-chatbot', name: 'AI Chatbot', category: 'ai', isEnabled: true, isVisible: true, sortOrder: 8 },
+      { key: 'research-wing', name: 'Research Wing', category: 'research', isEnabled: true, isVisible: true, sortOrder: 9 },
+      { key: 'code-arena', name: 'Code Arena', category: 'development', isEnabled: true, isVisible: true, sortOrder: 10 },
+      { key: 'academic-records', name: 'Academic Records', category: 'academic', isEnabled: true, isVisible: true, sortOrder: 11 },
+      { key: 'sync-college-profile', name: 'Sync College Profile', category: 'integration', isEnabled: true, isVisible: true, sortOrder: 12 },
+      { key: 'webscrap', name: 'Webscrap', category: 'productivity', isEnabled: true, isVisible: true, sortOrder: 13 },
+      { key: 'skills-tracker', name: 'Skills Tracker', category: 'career', isEnabled: true, isVisible: true, sortOrder: 14 },
+      { key: 'resume-builder', name: 'Resume Builder', category: 'career', isEnabled: true, isVisible: true, sortOrder: 15 },
+      { key: 'overlap-engine', name: 'Overlap Engine', category: 'academic', isEnabled: true, isVisible: true, sortOrder: 16 },
+      { key: 'find-faculty-cabin', name: 'Find Faculty Cabin', category: 'navigation', isEnabled: true, isVisible: true, sortOrder: 17 },
+      { key: 'soft-skills-lab', name: 'Soft Skills Lab', category: 'career', isEnabled: true, isVisible: true, sortOrder: 18 },
+      { key: 'career-verified-profile', name: 'Career & Verified Profile', category: 'career', isEnabled: true, isVisible: true, sortOrder: 19 },
+    ];
+
+    for (const entry of moduleVisibilityEntries) {
+      await ModuleVisibility.findOneAndUpdate(
+        { key: entry.key },
+        entry,
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
+    console.log(`✓ Registered ${moduleVisibilityEntries.length} module visibility entries`);
 
     console.log('\n✅ Database seeding completed successfully!\n');
     console.log('Demo Users:');

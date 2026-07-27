@@ -16,7 +16,7 @@ const RateLimitAttemptSchema = new Schema<IRateLimitAttempt>({
   lastAttemptAt: { type: Date, required: true, default: Date.now },
 }, { timestamps: false });
 
-RateLimitAttemptSchema.index({ organizationId: 1, endpoint: 1, windowCreatedAt: -1 }, { unique: true });
+RateLimitAttemptSchema.index({ organizationId: 1, endpoint: 1, windowCreatedAt: -1 }, { unique: true } as any);
 RateLimitAttemptSchema.index({ windowCreatedAt: 1 }, { expireAfterSeconds: 0 } as any);
 
 export const RateLimitAttempt = model<IRateLimitAttempt>('RateLimitAttempt', RateLimitAttemptSchema);

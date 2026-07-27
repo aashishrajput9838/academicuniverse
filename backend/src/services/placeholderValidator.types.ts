@@ -7,7 +7,7 @@ export interface ExtractedPlaceholder {
 
 export interface ValidationIssue {
   severity: 'error' | 'warning' | 'info';
-  code: 'MISSING' | 'DUPLICATE' | 'UNKNOWN' | 'MISSPELLED' | 'RESERVED_CONFLICT' | 'STYLE_MISMATCH';
+  code: 'MISSING' | 'DUPLICATE' | 'UNKNOWN' | 'MISSPELLED' | 'RESERVED_CONFLICT' | 'STYLE_MISMATCH' | 'DEPRECATED';
   placeholder: string;
   message: string;
   suggestion?: string;
@@ -26,6 +26,7 @@ export interface ValidationReport {
     unknown: string[];
     misspelled: string[];
     reservedConflicts: string[];
+    deprecated: string[];
   };
 }
 

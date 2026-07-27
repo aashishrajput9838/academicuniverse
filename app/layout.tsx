@@ -5,6 +5,7 @@ import './globals.css'
 import FirebaseInit from '../components/FirebaseInit';
 import { AuthProvider } from '../lib/AuthContext';
 import { Toaster } from '../components/ui/toaster';
+import { ModuleVisibilityProvider } from '../lib/moduleVisibility';
 
 const _geist = Geist({ subsets: ['latin'] })
 const _geistMono = Geist_Mono({ subsets: ['latin'] })
@@ -25,7 +26,9 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <AuthProvider>
           <FirebaseInit />
-          {children}
+          <ModuleVisibilityProvider>
+            {children}
+          </ModuleVisibilityProvider>
           <Toaster />
         </AuthProvider>
       </body>

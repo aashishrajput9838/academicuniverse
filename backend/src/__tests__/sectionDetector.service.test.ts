@@ -117,8 +117,8 @@ describe('SectionDetectorService', () => {
     const eduSection = sections.find(s => s.title.toLowerCase().includes('education'));
     expect(eduSection).toBeDefined();
     expect(eduSection!.fields.length).toBeGreaterThan(0);
-    expect(eduSection!.fields.map(f => f.key)).toContain('degree');
-    expect(eduSection!.fields.map(f => f.key)).toContain('institution');
+    expect(eduSection!.fields.map(f => f.key)).toContain('education_degree');
+    expect(eduSection!.fields.map(f => f.key)).toContain('education_institution');
   });
 
   it('marks Experience as repeatable', () => {

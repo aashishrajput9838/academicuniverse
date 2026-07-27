@@ -3,10 +3,13 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
+import { useModuleVisibility } from '@/lib/moduleVisibility';
+import Link from 'next/link';
 
 export default function StudentDashboardOverview() {
   const { user, backendUser, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { isModuleVisible, loading: modulesLoading } = useModuleVisibility();
 
   useEffect(() => {
     if (!authLoading && (!user || !backendUser)) {
@@ -16,7 +19,7 @@ export default function StudentDashboardOverview() {
     }
   }, [user, backendUser, authLoading, router]);
 
-  if (authLoading) {
+  if (authLoading || modulesLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -30,6 +33,12 @@ export default function StudentDashboardOverview() {
   if (!user || !backendUser || backendUser.role !== 'STUDENT') {
     return null;
   }
+
+  const quickLinks = [
+    { key: 'growth-hub', label: 'Growth Hub', icon: '📈', description: 'Track your academic progress', href: '/dashboard/student/growth' },
+    { key: 'ai-chatbot', label: 'AI Chatbot', icon: '🤖', description: 'Get instant help and guidance', href: '/dashboard/student/chatbot' },
+    { key: 'resume-builder', label: 'Resume Builder', icon: '📄', description: 'Create professional resumes', href: '/dashboard/student/resume-builder' },
+  ].filter(link => isModuleVisible(link.key));
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -64,21 +73,17 @@ export default function StudentDashboardOverview() {
 
       {/* Quick Links Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-6 hover:border-emerald-500/30 transition-all">
-          <div className="text-emerald-400 mb-2">📈</div>
-          <div className="text-white font-bold text-lg mb-1">Growth Hub</div>
-          <div className="text-slate-500 text-sm">Track your academic progress</div>
-        </div>
-        <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-6 hover:border-emerald-500/30 transition-all">
-          <div className="text-emerald-400 mb-2">🤖</div>
-          <div className="text-white font-bold text-lg mb-1">AI Chatbot</div>
-          <div className="text-slate-500 text-sm">Get instant help and guidance</div>
-        </div>
-        <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-6 hover:border-emerald-500/30 transition-all">
-          <div className="text-emerald-400 mb-2">📄</div>
-          <div className="text-white font-bold text-lg mb-1">Resume Builder</div>
-          <div className="text-slate-500 text-sm">Create professional resumes</div>
-        </div>
+        {quickLinks.map((link) => (
+          <Link
+            key={link.key}
+            href={link.href}
+            className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-6 hover:border-emerald-500/30 transition-all block"
+          >
+            <div className="text-emerald-400 mb-2">{link.icon}</div>
+            <div className="text-white font-bold text-lg mb-1">{link.label}</div>
+            <div className="text-slate-500 text-sm">{link.description}</div>
+          </Link>
+        ))}
       </div>
     </div>
   );

@@ -11,7 +11,7 @@ const BASE_DOCX_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   <w:body>
     <w:p>
       <w:r>
-        <w:t>{{name}}</w:t>
+        <w:t>{{full_name}}</w:t>
       </w:r>
     </w:p>
     <w:p>
@@ -26,32 +26,42 @@ const BASE_DOCX_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
     </w:p>
     <w:p>
       <w:r>
-        <w:t>{{text}}</w:t>
+        <w:t>{{professional_summary}}</w:t>
       </w:r>
     </w:p>
     <w:p>
       <w:r>
-        <w:t>{{items}}</w:t>
+        <w:t>{{skills}}</w:t>
       </w:r>
     </w:p>
     <w:p>
       <w:r>
-        <w:t>{{company}}</w:t>
+        <w:t>{{experience_company}}</w:t>
       </w:r>
     </w:p>
     <w:p>
       <w:r>
-        <w:t>{{role}}</w:t>
+        <w:t>{{experience_role}}</w:t>
       </w:r>
     </w:p>
     <w:p>
       <w:r>
-        <w:t>{{degree}}</w:t>
+        <w:t>{{education_degree}}</w:t>
       </w:r>
     </w:p>
     <w:p>
       <w:r>
-        <w:t>{{institution}}</w:t>
+        <w:t>{{education_institution}}</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>{{project_name}}</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:r>
+        <w:t>{{certification_name}}</w:t>
       </w:r>
     </w:p>
   </w:body>
@@ -69,9 +79,7 @@ describe('PlaceholderValidator', () => {
       const buffer = buildDocxBuffer(BASE_DOCX_XML);
       const report = await validator.validate(buffer);
 
-      expect(report.valid).toBe(false);
-      const missingIssues = report.issues.filter((i) => i.code === 'MISSING');
-      expect(missingIssues.length).toBe(2);
+      expect(report.valid).toBe(true);
       expect(report.placeholders.length).toBeGreaterThanOrEqual(9);
       expect(report.summary.unique).toBeGreaterThanOrEqual(9);
     });
@@ -81,7 +89,7 @@ describe('PlaceholderValidator', () => {
       const report = await validator.validate(buffer);
 
       const keys = report.placeholders.map((p) => p.key);
-      expect(keys).toContain('name');
+      expect(keys).toContain('full_name');
       expect(keys).toContain('email');
       expect(keys).toContain('phone');
     });
@@ -90,9 +98,9 @@ describe('PlaceholderValidator', () => {
       const buffer = buildDocxBuffer(BASE_DOCX_XML);
       const report = await validator.validate(buffer);
 
-      const namePh = report.placeholders.find((p) => p.key === 'name');
+      const namePh = report.placeholders.find((p) => p.key === 'full_name');
       expect(namePh).toBeDefined();
-      expect(namePh!.raw).toBe('{{name}}');
+      expect(namePh!.raw).toBe('{{full_name}}');
     });
   });
 
@@ -128,10 +136,10 @@ describe('PlaceholderValidator', () => {
       expect(report.valid).toBe(false);
       const missingIssues = report.issues.filter((i) => i.code === 'MISSING');
       expect(missingIssues.length).toBeGreaterThanOrEqual(4);
-      expect(missingIssues.map((i) => i.placeholder)).toContain('{{name}}');
+      expect(missingIssues.map((i) => i.placeholder)).toContain('{{full_name}}');
       expect(missingIssues.map((i) => i.placeholder)).toContain('{{email}}');
       expect(missingIssues.map((i) => i.placeholder)).toContain('{{phone}}');
-      expect(missingIssues.map((i) => i.placeholder)).toContain('{{text}}');
+      expect(missingIssues.map((i) => i.placeholder)).toContain('{{professional_summary}}');
     });
   });
 
@@ -216,7 +224,7 @@ describe('PlaceholderValidator', () => {
 
       const degreIssue = typoIssues.find((i) => i.placeholder === '{{degre}}');
       expect(degreIssue).toBeDefined();
-      expect(degreIssue!.suggestion).toBe('Did you mean {{degree}}?');
+      expect(degreIssue!.suggestion).toBe('Did you mean {{education_degree}}?');
     });
   });
 
@@ -252,13 +260,13 @@ describe('PlaceholderValidator', () => {
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
-    <w:p><w:r><w:t>{{name}}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>{{full_name}}</w:t></w:r></w:p>
   </w:body>
 </w:document>`;
       const buffer = buildDocxBuffer(xml);
       const report = await validator.validate(buffer);
 
-      const namePh = report.placeholders.find((p) => p.key === 'name');
+      const namePh = report.placeholders.find((p) => p.key === 'full_name');
       expect(namePh).toBeDefined();
       expect(namePh!.location).toMatch(/^p\[\d+\]\/r\[\d+\]\/t\[\d+\]$/);
     });
@@ -267,16 +275,16 @@ describe('PlaceholderValidator', () => {
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
-    <w:p><w:r><w:t>Full Name: {{name}}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Full Name: {{full_name}}</w:t></w:r></w:p>
   </w:body>
 </w:document>`;
       const buffer = buildDocxBuffer(xml);
       const report = await validator.validate(buffer);
 
-      const namePh = report.placeholders.find((p) => p.key === 'name');
+      const namePh = report.placeholders.find((p) => p.key === 'full_name');
       expect(namePh).toBeDefined();
       expect(namePh!.context).toContain('Full Name');
-      expect(namePh!.context).toContain('name');
+      expect(namePh!.context).toContain('full_name');
     });
   });
 
@@ -308,26 +316,23 @@ describe('PlaceholderValidator', () => {
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
     <w:p>
-      <w:r><w:rPr><w:b/></w:rPr><w:t>{{name}}</w:t></w:r>
+      <w:r><w:rPr><w:b/></w:rPr><w:t>{{full_name}}</w:t></w:r>
       <w:r><w:t> | {{email}} | {{phone}}</w:t></w:r>
     </w:p>
     <w:p>
-      <w:r><w:t>{{text}}</w:t></w:r>
+      <w:r><w:t>{{professional_summary}}</w:t></w:r>
     </w:p>
     <w:p>
       <w:r><w:t>{{#experience}}</w:t></w:r>
     </w:p>
     <w:p>
-      <w:r><w:t>{{company}} - {{role}} ({{duration}})</w:t></w:r>
+      <w:r><w:t>{{experience_company}} - {{experience_role}} ({{experience_start_date}} - {{experience_end_date}})</w:t></w:r>
     </w:p>
     <w:p>
       <w:r><w:t>{{/experience}}</w:t></w:r>
     </w:p>
     <w:p>
-      <w:r><w:t>{{education}}</w:t></w:r>
-    </w:p>
-    <w:p>
-      <w:r><w:t>{{degree}} from {{institution}}</w:t></w:r>
+      <w:r><w:t>{{education_degree}} from {{education_institution}}</w:t></w:r>
     </w:p>
   </w:body>
 </w:document>`;
@@ -335,15 +340,14 @@ describe('PlaceholderValidator', () => {
       const report = await validator.validate(buffer);
 
       const keys = report.placeholders.map((p) => p.key);
-      expect(keys).toContain('name');
+      expect(keys).toContain('full_name');
       expect(keys).toContain('email');
       expect(keys).toContain('phone');
-      expect(keys).toContain('text');
-      expect(keys).toContain('company');
-      expect(keys).toContain('role');
-      expect(keys).toContain('duration');
-      expect(keys).toContain('degree');
-      expect(keys).toContain('institution');
+      expect(keys).toContain('professional_summary');
+      expect(keys).toContain('experience_company');
+      expect(keys).toContain('experience_role');
+      expect(keys).toContain('education_degree');
+      expect(keys).toContain('education_institution');
 
       const loopIssues = report.issues.filter((i) => i.code === 'RESERVED_CONFLICT');
       expect(loopIssues.length).toBe(0);

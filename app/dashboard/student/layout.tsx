@@ -4,10 +4,11 @@ import { useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { Navbar } from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useModuleVisibility } from '@/lib/moduleVisibility';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -17,7 +18,29 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const { user, backendUser, loading } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const [eventsCount, setEventsCount] = useState(0);
+  const { isModuleVisible, loading: modulesLoading } = useModuleVisibility();
+
+  const SIDEBAR_MODULE_MAP: Record<string, string> = {
+    '/dashboard/student/profile': 'profile',
+    '/dashboard/student/events': 'events',
+    '/dashboard/student/mail': 'mail',
+    '/dashboard/student/growth': 'growth-hub',
+    '/dashboard/student/document-intelligence': 'document-intelligence',
+    '/dashboard/student/schedule': 'academic-schedule',
+    '/dashboard/student/career': 'career-profile',
+    '/dashboard/student/chatbot': 'ai-chatbot',
+    '/dashboard/student/research': 'research-wing',
+    '/dashboard/student/code': 'code-arena',
+    '/dashboard/student/records': 'academic-records',
+    '/dashboard/student/ezone-sync': 'sync-college-profile',
+    '/dashboard/student/webscrap': 'webscrap',
+    '/dashboard/student/skills': 'skills-tracker',
+    '/dashboard/student/resume-builder': 'resume-builder',
+    '/dashboard/student/overlap': 'overlap-engine',
+    '/dashboard/student/faculty-cabin': 'find-faculty-cabin',
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -41,7 +64,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const scrollerContent = scroller.querySelector('[data-scroller-content]');
     if (!scrollerContent) return;
 
-    // Clone items for continuous scroll effect
     const items = Array.from(scrollerContent.children);
     items.forEach(item => {
       const clone = item.cloneNode(true);
@@ -49,8 +71,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     });
   }, []);
 
-  // Define sidebar navigation items
-  const sidebarItems = [
+  const allSidebarItems = [
     { label: 'Profile', href: '/dashboard/student/profile', icon: '👤' },
     { label: 'Events from Gmail', href: '/dashboard/student/events', icon: '📧', badge: eventsCount },
     { label: 'Mail Explorer', href: '/dashboard/student/mail', icon: '✉️' },
@@ -70,8 +91,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: 'Find Faculty Cabin', href: '/dashboard/student/faculty-cabin', icon: '🚪' },
   ];
 
-  // Show loading state while checking authentication
-  if (loading) {
+  const sidebarItems = allSidebarItems.filter(item => {
+    const moduleKey = SIDEBAR_MODULE_MAP[item.href];
+    return moduleKey ? isModuleVisible(moduleKey) : true;
+  });
+
+  if (loading || modulesLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-emerald-400 border-opacity-50" />
@@ -79,8 +104,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  // Don't render content until user is authenticated and is a student
   if (!user || !backendUser || backendUser.role !== 'STUDENT') {
+    return null;
+  }
+
+  const currentModuleKey = SIDEBAR_MODULE_MAP[pathname];
+  if (currentModuleKey && !isModuleVisible(currentModuleKey)) {
+    router.replace('/dashboard/student');
     return null;
   }
 

@@ -6,200 +6,19 @@ import {
   ValidationIssue,
   ValidationReport,
 } from './placeholderValidator.types';
+import { RESUME_PLACEHOLDERS, DEPRECATED_PLACEHOLDERS } from '../config/resumePlaceholders';
 
 const logger = new Logger('PlaceholderValidator');
 
-const CANONICAL_FIELDS: CanonicalField[] = [
-  {
-    key: 'name',
-    label: 'Name',
-    type: 'text',
-    required: true,
-    section: 'personal',
-    aliases: ['full_name', 'candidate_name'],
-    suggestions: ['nam'],
-  },
-  {
-    key: 'email',
-    label: 'Email',
-    type: 'email',
-    required: true,
-    section: 'personal',
-    aliases: ['email_id', 'mail'],
-    suggestions: ['e_mail'],
-  },
-  {
-    key: 'phone',
-    label: 'Phone',
-    type: 'phone',
-    required: true,
-    section: 'personal',
-    aliases: ['phone_number', 'mobile', 'contact'],
-    suggestions: ['ph', 'mob'],
-  },
-  {
-    key: 'url',
-    label: 'URL',
-    type: 'url',
-    required: false,
-    section: 'personal',
-    aliases: ['website', 'linkedin', 'github'],
-    suggestions: ['link'],
-  },
-  {
-    key: 'text',
-    label: 'Summary',
-    type: 'textarea',
-    required: true,
-    section: 'summary',
-    aliases: ['summary_text', 'about_me', 'profile'],
-    suggestions: ['summry', 'abt', 'prof'],
-  },
-  {
-    key: 'items',
-    label: 'Skills',
-    type: 'list',
-    required: true,
-    section: 'skills',
-    aliases: ['skills_list', 'technical_skills'],
-    suggestions: ['skill', 'skiils', 'skilss'],
-  },
-  {
-    key: 'category',
-    label: 'Category',
-    type: 'text',
-    required: false,
-    section: 'skills',
-    aliases: ['skill_category'],
-    suggestions: ['catgory'],
-  },
-  {
-    key: 'company',
-    label: 'Company',
-    type: 'text',
-    required: true,
-    section: 'experience',
-    aliases: ['company_name', 'employer'],
-    suggestions: ['compny', 'comp'],
-  },
-  {
-    key: 'role',
-    label: 'Role',
-    type: 'text',
-    required: true,
-    section: 'experience',
-    aliases: ['job_title', 'position'],
-    suggestions: ['roll', 'roel', 'positon'],
-  },
-  {
-    key: 'duration',
-    label: 'Duration',
-    type: 'text',
-    required: false,
-    section: 'experience',
-    aliases: ['employment_duration', 'dates'],
-    suggestions: ['duratn'],
-  },
-  {
-    key: 'responsibilities',
-    label: 'Responsibilities',
-    type: 'textarea',
-    required: false,
-    section: 'experience',
-    aliases: ['desc', 'description', 'duties'],
-    suggestions: ['responsibilty'],
-  },
-  {
-    key: 'degree',
-    label: 'Degree',
-    type: 'text',
-    required: true,
-    section: 'education',
-    aliases: ['qualification', 'course'],
-    suggestions: ['degre'],
-  },
-  {
-    key: 'institution',
-    label: 'Institution',
-    type: 'text',
-    required: true,
-    section: 'education',
-    aliases: ['school', 'college', 'university'],
-    suggestions: ['inst', 'insitution'],
-  },
-  {
-    key: 'year',
-    label: 'Year',
-    type: 'date',
-    required: false,
-    section: 'education',
-    aliases: ['graduation_year', 'yop'],
-    suggestions: ['yer', 'yr'],
-  },
-  {
-    key: 'cgpa',
-    label: 'CGPA/GPA',
-    type: 'text',
-    required: false,
-    section: 'education',
-    aliases: ['gpa', 'cgpa_score'],
-    suggestions: ['cgpa_score'],
-  },
-  {
-    key: 'project_name',
-    label: 'Project Name',
-    type: 'text',
-    required: true,
-    section: 'projects',
-    aliases: ['project_name'],
-    suggestions: ['proj_name'],
-  },
-  {
-    key: 'description',
-    label: 'Description',
-    type: 'textarea',
-    required: false,
-    section: 'projects',
-    aliases: ['project_desc', 'details'],
-    suggestions: ['descr'],
-  },
-  {
-    key: 'tech_stack',
-    label: 'Tech Stack',
-    type: 'list',
-    required: false,
-    section: 'projects',
-    aliases: ['technologies', 'tools'],
-    suggestions: ['tech'],
-  },
-  {
-    key: 'certification_name',
-    label: 'Certification Name',
-    type: 'text',
-    required: true,
-    section: 'certifications',
-    aliases: ['cert_name'],
-    suggestions: ['cert'],
-  },
-  {
-    key: 'issuer',
-    label: 'Issuer',
-    type: 'text',
-    required: false,
-    section: 'certifications',
-    aliases: ['issuing_body', 'authority'],
-    suggestions: ['issusr'],
-  },
-  {
-    key: 'cert_date',
-    label: 'Date',
-    type: 'date',
-    required: false,
-    section: 'certifications',
-    aliases: ['cert_date', 'issue_date'],
-    suggestions: ['dt'],
-  },
-];
+const CANONICAL_FIELDS: CanonicalField[] = RESUME_PLACEHOLDERS.map((p) => ({
+  key: p.key,
+  label: p.label,
+  type: p.type,
+  required: p.required,
+  section: p.section,
+  aliases: p.aliases || [],
+  suggestions: p.suggestions || [],
+}));
 
 const RESERVED_WORDS = new Set([
   'sectionname',
@@ -261,6 +80,7 @@ export class PlaceholderValidator {
           unknown: [],
           misspelled: [],
           reservedConflicts: [],
+          deprecated: [],
         },
       };
     }
@@ -293,11 +113,10 @@ export class PlaceholderValidator {
     const unknown: string[] = [];
     const misspelled: string[] = [];
     const reservedConflicts: string[] = [];
+    const deprecated: string[] = [];
 
     for (const ph of placeholders) {
       const normalized = ph.key.toLowerCase();
-      if (this.canonicalKeys.has(normalized)) continue;
-      if (this.canonicalAliases.has(normalized)) continue;
 
       if (RESERVED_WORDS.has(normalized)) {
         reservedConflicts.push(normalized);
@@ -311,6 +130,22 @@ export class PlaceholderValidator {
         });
         continue;
       }
+
+      if (DEPRECATED_PLACEHOLDERS.has(normalized)) {
+        deprecated.push(normalized);
+        issues.push({
+          severity: 'warning',
+          code: 'DEPRECATED',
+          placeholder: ph.raw,
+          message: `Placeholder '{{${normalized}}}' is deprecated and no longer supported`,
+          suggestion: `Replace with a semantic placeholder like {{professional_summary}}, {{experience_description}}, {{skills}}, etc.`,
+          location: ph.location,
+        });
+        continue;
+      }
+
+      if (this.canonicalKeys.has(normalized)) continue;
+      if (this.canonicalAliases.has(normalized)) continue;
 
       const suggestedKey = this.canonicalSuggestions.get(normalized);
       if (suggestedKey) {
@@ -374,6 +209,7 @@ export class PlaceholderValidator {
         unknown,
         misspelled,
         reservedConflicts,
+        deprecated,
       },
     };
   }

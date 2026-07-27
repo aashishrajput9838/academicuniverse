@@ -46,11 +46,11 @@ export async function validateTemplate(
   }
 
   const payload = await response.json();
-  if (!payload?.success && payload?.data === undefined) {
+  if (!payload?.success || payload?.data === undefined) {
     throw new Error('Invalid validation response');
   }
 
-  return payload.data;
+  return payload.data.data;
 }
 
 export async function uploadTemplate(

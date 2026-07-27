@@ -7,6 +7,7 @@ import { EzoneAcademicProfile } from './EzoneAcademicProfile';
 import { SkillRecord } from './SkillRecord';
 import { SkillEvidence } from './SkillEvidence';
 import { SubjectSkillMapping } from './SubjectSkillMapping';
+import { ModuleVisibility } from './ModuleVisibility';
 
 export {
   Organization,
@@ -18,4 +19,5 @@ export {
   SkillRecord,
   SkillEvidence,
   SubjectSkillMapping,
+  ModuleVisibility,
 };

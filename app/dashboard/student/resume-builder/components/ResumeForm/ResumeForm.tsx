@@ -9,6 +9,8 @@ import { ResumeSkeleton } from '@/components/Resume/shared/ResumeSkeleton';
 import { useAutoSave } from '../ResumeBuilderPage/hooks/useAutoSave';
 import { fetchDraft } from '@/components/Resume/api/resumeApi';
 import type { ResumeTemplateDTO } from '@/components/Resume/types/resume';
+import { SECTION_LABELS, SECTION_ORDER } from '@/components/Resume/config/resumePlaceholders';
+import { generateSampleResumeData } from './utils/sampleResumeData';
 
 interface ResumeFormProps {
   template: ResumeTemplateDTO;
@@ -25,6 +27,14 @@ export function ResumeForm({ template, backendToken, onBack, onNext, onGenerate,
   const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isLoadingDraft, setIsLoadingDraft] = useState(true);
+
+  const isDev = process.env.NODE_ENV !== 'production';
+
+  const handleAutoFill = useCallback(() => {
+    const sampleData = generateSampleResumeData(template.questions);
+    setFormData(sampleData);
+    setErrors({});
+  }, [template.questions]);
 
   const loadDraft = useCallback(async () => {
     setIsLoadingDraft(true);
@@ -103,6 +113,25 @@ export function ResumeForm({ template, backendToken, onBack, onNext, onGenerate,
     handleSaveError
   );
 
+  const groupedQuestions = useCallback(() => {
+    const groups: Record<string, typeof template.questions> = {};
+    for (const q of template.questions) {
+      const section = (q as any).section || 'other';
+      if (!groups[section]) groups[section] = [];
+      groups[section].push(q);
+    }
+    const sortedSections = Object.keys(groups).sort((a, b) => {
+      const orderA = SECTION_ORDER[a] ?? 99;
+      const orderB = SECTION_ORDER[b] ?? 99;
+      return orderA - orderB;
+    });
+    return sortedSections.map(section => ({
+      section,
+      label: SECTION_LABELS[section] || section,
+      questions: groups[section],
+    }));
+  }, [template.questions]);
+
   if (isLoadingDraft) {
     return (
       <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-700">
@@ -110,6 +139,8 @@ export function ResumeForm({ template, backendToken, onBack, onNext, onGenerate,
       </div>
     );
   }
+
+  const sections = groupedQuestions();
 
   return (
     <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-700">
@@ -120,25 +151,45 @@ export function ResumeForm({ template, backendToken, onBack, onNext, onGenerate,
             Fill out the form below to generate your resume.
           </p>
         </div>
-        <DraftIndicator
-          status={draftStatus}
-          lastSavedAt={lastSavedAt}
-          onRetry={handleRetrySave}
-        />
+        <div className="flex items-center space-x-3">
+          {isDev && (
+            <button
+              type="button"
+              onClick={handleAutoFill}
+              className="px-3.5 py-1.5 bg-purple-900/40 hover:bg-purple-800/50 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-medium transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
+              title="Auto-fill form with realistic sample resume data (Dev Only)"
+            >
+              <span>✨</span>
+              <span>AI Auto Fill (Dev)</span>
+            </button>
+          )}
+          <DraftIndicator
+            status={draftStatus}
+            lastSavedAt={lastSavedAt}
+            onRetry={handleRetrySave}
+          />
+        </div>
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); handleNext(); }}>
-        <FormSection>
-          {template.questions.map((question) => (
-            <FormFieldRenderer
-               key={question._id || question.tag}
-              question={question}
-              value={formData[question.tag] || ''}
-              onChange={(value) => handleChange(question.tag, value)}
-              error={errors[question.tag]}
-            />
-          ))}
-        </FormSection>
+        {sections.map(({ section, label, questions }) => (
+          <div key={section} className="mb-6">
+            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">
+              {label}
+            </h3>
+            <FormSection>
+              {questions.map((question) => (
+                <FormFieldRenderer
+                  key={question._id || question.tag}
+                  question={question}
+                  value={formData[question.tag] || ''}
+                  onChange={(value) => handleChange(question.tag, value)}
+                  error={errors[question.tag]}
+                />
+              ))}
+            </FormSection>
+          </div>
+        ))}
 
         <FormNavigation
           currentStep={0}
@@ -148,6 +199,7 @@ export function ResumeForm({ template, backendToken, onBack, onNext, onGenerate,
           canProceed={template.questions.every(q => formData[q.tag]?.trim())}
           isSubmitting={isGenerating}
           nextLabel="Generate Resume"
+          onAutoFill={handleAutoFill}
         />
       </form>
     </div>

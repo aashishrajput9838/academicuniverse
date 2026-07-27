@@ -312,11 +312,19 @@ export class PlaceholderInjector {
         if (!dataKeyMapping[rawKey].includes(uniqueKey)) {
           dataKeyMapping[rawKey].push(uniqueKey);
         }
-        targets.push({
-          paragraphIndex: pIdx,
-          runIndex: 0,
-          fieldKey: `{{${uniqueKey}}}`,
-        });
+
+        // If the paragraph ALREADY contains explicit placeholders (e.g. {{project_name}}),
+        // do not inject a duplicate placeholder onto run 0.
+        const hasExistingPlaceholder = paragraph.runs.some(r => r.text && /\{\{[^}]+\}\}/.test(r.text)) ||
+                                       /\{\{[^}]+\}\}/.test(paragraph.rawText);
+
+        if (!hasExistingPlaceholder) {
+          targets.push({
+            paragraphIndex: pIdx,
+            runIndex: 0,
+            fieldKey: `{{${uniqueKey}}}`,
+          });
+        }
         fieldIdx++;
       }
     }

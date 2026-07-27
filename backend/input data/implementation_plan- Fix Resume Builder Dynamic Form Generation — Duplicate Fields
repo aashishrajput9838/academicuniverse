@@ -1,0 +1,91 @@
+# Fix Resume Builder Dynamic Form Generation — Duplicate Fields
+
+## Root Cause Analysis
+
+After tracing the entire pipeline, I've identified **two root causes** that together produce ~93 fields instead of ~31.
+
+### Root Cause 1: Backend — `SectionDetectorService` uses heading-inferred fields, NOT the actual DOCX placeholders
+
+The `SectionDetectorService` in [sectionDetector.service.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/services/sectionDetector.service.ts) uses a **hardcoded `FIELD_INFERENCE` map** (line 11-44) to assign fields based on detected heading names — it **completely ignores** the 31 `{{placeholder}}` tags that are actually present in the DOCX.
+
+For example, when it detects a heading "Education", it always produces 4 fields (`education_degree`, `education_institution`, `education_end_year`, `education_cgpa`), even though the actual template contains 6 education placeholders. The template has sections like "Personal Information" which has no keyword in `KNOWN_SECTION_KEYWORDS` (headingDetector only maps `summary`, `skills`, `education`, `experience`, `projects`, `certifications`, `languages`) — so personal fields get no dedicated section.
+
+**The heading detector finds every bold/styled paragraph** in the DOCX as a potential heading candidate. A typical resume template with 8 semantic sections may contain 20-30 bold paragraphs (including sub-headings, labels, styled content lines), each of which creates a separate "section" with its own inferred fields via `FIELD_INFERENCE`. This produces `~27 sections × ~3-4 fields each ≈ 93 fields`.
+
+### Root Cause 2: Backend — `questions` array lacks `section` property
+
+In [resumeController.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/controllers/resumeController.ts#L428-L435), the `questions` array is built by flatMapping `section.fields` but **never includes the section identifier**:
+
+```typescript
+const questions = result.milestone2Result.sections.flatMap((section: any) =>
+  section.fields.map((field: any) => ({
+    tag: field.key,
+    question: field.label,
+    type: field.type === 'textarea' ? 'textarea' : 'text',
+    aiEnhanceable: field.aiEnhanceable || false,
+    // ❌ NO `section` property!
+  }))
+);
+```
+
+The frontend [ResumeForm.tsx](file:///c:/github/academicuniverse.com/academicuniverse/app/dashboard/student/resume-builder/components/ResumeForm/ResumeForm.tsx#L110) then falls back to `'other'`:
+```typescript
+const section = (q as any).section || 'other';
+```
+
+This explains why the UI shows all fields under "OTHER".
+
+### Summary
+
+| Issue | Location | Effect |
+|---|---|---|
+| Fields come from heading inference, not actual placeholders | `sectionDetector.service.ts` | ~93 inferred fields instead of 31 actual |
+| No section property on questions | `resumeController.ts` L428-435 | All fields grouped under "OTHER" |
+| Heading detector over-detects | `headingDetector.service.ts` | ~27 "sections" from bold paragraphs |
+
+## Proposed Changes
+
+### Backend Processing Pipeline
+
+#### [MODIFY] [sectionDetector.service.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/services/sectionDetector.service.ts)
+
+**Core fix**: Instead of inferring fields from headings using `FIELD_INFERENCE`, build sections from the **actual placeholders** found in the DOCX. The service should:
+
+1. Extract all `{{placeholder}}` tags from the `ExtractedDocument`
+2. Resolve each placeholder to its canonical definition from `RESUME_PLACEHOLDERS` (matching by key or alias)
+3. Deduplicate — one canonical key = one field
+4. Group fields by `placeholder.section` (from `resumePlaceholders.ts`)
+5. Order sections using `SECTION_ORDER`
+6. Label sections using `SECTION_LABELS`
+7. Skip deprecated placeholders
+8. Retain heading detection only for `headingParagraphIndex` assignment (for the injector)
+
+This is the **only behavioral change** needed in the backend. The heading detector, entity detector, confidence scorer, formatting builder, placeholder injector, and DOCX generator are NOT modified.
+
+---
+
+#### [MODIFY] [resumeController.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/controllers/resumeController.ts)
+
+Add the `section` property to each question in the `questions` array so the frontend can group them correctly. We'll derive this from `RESUME_PLACEHOLDERS` by looking up each field's canonical section.
+
+---
+
+### Frontend (No changes needed to rendering logic)
+
+The frontend [ResumeForm.tsx](file:///c:/github/academicuniverse.com/academicuniverse/app/dashboard/student/resume-builder/components/ResumeForm/ResumeForm.tsx) already has correct section grouping logic at L107-124 — it groups by `q.section`, sorts by `SECTION_ORDER`, and labels by `SECTION_LABELS`. Once the backend provides the `section` property on questions, the frontend will work correctly without modification.
+
+## Open Questions
+
+> [!IMPORTANT]
+> The `FIELD_INFERENCE` map in `sectionDetector.service.ts` was also used by `PlaceholderInjector` to **inject** placeholders into templates that don't already have them. This fix changes the section detector to use actual placeholders instead. Since the user confirms validation shows 31 valid placeholders already present, the injector should still work with the new sections. But if there are templates without pre-existing placeholders, the injector behavior may differ.
+
+## Verification Plan
+
+### Automated Tests
+- Backend TypeScript compilation: `cd backend && npx tsc --noEmit`
+- Existing test suite should still pass (the test mocks the orchestrator)
+
+### Manual Verification
+- Verify the backend logs show ~31 fields across ~8 sections (not 93 across 27)
+- Screenshots of the corrected student form showing proper section grouping
+- End-to-end: Upload → Process → Student Form → Generate

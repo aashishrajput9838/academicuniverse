@@ -1,0 +1,25 @@
+=== Sprint 8 Milestone 1 — Resume Pipeline Benchmark ===
+
+Hardware Profile (section 5.6):
+  CPU: 2 vCPU
+  Memory: 4 GB RAM
+  MongoDB: single-node replica set on localhost
+  Network: loopback
+  Cold start: excluded
+
+End-to-End Duration: 22.35ms
+Memory Used: 3.23MB
+SLA Threshold: 5000ms
+SLA Met: YES
+
+Stage Breakdown:
+  classify: completed
+  section_detection: 7 sections
+  entity_extraction: 18 entities
+  ai_enhancement: strategy=normalized
+  confidence_scoring: score=undefined
+  dic_integration: action=auto_approved
+  canonical_write: completed
+
+Note: Query counts reflect mocked repository calls in test environment.
+Actual production query counts may differ based on DB indexes and network latency.

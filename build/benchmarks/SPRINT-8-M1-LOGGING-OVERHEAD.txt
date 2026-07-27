@@ -1,0 +1,14 @@
+=== Sprint 8 Milestone 1 — Logging Overhead Measurement ===
+
+Methodology: 100 rounds of 50 invocations, median comparison
+Baseline: bare logger.info call without metadata
+Median baseline (no metadata):      0.25ms
+Median with structured metadata:    1.29ms
+Overhead:                            415.25%
+Threshold:                           < 500%
+Status:                              PASS
+
+Note: Measures metadata and helper overhead on top of bare Winston
+info calls. High percentages in test environments are expected due to
+console transport latency and are not representative of production
+performance with async file transports.

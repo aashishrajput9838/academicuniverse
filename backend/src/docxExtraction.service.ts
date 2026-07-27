@@ -72,9 +72,10 @@ export class DocxExtractionService {
         let hasImages = false;
         let placeholderCount = 0;
 
-        if (body && Array.isArray(body['w:p'])) {
-            for (let pIndex = 0; pIndex < body['w:p'].length; pIndex++) {
-                const paragraph = body['w:p'][pIndex];
+        const rawParagraphs = this.collectAllParagraphs(body);
+        if (rawParagraphs.length > 0) {
+            for (let pIndex = 0; pIndex < rawParagraphs.length; pIndex++) {
+                const paragraph = rawParagraphs[pIndex];
                 const paragraphResult = this.extractParagraph(paragraph, pIndex, runs.length);
                 paragraphs.push(paragraphResult.paragraph);
                 runs.push(...paragraphResult.runs);
@@ -338,5 +339,33 @@ export class DocxExtractionService {
     private countPlaceholders(text: string): number {
         const matches = text.match(/\{\{([^}]+)\}\}/g);
         return matches ? matches.length : 0;
+    }
+
+    private collectAllParagraphs(node: any, result: any[] = []): any[] {
+        if (!node || typeof node !== 'object') return result;
+
+        if (Array.isArray(node)) {
+            for (const item of node) {
+                this.collectAllParagraphs(item, result);
+            }
+            return result;
+        }
+
+        if (node['w:p']) {
+            const pNodes = Array.isArray(node['w:p']) ? node['w:p'] : [node['w:p']];
+            for (const pNode of pNodes) {
+                result.push(pNode);
+            }
+        }
+
+        for (const key of Object.keys(node)) {
+            if (key === 'w:p') continue;
+            const child = node[key];
+            if (child && typeof child === 'object') {
+                this.collectAllParagraphs(child, result);
+            }
+        }
+
+        return result;
     }
 }

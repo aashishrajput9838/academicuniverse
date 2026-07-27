@@ -123,11 +123,180 @@ export const getProfileController = async (req: AuthenticatedRequest, res: Respo
       name: user.name,
       email: user.email,
       githubUsername: user.githubUsername,
+      linkedinUrl: user.linkedinUrl || '',
+      linkedinUsername: user.linkedinUsername || '',
+      linkedinConnected: Boolean(user.linkedinConnected),
+      linkedinLastUpdated: user.linkedinLastUpdated,
       role: (user.roleId as any)?.name || 'USER',
       admissionYear: person?.admissionYear,
     }, 'Profile retrieved successfully');
   } catch (error: any) {
     logger.error('Error retrieving profile:', error);
     return sendError(res, 500, 'Failed to retrieve profile');
+  }
+};
+
+/**
+ * LinkedIn URL Validator & Username Extractor Helper
+ */
+export const validateAndExtractLinkedin = (urlInput: string): { valid: boolean; normalizedUrl: string; username: string; error?: string } => {
+  if (!urlInput || typeof urlInput !== 'string') {
+    return { valid: false, normalizedUrl: '', username: '', error: 'LinkedIn URL is required.' };
+  }
+
+  let trimmed = urlInput.trim();
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    trimmed = 'https://' + trimmed;
+  }
+
+  // Reject non-linkedin domains or non-profile paths
+  if (!trimmed.toLowerCase().includes('linkedin.com/in/')) {
+    return {
+      valid: false,
+      normalizedUrl: '',
+      username: '',
+      error: 'Please provide a valid LinkedIn profile URL (e.g. https://linkedin.com/in/username). Company, job, post, and non-LinkedIn URLs are not allowed.',
+    };
+  }
+
+  const match = trimmed.match(/^https:\/\/(www\.)?linkedin\.com\/in\/([a-zA-Z0-9_-]+)\/?$/i);
+  if (!match || !match[2]) {
+    return {
+      valid: false,
+      normalizedUrl: '',
+      username: '',
+      error: 'Invalid LinkedIn profile URL format. Expected: https://linkedin.com/in/username',
+    };
+  }
+
+  const username = match[2];
+  const normalizedUrl = `https://www.linkedin.com/in/${username}`;
+
+  return { valid: true, normalizedUrl, username };
+};
+
+/**
+ * Get LinkedIn Profile Status
+ * GET /api/profile/linkedin
+ */
+export const getLinkedinProfileController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return sendError(res, 401, 'Authentication required');
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return sendError(res, 404, 'User not found');
+    }
+
+    return sendResponse(res, 200, {
+      connected: Boolean(user.linkedinConnected),
+      url: user.linkedinUrl || '',
+      username: user.linkedinUsername || '',
+      lastUpdated: user.linkedinLastUpdated || user.updatedAt,
+    }, 'LinkedIn profile status retrieved');
+  } catch (error: any) {
+    logger.error('Error fetching LinkedIn status:', error);
+    return sendError(res, 500, 'Failed to fetch LinkedIn status');
+  }
+};
+
+/**
+ * Update / Connect LinkedIn Profile
+ * PUT /api/profile/linkedin
+ */
+export const updateLinkedinProfileController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return sendError(res, 401, 'Authentication required');
+    }
+
+    const { url } = req.body;
+    const validation = validateAndExtractLinkedin(url);
+
+    if (!validation.valid) {
+      return sendError(res, 400, validation.error || 'Invalid LinkedIn URL');
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return sendError(res, 404, 'User not found');
+    }
+
+    user.linkedinUrl = validation.normalizedUrl;
+    user.linkedinUsername = validation.username;
+    user.linkedinConnected = true;
+    user.linkedinLastUpdated = new Date();
+    await user.save();
+
+    // Auto-update student's latest resume draft if one exists
+    try {
+      const StudentResume = (await import('../models/StudentResume')).default;
+      await StudentResume.findOneAndUpdate(
+        { userId: req.user.userId },
+        { $set: { 'filledData.linkedin': validation.normalizedUrl } }
+      );
+    } catch (e) {
+      logger.warn('Failed to sync LinkedIn URL to StudentResume draft', e);
+    }
+
+    logger.info(`LinkedIn profile connected for user ${user.email}`, { userId: user._id, linkedinUrl: validation.normalizedUrl });
+
+    return sendResponse(res, 200, {
+      connected: true,
+      url: validation.normalizedUrl,
+      username: validation.username,
+      lastUpdated: user.linkedinLastUpdated,
+    }, 'LinkedIn profile connected successfully');
+  } catch (error: any) {
+    logger.error('Error connecting LinkedIn profile:', error);
+    return sendError(res, 500, 'Failed to connect LinkedIn profile');
+  }
+};
+
+/**
+ * Disconnect LinkedIn Profile
+ * DELETE /api/profile/linkedin
+ */
+export const disconnectLinkedinProfileController = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return sendError(res, 401, 'Authentication required');
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return sendError(res, 404, 'User not found');
+    }
+
+    user.linkedinUrl = '';
+    user.linkedinUsername = '';
+    user.linkedinConnected = false;
+    user.linkedinLastUpdated = new Date();
+    await user.save();
+
+    // Clear LinkedIn URL from latest StudentResume draft if present
+    try {
+      const StudentResume = (await import('../models/StudentResume')).default;
+      await StudentResume.findOneAndUpdate(
+        { userId: req.user.userId },
+        { $unset: { 'filledData.linkedin': '' } }
+      );
+    } catch (e) {
+      logger.warn('Failed to clear LinkedIn URL from StudentResume draft', e);
+    }
+
+    logger.info(`LinkedIn profile disconnected for user ${user.email}`, { userId: user._id });
+
+    return sendResponse(res, 200, {
+      connected: false,
+      url: '',
+      username: '',
+      lastUpdated: user.linkedinLastUpdated,
+    }, 'LinkedIn profile disconnected successfully');
+  } catch (error: any) {
+    logger.error('Error disconnecting LinkedIn profile:', error);
+    return sendError(res, 500, 'Failed to disconnect LinkedIn profile');
   }
 };

@@ -28,6 +28,9 @@ import {
   GraduationCap,
   ShieldCheck,
   Zap,
+  X,
+  Loader2,
+  Trash2,
 } from 'lucide-react';
 
 interface UserProfileData {
@@ -35,6 +38,10 @@ interface UserProfileData {
   name?: string;
   email?: string;
   githubUsername?: string;
+  linkedinUrl?: string;
+  linkedinUsername?: string;
+  linkedinConnected?: boolean;
+  linkedinLastUpdated?: string;
   role?: string;
   admissionYear?: number | null;
 }
@@ -51,6 +58,13 @@ interface GithubStatus {
   connected: boolean;
   username?: string;
   publicRepos?: number;
+}
+
+interface LinkedinStatus {
+  connected: boolean;
+  url?: string;
+  username?: string;
+  lastUpdated?: string;
 }
 
 interface SkillItem {
@@ -84,9 +98,17 @@ export default function StudentCareerProfile() {
   const [profileData, setProfileData] = useState<UserProfileData | null>(null);
   const [resumeData, setResumeData] = useState<ResumeDraftData | null>(null);
   const [githubStatus, setGithubStatus] = useState<GithubStatus>({ connected: false });
+  const [linkedinStatus, setLinkedinStatus] = useState<LinkedinStatus>({ connected: false });
   const [skillsList, setSkillsList] = useState<SkillItem[]>([]);
   const [certifications, setCertifications] = useState<CertItem[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // LinkedIn Connection Modal State
+  const [isLinkedinModalOpen, setIsLinkedinModalOpen] = useState(false);
+  const [linkedinInputUrl, setLinkedinInputUrl] = useState('');
+  const [modalSaving, setModalSaving] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [modalSuccess, setModalSuccess] = useState<string | null>(null);
 
   // Redirect unauthenticated users
   useEffect(() => {
@@ -110,7 +132,7 @@ export default function StudentCareerProfile() {
     const headers = { Authorization: `Bearer ${backendToken}` };
 
     try {
-      // 1. Fetch User Profile
+      // 1. Fetch User Profile (Includes LinkedIn fields)
       let prof: UserProfileData | null = null;
       try {
         const res = await apiRequest('/api/profile', { headers });
@@ -130,7 +152,30 @@ export default function StudentCareerProfile() {
         console.warn('Resume draft fetch warning:', err);
       }
 
-      // 3. Fetch GitHub Connection Status
+      // 3. Fetch LinkedIn Status API
+      try {
+        const res = await apiRequest('/api/profile/linkedin', { headers });
+        const liData = res.data || res;
+        setLinkedinStatus({
+          connected: Boolean(liData.connected || prof?.linkedinConnected || resData?.filledData?.linkedin),
+          url: liData.url || prof?.linkedinUrl || resData?.filledData?.linkedin || '',
+          username: liData.username || prof?.linkedinUsername || '',
+          lastUpdated: liData.lastUpdated || prof?.linkedinLastUpdated,
+        });
+        setLinkedinInputUrl(liData.url || prof?.linkedinUrl || resData?.filledData?.linkedin || '');
+      } catch (err) {
+        const isConn = Boolean(prof?.linkedinConnected || resData?.filledData?.linkedin);
+        const lUrl = prof?.linkedinUrl || resData?.filledData?.linkedin || '';
+        setLinkedinStatus({
+          connected: isConn,
+          url: lUrl,
+          username: prof?.linkedinUsername || '',
+          lastUpdated: prof?.linkedinLastUpdated,
+        });
+        setLinkedinInputUrl(lUrl);
+      }
+
+      // 4. Fetch GitHub Connection Status
       try {
         const res = await apiRequest('/api/github/connection-status', { headers });
         const data = res.data || res;
@@ -148,7 +193,7 @@ export default function StudentCareerProfile() {
         }
       }
 
-      // 4. Fetch Skills from Skills Tracker & Resume
+      // 5. Fetch Skills
       const aggregatedSkills: SkillItem[] = [];
       const seenSkills = new Set<string>();
 
@@ -192,7 +237,7 @@ export default function StudentCareerProfile() {
 
       setSkillsList(aggregatedSkills);
 
-      // 5. Fetch Certifications from Resume & Document Intelligence
+      // 6. Fetch Certifications
       const certList: CertItem[] = [];
 
       if (resData?.filledData?.certification_name) {
@@ -232,9 +277,105 @@ export default function StudentCareerProfile() {
     }
   };
 
+  // LinkedIn Modal Handlers
+  const handleSaveLinkedin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalError(null);
+    setModalSuccess(null);
+
+    let trimmed = linkedinInputUrl.trim();
+    if (!trimmed) {
+      setModalError('Please enter a LinkedIn profile URL.');
+      return;
+    }
+
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      trimmed = 'https://' + trimmed;
+    }
+
+    if (!trimmed.toLowerCase().includes('linkedin.com/in/')) {
+      setModalError('Invalid URL. Must be a valid LinkedIn profile URL (e.g. https://linkedin.com/in/username). Company/job/post URLs are not allowed.');
+      return;
+    }
+
+    setModalSaving(true);
+    try {
+      const res = await apiRequest('/api/profile/linkedin', {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${backendToken}`,
+        },
+        body: JSON.stringify({ url: trimmed }),
+      });
+
+      const data = res.data || res;
+      setLinkedinStatus({
+        connected: true,
+        url: data.url,
+        username: data.username,
+        lastUpdated: data.lastUpdated,
+      });
+
+      // Update resume draft filledData in local state
+      setResumeData(prev => prev ? ({
+        ...prev,
+        filledData: { ...prev.filledData, linkedin: data.url }
+      }) : { filledData: { linkedin: data.url } });
+
+      setModalSuccess('LinkedIn profile connected successfully!');
+      setTimeout(() => {
+        setIsLinkedinModalOpen(false);
+        setModalSuccess(null);
+      }, 1200);
+    } catch (err: any) {
+      setModalError(err.message || 'Failed to connect LinkedIn profile.');
+    } finally {
+      setModalSaving(false);
+    }
+  };
+
+  const handleDisconnectLinkedin = async () => {
+    setModalError(null);
+    setModalSuccess(null);
+    setModalSaving(true);
+
+    try {
+      await apiRequest('/api/profile/linkedin', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${backendToken}`,
+        },
+      });
+
+      setLinkedinStatus({
+        connected: false,
+        url: '',
+        username: '',
+        lastUpdated: new Date().toISOString(),
+      });
+      setLinkedinInputUrl('');
+
+      // Clear linkedin in resume draft local state
+      setResumeData(prev => prev ? ({
+        ...prev,
+        filledData: { ...prev.filledData, linkedin: '' }
+      }) : { filledData: { linkedin: '' } });
+
+      setModalSuccess('LinkedIn profile disconnected.');
+      setTimeout(() => {
+        setIsLinkedinModalOpen(false);
+        setModalSuccess(null);
+      }, 1200);
+    } catch (err: any) {
+      setModalError(err.message || 'Failed to disconnect LinkedIn profile.');
+    } finally {
+      setModalSaving(false);
+    }
+  };
+
   const filled = useMemo(() => resumeData?.filledData || {}, [resumeData]);
 
-  // Compute Dynamic Profile Completeness Percentage
+  // Compute Dynamic Profile Completeness Percentage Engine
   const completenessScore = useMemo(() => {
     let score = 0;
     if (profileData?.name || filled.full_name) score += 10;
@@ -242,29 +383,38 @@ export default function StudentCareerProfile() {
     if (filled.phone) score += 10;
     if (filled.location) score += 5;
     if (githubStatus.connected || profileData?.githubUsername || filled.github) score += 10;
-    if (filled.linkedin) score += 10;
+    if (linkedinStatus.connected || profileData?.linkedinConnected || filled.linkedin) score += 10;
     if (filled.website) score += 5;
     if (filled.professional_summary) score += 10;
     if (filled.education_degree || profileData?.admissionYear) score += 10;
     if (skillsList.length > 0 || filled.skills) score += 10;
     if (filled.experience_company || filled.project_name) score += 10;
     return Math.min(100, Math.max(0, score));
-  }, [profileData, filled, githubStatus, skillsList]);
+  }, [profileData, filled, githubStatus, linkedinStatus, skillsList]);
 
   // Generate Profile Progress Checklist
   const progressChecklist = useMemo(() => [
     { label: 'Resume Generated', completed: Boolean(resumeData?.updatedAt || filled.full_name), link: '/dashboard/student/resume-builder' },
     { label: 'GitHub Account Connected', completed: Boolean(githubStatus.connected || profileData?.githubUsername || filled.github), link: '/dashboard/student/profile' },
-    { label: 'LinkedIn Profile Connected', completed: Boolean(filled.linkedin), link: '/dashboard/student/resume-builder' },
+    { label: 'LinkedIn Profile Connected', completed: Boolean(linkedinStatus.connected || profileData?.linkedinConnected || filled.linkedin), isLinkedinTrigger: true },
     { label: 'Portfolio Website Added', completed: Boolean(filled.website), link: '/dashboard/student/resume-builder' },
     { label: 'Technical Skills Recorded', completed: Boolean(skillsList.length > 0 || filled.skills), link: '/dashboard/student/skills' },
     { label: 'Work Experience Added', completed: Boolean(filled.experience_company || filled.experience_role), link: '/dashboard/student/resume-builder' },
     { label: 'Certifications Verified', completed: Boolean(certifications.length > 0), link: '/dashboard/student/document-intelligence' },
-  ], [resumeData, filled, githubStatus, profileData, skillsList, certifications]);
+  ], [resumeData, filled, githubStatus, linkedinStatus, profileData, skillsList, certifications]);
 
   // Generate Career Timeline Events from Real Data
   const timelineEvents = useMemo(() => {
     const events: TimelineEvent[] = [];
+    if (linkedinStatus.connected || profileData?.linkedinConnected) {
+      events.push({
+        title: `LinkedIn Connected (@${linkedinStatus.username || profileData?.linkedinUsername || 'profile'})`,
+        category: 'Professional Network',
+        date: linkedinStatus.lastUpdated ? new Date(linkedinStatus.lastUpdated).toLocaleDateString() : 'Connected',
+        description: 'Synced LinkedIn professional URL to Digital Career Portfolio & Resume Builder.',
+        icon: '💼',
+      });
+    }
     if (resumeData?.updatedAt) {
       events.push({
         title: 'Resume Data Updated',
@@ -302,17 +452,17 @@ export default function StudentCareerProfile() {
       });
     }
     return events;
-  }, [resumeData, certifications, githubStatus, profileData]);
+  }, [linkedinStatus, resumeData, certifications, githubStatus, profileData]);
 
   // Generate Smart Actionable Recommendations (No Fake AI)
   const aiRecommendations = useMemo(() => {
     const recs = [];
-    if (!filled.linkedin) {
+    if (!linkedinStatus.connected && !profileData?.linkedinConnected && !filled.linkedin) {
       recs.push({
         title: 'Connect LinkedIn Profile',
-        description: 'Recruiters view profiles with LinkedIn links 40% more often. Add your URL in Resume Builder.',
-        action: 'Add LinkedIn',
-        link: '/dashboard/student/resume-builder',
+        description: 'Recruiters view profiles with LinkedIn links 40% more often. Connect your profile URL.',
+        action: 'Connect LinkedIn',
+        isLinkedinTrigger: true,
         priority: 'High',
       });
     }
@@ -353,7 +503,7 @@ export default function StudentCareerProfile() {
       });
     }
     return recs;
-  }, [filled, githubStatus, profileData, resumeData, skillsList, certifications]);
+  }, [linkedinStatus, filled, githubStatus, profileData, resumeData, skillsList, certifications]);
 
   const getSkillIcon = (name: string) => {
     const lower = name.toLowerCase();
@@ -479,20 +629,22 @@ export default function StudentCareerProfile() {
               </button>
             )}
 
-            {filled.linkedin ? (
-              <a
-                href={filled.linkedin.startsWith('http') ? filled.linkedin : `https://${filled.linkedin}`}
-                target="_blank"
-                rel="noopener noreferrer"
+            {/* LinkedIn Action Trigger */}
+            {linkedinStatus.connected || profileData?.linkedinConnected || filled.linkedin ? (
+              <button
+                onClick={() => setIsLinkedinModalOpen(true)}
                 className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-2 text-sm font-medium transition"
               >
                 <Linkedin className="w-4 h-4 text-emerald-400" />
-                LinkedIn
-              </a>
+                <span>LinkedIn ({linkedinStatus.username || profileData?.linkedinUsername || 'Connected'})</span>
+              </button>
             ) : (
-              <button disabled className="p-2.5 rounded-xl bg-slate-800/40 text-slate-600 border border-slate-800 flex items-center gap-2 text-sm font-medium cursor-not-allowed">
+              <button
+                onClick={() => setIsLinkedinModalOpen(true)}
+                className="p-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-2 text-sm font-medium transition"
+              >
                 <Linkedin className="w-4 h-4" />
-                LinkedIn
+                Connect LinkedIn
               </button>
             )}
 
@@ -583,13 +735,23 @@ export default function StudentCareerProfile() {
                       </div>
                       <p className="text-slate-400 text-xs mt-1">{rec.description}</p>
                     </div>
-                    <Link
-                      href={rec.link}
-                      className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs flex items-center gap-1 shrink-0 transition"
-                    >
-                      <span>{rec.action}</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </Link>
+                    {rec.isLinkedinTrigger ? (
+                      <button
+                        onClick={() => setIsLinkedinModalOpen(true)}
+                        className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs flex items-center gap-1 shrink-0 transition"
+                      >
+                        <span>{rec.action}</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <Link
+                        href={rec.link!}
+                        className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs flex items-center gap-1 shrink-0 transition"
+                      >
+                        <span>{rec.action}</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
                   </div>
                 ))}
               </div>
@@ -742,10 +904,28 @@ export default function StudentCareerProfile() {
             </div>
 
             <div className="space-y-3">
-              {progressChecklist.map((item, index) => (
+              {progressChecklist.map((item, index) => item.isLinkedinTrigger ? (
+                <button
+                  key={index}
+                  onClick={() => setIsLinkedinModalOpen(true)}
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800 transition border border-slate-800 text-left group"
+                >
+                  <div className="flex items-center gap-3">
+                    {item.completed ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    ) : (
+                      <XCircle className="w-4 h-4 text-slate-600 shrink-0" />
+                    )}
+                    <span className={`text-xs font-medium ${item.completed ? 'text-slate-200' : 'text-slate-400'}`}>
+                      {item.label}
+                    </span>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-emerald-400 transition" />
+                </button>
+              ) : (
                 <Link
                   key={index}
-                  href={item.link}
+                  href={item.link!}
                   className="flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800 transition border border-slate-800 group"
                 >
                   <div className="flex items-center gap-3">
@@ -790,31 +970,44 @@ export default function StudentCareerProfile() {
                 )}
               </div>
 
-              {/* LinkedIn */}
+              {/* LinkedIn Interactive Card */}
               <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Linkedin className="w-5 h-5 text-emerald-400" />
                   <div>
                     <p className="text-xs font-medium text-white">LinkedIn</p>
-                    <p className="text-[11px] text-slate-400 truncate max-w-[140px]">
-                      {filled.linkedin ? 'Profile Linked' : 'Not Connected'}
+                    <p className="text-[11px] text-slate-400 truncate max-w-[130px]">
+                      {linkedinStatus.connected || profileData?.linkedinConnected || filled.linkedin
+                        ? `@${linkedinStatus.username || profileData?.linkedinUsername || 'connected'}`
+                        : 'Not Connected'}
                     </p>
                   </div>
                 </div>
-                {filled.linkedin ? (
-                  <a
-                    href={filled.linkedin.startsWith('http') ? filled.linkedin : `https://${filled.linkedin}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
-                  >
-                    <span>View</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+                {linkedinStatus.connected || profileData?.linkedinConnected || filled.linkedin ? (
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={linkedinStatus.url || (filled.linkedin?.startsWith('http') ? filled.linkedin : `https://${filled.linkedin}`)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
+                    >
+                      <span>View</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                    <button
+                      onClick={() => setIsLinkedinModalOpen(true)}
+                      className="text-[10px] px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded transition"
+                    >
+                      Manage
+                    </button>
+                  </div>
                 ) : (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-500">
-                    Missing
-                  </span>
+                  <button
+                    onClick={() => setIsLinkedinModalOpen(true)}
+                    className="text-[10px] font-bold px-2 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 transition"
+                  >
+                    Connect
+                  </button>
                 )}
               </div>
 
@@ -879,6 +1072,107 @@ export default function StudentCareerProfile() {
           </section>
         </div>
       </div>
+
+      {/* LINKEDIN CONNECTION MODAL */}
+      {isLinkedinModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl relative">
+            <button
+              onClick={() => setIsLinkedinModalOpen(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-lg transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
+                <Linkedin className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Connect LinkedIn Profile</h3>
+                <p className="text-xs text-slate-400">Link your official profile URL to build recruiter trust</p>
+              </div>
+            </div>
+
+            {modalError && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{modalError}</span>
+              </div>
+            )}
+
+            {modalSuccess && (
+              <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs rounded-xl flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{modalSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveLinkedin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  LinkedIn Profile URL
+                </label>
+                <input
+                  type="url"
+                  value={linkedinInputUrl}
+                  onChange={(e) => setLinkedinInputUrl(e.target.value)}
+                  placeholder="https://www.linkedin.com/in/username"
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 transition"
+                  required
+                />
+                <p className="text-[11px] text-slate-500 mt-1.5">
+                  Format: https://linkedin.com/in/username (Company and non-LinkedIn URLs will be rejected).
+                </p>
+              </div>
+
+              {linkedinStatus.connected && (
+                <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/50 text-xs text-slate-300 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Current Status:</span>
+                    <span className="text-emerald-400 font-bold">Connected</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Username Extracted:</span>
+                    <span className="font-mono text-emerald-300">@{linkedinStatus.username || 'username'}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                {linkedinStatus.connected && (
+                  <button
+                    type="button"
+                    onClick={handleDisconnectLinkedin}
+                    disabled={modalSaving}
+                    className="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                  >
+                    {modalSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    <span>Disconnect</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsLinkedinModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={modalSaving}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-emerald-900/30 transition disabled:opacity-50"
+                >
+                  {modalSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Save & Connect</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

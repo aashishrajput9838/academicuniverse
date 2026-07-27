@@ -34,6 +34,10 @@ export interface IUser extends Document {
   organizationId: mongoose.Types.ObjectId;
   roleId: mongoose.Types.ObjectId;
   githubUsername?: string;
+  linkedinUrl?: string;
+  linkedinUsername?: string;
+  linkedinConnected?: boolean;
+  linkedinLastUpdated?: Date;
   githubAccessToken?: IGithubAccessToken;
   gmailTokens?: IGmailTokens;
   isActive: boolean;
@@ -86,6 +90,23 @@ const userSchema = new Schema<IUser>(
       trim: true,
       sparse: true,
       match: [/^[a-zA-Z0-9_-]+$/, 'Please provide a valid GitHub username'],
+    },
+    linkedinUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    linkedinUsername: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    linkedinConnected: {
+      type: Boolean,
+      default: false,
+    },
+    linkedinLastUpdated: {
+      type: Date,
     },
     githubAccessToken: {
       encryptedToken: String,

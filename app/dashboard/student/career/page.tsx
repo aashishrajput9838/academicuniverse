@@ -46,6 +46,8 @@ interface UserProfileData {
   linkedinLastUpdated?: string;
   role?: string;
   admissionYear?: number | null;
+  certifications?: any[];
+  certificates?: any[];
 }
 
 interface ResumeDraftData {
@@ -84,7 +86,7 @@ interface CertItem {
   id?: string;
   name?: string;
   title: string;
-  issuer?: string;
+  issuer: string;
   issueDate?: string;
   issuedDate?: string;
   expiryDate?: string;
@@ -626,7 +628,7 @@ export default function StudentCareerProfile() {
   };
 
   const candidateName = profileData?.name || filled.full_name || 'Student Candidate';
-  const initials = candidateName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || 'SC';
+  const initials = candidateName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() || 'SC';
   const headline = filled.experience_role || (filled.education_degree ? `${filled.education_degree} Candidate` : 'Software Engineering Student');
   const university = filled.education_institution || 'Sharda University';
   const degree = filled.education_degree || 'Bachelor of Technology in CSE';

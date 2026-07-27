@@ -147,7 +147,7 @@ ${contentToAnalyze.slice(0, 50000)} // safety limit for token size
       });
 
       // 4️⃣ Validate response format
-      const validatedResult = this.validateAiResponse(aiResponse);
+      const validatedResult = this.validateAiResponse(aiResponse, fileName, contentToAnalyze);
 
       // TEMP: Instrument validated result subject count
       const validatedSubjects = Array.isArray(validatedResult?.candidateFields?.subjects)
@@ -228,7 +228,7 @@ ${contentToAnalyze.slice(0, 50000)} // safety limit for token size
   /**
    * Validate schema structure, categories, and module recommendations.
    */
-  private validateAiResponse(response: any): DocumentAiResult {
+  private validateAiResponse(response: any, fileName?: string, rawContent?: string): DocumentAiResult {
     if (!response || typeof response !== 'object') {
       throw new Error('AI response is not an object');
     }
@@ -312,32 +312,63 @@ ${contentToAnalyze.slice(0, 50000)} // safety limit for token size
     let finalExtractedEntities = extractedEntities && typeof extractedEntities === 'object' ? { ...extractedEntities } : {};
 
     if (documentCategory === 'CERTIFICATE') {
-      const title = finalCandidateFields.certificateTitle || finalCandidateFields.title || finalCandidateFields.courseName || finalCandidateFields.workshopName || finalExtractedEntities.certificateTitle || finalExtractedEntities.title || finalExtractedEntities.courseName || finalExtractedEntities.workshopName || 'Professional Course Certificate';
-      const candidateName = finalCandidateFields.candidateName || finalCandidateFields.studentName || finalCandidateFields.name || finalExtractedEntities.candidateName || finalExtractedEntities.studentName || finalExtractedEntities.name || '';
-      const issuer = finalCandidateFields.issuer || finalCandidateFields.issuingOrganization || finalCandidateFields.organization || finalExtractedEntities.issuer || finalExtractedEntities.issuingOrganization || finalExtractedEntities.organization || 'Issuing Authority';
-      const issuingOrganization = finalCandidateFields.issuingOrganization || finalCandidateFields.issuer || finalExtractedEntities.issuingOrganization || finalExtractedEntities.issuer || issuer;
+      let title = finalCandidateFields.certificateTitle || finalCandidateFields.title || finalCandidateFields.courseName || finalCandidateFields.workshopName || finalExtractedEntities.certificateTitle || finalExtractedEntities.title || finalExtractedEntities.courseName || finalExtractedEntities.workshopName;
+      let candidateName = finalCandidateFields.candidateName || finalCandidateFields.studentName || finalCandidateFields.name || finalExtractedEntities.candidateName || finalExtractedEntities.studentName || finalExtractedEntities.name;
+      let issuer = finalCandidateFields.issuer || finalCandidateFields.issuingOrganization || finalCandidateFields.organization || finalExtractedEntities.issuer || finalExtractedEntities.issuingOrganization || finalExtractedEntities.organization;
+      let issueDate = finalCandidateFields.issueDate || finalCandidateFields.date || finalCandidateFields.issuedDate || finalExtractedEntities.issueDate;
+      let credentialId = finalCandidateFields.credentialId || finalCandidateFields.certificateId || finalExtractedEntities.credentialId;
+
+      if (rawContent && rawContent.trim()) {
+        const text = rawContent;
+        if (!issuer) {
+          const knownIssuers = ['Coursera', 'Udemy', 'NPTEL', 'Cisco', 'AWS', 'Amazon Web Services', 'Google', 'Microsoft', 'LinkedIn Learning', 'edX', 'Simplilearn', 'Great Learning', 'GeeksforGeeks', 'HackerRank', 'Skillshare', 'IEEE', 'ACM'];
+          const found = knownIssuers.find(i => new RegExp(`\\b${i}\\b`, 'i').test(text));
+          if (found) issuer = found;
+        }
+
+        if (!candidateName) {
+          const nameMatch = text.match(/(?:certify that|awarded to|presented to|granted to)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})/i);
+          if (nameMatch) {
+            candidateName = nameMatch[1].replace(/\s+(?:has|is|for|with|in|on|at|by|to|of)\b.*/i, '').trim();
+          }
+        }
+
+        if (!issueDate) {
+          const dateMatch = text.match(/\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4})\b/i);
+          if (dateMatch) issueDate = dateMatch[0].trim();
+        }
+
+        if (!credentialId) {
+          const idMatch = text.match(/(?:Credential ID|Certificate No|Verify at|Certificate ID)[:\s]+([A-Z0-9-]+)/i);
+          if (idMatch) credentialId = idMatch[1].trim();
+        }
+
+        if (!title) {
+          const titleMatch = text.match(/(?:Certificate of|Course Certificate|Specialization in|Completed)\s+([A-Za-z0-9\s:-]{5,50})/i);
+          if (titleMatch) title = titleMatch[1].trim();
+        }
+      }
+
+      if (!title && fileName) {
+        title = fileName.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      }
+      if (!title) title = 'Professional Course Certificate';
+      if (!issuer) issuer = 'Issuing Authority';
 
       finalCandidateFields.certificateTitle = title;
       finalCandidateFields.title = title;
-      finalCandidateFields.candidateName = candidateName;
+      finalCandidateFields.candidateName = candidateName || '';
       finalCandidateFields.issuer = issuer;
-      finalCandidateFields.issuingOrganization = issuingOrganization;
+      finalCandidateFields.issuingOrganization = issuer;
 
-      if (finalCandidateFields.workshopName || finalExtractedEntities.workshopName) finalCandidateFields.workshopName = finalCandidateFields.workshopName || finalExtractedEntities.workshopName;
-      if (finalCandidateFields.courseName || finalExtractedEntities.courseName) finalCandidateFields.courseName = finalCandidateFields.courseName || finalExtractedEntities.courseName || title;
-      if (finalCandidateFields.description || finalExtractedEntities.description || summary) finalCandidateFields.description = finalCandidateFields.description || finalExtractedEntities.description || summary || '';
-      if (finalCandidateFields.issueDate || finalCandidateFields.date || finalCandidateFields.issuedDate || finalExtractedEntities.issueDate) finalCandidateFields.issueDate = finalCandidateFields.issueDate || finalCandidateFields.date || finalCandidateFields.issuedDate || finalExtractedEntities.issueDate || '';
-      if (finalCandidateFields.expiryDate || finalExtractedEntities.expiryDate) finalCandidateFields.expiryDate = finalCandidateFields.expiryDate || finalExtractedEntities.expiryDate || '';
-      if (finalCandidateFields.credentialId || finalCandidateFields.certificateId || finalExtractedEntities.credentialId) finalCandidateFields.credentialId = finalCandidateFields.credentialId || finalCandidateFields.certificateId || finalExtractedEntities.credentialId || '';
-      if (finalCandidateFields.instructor || finalExtractedEntities.instructor) finalCandidateFields.instructor = finalCandidateFields.instructor || finalExtractedEntities.instructor || '';
-      if (finalCandidateFields.signatories || finalExtractedEntities.signatories) finalCandidateFields.signatories = finalCandidateFields.signatories || finalExtractedEntities.signatories || '';
+      if (issueDate) finalCandidateFields.issueDate = issueDate;
+      if (credentialId) finalCandidateFields.credentialId = credentialId;
 
-      // Sync into extractedEntities so Entities tab is also fully populated
       finalExtractedEntities.certificateTitle = title;
-      finalExtractedEntities.candidateName = candidateName;
+      finalExtractedEntities.candidateName = candidateName || '';
       finalExtractedEntities.issuer = issuer;
-      if (finalCandidateFields.issueDate) finalExtractedEntities.issueDate = finalCandidateFields.issueDate;
-      if (finalCandidateFields.credentialId) finalExtractedEntities.credentialId = finalCandidateFields.credentialId;
+      if (issueDate) finalExtractedEntities.issueDate = issueDate;
+      if (credentialId) finalExtractedEntities.credentialId = credentialId;
     }
 
     return {

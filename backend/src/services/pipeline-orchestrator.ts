@@ -98,15 +98,26 @@ export class PipelineOrchestrator {
         }
       }
 
-      // Determine if Stage 2 Gemini AI classification is required
+      // Determine if Stage 2 Gemini AI classification & extraction is required
       const isUnknownCategory = classification.documentCategory === 'UNKNOWN';
       const isLowConfidence = classification.confidenceScore < CONFIDENCE_THRESHOLD;
       const isSemanticDoc =
         SEMANTIC_DOCUMENT_TYPES.includes(classification.parserStrategy) ||
         SEMANTIC_DOCUMENT_TYPES.includes(mimeType);
+      const isCategoryNeedingAiExtraction = [
+        'CERTIFICATE',
+        'MARKSHEET',
+        'TRANSCRIPT',
+        'ACADEMIC_TIMETABLE',
+        'RESUME',
+        'INTERNSHIP',
+        'OFFER_LETTER',
+        'RESEARCH_PAPER',
+        'SYLLABUS',
+      ].includes(classification.documentCategory);
 
-      if (isUnknownCategory || isLowConfidence || isSemanticDoc) {
-        logger.info(`[Pipeline] Stage 2 AI processing required for ${processingId}`);
+      if (isUnknownCategory || isLowConfidence || isSemanticDoc || isCategoryNeedingAiExtraction) {
+        logger.info(`[Pipeline] Stage 2 AI processing required for ${processingId} (Category: ${classification.documentCategory})`);
         await this.aiService.processDocument({
           processingId,
           fileName,

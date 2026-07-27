@@ -84,7 +84,7 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
   if (!isOpen || !certificate) return null;
 
   const brand = getIssuerBrand(certificate.issuer);
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
   const fullFileUrl = certificate.fileUrl
     ? certificate.fileUrl.startsWith('http')

@@ -2287,32 +2287,55 @@ function DocumentPreviewTab({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   const fileUrl = `${apiBase}/api/growth/documents/${item.processingId}/file`;
 
   useEffect(() => {
     let cancelled = false;
+    let createdUrl: string | null = null;
+
     async function fetchFile() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(fileUrl, {
-          headers: {
-            Authorization: `Bearer ${backendToken}`,
-          },
-        });
-        if (!res.ok) {
-          throw new Error(`Failed to fetch document (HTTP ${res.status})`);
+
+        const effectiveToken =
+          backendToken ||
+          (typeof window !== 'undefined'
+            ? localStorage.getItem('authToken') || localStorage.getItem('token')
+            : null);
+
+        const headers: Record<string, string> = {};
+        if (effectiveToken && effectiveToken !== 'null') {
+          headers['Authorization'] = `Bearer ${effectiveToken}`;
         }
+
+        const res = await fetch(fileUrl, { headers });
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`HTTP ${res.status}: ${errText}`);
+        }
+
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const jsonErr = await res.json();
+          throw new Error(jsonErr.message || 'Server returned JSON error instead of document asset');
+        }
+
         const blob = await res.blob();
+        if (blob.size === 0) {
+          throw new Error('Retrieved document file is 0 bytes');
+        }
+
         if (!cancelled) {
-          const url = URL.createObjectURL(blob);
-          setBlobUrl(url);
+          createdUrl = URL.createObjectURL(blob);
+          setBlobUrl(createdUrl);
         }
       } catch (err: any) {
         if (!cancelled) {
-          console.warn('Document preview fetch warning:', err);
-          setBlobUrl(fileUrl);
+          console.warn('Document preview fetch error:', err.message || err);
+          setError(err.message || 'Failed to load document asset');
+          setBlobUrl(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -2323,6 +2346,9 @@ function DocumentPreviewTab({
 
     return () => {
       cancelled = true;
+      if (createdUrl) {
+        URL.revokeObjectURL(createdUrl);
+      }
     };
   }, [fileUrl, backendToken]);
 

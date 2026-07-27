@@ -49,7 +49,7 @@ export const CertificateThumbnailGallery: React.FC<CertificateThumbnailGalleryPr
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
   const handleOpenPreview = (cert: CertificateItem) => {
     setSelectedCert({

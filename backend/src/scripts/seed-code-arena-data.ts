@@ -1,19 +1,17 @@
 import { connectDB } from '../config';
 import { CodeArenaIssue } from '../models/CodeArenaIssue';
 import { CodeArenaSolution } from '../models/CodeArenaSolution';
-import { CodeArenaWallet } from '../models/CodeArenaWallet';
-import { CodeArenaTransaction } from '../models/CodeArenaTransaction';
 import { CodeArenaReputation } from '../models/CodeArenaReputation';
+import { CodeArenaPointTransaction } from '../models/CodeArenaPointTransaction';
 import User from '../models/User';
 import Organization from '../models/Organization';
 import { CodeArenaService } from '../modules/codeArena/codeArena.service';
-import { CodeArenaWalletService } from '../modules/codeArena/codeArena.wallet.service';
+import { CodeArenaPointsService } from '../modules/codeArena/codeArena.points.service';
 
 async function seedCodeArenaData() {
-  console.log('=== SEEDING CODE ARENA REAL TEST DATA ===');
+  console.log('=== SEEDING CODE ARENA POINTS ECONOMY TEST DATA ===');
   await connectDB();
 
-  // Find or create default Organization
   let org = await Organization.findOne({});
   if (!org) {
     org = await Organization.create({
@@ -23,18 +21,16 @@ async function seedCodeArenaData() {
     });
   }
 
-  // Find or create Student A (Issue Poster)
   let studentA = await User.findOne({ email: 'poster@sharda.ac.in' });
   if (!studentA) {
     studentA = await User.create({
       name: 'Aashish Rajput (Poster)',
       email: 'poster@sharda.ac.in',
       organizationId: org._id,
-      roleId: org._id, // mock role ID
+      roleId: org._id,
     });
   }
 
-  // Find or create Student B (Solution Submitter)
   let studentB = await User.findOne({ email: 'solver@sharda.ac.in' });
   if (!studentB) {
     studentB = await User.create({
@@ -45,42 +41,44 @@ async function seedCodeArenaData() {
     });
   }
 
-  const walletService = new CodeArenaWalletService();
-  const service = new CodeArenaService(walletService);
+  const pointsService = new CodeArenaPointsService();
+  const service = new CodeArenaService(pointsService);
 
-  // 1. Verify wallets start at 0
-  const walletA = await walletService.getOrCreateWallet(org._id, studentA._id.toString());
-  const walletB = await walletService.getOrCreateWallet(org._id, studentB._id.toString());
-  console.log(`[VERIFY 0-START] Student A balance: ${walletA.balance} CR, Student B balance: ${walletB.balance} CR`);
+  // 1. Verify 1000 AP Welcome Bonus auto-grant for Student A & B
+  console.log('\n[TEST 1000 AP WELCOME BONUS] Initializing points profile...');
+  const { profile: profA, isNewUser: newA } = await pointsService.getOrCreatePointsProfile(org._id, studentA._id.toString());
+  const { profile: profB, isNewUser: newB } = await pointsService.getOrCreatePointsProfile(org._id, studentB._id.toString());
 
-  // 2. Deposit 500 CR into Student A's wallet
-  console.log('\n[TEST DEPOSIT] Depositing 500 CR into Student A wallet...');
-  await walletService.deposit(org._id, studentA._id.toString(), 500, 'Test Deposit');
-  const updatedWalletA = await walletService.getOrCreateWallet(org._id, studentA._id.toString());
-  console.log(`[VERIFY DEPOSIT] Student A balance: ${updatedWalletA.balance} CR`);
+  console.log(`[VERIFY WELCOME BONUS] Student A AP: ${profA.arenaPoints} AP (New: ${newA}), Student B AP: ${profB.arenaPoints} AP (New: ${newB})`);
 
-  // 3. Create Issue with 200 CR reward
-  console.log('\n[TEST CREATE ISSUE] Student A posting issue with 200 CR reward...');
+  // 2. Test Daily Reward Claim (+5 AP)
+  console.log('\n[TEST DAILY LOGIN REWARD] Claiming daily login reward for Student A...');
+  const dailyRes = await pointsService.checkAndGrantDailyReward(org._id, studentA._id.toString());
+  console.log(`[VERIFY DAILY REWARD] Claimed: ${dailyRes.claimed}, Reward: +${dailyRes.rewardAmount} AP, New Balance: ${dailyRes.newBalance} AP`);
+
+  // 3. Create Issue with 100 AP reward (Deducts 100 AP immediately)
+  console.log('\n[TEST CREATE ISSUE] Student A posting issue with 100 AP reward...');
   const issue = await service.createIssue(org._id, studentA._id.toString(), {
     title: 'Hydration Mismatch in Next.js 15 App Router Canvas component',
     description: 'When initializing a dynamic WebGL canvas in `useEffect`, Next.js 15 throws `Hydration failed because the initial UI does not match what was rendered on the server`. Need help structuring dynamic import.',
     category: 'React',
     difficulty: 'MEDIUM',
-    rewardAmount: 200,
+    rewardAmount: 100,
     programmingLanguage: 'TypeScript',
     framework: 'Next.js',
     techStack: ['React', 'Next.js', 'Canvas', 'WebGL'],
-    errorLogs: 'Error: Hydration failed because the initial UI does not match what was rendered on the server.\n  at HTMLDocument.eval (app-index.js:14)',
+    errorLogs: 'Error: Hydration failed because the initial UI does not match what was rendered on the server.',
   });
 
-  console.log(`[VERIFY ESCROW LOCK] Issue Created ID: ${issue._id}, Escrow Status: ${issue.escrowStatus}`);
-  const postLockWalletA = await walletService.getOrCreateWallet(org._id, studentA._id.toString());
-  console.log(`[VERIFY POST-LOCK WALLET] Student A Available Balance: ${postLockWalletA.balance} CR, Locked Balance: ${postLockWalletA.lockedBalance} CR`);
+  console.log(`[VERIFY ISSUE CREATED] Issue ID: ${issue._id}, AP Reward: ${issue.rewardAmount} AP`);
+
+  const { profile: postIssueProfA } = await pointsService.getOrCreatePointsProfile(org._id, studentA._id.toString());
+  console.log(`[VERIFY POST-ISSUE BALANCE] Student A AP Balance: ${postIssueProfA.arenaPoints} AP`);
 
   // 4. Student B submits solution
   console.log('\n[TEST SUBMIT SOLUTION] Student B submitting solution...');
   const solution = await service.submitSolution(org._id, studentB._id.toString(), issue._id, {
-    explanation: 'The issue happens because WebGL/Canvas APIs access `window` which is not available during SSR. Use `dynamic()` with `{ ssr: false }` or check `typeof window !== "undefined"` inside a mounting `useEffect`.',
+    explanation: 'The issue happens because WebGL/Canvas APIs access `window` which is not available during SSR. Use `dynamic()` with `{ ssr: false }`.',
     codeSnippets: [
       `import dynamic from 'next/dynamic';\n\nconst CanvasComponent = dynamic(() => import('./CanvasComponent'), { ssr: false });`,
     ],
@@ -89,29 +87,25 @@ async function seedCodeArenaData() {
 
   console.log(`[VERIFY SOLUTION SUBMITTED] Solution ID: ${solution._id}, Submitter: ${solution.submitterName}`);
 
-  // 5. Student A accepts Student B's solution
+  // 5. Student A accepts Student B's solution (Transfers 100 AP to Student B)
   console.log('\n[TEST ACCEPT SOLUTION] Student A accepting Student B solution...');
   const acceptRes = await service.acceptSolution(org._id, studentA._id.toString(), solution._id);
 
-  console.log(`[VERIFY ACCEPTANCE] Issue Status: ${acceptRes.issue.status}, Escrow Status: ${acceptRes.issue.escrowStatus}`);
+  console.log(`[VERIFY ACCEPTANCE] Issue Status: ${acceptRes.issue.status}`);
 
-  // 6. Verify final balances & transaction audit trail
-  const finalWalletA = await walletService.getOrCreateWallet(org._id, studentA._id.toString());
-  const finalWalletB = await walletService.getOrCreateWallet(org._id, studentB._id.toString());
-  console.log(`\n=== FINAL WALLET BALANCES ===`);
-  console.log(`Student A (Poster): Balance = ${finalWalletA.balance} CR, Locked = ${finalWalletA.lockedBalance} CR, Spent = ${finalWalletA.totalSpent} CR`);
-  console.log(`Student B (Solver): Balance = ${finalWalletB.balance} CR, Earned = ${finalWalletB.totalEarned} CR`);
+  // 6. Verify final AP balances
+  const { profile: finalProfA } = await pointsService.getOrCreatePointsProfile(org._id, studentA._id.toString());
+  const { profile: finalProfB } = await pointsService.getOrCreatePointsProfile(org._id, studentB._id.toString());
 
-  // 7. Verify reputation
-  const repB = await service.getReputation(org._id, studentB._id.toString());
-  console.log(`\n=== SOLVER REPUTATION ===`);
-  console.log(`Student B Points: ${repB.totalPoints}, Solved: ${repB.issuesSolved}, Badges: ${JSON.stringify(repB.badges)}`);
+  console.log(`\n=== FINAL ARENA POINTS BALANCES ===`);
+  console.log(`Student A (Poster): Current = ${finalProfA.arenaPoints} AP, Spent = ${finalProfA.totalSpent} AP`);
+  console.log(`Student B (Solver): Current = ${finalProfB.arenaPoints} AP, Earned = ${finalProfB.totalEarned} AP, Badges = ${JSON.stringify(finalProfB.badges)}`);
 
-  console.log('\n=== CODE ARENA VERIFICATION TEST COMPLETE ===');
+  console.log('\n=== CODE ARENA AP POINTS ECONOMY TEST COMPLETE ===');
   process.exit(0);
 }
 
 seedCodeArenaData().catch((err) => {
-  console.error('Seed Code Arena Error:', err);
+  console.error('Seed Code Arena AP Error:', err);
   process.exit(1);
 });

@@ -486,7 +486,7 @@ export class GrowthProjectionService {
         issuesPosted: rep?.issuesPosted || 0,
         issuesSolved: rep?.issuesSolved || 0,
         acceptanceRate: rep?.acceptanceRate || 0,
-        totalRewardsEarned: rep?.totalRewardsEarned || 0,
+        totalRewardsEarned: rep?.totalEarned || 0,
         badges: rep?.badges || [],
       };
 

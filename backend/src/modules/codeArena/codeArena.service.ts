@@ -2,7 +2,7 @@ import { Types } from 'mongoose';
 import { CodeArenaIssue, ICodeArenaIssue, IssueStatus } from '../../models/CodeArenaIssue';
 import { CodeArenaSolution, ICodeArenaSolution } from '../../models/CodeArenaSolution';
 import { CodeArenaReputation, ICodeArenaReputation, ReputationBadge } from '../../models/CodeArenaReputation';
-import { CodeArenaWalletService } from './codeArena.wallet.service';
+import { CodeArenaPointsService } from './codeArena.points.service';
 import { CodeArenaAIService } from './codeArena.ai.service';
 import { CreateIssueDTO, UpdateIssueDTO, SubmitSolutionDTO, IssueFilterQuery } from './codeArena.types';
 import { toObjectId } from '../../utils/mongooseHelpers';
@@ -13,24 +13,21 @@ const logger = new Logger('codeArenaService');
 
 export class CodeArenaService {
   constructor(
-    private readonly walletService = new CodeArenaWalletService(),
+    public readonly pointsService = new CodeArenaPointsService(),
     private readonly aiService = new CodeArenaAIService()
   ) {}
 
-  /**
-   * Helper to fetch user name safely
-   */
   private async getUserName(userId: string): Promise<string> {
     try {
       const user = await User.findById(userId).select('name');
-      return user?.name || 'Anonymous Student';
+      return user?.name || 'Student Developer';
     } catch {
-      return 'Student User';
+      return 'Student Developer';
     }
   }
 
   /**
-   * 1. Create a new technical issue & lock escrow reward.
+   * 1. Create a new technical issue & deduct reward AP (or post 0 AP Community Help).
    */
   public async createIssue(
     organizationId: string | Types.ObjectId,
@@ -40,14 +37,21 @@ export class CodeArenaService {
     const orgObjId = typeof organizationId === 'string' ? toObjectId(organizationId) : organizationId;
     const posterName = await this.getUserName(posterId);
 
-    if (!dto.rewardAmount || dto.rewardAmount < 1) {
-      throw new Error('Reward amount must be at least 1 credit.');
+    const rewardAmount = Math.max(0, Number(dto.rewardAmount) || 0);
+    const isCommunityHelp = rewardAmount === 0;
+
+    // 1a. Ensure user points profile exists & check available AP
+    const { profile } = await this.pointsService.getOrCreatePointsProfile(orgObjId, posterId);
+    if (!isCommunityHelp && profile.arenaPoints < rewardAmount) {
+      throw new Error(
+        `Insufficient Arena Points. Available: ${profile.arenaPoints} AP, Required: ${rewardAmount} AP.`
+      );
     }
 
-    // 1a. Create pending issue document
+    // 1b. Create issue document
     const issue = new CodeArenaIssue({
       organizationId: orgObjId,
-      visibility: 'ORG_ONLY', // Future-proof for global marketplace
+      visibility: 'ORG_ONLY',
       posterId,
       posterName,
       title: dto.title,
@@ -63,8 +67,8 @@ export class CodeArenaService {
       techStack: dto.techStack || [],
       projectType: dto.projectType,
       status: 'OPEN',
-      rewardAmount: dto.rewardAmount,
-      escrowStatus: 'PENDING',
+      rewardAmount,
+      isCommunityHelp,
       githubRepo: dto.githubRepo,
       externalLinks: dto.externalLinks || [],
       attachments: dto.attachments || [],
@@ -73,19 +77,17 @@ export class CodeArenaService {
 
     await issue.save();
 
-    // 1b. Lock escrow from poster wallet (atomically verifies available balance >= rewardAmount)
-    try {
-      await this.walletService.lockEscrow(orgObjId, posterId, issue._id, dto.rewardAmount);
-      issue.escrowStatus = 'LOCKED';
-      issue.escrowLockedAt = new Date();
-      await issue.save();
-    } catch (err: any) {
-      // If wallet lock fails, clean up pending issue document
-      await CodeArenaIssue.deleteOne({ _id: issue._id });
-      throw err;
+    // 1c. Deduct AP from poster if reward > 0
+    if (!isCommunityHelp) {
+      try {
+        await this.pointsService.deductPointsForIssue(orgObjId, posterId, issue._id, rewardAmount);
+      } catch (err: any) {
+        await CodeArenaIssue.deleteOne({ _id: issue._id });
+        throw err;
+      }
     }
 
-    // 1c. Trigger AI analysis in background (non-blocking)
+    // 1d. Trigger AI analysis in background
     this.aiService
       .analyzeIssue(dto.title, dto.description, dto.errorLogs, dto.category)
       .then(async (aiSuggestions) => {
@@ -103,7 +105,7 @@ export class CodeArenaService {
       })
       .catch((err) => logger.warn('Background AI issue analysis warning', { error: err }));
 
-    // 1d. Update poster reputation (issuesPosted + 1)
+    // 1e. Update poster reputation (issuesPosted + 1)
     await this.updateReputationOnIssuePosted(orgObjId, posterId);
 
     return issue;
@@ -122,33 +124,14 @@ export class CodeArenaService {
     const limit = Math.min(50, Math.max(1, Number(query.limit) || 12));
     const skip = (page - 1) * limit;
 
-    const filter: any = {
-      organizationId: orgObjId,
-    };
+    const filter: any = { organizationId: orgObjId };
 
-    if (query.status) {
-      filter.status = query.status;
-    }
-
-    if (query.category) {
-      filter.category = query.category;
-    }
-
-    if (query.difficulty) {
-      filter.difficulty = query.difficulty;
-    }
-
-    if (query.myIssuesOnly) {
-      filter.posterId = userId;
-    }
-
-    if (query.mySolutionsOnly) {
-      filter.solverId = userId;
-    }
-
-    if (query.savedOnly) {
-      filter.savedBy = userId;
-    }
+    if (query.status) filter.status = query.status;
+    if (query.category) filter.category = query.category;
+    if (query.difficulty) filter.difficulty = query.difficulty;
+    if (query.myIssuesOnly) filter.posterId = userId;
+    if (query.mySolutionsOnly) filter.solverId = userId;
+    if (query.savedOnly) filter.savedBy = userId;
 
     if (query.tags) {
       const tagList = Array.isArray(query.tags) ? query.tags : [query.tags];
@@ -205,7 +188,7 @@ export class CodeArenaService {
   }
 
   /**
-   * 4. Update an OPEN issue (poster only)
+   * 4. Update an OPEN issue
    */
   public async updateIssue(
     organizationId: string | Types.ObjectId,
@@ -250,7 +233,7 @@ export class CodeArenaService {
   }
 
   /**
-   * 5. Cancel issue & refund locked escrow to poster
+   * 5. Cancel issue & refund AP to poster if reward > 0
    */
   public async cancelIssue(
     organizationId: string | Types.ObjectId,
@@ -271,9 +254,8 @@ export class CodeArenaService {
       throw new Error(`Cannot cancel issue with status ${issue.status}.`);
     }
 
-    if (issue.escrowStatus === 'LOCKED') {
-      await this.walletService.refundEscrow(orgObjId, posterId, issue._id, issue.rewardAmount);
-      issue.escrowStatus = 'REFUNDED';
+    if (issue.rewardAmount > 0) {
+      await this.pointsService.refundPointsForCancelledIssue(orgObjId, posterId, issue._id, issue.rewardAmount);
     }
 
     issue.status = 'CANCELLED';
@@ -335,7 +317,6 @@ export class CodeArenaService {
       throw new Error('You cannot submit a solution to your own issue.');
     }
 
-    // Check if user already submitted a solution
     const existing = await CodeArenaSolution.findOne({ issueId: issueObjId, submitterId });
     if (existing) {
       throw new Error('You have already submitted a solution for this issue.');
@@ -356,14 +337,12 @@ export class CodeArenaService {
       attachments: dto.attachments || [],
     });
 
-    // Update issue state and denormalized solution count
     issue.solutionCount += 1;
     if (issue.status === 'OPEN') {
       issue.status = 'IN_PROGRESS';
     }
     await issue.save();
 
-    // Update submitter reputation
     await this.updateReputationOnSolutionSubmitted(orgObjId, submitterId);
 
     return solution;
@@ -386,7 +365,7 @@ export class CodeArenaService {
   }
 
   /**
-   * 9. Accept solution (Poster only) -> Release Escrow -> Mark Solved -> Award Reputation
+   * 9. Accept solution (Poster only) -> Transfer AP to solver -> Mark Solved -> Award Reputation
    */
   public async acceptSolution(
     organizationId: string | Types.ObjectId,
@@ -410,19 +389,17 @@ export class CodeArenaService {
       throw new Error('This issue has already been solved and closed.');
     }
 
-    if (issue.escrowStatus !== 'LOCKED') {
-      throw new Error('Escrow reward is not currently locked for this issue.');
+    // 9a. Transfer AP reward to solver (if reward > 0)
+    if (issue.rewardAmount > 0) {
+      await this.pointsService.transferPointsToSolver(
+        orgObjId,
+        posterId,
+        solution.submitterId,
+        issue._id,
+        solution._id,
+        issue.rewardAmount
+      );
     }
-
-    // 9a. Release escrow reward (Poster locked -> Solver balance)
-    await this.walletService.releaseEscrow(
-      orgObjId,
-      posterId,
-      solution.submitterId,
-      issue._id,
-      solution._id,
-      issue.rewardAmount
-    );
 
     // 9b. Update solution & issue state
     solution.isAccepted = true;
@@ -430,13 +407,12 @@ export class CodeArenaService {
     await solution.save();
 
     issue.status = 'SOLVED';
-    issue.escrowStatus = 'RELEASED';
     issue.acceptedSolutionId = solution._id;
     issue.solverId = solution.submitterId;
     issue.solvedAt = new Date();
     await issue.save();
 
-    // 9c. Award reputation & badges to poster and solver
+    // 9c. Award reputation & badges
     await this.updateReputationOnSolutionAccepted(
       orgObjId,
       posterId,
@@ -449,39 +425,7 @@ export class CodeArenaService {
   }
 
   /**
-   * 10. Get User Reputation & Developer Stats
-   */
-  public async getReputation(
-    organizationId: string | Types.ObjectId,
-    userId: string
-  ): Promise<ICodeArenaReputation> {
-    const orgObjId = typeof organizationId === 'string' ? toObjectId(organizationId) : organizationId;
-
-    let rep = await CodeArenaReputation.findOne({ organizationId: orgObjId, userId });
-
-    if (!rep) {
-      rep = await CodeArenaReputation.create({
-        organizationId: orgObjId,
-        userId,
-        totalPoints: 0,
-        issuesPosted: 0,
-        issuesSolved: 0,
-        issuesCancelled: 0,
-        solutionsSubmitted: 0,
-        solutionsAccepted: 0,
-        acceptanceRate: 0,
-        totalRewardsEarned: 0,
-        totalRewardsSpent: 0,
-        favoriteTechnologies: [],
-        badges: [],
-      });
-    }
-
-    return rep;
-  }
-
-  /**
-   * 11. Get Dashboard Module Metrics
+   * 10. Dashboard Stats & User AP Summary
    */
   public async getDashboardStats(
     organizationId: string | Types.ObjectId,
@@ -491,14 +435,19 @@ export class CodeArenaService {
     solvedToday: number;
     activeDevelopers: number;
     totalRewardPool: number;
-    myWallet: any;
-    myReputation: any;
+    myPointsProfile: ICodeArenaReputation;
+    isNewUser: boolean;
+    dailyRewardStatus: {
+      claimedToday: boolean;
+      currentStreak: number;
+    };
   }> {
     const orgObjId = typeof organizationId === 'string' ? toObjectId(organizationId) : organizationId;
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    const [openIssues, solvedToday, rewardPoolAgg, activeDevs, myWallet, myReputation] = await Promise.all([
+    const [{ profile, isNewUser }, openIssues, solvedToday, rewardPoolAgg, activeDevs] = await Promise.all([
+      this.pointsService.getOrCreatePointsProfile(orgObjId, userId),
       CodeArenaIssue.countDocuments({ organizationId: orgObjId, status: 'OPEN' }),
       CodeArenaIssue.countDocuments({ organizationId: orgObjId, status: 'SOLVED', solvedAt: { $gte: startOfToday } }),
       CodeArenaIssue.aggregate([
@@ -506,30 +455,34 @@ export class CodeArenaService {
         { $group: { _id: null, total: { $sum: '$rewardAmount' } } },
       ]),
       CodeArenaReputation.countDocuments({ organizationId: orgObjId }),
-      this.walletService.getOrCreateWallet(orgObjId, userId),
-      this.getReputation(orgObjId, userId),
     ]);
 
     const totalRewardPool = rewardPoolAgg[0]?.total || 0;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const lastRewardStr = profile.lastDailyRewardDate
+      ? new Date(profile.lastDailyRewardDate).toISOString().split('T')[0]
+      : null;
 
     return {
       openIssues,
       solvedToday,
       activeDevelopers: activeDevs || 1,
       totalRewardPool,
-      myWallet,
-      myReputation,
+      myPointsProfile: profile,
+      isNewUser,
+      dailyRewardStatus: {
+        claimedToday: lastRewardStr === todayStr,
+        currentStreak: profile.loginStreak || 1,
+      },
     };
   }
 
-  // ──────────────────────────────────────────────
-  // Internal Reputation Mechanics
-  // ──────────────────────────────────────────────
-
+  // Reputation Helpers
   private async updateReputationOnIssuePosted(orgObjId: Types.ObjectId, posterId: string): Promise<void> {
-    const rep = await this.getReputation(orgObjId, posterId);
+    const { profile: rep } = await this.pointsService.getOrCreatePointsProfile(orgObjId, posterId);
     rep.issuesPosted += 1;
-    rep.totalPoints += 10; // +10 points for posting an issue
+    rep.totalPoints += 10;
 
     if (!rep.badges.includes('FIRST_ISSUE') && rep.issuesPosted >= 1) {
       rep.badges.push('FIRST_ISSUE');
@@ -542,9 +495,9 @@ export class CodeArenaService {
   }
 
   private async updateReputationOnSolutionSubmitted(orgObjId: Types.ObjectId, submitterId: string): Promise<void> {
-    const rep = await this.getReputation(orgObjId, submitterId);
+    const { profile: rep } = await this.pointsService.getOrCreatePointsProfile(orgObjId, submitterId);
     rep.solutionsSubmitted += 1;
-    rep.totalPoints += 5; // +5 points for attempting a solution
+    rep.totalPoints += 5;
     rep.acceptanceRate = Math.round((rep.solutionsAccepted / rep.solutionsSubmitted) * 100);
     await rep.save();
   }
@@ -556,25 +509,19 @@ export class CodeArenaService {
     rewardAmount: number,
     tags: string[]
   ): Promise<void> {
-    // 1. Poster gets points for closing issue
-    const posterRep = await this.getReputation(orgObjId, posterId);
+    const { profile: posterRep } = await this.pointsService.getOrCreatePointsProfile(orgObjId, posterId);
     posterRep.totalPoints += 15;
-    posterRep.totalRewardsSpent += rewardAmount;
     await posterRep.save();
 
-    // 2. Solver gets reputation points + badges
-    const solverRep = await this.getReputation(orgObjId, solverId);
+    const { profile: solverRep } = await this.pointsService.getOrCreatePointsProfile(orgObjId, solverId);
     solverRep.solutionsAccepted += 1;
     solverRep.issuesSolved += 1;
-    solverRep.totalRewardsEarned += rewardAmount;
-    solverRep.totalPoints += 50 + Math.floor(rewardAmount / 10); // +50 points base + 1 point per 10 credits
+    solverRep.totalPoints += 50 + Math.floor(rewardAmount / 10);
     solverRep.acceptanceRate = Math.round((solverRep.solutionsAccepted / Math.max(1, solverRep.solutionsSubmitted)) * 100);
 
-    // Update favorite technologies
     const updatedTechs = Array.from(new Set([...solverRep.favoriteTechnologies, ...tags])).slice(0, 10);
     solverRep.favoriteTechnologies = updatedTechs;
 
-    // Badges evaluation
     const newBadges: ReputationBadge[] = [];
     if (!solverRep.badges.includes('FIRST_SOLVE') && solverRep.solutionsAccepted >= 1) newBadges.push('FIRST_SOLVE');
     if (!solverRep.badges.includes('HELPFUL_MEMBER') && solverRep.solutionsAccepted >= 5) newBadges.push('HELPFUL_MEMBER');
@@ -582,7 +529,7 @@ export class CodeArenaService {
     if (!solverRep.badges.includes('TOP_CONTRIBUTOR') && solverRep.solutionsAccepted >= 25) newBadges.push('TOP_CONTRIBUTOR');
     if (!solverRep.badges.includes('EXPERT_SOLVER') && solverRep.solutionsAccepted >= 50) newBadges.push('EXPERT_SOLVER');
     if (!solverRep.badges.includes('COMMUNITY_PILLAR') && solverRep.solutionsAccepted >= 100) newBadges.push('COMMUNITY_PILLAR');
-    if (!solverRep.badges.includes('HIGH_EARNER') && solverRep.totalRewardsEarned >= 5000) newBadges.push('HIGH_EARNER');
+    if (!solverRep.badges.includes('HIGH_EARNER') && solverRep.totalEarned >= 5000) newBadges.push('HIGH_EARNER');
 
     if (newBadges.length > 0) {
       solverRep.badges = Array.from(new Set([...solverRep.badges, ...newBadges]));

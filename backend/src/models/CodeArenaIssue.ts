@@ -1,9 +1,5 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
-// ──────────────────────────────────────────────
-// Enums & types
-// ──────────────────────────────────────────────
-
 export const ISSUE_CATEGORIES = [
   'Frontend', 'Backend', 'Full Stack', 'Java', 'Python', 'C++',
   'JavaScript', 'TypeScript', 'React', 'Next.js', 'Node.js', 'Express',
@@ -17,10 +13,9 @@ export type IssueCategory = typeof ISSUE_CATEGORIES[number];
 
 export type IssueStatus = 'OPEN' | 'IN_PROGRESS' | 'SOLVED' | 'CLOSED' | 'CANCELLED';
 export type IssueDifficulty = 'EASY' | 'MEDIUM' | 'HARD' | 'EXPERT';
-export type EscrowStatus = 'PENDING' | 'LOCKED' | 'RELEASED' | 'REFUNDED';
 
 export interface IIssueAttachment {
-  storageId: string;   // GridFS ObjectId string
+  storageId: string;
   fileName: string;
   mimeType: string;
   size: number;
@@ -35,28 +30,22 @@ export interface IIssueAISuggestions {
   processedAt: Date;
 }
 
-// ──────────────────────────────────────────────
-// Interface
-// ──────────────────────────────────────────────
-
 export interface ICodeArenaIssue extends Document {
   _id: Types.ObjectId;
 
-  // Tenant isolation — required on every document
+  // Tenant isolation
   organizationId: Types.ObjectId;
 
-  // Future-proofing: visibility flag to support cross-org Global Marketplace
-  // Default is 'ORG_ONLY'. Setting to 'GLOBAL' will allow cross-org browsing
-  // without requiring schema changes. The service layer enforces the current org-only policy.
+  // Future-proofing: visibility flag for Global Marketplace
   visibility: 'ORG_ONLY' | 'GLOBAL';
 
   // Poster
-  posterId: string;       // User._id string (from JWT)
-  posterName: string;     // denormalized for display
+  posterId: string;
+  posterName: string;
 
   // Content
   title: string;
-  description: string;    // markdown
+  description: string;
   expectedOutput?: string;
   currentOutput?: string;
   errorLogs?: string;
@@ -74,10 +63,9 @@ export interface ICodeArenaIssue extends Document {
   status: IssueStatus;
   deadline?: Date;
 
-  // Reward & Escrow
-  rewardAmount: number;   // integer credits
-  escrowStatus: EscrowStatus;
-  escrowLockedAt?: Date;
+  // Arena Points Reward Economy
+  rewardAmount: number;   // AP amount (0 = Community Help)
+  isCommunityHelp: boolean; // true if rewardAmount === 0
 
   // Resolution
   acceptedSolutionId?: Types.ObjectId;
@@ -88,26 +76,22 @@ export interface ICodeArenaIssue extends Document {
   githubRepo?: string;
   externalLinks: string[];
 
-  // Attachments (stored in GridFS)
+  // Attachments (GridFS)
   attachments: IIssueAttachment[];
 
-  // AI suggestions (optional — populated async after creation)
+  // AI suggestions
   aiSuggestions?: IIssueAISuggestions;
 
-  // Denormalized counters (updated atomically with $inc)
+  // Denormalized counters
   viewCount: number;
   solutionCount: number;
 
-  // User interaction
-  savedBy: string[];      // array of userIds who bookmarked this issue
+  // Saved/bookmarked
+  savedBy: string[];
 
   createdAt: Date;
   updatedAt: Date;
 }
-
-// ──────────────────────────────────────────────
-// Schema
-// ──────────────────────────────────────────────
 
 const AttachmentSchema = new Schema<IIssueAttachment>(
   {
@@ -181,13 +165,8 @@ const CodeArenaIssueSchema = new Schema<ICodeArenaIssue>(
     },
     deadline: { type: Date },
 
-    rewardAmount: { type: Number, required: true, min: 1 },
-    escrowStatus: {
-      type: String,
-      enum: ['PENDING', 'LOCKED', 'RELEASED', 'REFUNDED'],
-      default: 'PENDING',
-    },
-    escrowLockedAt: { type: Date },
+    rewardAmount: { type: Number, required: true, min: 0, default: 0 },
+    isCommunityHelp: { type: Boolean, default: false },
 
     acceptedSolutionId: { type: Schema.Types.ObjectId, ref: 'CodeArenaSolution' },
     solvedAt: { type: Date },
@@ -206,35 +185,19 @@ const CodeArenaIssueSchema = new Schema<ICodeArenaIssue>(
   { timestamps: true }
 );
 
-// ──────────────────────────────────────────────
 // Indexes
-// ──────────────────────────────────────────────
-
-// Primary browse query: org + status + newest first
 CodeArenaIssueSchema.index({ organizationId: 1, status: 1, createdAt: -1 });
-
-// My issues
 CodeArenaIssueSchema.index({ organizationId: 1, posterId: 1, createdAt: -1 });
-
-// Issues I solved
 CodeArenaIssueSchema.index({ organizationId: 1, solverId: 1, createdAt: -1 });
-
-// Category + status filtering
 CodeArenaIssueSchema.index({ organizationId: 1, category: 1, status: 1 });
-
-// Tag search
 CodeArenaIssueSchema.index({ organizationId: 1, tags: 1 });
-
-// Reward-sorted browse
 CodeArenaIssueSchema.index({ organizationId: 1, rewardAmount: -1, status: 1 });
 
-// Full-text search
 CodeArenaIssueSchema.index(
   { title: 'text', description: 'text', tags: 'text' },
   { name: 'codeArenaIssueTextSearch', weights: { title: 10, tags: 5, description: 1 } } as any
 );
 
-// Global marketplace support: visibility-based queries (no org filter)
 CodeArenaIssueSchema.index({ visibility: 1, status: 1, createdAt: -1 });
 
 export const CodeArenaIssue = model<ICodeArenaIssue>('CodeArenaIssue', CodeArenaIssueSchema);

@@ -6,11 +6,8 @@ import {
   Code,
   Github,
   Link as LinkIcon,
-  User,
   Calendar,
-  FileText,
   Award,
-  Lock,
 } from 'lucide-react';
 import { apiRequest } from '@/utils/api';
 
@@ -50,9 +47,11 @@ export const SolutionCard: React.FC<SolutionCardProps> = ({
   const isOwner = currentUserId && currentUserId === issueOwnerId;
 
   const handleAccept = async () => {
-    if (!window.confirm(`Are you sure you want to accept this solution? This will release ${rewardAmount} CR from escrow to ${solution.submitterName} and close the issue.`)) {
-      return;
-    }
+    const confirmMsg = rewardAmount > 0
+      ? `Accept this solution? This will transfer ${rewardAmount} AP to ${solution.submitterName} and mark the issue as solved.`
+      : `Accept this solution? This will mark the issue as solved.`;
+
+    if (!window.confirm(confirmMsg)) return;
 
     try {
       setIsAccepting(true);
@@ -90,7 +89,7 @@ export const SolutionCard: React.FC<SolutionCardProps> = ({
         </div>
       )}
 
-      {/* Header: Submitter Name & Date */}
+      {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-emerald-400">
           {solution.submitterName.charAt(0).toUpperCase()}
@@ -171,11 +170,15 @@ export const SolutionCard: React.FC<SolutionCardProps> = ({
           ))}
       </div>
 
-      {/* Action Bar: Accept Solution */}
+      {/* Accept Solution Button */}
       {isOwner && !solution.isAccepted && issueStatus !== 'SOLVED' && (
         <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
           <span className="text-[11px] text-slate-400">
-            Accepting this solution will transfer <strong className="text-amber-400">{rewardAmount} CR</strong> from escrow to {solution.submitterName}.
+            {rewardAmount > 0 ? (
+              <>Accepting this solution will transfer <strong className="text-amber-400">{rewardAmount} AP</strong> to {solution.submitterName}.</>
+            ) : (
+              <>Accepting this solution will mark this Community Help issue as solved.</>
+            )}
           </span>
 
           <button
@@ -186,11 +189,12 @@ export const SolutionCard: React.FC<SolutionCardProps> = ({
             {isAccepting ? (
               <>
                 <div className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                Releasing Escrow...
+                Transferring AP...
               </>
             ) : (
               <>
-                <Award className="w-4 h-4" /> Accept Solution & Award Reward
+                <Award className="w-4 h-4" />
+                {rewardAmount > 0 ? `Accept Solution & Award ${rewardAmount} AP` : 'Accept Solution'}
               </>
             )}
           </button>

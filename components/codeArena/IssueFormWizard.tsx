@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Coins,
   FileCode,
   Layers,
   Sparkles,
@@ -12,10 +11,12 @@ import {
   Upload,
   AlertCircle,
   CheckCircle2,
-  Lock,
+  HeartHandshake,
   Github,
-  Link as LinkIcon,
+  Coins,
 } from 'lucide-react';
+import { apiRequest } from '@/utils/api';
+
 const ISSUE_CATEGORIES = [
   'Frontend', 'Backend', 'Full Stack', 'Java', 'Python', 'C++',
   'JavaScript', 'TypeScript', 'React', 'Next.js', 'Node.js', 'Express',
@@ -27,16 +28,13 @@ const ISSUE_CATEGORIES = [
 
 type IssueCategory = typeof ISSUE_CATEGORIES[number];
 type IssueDifficulty = 'EASY' | 'MEDIUM' | 'HARD' | 'EXPERT';
-import { apiRequest } from '@/utils/api';
 
 interface IssueFormWizardProps {
-  userWalletBalance: number;
-  onDepositNeeded?: () => void;
+  userArenaPoints: number;
 }
 
 export const IssueFormWizard: React.FC<IssueFormWizardProps> = ({
-  userWalletBalance,
-  onDepositNeeded,
+  userArenaPoints,
 }) => {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -63,6 +61,9 @@ export const IssueFormWizard: React.FC<IssueFormWizardProps> = ({
     { storageId: string; fileName: string; mimeType: string; size: number }[]
   >([]);
   const [uploadingFile, setUploadingFile] = useState(false);
+
+  const remainingBalance = userArenaPoints - rewardAmount;
+  const isCommunityHelp = rewardAmount === 0;
 
   const handleAddTech = () => {
     if (techStackInput.trim() && !techStack.includes(techStackInput.trim())) {
@@ -111,8 +112,8 @@ export const IssueFormWizard: React.FC<IssueFormWizardProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (userWalletBalance < rewardAmount) {
-      setErrorMsg(`Insufficient wallet balance (${userWalletBalance} CR). Deposit at least ${rewardAmount - userWalletBalance} CR to proceed.`);
+    if (rewardAmount > 0 && userArenaPoints < rewardAmount) {
+      setErrorMsg(`Insufficient Arena Points. Current: ${userArenaPoints} AP, Required: ${rewardAmount} AP.`);
       return;
     }
 
@@ -150,13 +151,13 @@ export const IssueFormWizard: React.FC<IssueFormWizardProps> = ({
 
   return (
     <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl max-w-4xl mx-auto text-white">
-      {/* Wizard Progress Header */}
+      {/* Wizard Header */}
       <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">
-            <FileCode className="w-5 h-5 text-emerald-400" /> Post New Issue to Code Arena
+            <FileCode className="w-5 h-5 text-emerald-400" /> Post New Technical Issue
           </h2>
-          <p className="text-xs text-slate-400">Collaborate with peers to solve real technical challenges</p>
+          <p className="text-xs text-slate-400">Collaborate with peers using Arena Points (AP) or Community Help</p>
         </div>
 
         {/* Step Indicators */}
@@ -164,7 +165,7 @@ export const IssueFormWizard: React.FC<IssueFormWizardProps> = ({
           {[
             { num: 1, label: 'Problem Details' },
             { num: 2, label: 'Stack & Category' },
-            { num: 3, label: 'Escrow & Reward' },
+            { num: 3, label: 'Arena Points Reward' },
           ].map((s) => (
             <div
               key={s.num}
@@ -194,7 +195,7 @@ export const IssueFormWizard: React.FC<IssueFormWizardProps> = ({
         </div>
       )}
 
-      {/* ─── STEP 1: Problem Details ─── */}
+      {/* STEP 1: Problem Details */}
       {step === 1 && (
         <div className="space-y-5">
           <div>
@@ -272,7 +273,7 @@ export const IssueFormWizard: React.FC<IssueFormWizardProps> = ({
         </div>
       )}
 
-      {/* ─── STEP 2: Stack & Category ─── */}
+      {/* STEP 2: Stack & Category */}
       {step === 2 && (
         <div className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -395,66 +396,82 @@ export const IssueFormWizard: React.FC<IssueFormWizardProps> = ({
               onClick={() => setStep(3)}
               className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition flex items-center gap-2"
             >
-              Next: Escrow & Reward <ArrowRight className="w-4 h-4" />
+              Next: Arena Points Reward <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
       )}
 
-      {/* ─── STEP 3: Escrow & Reward ─── */}
+      {/* STEP 3: Arena Points Reward */}
       {step === 3 && (
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-5">
             <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-              <Coins className="w-4 h-4 text-amber-400" /> Reward Escrow Setup
+              ⚡ Select Arena Points (AP) Reward
             </h4>
             <p className="text-xs text-slate-400 mb-4">
-              Academic Universe locks your reward in escrow. The reward is released to the solver only when you explicitly accept their solution.
+              Reward solver developers with Arena Points. If set to 0 AP, your issue will be published under <strong>Community Help</strong> mode.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            {/* AP Presets */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-5">
+              {[
+                { amount: 0, label: '0 AP (Community Help)' },
+                { amount: 25, label: '25 AP' },
+                { amount: 50, label: '50 AP' },
+                { amount: 100, label: '100 AP' },
+                { amount: 250, label: '250 AP' },
+                { amount: 500, label: '500 AP' },
+              ].map((preset) => (
+                <button
+                  type="button"
+                  key={preset.amount}
+                  onClick={() => setRewardAmount(preset.amount)}
+                  className={`p-3 rounded-xl border text-xs font-bold text-center transition ${
+                    rewardAmount === preset.amount
+                      ? preset.amount === 0
+                        ? 'bg-teal-500/20 border-teal-500 text-teal-300 shadow-md'
+                        : 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-md'
+                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Live Balance Calculation Box */}
+            <div className="grid grid-cols-3 gap-3 p-4 rounded-xl bg-slate-900 border border-slate-800 text-center">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Reward Amount (CR)</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={rewardAmount}
-                    onChange={(e) => setRewardAmount(Number(e.target.value))}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-4 pr-12 py-2.5 text-base font-bold text-amber-400 focus:outline-none focus:border-amber-500"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                    CR
-                  </span>
-                </div>
+                <span className="text-[10px] text-slate-400 font-semibold block mb-1">Current AP</span>
+                <span className="text-base font-extrabold text-white">{userArenaPoints} AP</span>
               </div>
 
-              <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 flex flex-col justify-between">
-                <span className="text-[11px] text-slate-400">Your Current Wallet Balance</span>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-lg font-bold text-emerald-400">{userWalletBalance} CR</span>
-                  {userWalletBalance < rewardAmount && (
-                    <button
-                      type="button"
-                      onClick={onDepositNeeded}
-                      className="text-xs text-amber-400 hover:underline font-semibold"
-                    >
-                      Deposit Funds
-                    </button>
-                  )}
-                </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-semibold block mb-1">AP Reward</span>
+                <span className={`text-base font-extrabold ${rewardAmount === 0 ? 'text-teal-400' : 'text-amber-400'}`}>
+                  {rewardAmount === 0 ? '0 AP' : `-${rewardAmount} AP`}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[10px] text-slate-400 font-semibold block mb-1">Remaining AP</span>
+                <span className={`text-base font-extrabold ${remainingBalance < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  {remainingBalance} AP
+                </span>
               </div>
             </div>
 
-            {userWalletBalance < rewardAmount && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center justify-between">
-                <span>You need {rewardAmount - userWalletBalance} more credits in your wallet to lock this reward.</span>
+            {/* Insufficient AP Warning */}
+            {remainingBalance < 0 && (
+              <div className="mt-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>Insufficient Arena Points. Earn more AP by solving community issues or daily check-ins.</span>
               </div>
             )}
           </div>
 
-          {/* Attachment Upload */}
+          {/* Attachments */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
               <Upload className="w-3.5 h-3.5 inline mr-1 text-slate-400" />
@@ -493,7 +510,7 @@ export const IssueFormWizard: React.FC<IssueFormWizardProps> = ({
             )}
           </div>
 
-          {/* Action Buttons */}
+          {/* Actions */}
           <div className="flex items-center justify-between pt-4 border-t border-slate-800">
             <button
               type="button"
@@ -502,19 +519,28 @@ export const IssueFormWizard: React.FC<IssueFormWizardProps> = ({
             >
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
+
             <button
               type="submit"
-              disabled={isSubmitting || userWalletBalance < rewardAmount}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 text-slate-950 font-bold text-xs transition shadow-lg shadow-emerald-500/20 flex items-center gap-2"
+              disabled={isSubmitting || remainingBalance < 0}
+              className={`px-6 py-3 rounded-xl font-bold text-xs transition shadow-lg flex items-center gap-2 ${
+                isCommunityHelp
+                  ? 'bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 shadow-teal-500/20'
+                  : 'bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-400 hover:to-emerald-400 text-slate-950 shadow-amber-500/20 disabled:opacity-50'
+              }`}
             >
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                  Locking Escrow & Posting Issue...
+                  Publishing Issue...
+                </>
+              ) : isCommunityHelp ? (
+                <>
+                  <HeartHandshake className="w-4 h-4" /> Publish Community Issue
                 </>
               ) : (
                 <>
-                  <Lock className="w-4 h-4" /> Lock {rewardAmount} CR & Publish Issue
+                  ⚡ Publish Issue (-{rewardAmount} AP)
                 </>
               )}
             </button>

@@ -6,13 +6,11 @@ import { useAuth } from '@/lib/AuthContext';
 import { apiRequest } from '@/utils/api';
 import { CodeArenaNav } from '@/components/codeArena/CodeArenaNav';
 import { IssueFormWizard } from '@/components/codeArena/IssueFormWizard';
-import { MyWalletWidget } from '@/components/codeArena/MyWalletWidget';
 
 export default function CreateIssuePage() {
   const { user, backendUser, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [arenaPoints, setArenaPoints] = useState(1000);
 
   useEffect(() => {
     if (!authLoading && (!user || !backendUser)) {
@@ -20,18 +18,18 @@ export default function CreateIssuePage() {
     }
   }, [user, backendUser, authLoading, router]);
 
-  const fetchWallet = async () => {
+  const fetchPoints = async () => {
     try {
-      const res = await apiRequest('/api/code-arena/wallet/me');
-      setWalletBalance(res.data?.balance || 0);
+      const res = await apiRequest('/api/code-arena/points/me');
+      setArenaPoints(res.data?.profile?.arenaPoints ?? 1000);
     } catch (err) {
-      console.error('Failed to fetch wallet balance:', err);
+      console.error('Failed to fetch AP balance:', err);
     }
   };
 
   useEffect(() => {
     if (user && backendUser) {
-      fetchWallet();
+      fetchPoints();
     }
   }, [user, backendUser]);
 
@@ -45,32 +43,8 @@ export default function CreateIssuePage() {
 
   return (
     <div className="space-y-6 pb-12">
-      <CodeArenaNav walletBalance={walletBalance} />
-
-      <IssueFormWizard
-        userWalletBalance={walletBalance}
-        onDepositNeeded={() => setShowWalletModal(true)}
-      />
-
-      {showWalletModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="max-w-lg w-full">
-            <MyWalletWidget
-              balance={walletBalance}
-              onDepositSuccess={() => {
-                fetchWallet();
-                setShowWalletModal(false);
-              }}
-            />
-            <button
-              onClick={() => setShowWalletModal(false)}
-              className="mt-3 w-full py-2 text-center text-xs text-slate-400 hover:text-white"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      <CodeArenaNav arenaPoints={arenaPoints} />
+      <IssueFormWizard userArenaPoints={arenaPoints} />
     </div>
   );
 }

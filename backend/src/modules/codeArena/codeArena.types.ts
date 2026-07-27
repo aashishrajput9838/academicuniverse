@@ -13,7 +13,7 @@ export interface CreateIssueDTO {
   framework?: string;
   techStack?: string[];
   projectType?: string;
-  rewardAmount: number;
+  rewardAmount: number; // AP amount (0 = Community Help)
   deadline?: string | Date;
   githubRepo?: string;
   externalLinks?: string[];
@@ -72,10 +72,4 @@ export interface IssueFilterQuery {
   sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
-}
-
-export interface DepositCreditsDTO {
-  amount: number;
-  paymentReference?: string;
-  description?: string;
 }

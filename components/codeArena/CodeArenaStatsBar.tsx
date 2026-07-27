@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { HelpCircle, CheckCircle2, Users, Coins } from 'lucide-react';
+import { HelpCircle, CheckCircle2, Users, Trophy } from 'lucide-react';
 
 interface CodeArenaStatsBarProps {
   openIssues?: number;
@@ -41,9 +41,9 @@ export const CodeArenaStatsBar: React.FC<CodeArenaStatsBarProps> = ({
       bg: 'bg-cyan-500/10 border-cyan-500/20',
     },
     {
-      label: 'Total Reward Pool',
-      value: `${totalRewardPool.toLocaleString()} CR`,
-      icon: Coins,
+      label: 'Total AP Reward Pool',
+      value: `${totalRewardPool.toLocaleString()} AP`,
+      icon: Trophy,
       color: 'text-yellow-400',
       bg: 'bg-yellow-500/10 border-yellow-500/20',
     },

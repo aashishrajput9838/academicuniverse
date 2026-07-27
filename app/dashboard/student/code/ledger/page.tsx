@@ -5,15 +5,15 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { apiRequest } from '@/utils/api';
 import { CodeArenaNav } from '@/components/codeArena/CodeArenaNav';
-import { MyWalletWidget } from '@/components/codeArena/MyWalletWidget';
+import { ArenaPointsCard } from '@/components/codeArena/ArenaPointsCard';
 import { TransactionRow } from '@/components/codeArena/TransactionRow';
-import { Wallet, ShieldCheck, ChevronLeft, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react';
+import { History, ShieldCheck, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 
-export default function WalletPage() {
+export default function ArenaPointsLedgerPage() {
   const { user, backendUser, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  const [wallet, setWallet] = useState<any>(null);
+  const [pointsProfile, setPointsProfile] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [totalTx, setTotalTx] = useState(0);
   const [page, setPage] = useState(1);
@@ -29,17 +29,17 @@ export default function WalletPage() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [walletRes, txRes] = await Promise.all([
-        apiRequest('/api/code-arena/wallet/me'),
-        apiRequest(`/api/code-arena/wallet/transactions?page=${page}&limit=15`),
+      const [profileRes, txRes] = await Promise.all([
+        apiRequest('/api/code-arena/points/me'),
+        apiRequest(`/api/code-arena/points/transactions?page=${page}&limit=15`),
       ]);
 
-      setWallet(walletRes.data);
+      setPointsProfile(profileRes.data?.profile);
       setTransactions(txRes.data?.transactions || []);
       setTotalTx(txRes.data?.total || 0);
       setTotalPages(txRes.data?.totalPages || 1);
     } catch (err) {
-      console.error('Failed to load wallet data:', err);
+      console.error('Failed to load AP ledger data:', err);
     } finally {
       setIsLoading(false);
     }
@@ -61,43 +61,43 @@ export default function WalletPage() {
 
   return (
     <div className="space-y-8 pb-12">
-      <CodeArenaNav walletBalance={wallet?.balance || 0} />
+      <CodeArenaNav arenaPoints={pointsProfile?.arenaPoints || 1000} />
 
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-          <Wallet className="w-6 h-6 text-emerald-400" /> My Code Arena Wallet
+          <History className="w-6 h-6 text-amber-400" /> Arena Points Ledger
         </h1>
         <p className="text-xs text-slate-400">
-          Manage credits, review locked escrow funds, and inspect immutable transaction audit logs
+          Review your Arena Points balance, daily check-in rewards, and immutable point transaction audit logs
         </p>
       </div>
 
       {/* Policy Notice Box */}
       <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-start gap-3 shadow-lg">
-        <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+        <ShieldCheck className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
         <div>
-          <span className="font-bold text-white block mb-0.5">Strict Escrow & Audit Policy</span>
-          Academic Universe enforces zero free credit generation. Rewards are funded entirely by issue owners and locked in platform escrow upon issue creation. Escrow is released to the solver upon solution acceptance or refunded to the poster if the issue is cancelled.
+          <span className="font-bold text-white block mb-0.5">Arena Points (AP) Community Economy</span>
+          Code Arena operates on Arena Points (AP). Every newly registered student receives <strong>1000 AP</strong> on account creation. AP is earned through daily check-ins (+5 AP), 7-day login streaks (+25 AP), and by providing accepted solutions to peer developer issues.
         </div>
       </div>
 
-      {/* Wallet Summary Widget */}
-      <MyWalletWidget
-        balance={wallet?.balance}
-        lockedBalance={wallet?.lockedBalance}
-        totalEarned={wallet?.totalEarned}
-        totalSpent={wallet?.totalSpent}
-        onDepositSuccess={fetchData}
+      {/* Points Card */}
+      <ArenaPointsCard
+        arenaPoints={pointsProfile?.arenaPoints}
+        totalEarned={pointsProfile?.totalEarned}
+        totalSpent={pointsProfile?.totalSpent}
+        loginStreak={pointsProfile?.loginStreak}
+        onClaimSuccess={fetchData}
       />
 
-      {/* Transaction History Table */}
+      {/* Ledger Table */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-white">Transaction Audit Log ({totalTx})</h3>
+          <h3 className="text-base font-bold text-white">AP Ledger Audit Trail ({totalTx})</h3>
           {isLoading && (
             <span className="text-xs text-emerald-400 flex items-center gap-1">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Loading logs...
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Loading transactions...
             </span>
           )}
         </div>
@@ -122,7 +122,7 @@ export default function WalletPage() {
           </div>
         ) : (
           <div className="p-8 text-center bg-slate-950/60 border border-slate-800 rounded-2xl text-slate-500 text-xs">
-            No transactions logged yet. Your transaction history will appear here when you deposit funds, lock escrow, or earn rewards.
+            No AP transactions logged yet. Post an issue or claim your daily reward to get started!
           </div>
         )}
 

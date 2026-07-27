@@ -3,7 +3,6 @@
 import React from 'react';
 import Link from 'next/link';
 import {
-  Coins,
   MessageSquare,
   Eye,
   Calendar,
@@ -11,6 +10,7 @@ import {
   CheckCircle2,
   Lock,
   Bookmark,
+  HeartHandshake,
   Sparkles,
 } from 'lucide-react';
 
@@ -23,6 +23,7 @@ interface IssueCardProps {
     difficulty: string;
     status: string;
     rewardAmount: number;
+    isCommunityHelp?: boolean;
     posterName: string;
     posterId: string;
     createdAt: string;
@@ -31,9 +32,6 @@ interface IssueCardProps {
     tags?: string[];
     techStack?: string[];
     savedBy?: string[];
-    aiSuggestions?: {
-      estimatedDifficulty?: string;
-    };
   };
   currentUserId?: string;
   onToggleSave?: (issueId: string) => void;
@@ -41,7 +39,7 @@ interface IssueCardProps {
 
 export const IssueCard: React.FC<IssueCardProps> = ({ issue, currentUserId, onToggleSave }) => {
   const isSaved = currentUserId && issue.savedBy?.includes(currentUserId);
-  const isOwner = currentUserId && issue.posterId === currentUserId;
+  const isCommunity = issue.rewardAmount === 0 || issue.isCommunityHelp;
 
   const difficultyColors: Record<string, string> = {
     EASY: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
@@ -51,7 +49,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, currentUserId, onTo
   };
 
   const statusColors: Record<string, { bg: string; text: string; icon: any }> = {
-    OPEN: { bg: 'bg-emerald-500/10 border-emerald-500/30', text: 'text-emerald-400', icon: Coins },
+    OPEN: { bg: 'bg-emerald-500/10 border-emerald-500/30', text: 'text-emerald-400', icon: Sparkles },
     IN_PROGRESS: { bg: 'bg-amber-500/10 border-amber-500/30', text: 'text-amber-400', icon: Lock },
     SOLVED: { bg: 'bg-cyan-500/10 border-cyan-500/30', text: 'text-cyan-400', icon: CheckCircle2 },
     CLOSED: { bg: 'bg-slate-700/30 border-slate-700', text: 'text-slate-400', icon: Lock },
@@ -68,11 +66,10 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, currentUserId, onTo
 
   return (
     <div className="group bg-slate-900/80 border border-slate-800 rounded-2xl p-5 hover:border-emerald-500/40 transition-all duration-300 shadow-lg hover:shadow-xl flex flex-col justify-between relative overflow-hidden">
-      {/* Accent top gradient line */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity" />
 
       <div>
-        {/* Header Row: Category, Difficulty, Status, Bookmark */}
+        {/* Header Row */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">
@@ -95,22 +92,20 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, currentUserId, onTo
             </span>
           </div>
 
-          <div className="flex items-center gap-1">
-            {onToggleSave && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  onToggleSave(issue._id);
-                }}
-                className={`p-1.5 rounded-lg transition ${
-                  isSaved ? 'text-emerald-400 bg-emerald-500/10' : 'text-slate-500 hover:text-slate-300'
-                }`}
-                title={isSaved ? 'Remove Bookmark' : 'Bookmark Issue'}
-              >
-                <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-emerald-400' : ''}`} />
-              </button>
-            )}
-          </div>
+          {onToggleSave && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                onToggleSave(issue._id);
+              }}
+              className={`p-1.5 rounded-lg transition ${
+                isSaved ? 'text-emerald-400 bg-emerald-500/10' : 'text-slate-500 hover:text-slate-300'
+              }`}
+              title={isSaved ? 'Remove Bookmark' : 'Bookmark Issue'}
+            >
+              <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-emerald-400' : ''}`} />
+            </button>
+          )}
         </div>
 
         {/* Issue Title */}
@@ -120,7 +115,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, currentUserId, onTo
           </h3>
         </Link>
 
-        {/* Snippet Description */}
+        {/* Description Snippet */}
         <p className="text-xs text-slate-400 line-clamp-2 mb-4">
           {issue.description.replace(/#+\s/g, '').replace(/[*_`]/g, '')}
         </p>
@@ -145,15 +140,19 @@ export const IssueCard: React.FC<IssueCardProps> = ({ issue, currentUserId, onTo
         )}
       </div>
 
-      {/* Footer Row: Reward Pill + Metadata */}
+      {/* Footer Row: Reward AP Badge or Community Help Badge */}
       <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-        {/* Reward Badge */}
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-amber-500/30">
-          <Coins className="w-4 h-4 text-yellow-400 animate-pulse" />
-          <span className="text-xs font-bold text-yellow-300">{issue.rewardAmount} CR</span>
-        </div>
+        {isCommunity ? (
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-400 text-xs font-bold">
+            <HeartHandshake className="w-4 h-4 text-teal-400" />
+            <span>Community Help</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-amber-500/30">
+            <span className="text-sm font-extrabold text-amber-400">⚡ {issue.rewardAmount} AP</span>
+          </div>
+        )}
 
-        {/* Metadata stats */}
         <div className="flex items-center gap-3 text-[11px] text-slate-400">
           <span className="flex items-center gap-1" title="Submissions">
             <MessageSquare className="w-3.5 h-3.5 text-slate-500" />

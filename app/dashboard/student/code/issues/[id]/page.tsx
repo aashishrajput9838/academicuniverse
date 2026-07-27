@@ -9,20 +9,18 @@ import { AISuggestionsPanel } from '@/components/codeArena/AISuggestionsPanel';
 import { SolutionCard } from '@/components/codeArena/SolutionCard';
 import { SubmitSolutionModal } from '@/components/codeArena/SubmitSolutionModal';
 import {
-  Coins,
   MessageSquare,
   Eye,
   Calendar,
   User,
   Github,
-  Link as LinkIcon,
   Download,
   AlertCircle,
   CheckCircle2,
-  Lock,
   ArrowLeft,
   XCircle,
   PlusCircle,
+  HeartHandshake,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -36,7 +34,7 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
   const [issue, setIssue] = useState<any>(null);
   const [solutions, setSolutions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [walletBalance, setWalletBalance] = useState(0);
+  const [arenaPoints, setArenaPoints] = useState(1000);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -49,15 +47,15 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [issueRes, solutionsRes, walletRes] = await Promise.all([
+      const [issueRes, solutionsRes, pointsRes] = await Promise.all([
         apiRequest(`/api/code-arena/issues/${issueId}`),
         apiRequest(`/api/code-arena/solutions/${issueId}`),
-        apiRequest('/api/code-arena/wallet/me'),
+        apiRequest('/api/code-arena/points/me'),
       ]);
 
       setIssue(issueRes.data);
       setSolutions(solutionsRes.data || []);
-      setWalletBalance(walletRes.data?.balance || 0);
+      setArenaPoints(pointsRes.data?.profile?.arenaPoints ?? 1000);
     } catch (err: any) {
       console.error('Failed to load issue detail:', err);
       setActionError(err.message || 'Failed to load issue');
@@ -73,9 +71,11 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
   }, [user, backendUser, issueId]);
 
   const handleCancelIssue = async () => {
-    if (!window.confirm('Are you sure you want to cancel this issue? Your locked escrow reward will be refunded to your wallet.')) {
-      return;
-    }
+    const confirmMsg = issue.rewardAmount > 0
+      ? `Cancel this issue? Your ${issue.rewardAmount} AP reward will be refunded to your balance.`
+      : `Cancel this issue?`;
+
+    if (!window.confirm(confirmMsg)) return;
 
     try {
       await apiRequest(`/api/code-arena/issues/${issueId}`, { method: 'DELETE' });
@@ -96,7 +96,7 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
   if (!issue) {
     return (
       <div className="space-y-6 pb-12">
-        <CodeArenaNav walletBalance={walletBalance} />
+        <CodeArenaNav arenaPoints={arenaPoints} />
         <div className="p-12 text-center bg-slate-900/60 border border-slate-800 rounded-2xl text-slate-400">
           <p className="text-sm">Issue not found or access denied.</p>
           <Link href="/dashboard/student/code/issues" className="inline-block mt-3 px-4 py-2 bg-emerald-500 text-slate-950 font-bold text-xs rounded-xl">
@@ -109,6 +109,7 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
 
   const isOwner = backendUser?.id === issue.posterId;
   const userHasSubmitted = solutions.some((s) => s.submitterId === backendUser?.id);
+  const isCommunity = issue.rewardAmount === 0 || issue.isCommunityHelp;
 
   const formattedDate = new Date(issue.createdAt).toLocaleDateString('en-US', {
     month: 'short',
@@ -120,9 +121,9 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="space-y-8 pb-12">
-      <CodeArenaNav walletBalance={walletBalance} />
+      <CodeArenaNav arenaPoints={arenaPoints} />
 
-      {/* Back Link & Poster Actions */}
+      {/* Back Link & Cancel Action */}
       <div className="flex items-center justify-between">
         <Link
           href="/dashboard/student/code/issues"
@@ -136,7 +137,7 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
             onClick={handleCancelIssue}
             className="px-3.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-semibold transition flex items-center gap-1.5"
           >
-            <XCircle className="w-4 h-4" /> Cancel Issue & Refund Escrow
+            <XCircle className="w-4 h-4" /> Cancel Issue {issue.rewardAmount > 0 ? '& Refund AP' : ''}
           </button>
         )}
       </div>
@@ -148,7 +149,7 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-      {/* Issue Detail Box */}
+      {/* Issue Detail Card */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 text-white">
         {/* Header Badges */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -167,14 +168,24 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
             </span>
           </div>
 
-          {/* Reward Escrow Pill */}
-          <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-amber-500/30 shadow-lg">
-            <Coins className="w-5 h-5 text-yellow-400 animate-pulse" />
-            <div>
-              <span className="text-[10px] text-slate-400 block uppercase font-bold">Reward Escrow</span>
-              <span className="text-base font-extrabold text-yellow-300">{issue.rewardAmount} CR</span>
+          {/* Reward AP Badge */}
+          {isCommunity ? (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-teal-500/10 border border-teal-500/30">
+              <HeartHandshake className="w-5 h-5 text-teal-400" />
+              <div>
+                <span className="text-[10px] text-slate-400 block uppercase font-bold">Category</span>
+                <span className="text-sm font-extrabold text-teal-300">Community Help (0 AP)</span>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-amber-500/30 shadow-lg">
+              <span className="text-xl">⚡</span>
+              <div>
+                <span className="text-[10px] text-slate-400 block uppercase font-bold">Arena Point Reward</span>
+                <span className="text-base font-extrabold text-amber-300">{issue.rewardAmount} AP</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Title & Metadata */}
@@ -199,7 +210,7 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
-        {/* Description Body */}
+        {/* Description */}
         <div className="pt-4 border-t border-slate-800">
           <h3 className="text-xs font-bold uppercase text-slate-400 mb-2 tracking-wider">Description</h3>
           <div className="prose prose-invert max-w-none text-xs sm:text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
@@ -226,7 +237,7 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Error Logs Code Block */}
+        {/* Error Logs */}
         {issue.errorLogs && (
           <div className="pt-4 border-t border-slate-800">
             <span className="text-[11px] font-bold text-amber-400 block mb-2">Error Logs / Stack Trace</span>
@@ -238,7 +249,7 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Tech Stack & Github Links */}
+        {/* Tech Stack & Github */}
         <div className="pt-4 border-t border-slate-800 flex items-center justify-between gap-4 flex-wrap">
           {issue.techStack && issue.techStack.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -262,7 +273,7 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
 
-        {/* GridFS Attachments */}
+        {/* Attachments */}
         {issue.attachments && issue.attachments.length > 0 && (
           <div className="pt-4 border-t border-slate-800">
             <span className="text-[11px] font-bold text-slate-400 block mb-2">Attachments</span>

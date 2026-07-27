@@ -21,7 +21,7 @@ export default function BrowseIssuesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Filters State
+  // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState('');
   const [status, setStatus] = useState('');
@@ -29,7 +29,7 @@ export default function BrowseIssuesPage() {
   const [sortBy, setSortBy] = useState('createdAt');
   const [activeTab, setActiveTab] = useState<'all' | 'my-issues' | 'my-solutions' | 'saved'>('all');
 
-  const [walletBalance, setWalletBalance] = useState(0);
+  const [arenaPoints, setArenaPoints] = useState(1000);
 
   useEffect(() => {
     if (!authLoading && (!user || !backendUser)) {
@@ -37,7 +37,6 @@ export default function BrowseIssuesPage() {
     }
   }, [user, backendUser, authLoading, router]);
 
-  // Initial tab from query param
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam === 'my-issues' || tabParam === 'my-solutions' || tabParam === 'saved') {
@@ -45,12 +44,12 @@ export default function BrowseIssuesPage() {
     }
   }, [searchParams]);
 
-  const fetchWallet = async () => {
+  const fetchPoints = async () => {
     try {
-      const res = await apiRequest('/api/code-arena/wallet/me');
-      setWalletBalance(res.data?.balance || 0);
+      const res = await apiRequest('/api/code-arena/points/me');
+      setArenaPoints(res.data?.profile?.arenaPoints ?? 1000);
     } catch (err) {
-      console.error('Failed to fetch wallet:', err);
+      console.error('Failed to fetch AP points:', err);
     }
   };
 
@@ -84,7 +83,7 @@ export default function BrowseIssuesPage() {
 
   useEffect(() => {
     if (user && backendUser) {
-      fetchWallet();
+      fetchPoints();
     }
   }, [user, backendUser]);
 
@@ -123,13 +122,13 @@ export default function BrowseIssuesPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      <CodeArenaNav walletBalance={walletBalance} />
+      <CodeArenaNav arenaPoints={arenaPoints} />
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Browse Technical Issues</h1>
-          <p className="text-xs text-slate-400">Explore open developer issues, submit solutions, and earn escrow rewards</p>
+          <p className="text-xs text-slate-400">Explore open community issues, submit solutions, and earn Arena Points (AP)</p>
         </div>
 
         <Link
@@ -140,7 +139,7 @@ export default function BrowseIssuesPage() {
         </Link>
       </div>
 
-      {/* Filters Component */}
+      {/* Filters */}
       <IssueFilters
         searchQuery={searchQuery}
         onSearchChange={(q) => {
@@ -172,7 +171,7 @@ export default function BrowseIssuesPage() {
         onReset={handleResetFilters}
       />
 
-      {/* Results Header */}
+      {/* Results Count */}
       <div className="flex items-center justify-between text-xs text-slate-400 px-1">
         <span>
           Showing <strong className="text-white">{issues.length}</strong> of{' '}

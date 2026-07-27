@@ -13,14 +13,20 @@ const upload = multer({
   },
 });
 
-// All routes require authentication & organization isolation
+// Protected by JWT Auth & Organization isolation
 router.use(authenticateUser);
 router.use(enforceOrgIsolation);
 
-// Dashboard
+// Dashboard & Stats
 router.get('/dashboard/stats', controller.getDashboardStats);
 
-// Issues CRUD & Workflow
+// Arena Points & Economy APIs
+router.get('/points/me', controller.getMyPointsProfile);
+router.post('/points/claim-daily', controller.claimDailyReward);
+router.get('/points/transactions', controller.getTransactions);
+router.get('/leaderboard', controller.getLeaderboard);
+
+// Issues Workflow
 router.post('/issues', controller.createIssue);
 router.get('/issues', controller.getIssues);
 router.get('/issues/:id', controller.getIssueById);
@@ -33,16 +39,7 @@ router.post('/solutions/:issueId', controller.submitSolution);
 router.get('/solutions/:issueId', controller.getSolutionsForIssue);
 router.put('/solutions/:solutionId/accept', controller.acceptSolution);
 
-// Wallet & Transactions
-router.get('/wallet/me', controller.getMyWallet);
-router.get('/wallet/transactions', controller.getTransactions);
-router.post('/wallet/deposit', controller.depositCredits);
-
-// Developer Reputation Profile
-router.get('/profile/me', controller.getMyReputation);
-router.get('/profile/:userId', controller.getUserReputation);
-
-// Attachments
+// GridFS Attachments
 router.post('/attachments/upload', upload.single('file'), controller.uploadAttachment);
 router.get('/attachments/:storageId', controller.streamAttachment);
 

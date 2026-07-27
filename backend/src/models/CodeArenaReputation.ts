@@ -9,8 +9,9 @@ export type ReputationBadge =
   | 'EXPERT_SOLVER'     // 50+ accepted solutions
   | 'COMMUNITY_PILLAR'  // 100+ accepted solutions
   | 'QUICK_RESPONDER'   // avg first solution within 2 hours
-  | 'HIGH_EARNER'       // total rewards earned >= 5000 credits
-  | 'ACTIVE_POSTER';    // 10+ issues posted
+  | 'HIGH_EARNER'       // total AP earned >= 5000 AP
+  | 'ACTIVE_POSTER'     // 10+ issues posted
+  | 'STREAK_MASTER';    // 7-day streak achieved
 
 export interface ICodeArenaReputation extends Document {
   _id: Types.ObjectId;
@@ -18,23 +19,27 @@ export interface ICodeArenaReputation extends Document {
   organizationId: Types.ObjectId;
   userId: string;
 
-  totalPoints: number;      // reputation score
+  // Platform Currency & Economy
+  arenaPoints: number;        // Available Arena Points (starts at 1000 AP)
+  totalEarned: number;        // Lifetime AP earned
+  totalSpent: number;         // Lifetime AP spent on issue rewards
 
-  // Issue stats
+  // Daily Check-in & Streak System
+  lastDailyRewardDate?: Date; // Last date daily login reward (+5 AP) was claimed
+  loginStreak: number;        // Consecutive days streak
+
+  // Reputation & Statistics
+  totalPoints: number;        // Reputation points score (for leaderboard)
   issuesPosted: number;
-  issuesSolved: number;     // issues where this user's solution was accepted
+  issuesSolved: number;
   issuesCancelled: number;
 
   // Solution stats
   solutionsSubmitted: number;
   solutionsAccepted: number;
-  acceptanceRate: number;   // solutionsAccepted / solutionsSubmitted * 100 (0–100)
+  acceptanceRate: number;     // percentage (0–100)
 
-  // Financial summary (mirrors wallet totals for quick display)
-  totalRewardsEarned: number;
-  totalRewardsSpent: number;
-
-  // Technology profile (top tags from issues and solutions)
+  // Technology profile
   favoriteTechnologies: string[];
 
   // Badges earned
@@ -53,6 +58,13 @@ const CodeArenaReputationSchema = new Schema<ICodeArenaReputation>(
     },
     userId: { type: String, required: true },
 
+    arenaPoints: { type: Number, default: 1000, min: 0 },
+    totalEarned: { type: Number, default: 1000 }, // Initial 1000 AP counts toward total earned
+    totalSpent: { type: Number, default: 0, min: 0 },
+
+    lastDailyRewardDate: { type: Date },
+    loginStreak: { type: Number, default: 0 },
+
     totalPoints: { type: Number, default: 0 },
 
     issuesPosted: { type: Number, default: 0 },
@@ -63,9 +75,6 @@ const CodeArenaReputationSchema = new Schema<ICodeArenaReputation>(
     solutionsAccepted: { type: Number, default: 0 },
     acceptanceRate: { type: Number, default: 0 },
 
-    totalRewardsEarned: { type: Number, default: 0 },
-    totalRewardsSpent: { type: Number, default: 0 },
-
     favoriteTechnologies: [{ type: String }],
 
     badges: [
@@ -74,7 +83,7 @@ const CodeArenaReputationSchema = new Schema<ICodeArenaReputation>(
         enum: [
           'FIRST_ISSUE', 'FIRST_SOLVE', 'HELPFUL_MEMBER', 'PROBLEM_SOLVER',
           'TOP_CONTRIBUTOR', 'EXPERT_SOLVER', 'COMMUNITY_PILLAR',
-          'QUICK_RESPONDER', 'HIGH_EARNER', 'ACTIVE_POSTER',
+          'QUICK_RESPONDER', 'HIGH_EARNER', 'ACTIVE_POSTER', 'STREAK_MASTER',
         ],
       },
     ],
@@ -82,14 +91,16 @@ const CodeArenaReputationSchema = new Schema<ICodeArenaReputation>(
   { timestamps: true }
 );
 
-// Unique reputation doc per user per org
+// Unique reputation/points document per user per org
 CodeArenaReputationSchema.index(
   { organizationId: 1, userId: 1 },
   { unique: true, name: 'uniqueReputationPerUserPerOrg' } as any
 );
 
-// Leaderboard query
+// Leaderboard indexes
+CodeArenaReputationSchema.index({ organizationId: 1, totalEarned: -1 });
 CodeArenaReputationSchema.index({ organizationId: 1, totalPoints: -1 });
+CodeArenaReputationSchema.index({ organizationId: 1, solutionsAccepted: -1 });
 
 export const CodeArenaReputation = model<ICodeArenaReputation>(
   'CodeArenaReputation',

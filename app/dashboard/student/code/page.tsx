@@ -6,10 +6,10 @@ import { useAuth } from '@/lib/AuthContext';
 import { apiRequest } from '@/utils/api';
 import { CodeArenaNav } from '@/components/codeArena/CodeArenaNav';
 import { CodeArenaStatsBar } from '@/components/codeArena/CodeArenaStatsBar';
-import { MyWalletWidget } from '@/components/codeArena/MyWalletWidget';
+import { ArenaPointsCard } from '@/components/codeArena/ArenaPointsCard';
 import { IssueCard } from '@/components/codeArena/IssueCard';
 import Link from 'next/link';
-import { PlusCircle, Compass, Award, ArrowRight, RefreshCw, Flame, CheckCircle2 } from 'lucide-react';
+import { PlusCircle, Compass, Award, ArrowRight, Flame, Trophy } from 'lucide-react';
 
 export default function CodeArenaDashboard() {
   const { user, backendUser, loading: authLoading } = useAuth();
@@ -20,7 +20,6 @@ export default function CodeArenaDashboard() {
   const [myIssues, setMyIssues] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Authentication check
   useEffect(() => {
     if (!authLoading && (!user || !backendUser)) {
       router.push('/login');
@@ -67,24 +66,24 @@ export default function CodeArenaDashboard() {
   return (
     <div className="space-y-8 pb-12">
       {/* Navigation Header */}
-      <CodeArenaNav walletBalance={stats?.myWallet?.balance || 0} />
+      <CodeArenaNav arenaPoints={stats?.myPointsProfile?.arenaPoints || 1000} />
 
-      {/* Hero Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950/60 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* Hero Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-amber-950/50 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-2xl relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold mb-3">
-            <Flame className="w-3.5 h-3.5" /> Peer-to-Peer Developer Issue Marketplace
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold mb-3">
+            <Flame className="w-3.5 h-3.5" /> Peer-to-Peer Developer Community & AP Economy
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight mb-3">
-            Solve Real Technical Issues. <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
-              Earn Peer Rewards & Reputation.
+            Solve Technical Issues. <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-emerald-300">
+              Earn Arena Points (AP) & Badges.
             </span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 mb-6 leading-relaxed">
-            Need help debugging a project? Post your issue with a credit reward locked in escrow. Have technical expertise? Submit solutions and build your verified developer reputation.
+            Need help debugging a project? Post your issue with Arena Points or request free Community Help. Solve issues to earn AP, climb the developer leaderboard, and unlock verified reputation badges!
           </p>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -101,6 +100,13 @@ export default function CodeArenaDashboard() {
             >
               <Compass className="w-4 h-4 text-emerald-400" /> Browse Open Issues
             </Link>
+
+            <Link
+              href="/dashboard/student/code/leaderboard"
+              className="px-5 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-amber-400 font-semibold text-xs transition flex items-center gap-2"
+            >
+              <Trophy className="w-4 h-4 text-amber-400" /> Leaderboard
+            </Link>
           </div>
         </div>
       </div>
@@ -114,48 +120,48 @@ export default function CodeArenaDashboard() {
         isLoading={isLoading}
       />
 
-      {/* Main Grid: Wallet & Reputation + Recent Issues */}
+      {/* Main Grid: AP Card + Recent Issues */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column (1 col): Wallet Widget & Reputation Badge */}
+        {/* Left Column: Arena Points Card & Badges */}
         <div className="space-y-6">
-          {/* Wallet Card */}
-          <MyWalletWidget
-            balance={stats?.myWallet?.balance}
-            lockedBalance={stats?.myWallet?.lockedBalance}
-            totalEarned={stats?.myWallet?.totalEarned}
-            totalSpent={stats?.myWallet?.totalSpent}
-            onDepositSuccess={fetchData}
+          <ArenaPointsCard
+            arenaPoints={stats?.myPointsProfile?.arenaPoints}
+            totalEarned={stats?.myPointsProfile?.totalEarned}
+            totalSpent={stats?.myPointsProfile?.totalSpent}
+            loginStreak={stats?.dailyRewardStatus?.currentStreak}
+            claimedToday={stats?.dailyRewardStatus?.claimedToday}
+            isNewUser={stats?.isNewUser}
+            onClaimSuccess={fetchData}
           />
 
-          {/* Reputation Summary Card */}
+          {/* Reputation & Badges Box */}
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl text-white">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold flex items-center gap-2">
-                <Award className="w-4 h-4 text-emerald-400" /> Developer Reputation
+                <Award className="w-4 h-4 text-emerald-400" /> Reputation Badges
               </h3>
               <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
-                {stats?.myReputation?.totalPoints || 0} PTS
+                {stats?.myPointsProfile?.totalPoints || 0} PTS
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs mb-4">
               <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-800">
                 <span className="text-[10px] text-slate-400 block">Issues Solved</span>
-                <span className="font-bold text-white text-base">{stats?.myReputation?.issuesSolved || 0}</span>
+                <span className="font-bold text-white text-base">{stats?.myPointsProfile?.issuesSolved || 0}</span>
               </div>
 
               <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-800">
                 <span className="text-[10px] text-slate-400 block">Acceptance Rate</span>
-                <span className="font-bold text-emerald-400 text-base">{stats?.myReputation?.acceptanceRate || 0}%</span>
+                <span className="font-bold text-emerald-400 text-base">{stats?.myPointsProfile?.acceptanceRate || 0}%</span>
               </div>
             </div>
 
-            {/* Badges */}
-            {stats?.myReputation?.badges && stats.myReputation.badges.length > 0 ? (
+            {stats?.myPointsProfile?.badges && stats.myPointsProfile.badges.length > 0 ? (
               <div>
                 <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1.5">Earned Badges</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {stats.myReputation.badges.map((badge: string, idx: number) => (
+                  {stats.myPointsProfile.badges.map((badge: string, idx: number) => (
                     <span
                       key={idx}
                       className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold"
@@ -171,14 +177,13 @@ export default function CodeArenaDashboard() {
           </div>
         </div>
 
-        {/* Right Column (2 cols): Open Issues Feed & My Issues */}
+        {/* Right Column: Open Issues Feed */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Open Issues Section */}
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-lg font-bold text-white">Trending Open Issues</h3>
-                <p className="text-xs text-slate-400">Issues looking for solutions right now</p>
+                <p className="text-xs text-slate-400">Help peers solve technical issues & earn AP rewards</p>
               </div>
 
               <Link
@@ -214,7 +219,6 @@ export default function CodeArenaDashboard() {
             )}
           </div>
 
-          {/* My Issues Section */}
           {myIssues.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-4">

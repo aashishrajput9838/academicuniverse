@@ -1,13 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { CodeArenaService } from './codeArena.service';
-import { CodeArenaWalletService } from './codeArena.wallet.service';
+import { CodeArenaPointsService } from './codeArena.points.service';
 import { sendResponse } from '../../utils/response';
 import { GridFSProvider } from '../../storage/GridFSProvider';
 
 export class CodeArenaController {
   constructor(
     private readonly service = new CodeArenaService(),
-    private readonly walletService = new CodeArenaWalletService()
+    private readonly pointsService = new CodeArenaPointsService()
   ) {}
 
   // 1. Create Issue
@@ -21,7 +21,10 @@ export class CodeArenaController {
       }
 
       const issue = await this.service.createIssue(organizationId, userId, req.body);
-      return sendResponse(res, 201, issue, 'Issue created successfully and reward locked in escrow.');
+      const message = issue.rewardAmount > 0
+        ? `Issue published! ${issue.rewardAmount} Arena Points deducted.`
+        : 'Community Help issue published!';
+      return sendResponse(res, 201, issue, message);
     } catch (err: any) {
       next(err);
     }
@@ -71,7 +74,7 @@ export class CodeArenaController {
     }
   };
 
-  // 5. Cancel Issue & Refund Escrow
+  // 5. Cancel Issue & Refund AP
   public cancelIssue = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const organizationId = (req as any).organizationId;
@@ -79,7 +82,10 @@ export class CodeArenaController {
       const { id } = req.params;
 
       const issue = await this.service.cancelIssue(organizationId, userId, id);
-      return sendResponse(res, 200, issue, 'Issue cancelled and escrow refunded successfully.');
+      const message = issue.rewardAmount > 0
+        ? `Issue cancelled. ${issue.rewardAmount} AP refunded to your balance.`
+        : 'Community Help issue cancelled.';
+      return sendResponse(res, 200, issue, message);
     } catch (err: any) {
       next(err);
     }
@@ -93,7 +99,7 @@ export class CodeArenaController {
       const { id } = req.params;
 
       const result = await this.service.toggleSaveIssue(organizationId, userId, id);
-      return sendResponse(res, 200, result, result.saved ? 'Issue saved.' : 'Issue removed from saved.');
+      return sendResponse(res, 200, result, result.saved ? 'Issue bookmarked.' : 'Bookmark removed.');
     } catch (err: any) {
       next(err);
     }
@@ -126,7 +132,7 @@ export class CodeArenaController {
     }
   };
 
-  // 9. Accept Solution
+  // 9. Accept Solution & Award AP
   public acceptSolution = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const organizationId = (req as any).organizationId;
@@ -134,26 +140,45 @@ export class CodeArenaController {
       const { solutionId } = req.params;
 
       const result = await this.service.acceptSolution(organizationId, userId, solutionId);
-      return sendResponse(res, 200, result, 'Solution accepted and reward transferred.');
+      const message = result.issue.rewardAmount > 0
+        ? `Solution accepted! ${result.issue.rewardAmount} AP transferred to solver.`
+        : 'Solution accepted! Issue marked as solved.';
+      return sendResponse(res, 200, result, message);
     } catch (err: any) {
       next(err);
     }
   };
 
-  // 10. Get My Wallet
-  public getMyWallet = async (req: Request, res: Response, next: NextFunction) => {
+  // 10. Get My Points Profile (Includes 1000 AP Welcome Bonus auto-grant)
+  public getMyPointsProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const organizationId = (req as any).organizationId;
       const userId = (req as any).user?.userId;
 
-      const wallet = await this.walletService.getOrCreateWallet(organizationId, userId);
-      return sendResponse(res, 200, wallet, 'Wallet details retrieved.');
+      const result = await this.pointsService.getOrCreatePointsProfile(organizationId, userId);
+      return sendResponse(res, 200, result, 'Points profile retrieved.');
     } catch (err: any) {
       next(err);
     }
   };
 
-  // 11. Get Transactions
+  // 11. Claim Daily Login Reward (+5 AP & Streak Bonus)
+  public claimDailyReward = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const organizationId = (req as any).organizationId;
+      const userId = (req as any).user?.userId;
+
+      const result = await this.pointsService.checkAndGrantDailyReward(organizationId, userId);
+      const message = result.claimed
+        ? `Claimed +${result.rewardAmount} AP daily reward! Streak: ${result.currentStreak} days.`
+        : 'Daily reward already claimed today.';
+      return sendResponse(res, 200, result, message);
+    } catch (err: any) {
+      next(err);
+    }
+  };
+
+  // 12. Get AP Ledger Transactions
   public getTransactions = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const organizationId = (req as any).organizationId;
@@ -161,54 +186,27 @@ export class CodeArenaController {
       const page = Number(req.query.page) || 1;
       const limit = Number(req.query.limit) || 20;
 
-      const result = await this.walletService.getTransactions(organizationId, userId, page, limit);
-      return sendResponse(res, 200, result, 'Transactions retrieved successfully.');
+      const result = await this.pointsService.getTransactions(organizationId, userId, page, limit);
+      return sendResponse(res, 200, result, 'AP ledger transactions retrieved.');
     } catch (err: any) {
       next(err);
     }
   };
 
-  // 12. Deposit Credits (Real payment top-up)
-  public depositCredits = async (req: Request, res: Response, next: NextFunction) => {
+  // 13. Get Leaderboard
+  public getLeaderboard = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const organizationId = (req as any).organizationId;
-      const userId = (req as any).user?.userId;
-      const { amount, description } = req.body;
+      const limit = Number(req.query.limit) || 20;
 
-      const result = await this.walletService.deposit(organizationId, userId, Number(amount), description || 'Wallet Deposit');
-      return sendResponse(res, 200, result, 'Credits deposited successfully.');
+      const leaderboard = await this.pointsService.getLeaderboard(organizationId, limit);
+      return sendResponse(res, 200, leaderboard, 'Leaderboard retrieved successfully.');
     } catch (err: any) {
       next(err);
     }
   };
 
-  // 13. Get My Reputation Profile
-  public getMyReputation = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const organizationId = (req as any).organizationId;
-      const userId = (req as any).user?.userId;
-
-      const rep = await this.service.getReputation(organizationId, userId);
-      return sendResponse(res, 200, rep, 'Reputation profile retrieved.');
-    } catch (err: any) {
-      next(err);
-    }
-  };
-
-  // 14. Get User Reputation Profile
-  public getUserReputation = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const organizationId = (req as any).organizationId;
-      const { userId } = req.params;
-
-      const rep = await this.service.getReputation(organizationId, userId);
-      return sendResponse(res, 200, rep, 'User reputation profile retrieved.');
-    } catch (err: any) {
-      next(err);
-    }
-  };
-
-  // 15. Dashboard Stats
+  // 14. Dashboard Stats
   public getDashboardStats = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const organizationId = (req as any).organizationId;
@@ -221,7 +219,7 @@ export class CodeArenaController {
     }
   };
 
-  // 16. Upload Attachment (GridFS)
+  // 15. Upload Attachment
   public uploadAttachment = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const file = req.file;
@@ -257,7 +255,7 @@ export class CodeArenaController {
     }
   };
 
-  // 17. Stream Attachment
+  // 16. Stream Attachment
   public streamAttachment = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { storageId } = req.params;

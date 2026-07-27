@@ -647,14 +647,51 @@ function buildEditableGrid(
   // 3. CERTIFICATE
   if (category === 'CERTIFICATE') {
     const headers = ['Field', 'Value'];
-    const rows = Object.entries(candidateFields)
-      .filter(([_, v]) => v !== null && v !== undefined && typeof v !== 'object')
-      .map(([k, _]) => [
-        { path: `field-name-${k}`, header: 'Field', aiValue: k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), isReadOnly: true },
-        { path: k, header: 'Value', aiValue: String(getNestedValue(originalFields, k) ?? '') }
-      ]);
+    const fieldsMap: Record<string, string> = {};
 
-    return { sheets: [{ name: 'Certificate', headers, rows }] };
+    Object.entries(candidateFields || {}).forEach(([k, v]) => {
+      if (v !== null && v !== undefined) {
+        fieldsMap[k] = Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v) : String(v);
+      }
+    });
+
+    if (!fieldsMap.certificateTitle && fieldsMap.title) fieldsMap.certificateTitle = fieldsMap.title;
+    if (!fieldsMap.title && fieldsMap.certificateTitle) fieldsMap.title = fieldsMap.certificateTitle;
+    if (!fieldsMap.issuer && fieldsMap.issuingOrganization) fieldsMap.issuer = fieldsMap.issuingOrganization;
+    if (!fieldsMap.issuingOrganization && fieldsMap.issuer) fieldsMap.issuingOrganization = fieldsMap.issuer;
+
+    const rows: EditableCell[][] = Object.entries(fieldsMap).map(([k, val]) => [
+      {
+        path: `field-label-${k}`,
+        header: 'Field',
+        aiValue: k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim(),
+        isReadOnly: true,
+      },
+      {
+        path: k,
+        header: 'Value',
+        aiValue: String(getNestedValue(originalFields, k) ?? val ?? ''),
+      },
+    ]);
+
+    if (rows.length === 0) {
+      const defaultKeys = [
+        { key: 'certificateTitle', label: 'Certificate Title' },
+        { key: 'candidateName', label: 'Candidate Name' },
+        { key: 'issuer', label: 'Issuing Organization' },
+        { key: 'issueDate', label: 'Issue Date' },
+        { key: 'credentialId', label: 'Credential ID' },
+        { key: 'description', label: 'Description' },
+      ];
+      defaultKeys.forEach(({ key, label }) => {
+        rows.push([
+          { path: `field-label-${key}`, header: 'Field', aiValue: label, isReadOnly: true },
+          { path: key, header: 'Value', aiValue: String(getNestedValue(originalFields, key) ?? '') },
+        ]);
+      });
+    }
+
+    return { sheets: [{ name: 'Certificate Details', headers, rows }] };
   }
 
   // 4. RESUME
@@ -1561,10 +1598,18 @@ function getFieldSchema(category: string): FieldDef[] {
       ];
     case 'CERTIFICATE':
       return [
-        { key: 'title', label: 'Certificate Name', required: true },
+        { key: 'certificateTitle', label: 'Certificate Title', required: true },
+        { key: 'title', label: 'Certificate Name' },
+        { key: 'candidateName', label: 'Candidate Name' },
         { key: 'issuer', label: 'Issuing Organization', required: true },
-        { key: 'issueDate', label: 'Issue Date', required: true },
+        { key: 'issuingOrganization', label: 'Issuing Organization' },
+        { key: 'workshopName', label: 'Workshop Name' },
+        { key: 'courseName', label: 'Course Name' },
+        { key: 'issueDate', label: 'Issue Date' },
+        { key: 'expiryDate', label: 'Expiry Date' },
         { key: 'credentialId', label: 'Credential ID' },
+        { key: 'instructor', label: 'Instructor' },
+        { key: 'signatories', label: 'Signatories' },
         { key: 'description', label: 'Description' },
       ];
     case 'RESUME':
@@ -2558,23 +2603,23 @@ function ExtractedDataModal({
                 <div className="flex items-center justify-center py-12">
                   <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
                 </div>
-              ) : routingInfo ? (
+              ) : routingInfo && routingInfo.routingDecision ? (
                 <>
                   <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
                     <p className="text-xs font-bold uppercase tracking-widest text-violet-400 mb-3">AI Routing Decision</p>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-slate-500">Document Type</span>
-                        <span className="text-xs font-mono font-bold text-white">{routingInfo.routingDecision.documentType}</span>
+                        <span className="text-xs font-mono font-bold text-white">{routingInfo.routingDecision?.documentType ?? 'UNKNOWN'}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-slate-500">Routing Confidence</span>
                         <div className="flex items-center gap-2">
                           <div className="w-24 h-1.5 rounded-full bg-slate-700/50">
                             <div className="h-1.5 rounded-full bg-gradient-to-r from-violet-500 to-violet-400"
-                              style={{ width: `${Math.round(routingInfo.routingDecision.routingConfidence * 100)}%` }} />
+                              style={{ width: `${Math.round((routingInfo.routingDecision?.routingConfidence ?? 0) * 100)}%` }} />
                           </div>
-                          <span className="text-xs font-bold text-violet-300">{Math.round(routingInfo.routingDecision.routingConfidence * 100)}%</span>
+                          <span className="text-xs font-bold text-violet-300">{Math.round((routingInfo.routingDecision?.routingConfidence ?? 0) * 100)}%</span>
                         </div>
                       </div>
                       <div className="flex items-center justify-between">
@@ -2584,7 +2629,7 @@ function ExtractedDataModal({
                             ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
                             : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
                         }`}>
-                          {routingInfo.routingStatus}
+                          {routingInfo.routingStatus ?? 'UNKNOWN'}
                         </span>
                       </div>
                     </div>
@@ -2593,7 +2638,7 @@ function ExtractedDataModal({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
                       <p className="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-2">Primary Destination</p>
-                      {routingInfo.routingDecision.primaryModule ? (
+                      {routingInfo.routingDecision?.primaryModule ? (
                         <div className="flex items-center gap-2">
                           <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-300">
                             {routingInfo.routingDecision.primaryModule}
@@ -2605,7 +2650,7 @@ function ExtractedDataModal({
                     </div>
                     <div className="rounded-xl border border-slate-700/40 bg-slate-800/20 p-4">
                       <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Secondary Destinations</p>
-                      {routingInfo.routingDecision.secondaryModules.length > 0 ? (
+                      {(routingInfo.routingDecision?.secondaryModules?.length ?? 0) > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
                           {routingInfo.routingDecision.secondaryModules.map((m) => (
                             <span key={m} className="rounded-full border border-slate-700/40 bg-slate-700/20 px-2.5 py-1 text-[11px] text-slate-300">
@@ -2621,7 +2666,7 @@ function ExtractedDataModal({
 
                   <div className="rounded-xl border border-slate-700/40 bg-slate-800/20 p-4">
                     <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Reasoning</p>
-                    <p className="text-xs text-slate-300 leading-relaxed">{routingInfo.routingDecision.reasoning || 'No reasoning provided.'}</p>
+                    <p className="text-xs text-slate-300 leading-relaxed">{routingInfo.routingDecision?.reasoning || 'No reasoning provided.'}</p>
                   </div>
 
                   <div className="rounded-xl border border-slate-700/40 bg-slate-800/20 p-4">
@@ -2635,7 +2680,7 @@ function ExtractedDataModal({
                     </button>
                     {showModuleRegistry && (
                       <div className="mt-3 space-y-1.5">
-                        {routingInfo.moduleRegistry.map((m) => (
+                        {routingInfo.moduleRegistry?.map((m) => (
                           <div key={m.moduleId} className="flex items-center justify-between rounded-lg border border-slate-700/30 bg-slate-800/40 px-3 py-2">
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-semibold text-white">{m.moduleName}</span>
@@ -2653,8 +2698,8 @@ function ExtractedDataModal({
                 </>
               ) : (
                 <div className="py-12 text-center text-slate-500">
-                  <p className="text-sm">No routing information available.</p>
-                  <p className="text-xs mt-1 text-slate-600">The AI has not generated a routing recommendation yet.</p>
+                  <p className="text-sm font-semibold text-slate-300">No routing information available.</p>
+                  <p className="text-xs mt-1 text-slate-500">The AI has not generated a routing recommendation yet.</p>
                 </div>
               )}
             </div>

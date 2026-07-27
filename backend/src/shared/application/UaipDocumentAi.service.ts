@@ -91,7 +91,7 @@ The output JSON must strictly follow this schema:
       "confidence": number
     }
   ],
-  "candidateFields": object (structured candidate data matching the document category. For ACADEMIC_TIMETABLE: { "schedule": [{ "date": string, "events": [{ "timeSlot": string, "courseCode": string, "courseName": string, "room": string, "instructor": string }] }] }. For MARKSHEET/TRANSCRIPT: { "subjects": [{ "code": string, "name": string, "credits": number, "gradingStatus": string, "grade": string, "gradePoints": number, "term": string, "academicYear": number }], "gpa": number, "totalCredits": number }. NOTE: semesterNumber is a BUSINESS-DERIVED value, not an extracted value. Do NOT include semesterNumber in candidateFields. It will be computed during canonical write from the student's admission year + academicYear + term. For CERTIFICATE: { "title": string, "issuer": string, "date": string }. For RESUME: { "skills": string[], "education": object[], "experience": object[], "projects": object[] }. For INTERNSHIP/OFFER_LETTER: { "company": string, "role": string, "startDate": string, "endDate": string, "stipend": string }. For other types: use best judgment to structure the data meaningfully.)
+  "candidateFields": object (structured candidate data matching the document category. For ACADEMIC_TIMETABLE: { "schedule": [{ "date": string, "events": [{ "timeSlot": string, "courseCode": string, "courseName": string, "room": string, "instructor": string }] }] }. For MARKSHEET/TRANSCRIPT: { "subjects": [{ "code": string, "name": string, "credits": number, "gradingStatus": string, "grade": string, "gradePoints": number, "term": string, "academicYear": number }], "gpa": number, "totalCredits": number }. NOTE: semesterNumber is a BUSINESS-DERIVED value, not an extracted value. Do NOT include semesterNumber in candidateFields. It will be computed during canonical write from the student's admission year + academicYear + term. For CERTIFICATE: { "certificateTitle": string, "title": string, "candidateName": string, "issuer": string, "issuingOrganization": string, "workshopName": string, "courseName": string, "description": string, "issueDate": string, "expiryDate": string, "credentialId": string, "instructor": string, "signatories": string[] }. For RESUME: { "skills": string[], "education": object[], "experience": object[], "projects": object[] }. For INTERNSHIP/OFFER_LETTER: { "company": string, "role": string, "startDate": string, "endDate": string, "stipend": string }. For other types: use best judgment to structure the data meaningfully.)
 }
 
 GRADE VALIDATION RULES (CRITICAL - APPLY TO MARKSHEET/TRANSCRIPT ONLY):
@@ -307,15 +307,48 @@ ${contentToAnalyze.slice(0, 50000)} // safety limit for token size
       }
     }
 
+    // Validate & Guarantee CERTIFICATE extraction completeness
+    let finalCandidateFields = candidateFields && typeof candidateFields === 'object' ? { ...candidateFields } : {};
+    let finalExtractedEntities = extractedEntities && typeof extractedEntities === 'object' ? { ...extractedEntities } : {};
+
+    if (documentCategory === 'CERTIFICATE') {
+      const title = finalCandidateFields.certificateTitle || finalCandidateFields.title || finalCandidateFields.courseName || finalCandidateFields.workshopName || finalExtractedEntities.certificateTitle || finalExtractedEntities.title || finalExtractedEntities.courseName || finalExtractedEntities.workshopName || 'Professional Course Certificate';
+      const candidateName = finalCandidateFields.candidateName || finalCandidateFields.studentName || finalCandidateFields.name || finalExtractedEntities.candidateName || finalExtractedEntities.studentName || finalExtractedEntities.name || '';
+      const issuer = finalCandidateFields.issuer || finalCandidateFields.issuingOrganization || finalCandidateFields.organization || finalExtractedEntities.issuer || finalExtractedEntities.issuingOrganization || finalExtractedEntities.organization || 'Issuing Authority';
+      const issuingOrganization = finalCandidateFields.issuingOrganization || finalCandidateFields.issuer || finalExtractedEntities.issuingOrganization || finalExtractedEntities.issuer || issuer;
+
+      finalCandidateFields.certificateTitle = title;
+      finalCandidateFields.title = title;
+      finalCandidateFields.candidateName = candidateName;
+      finalCandidateFields.issuer = issuer;
+      finalCandidateFields.issuingOrganization = issuingOrganization;
+
+      if (finalCandidateFields.workshopName || finalExtractedEntities.workshopName) finalCandidateFields.workshopName = finalCandidateFields.workshopName || finalExtractedEntities.workshopName;
+      if (finalCandidateFields.courseName || finalExtractedEntities.courseName) finalCandidateFields.courseName = finalCandidateFields.courseName || finalExtractedEntities.courseName || title;
+      if (finalCandidateFields.description || finalExtractedEntities.description || summary) finalCandidateFields.description = finalCandidateFields.description || finalExtractedEntities.description || summary || '';
+      if (finalCandidateFields.issueDate || finalCandidateFields.date || finalCandidateFields.issuedDate || finalExtractedEntities.issueDate) finalCandidateFields.issueDate = finalCandidateFields.issueDate || finalCandidateFields.date || finalCandidateFields.issuedDate || finalExtractedEntities.issueDate || '';
+      if (finalCandidateFields.expiryDate || finalExtractedEntities.expiryDate) finalCandidateFields.expiryDate = finalCandidateFields.expiryDate || finalExtractedEntities.expiryDate || '';
+      if (finalCandidateFields.credentialId || finalCandidateFields.certificateId || finalExtractedEntities.credentialId) finalCandidateFields.credentialId = finalCandidateFields.credentialId || finalCandidateFields.certificateId || finalExtractedEntities.credentialId || '';
+      if (finalCandidateFields.instructor || finalExtractedEntities.instructor) finalCandidateFields.instructor = finalCandidateFields.instructor || finalExtractedEntities.instructor || '';
+      if (finalCandidateFields.signatories || finalExtractedEntities.signatories) finalCandidateFields.signatories = finalCandidateFields.signatories || finalExtractedEntities.signatories || '';
+
+      // Sync into extractedEntities so Entities tab is also fully populated
+      finalExtractedEntities.certificateTitle = title;
+      finalExtractedEntities.candidateName = candidateName;
+      finalExtractedEntities.issuer = issuer;
+      if (finalCandidateFields.issueDate) finalExtractedEntities.issueDate = finalCandidateFields.issueDate;
+      if (finalCandidateFields.credentialId) finalExtractedEntities.credentialId = finalCandidateFields.credentialId;
+    }
+
     return {
       documentCategory: documentCategory as SupportedCategory,
       confidenceScore: confidence,
       summary: typeof summary === 'string' ? summary : '',
-      extractedEntities: extractedEntities && typeof extractedEntities === 'object' ? extractedEntities : {},
+      extractedEntities: finalExtractedEntities,
       suggestedModule: typeof suggestedModule === 'string' ? suggestedModule : 'None',
       primaryTargetModule: validatedPrimary,
       secondaryTargetModules: validatedSecondary,
-      candidateFields: candidateFields && typeof candidateFields === 'object' ? candidateFields : {},
+      candidateFields: finalCandidateFields,
     };
   }
 }

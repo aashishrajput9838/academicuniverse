@@ -3194,21 +3194,35 @@ export function GrowthUploadPanel({ backendToken }: GrowthUploadPanelProps) {
 
   const hasUploads = uploads.length > 0;
 
-  const supportedCertificates = [
-    'Coursera', 'Udemy', 'NPTEL', 'Cisco', 'AWS',
-    'Microsoft', 'Google', 'Internship Certificates',
-    'Hackathons', 'Workshop Certificates',
-  ];
-
   return (
     <div className="space-y-6">
-      {/* ── Upload CTA ── */}
+      {/* ── Contextual Recommendation Banner (When arriving from Career Profile) ── */}
+      {isCertificateMode && (
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex items-start gap-3.5 shadow-lg shadow-emerald-950/20 animate-in fade-in duration-200">
+          <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 shrink-0 border border-emerald-500/30">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-sm font-bold text-emerald-300">Certificate Upload Recommended</h4>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                Career Profile Recommendation
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+              You arrived from Career Profile. Upload your course or professional certificate below — Gemini AI will automatically detect, extract, and verify it across your profile.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Universal Document Upload CTA ── */}
       <div
         className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
           isDragging
             ? 'border-emerald-400/60 bg-emerald-500/5'
-            : isCertificateMode
-            ? 'border-emerald-500/60 bg-gradient-to-br from-slate-900/90 via-emerald-950/30 to-slate-900/90 shadow-xl shadow-emerald-950/20'
             : 'border-slate-700/70 bg-gradient-to-br from-slate-900/80 via-slate-800/50 to-emerald-900/20'
         }`}
         onDragEnter={handleDragEnter}
@@ -3220,39 +3234,14 @@ export function GrowthUploadPanel({ backendToken }: GrowthUploadPanelProps) {
         <div className="relative p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                {isCertificateMode && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    Certificate Mode
-                  </span>
-                )}
-                <h2 className="text-xl font-bold text-white">
-                  {isCertificateMode
-                    ? 'Upload Course Certificate'
-                    : hasUploads
-                    ? 'Upload Academic Documents'
-                    : 'Build Your Growth Profile'}
-                </h2>
-              </div>
+              <h2 className="text-xl font-bold text-white">
+                {hasUploads ? 'Upload Academic & Professional Documents' : 'Build Your Growth Profile'}
+              </h2>
               <p className="mt-1 text-sm text-slate-400">
-                {isCertificateMode
-                  ? 'Upload course, workshop, or training certificates. Gemini AI will classify and extract certificate details automatically.'
-                  : hasUploads
-                  ? 'Drag & drop or click to upload additional documents. Gemini AI will classify and extract data automatically.'
+                {hasUploads
+                  ? 'Drag & drop or click to upload marksheets, transcripts, certificates, timetables, or resumes. Gemini AI will classify and extract data automatically.'
                   : 'Upload your marksheets, transcripts, certificates, or timetables. AI will classify and extract structured data.'}
               </p>
-              {isCertificateMode && (
-                <div className="flex flex-wrap gap-1.5 mt-3">
-                  {supportedCertificates.map((cert) => (
-                    <span
-                      key={cert}
-                      className="px-2.5 py-1 rounded-lg bg-slate-800/80 text-emerald-300/90 border border-slate-700 text-xs font-medium"
-                    >
-                      📜 {cert}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
             <div className="flex items-center gap-3">
               {uploading && (
@@ -3268,7 +3257,7 @@ export function GrowthUploadPanel({ backendToken }: GrowthUploadPanelProps) {
                 onClick={() => fileInputRef.current?.click()}
                 className="rounded-xl bg-emerald-500/20 px-5 py-2.5 text-sm font-semibold text-emerald-300 ring-1 ring-emerald-500/40 transition-all hover:bg-emerald-500/30 hover:ring-emerald-400/60 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isCertificateMode ? 'Select Certificate File' : hasUploads ? 'Upload More' : 'Upload Document'}
+                {hasUploads ? 'Upload More' : 'Upload Document'}
               </button>
             </div>
           </div>

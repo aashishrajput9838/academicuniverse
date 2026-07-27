@@ -6,6 +6,7 @@ import { SkillIdentityResolver, ResolvedSkill } from './skillIdentityResolver.se
 import { Logger } from '../../utils/logger';
 import { ontologyResolutionMetrics } from './ontologyResolutionMetrics.service';
 import { AliasType } from '../enums/skillAlias.enum';
+import { toObjectId } from '../../utils/mongooseHelpers';
 
 const logger = new Logger('SkillEvidenceService');
 
@@ -165,9 +166,9 @@ export class SkillEvidenceService {
     try {
       evidence = await this.repo.create(
         {
-          organizationId,
-          personId,
-          sourceDocumentId,
+          organizationId: toObjectId(organizationId),
+          personId: toObjectId(personId),
+          sourceDocumentId: sourceDocumentId ? toObjectId(sourceDocumentId) : undefined,
           skillId,
           skillName,
           aliases,

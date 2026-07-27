@@ -72,3 +72,62 @@ export async function fetchSkillSummary(backendToken: string): Promise<SkillSumm
 
   return payload.data as SkillSummaryResponse;
 }
+
+export async function addSkillsApi(
+  backendToken: string,
+  skills: { skillName: string; category?: string; proficiencyLevel?: string; source?: string; notes?: string }[]
+): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/api/skills/me`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${backendToken}`,
+    },
+    body: JSON.stringify({ skills }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message || 'Failed to save skills');
+  }
+
+  return response.json();
+}
+
+export async function updateSkillApi(
+  backendToken: string,
+  skillId: string,
+  payload: { proficiencyLevel?: string; category?: string; notes?: string }
+): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/api/skills/me/${encodeURIComponent(skillId)}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${backendToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message || 'Failed to update skill');
+  }
+
+  return response.json();
+}
+
+export async function deleteSkillApi(backendToken: string, skillId: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/api/skills/me/${encodeURIComponent(skillId)}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${backendToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.message || 'Failed to delete skill');
+  }
+
+  return response.json();
+}

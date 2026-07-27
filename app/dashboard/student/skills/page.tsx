@@ -7,6 +7,8 @@ import { useSkillsStore } from './store/skillsStore';
 import { useModuleRefresh } from '@/hooks/useModuleRefresh';
 import { SkillCard } from './components/SkillCard';
 import { SkillDetailPanel } from './components/SkillDetailPanel';
+import { AddSkillsModal } from './components/AddSkillsModal';
+import { EditSkillModal } from './components/EditSkillModal';
 import { EmptyState } from './components/EmptyState';
 import { ErrorState } from './components/ErrorState';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
@@ -17,7 +19,8 @@ import {
   AlertTriangle,
   Sparkles,
   Filter,
-  RefreshCw
+  RefreshCw,
+  Plus,
 } from 'lucide-react';
 import { SkillRecordDTO, SkillCategory, ProficiencyLevel } from './types/skills';
 import { cn } from '@/lib/utils';
@@ -46,6 +49,14 @@ export default function StudentSkillsTracker() {
   const [filterLevel, setFilterLevel] = useState<ProficiencyLevel | 'ALL'>('ALL');
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
+
+  // Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingSkill, setEditingSkill] = useState<SkillRecordDTO | null>(null);
+
+  const existingSkillIds = useMemo(() => {
+    return new Set(profile?.skills?.map((s) => s.skillId.toLowerCase()) || []);
+  }, [profile]);
 
   const handleRefresh = useCallback(() => {
     if (backendToken) refresh(backendToken);
@@ -157,14 +168,23 @@ export default function StudentSkillsTracker() {
               </p>
             )}
           </div>
-          <button
-            onClick={() => backendToken && refresh(backendToken)}
-            disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-sm font-medium transition-colors border border-emerald-500/20 disabled:opacity-50"
-          >
-            <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-            Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-emerald-900/30"
+            >
+              <Plus className="w-4 h-4" />
+              ✨ Add Core Skills
+            </button>
+            <button
+              onClick={() => backendToken && refresh(backendToken)}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-xl text-sm font-medium transition-colors border border-emerald-500/20 disabled:opacity-50"
+            >
+              <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {syncStatus && (
@@ -303,6 +323,7 @@ export default function StudentSkillsTracker() {
                   key={skill.id}
                   skill={skill}
                   onSelect={handleSkillSelect}
+                  onEdit={(s) => setEditingSkill(s)}
                   isSelected={selectedSkill?.id === skill.id}
                 />
               ))}
@@ -319,6 +340,24 @@ export default function StudentSkillsTracker() {
             onClose={() => setSelectedSkill(null)}
           />
         )}
+
+        {/* Add Skills Modal */}
+        <AddSkillsModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          backendToken={backendToken || ''}
+          existingSkillIds={existingSkillIds}
+          onSuccess={() => backendToken && refresh(backendToken)}
+        />
+
+        {/* Edit / Delete Skill Modal */}
+        <EditSkillModal
+          skill={editingSkill}
+          isOpen={Boolean(editingSkill)}
+          onClose={() => setEditingSkill(null)}
+          backendToken={backendToken || ''}
+          onSuccess={() => backendToken && refresh(backendToken)}
+        />
       </div>
     </div>
   );

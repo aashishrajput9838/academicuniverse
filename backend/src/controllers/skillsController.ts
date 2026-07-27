@@ -6,6 +6,8 @@ import { SkillEvidenceService } from '../shared/services/skillEvidence.service';
 import { SubjectSkillMappingService } from '../shared/services/subjectSkillMapping.service';
 import { SkillRecordRepository } from '../shared/repositories/skillRecord.repository';
 import { SkillEvidenceRepository } from '../shared/repositories/skillEvidence.repository';
+import { SkillRecord } from '../models/SkillRecord';
+import { SkillEvidence } from '../models/SkillEvidence';
 import { GithubRecord } from '../models/GithubRecord';
 import { logger } from '../utils/logger';
 import {
@@ -17,7 +19,7 @@ import {
   SubjectMappingDTO,
   CreateMappingRequest,
 } from '../shared/dtos/skills.dto';
-import { SkillCategory } from '../shared/enums/skills.enum';
+import { SkillCategory, ProficiencyLevel, SkillSource, SkillStatus, EvidenceStatus } from '../shared/enums/skills.enum';
 import { toObjectId } from '../utils/mongooseHelpers';
 
 const skillProjectionService = new SkillProjectionService();
@@ -429,5 +431,238 @@ export const getMappingsForSubject = async (req: any, res: Response) => {
   } catch (err: any) {
     logger.error('Get mappings for subject error:', err);
     return sendError(res, 500, 'Failed to fetch subject mappings');
+  }
+};
+
+/**
+ * Helper to normalize skill name into canonical skillId
+ */
+export function normalizeSkillId(skillName: string): string {
+  return skillName
+    .toLowerCase()
+    .trim()
+    .replace(/\+/g, 'p')
+    .replace(/#/g, 'sharp')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Helper to map proficiency level string to 0-100 score
+ */
+export function getProficiencyScore(level: string): number {
+  switch (level.toUpperCase()) {
+    case 'EXPERT': return 90;
+    case 'ADVANCED': return 75;
+    case 'INTERMEDIATE': return 50;
+    case 'BEGINNER': default: return 25;
+  }
+}
+
+/**
+ * Sync active student skills to StudentResume filledData
+ */
+async function syncSkillsToResumeDraft(authUserId: string, organizationId: string, personId: string) {
+  try {
+    const records = await skillRecordRepo.findByPerson(personId, organizationId);
+    const skillNames = records.map(r => r.skillName);
+    const StudentResume = (await import('../models/StudentResume')).default;
+    await StudentResume.findOneAndUpdate(
+      { userId: authUserId },
+      { $set: { 'filledData.skills': skillNames.join(', ') } }
+    );
+  } catch (e) {
+    logger.warn('Failed to sync skills to StudentResume draft', e);
+  }
+}
+
+/**
+ * Add / Upsert Skill(s) for authenticated student
+ * POST /api/skills/me
+ */
+export const addSkillsController = async (req: any, res: Response) => {
+  try {
+    const { organizationId, user, body } = req;
+    const authUserId = user?.userId;
+    if (!organizationId || !authUserId) {
+      return sendError(res, 401, 'Authentication required');
+    }
+
+    const skillsInput = Array.isArray(body.skills) ? body.skills : [body];
+    if (skillsInput.length === 0) {
+      return sendError(res, 400, 'At least one skill is required.');
+    }
+
+    const personResolver = new PersonResolver();
+    const personId = await personResolver.resolve(authUserId, organizationId, user.email, user.name);
+
+    const processedSkills = [];
+
+    for (const item of skillsInput) {
+      const name = item.skillName || item.name;
+      if (!name || typeof name !== 'string') continue;
+
+      const skillId = normalizeSkillId(name);
+      const category = item.category || item.skillCategory || SkillCategory.TECHNICAL;
+      const level = item.proficiencyLevel || item.level || 'INTERMEDIATE';
+      const score = getProficiencyScore(level);
+      const source = item.source || SkillSource.MANUAL;
+
+      // Check for existing record (Duplicate Prevention!)
+      let record = await skillRecordRepo.findBySkill(personId, skillId, organizationId);
+      const now = new Date();
+
+      if (record) {
+        // Update existing SkillRecord (Duplicate Prevention!)
+        record.proficiencyLevel = level;
+        record.proficiencyScore = score;
+        record.skillCategory = category;
+        record.lastVerifiedAt = now;
+        record.status = SkillStatus.ACTIVE;
+        await record.save();
+      } else {
+        // Create new SkillRecord
+        record = await SkillRecord.create({
+          organizationId: toObjectId(organizationId),
+          personId: toObjectId(personId),
+          skillId,
+          skillName: name.trim(),
+          aliases: [],
+          skillCategory: category,
+          proficiencyLevel: level,
+          proficiencyScore: score,
+          evidenceCount: 1,
+          firstSeenAt: now,
+          lastVerifiedAt: now,
+          status: SkillStatus.ACTIVE,
+        });
+      }
+
+      // Create supporting SkillEvidence
+      await SkillEvidence.create({
+        organizationId: toObjectId(organizationId),
+        personId: toObjectId(personId),
+        skillId,
+        skillName: name.trim(),
+        aliases: [],
+        primarySource: source,
+        sourceType: 'USER_MANAGED',
+        sourceSubtype: 'DIRECT_ENTRY',
+        payload: { notes: item.notes || 'Manually added by student' },
+        confidence: 0.9,
+        extractedBy: 'SKILLS_TRACKER_UI',
+        effectiveFrom: now,
+        status: EvidenceStatus.ACTIVE,
+      });
+
+      processedSkills.push(toSkillRecordDTO(record));
+    }
+
+    // Cross-Module Synchronization with Resume Builder
+    await syncSkillsToResumeDraft(authUserId, organizationId, personId);
+
+    return sendResponse(res, 201, {
+      count: processedSkills.length,
+      skills: processedSkills,
+    }, 'Skills saved and synchronized successfully');
+  } catch (err: any) {
+    logger.error('Add skills error:', err);
+    return sendError(res, 500, 'Failed to save skills');
+  }
+};
+
+/**
+ * Edit Skill Level / Category for authenticated student
+ * PUT /api/skills/me/:skillId
+ */
+export const updateSkillController = async (req: any, res: Response) => {
+  try {
+    const { organizationId, user, params, body } = req;
+    const { skillId } = params;
+    const authUserId = user?.userId;
+
+    if (!organizationId || !authUserId) {
+      return sendError(res, 401, 'Authentication required');
+    }
+
+    if (!skillId) {
+      return sendError(res, 400, 'skillId is required');
+    }
+
+    const personResolver = new PersonResolver();
+    const personId = await personResolver.resolve(authUserId, organizationId, user.email, user.name);
+
+    const record = await skillRecordRepo.findBySkill(personId, skillId, organizationId);
+    if (!record) {
+      return sendError(res, 404, 'Skill record not found');
+    }
+
+    if (body.proficiencyLevel || body.level) {
+      record.proficiencyLevel = body.proficiencyLevel || body.level;
+      record.proficiencyScore = getProficiencyScore(record.proficiencyLevel);
+    }
+
+    if (body.skillCategory || body.category) {
+      record.skillCategory = body.skillCategory || body.category;
+    }
+
+    record.lastVerifiedAt = new Date();
+    await record.save();
+
+    // Create updated evidence log
+    await SkillEvidence.create({
+      organizationId: toObjectId(organizationId),
+      personId: toObjectId(personId),
+      skillId: record.skillId,
+      skillName: record.skillName,
+      aliases: [],
+      primarySource: body.source || SkillSource.MANUAL,
+      sourceType: 'USER_MANAGED',
+      sourceSubtype: 'PROFICIENCY_UPDATE',
+      payload: { notes: body.notes || 'Updated by student' },
+      confidence: 0.9,
+      extractedBy: 'SKILLS_TRACKER_UI',
+      effectiveFrom: new Date(),
+      status: EvidenceStatus.ACTIVE,
+    });
+
+    await syncSkillsToResumeDraft(authUserId, organizationId, personId);
+
+    return sendResponse(res, 200, toSkillRecordDTO(record), 'Skill updated successfully');
+  } catch (err: any) {
+    logger.error('Update skill error:', err);
+    return sendError(res, 500, 'Failed to update skill');
+  }
+};
+
+/**
+ * Delete Skill for authenticated student
+ * DELETE /api/skills/me/:skillId
+ */
+export const deleteSkillController = async (req: any, res: Response) => {
+  try {
+    const { organizationId, user, params } = req;
+    const { skillId } = params;
+    const authUserId = user?.userId;
+
+    if (!organizationId || !authUserId) {
+      return sendError(res, 401, 'Authentication required');
+    }
+
+    if (!skillId) {
+      return sendError(res, 400, 'skillId is required');
+    }
+
+    const personResolver = new PersonResolver();
+    const personId = await personResolver.resolve(authUserId, organizationId, user.email, user.name);
+
+    await SkillRecord.deleteMany({ organizationId: toObjectId(organizationId), personId: toObjectId(personId), skillId });
+    await SkillEvidence.deleteMany({ organizationId: toObjectId(organizationId), personId: toObjectId(personId), skillId });
+
+    await syncSkillsToResumeDraft(authUserId, organizationId, personId);
+
+    return sendResponse(res, 200, { skillId }, 'Skill deleted successfully');
+  } catch (err: any) {
+    logger.error('Delete skill error:', err);
+    return sendError(res, 500, 'Failed to delete skill');
   }
 };

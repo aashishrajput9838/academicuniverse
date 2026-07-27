@@ -3,6 +3,7 @@ import { SubjectSkillMappingRepository } from '../repositories/subjectSkillMappi
 import { ISubjectSkillMapping } from '../../models/SubjectSkillMapping';
 import { SkillCategory } from '../../shared/enums/skills.enum';
 import { normalizeDate } from '../../shared/utils/dateNormalizer';
+import { toObjectId } from '../../utils/mongooseHelpers';
 
 export class SubjectSkillMappingService {
   private repo = new SubjectSkillMappingRepository();
@@ -48,7 +49,7 @@ export class SubjectSkillMappingService {
 
     const { doc, action } = await this.repo.upsert(
       {
-        organizationId,
+        organizationId: toObjectId(organizationId),
         subjectCode,
         subjectName,
         skillId,

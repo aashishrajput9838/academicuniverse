@@ -22,10 +22,11 @@ const proficiencyLabel: Record<ProficiencyLevel, string> = {
 interface SkillCardProps {
   skill: SkillRecordDTO;
   onSelect: (skill: SkillRecordDTO) => void;
+  onEdit?: (skill: SkillRecordDTO) => void;
   isSelected?: boolean;
 }
 
-export function SkillCard({ skill, onSelect, isSelected }: SkillCardProps) {
+export function SkillCard({ skill, onSelect, onEdit, isSelected }: SkillCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const formatDate = (dateStr: string) => {
@@ -40,7 +41,7 @@ export function SkillCard({ skill, onSelect, isSelected }: SkillCardProps) {
   return (
     <div
       className={cn(
-        'rounded-xl border transition-all duration-200 cursor-pointer',
+        'rounded-xl border transition-all duration-200 cursor-pointer relative group',
         'bg-slate-900/50 backdrop-blur-sm',
         isSelected
           ? 'border-emerald-500/50 shadow-lg shadow-emerald-500/10'
@@ -51,7 +52,21 @@ export function SkillCard({ skill, onSelect, isSelected }: SkillCardProps) {
       <div className="p-5">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
-            <h3 className="text-white font-semibold text-lg truncate">{skill.skillName}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-white font-semibold text-lg truncate">{skill.skillName}</h3>
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(skill);
+                  }}
+                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 text-[10px] font-medium transition border border-slate-700"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
             <p className="text-slate-400 text-sm mt-0.5">{skill.skillId}</p>
           </div>
           <span

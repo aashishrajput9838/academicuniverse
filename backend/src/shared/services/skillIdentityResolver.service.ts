@@ -5,6 +5,7 @@ import { ICanonicalSkill } from '../../models/CanonicalSkill';
 import { ISkillAlias } from '../../models/SkillAlias';
 import { SkillCategory } from '../enums/skills.enum';
 import { Logger } from '../../utils/logger';
+import { toObjectId } from '../../utils/mongooseHelpers';
 
 const logger = new Logger('SkillIdentityResolver');
 
@@ -83,7 +84,7 @@ export class SkillIdentityResolver {
       });
 
       const newAlias = await this.aliasRepo.upsert({
-        organizationId,
+        organizationId: toObjectId(organizationId),
         canonicalId: newCanonical.canonicalId,
         alias: rawSkillId,
         aliasType,
@@ -134,7 +135,7 @@ export class SkillIdentityResolver {
         const alias = await this.aliasRepo.findByAlias(rawSkillId, aliasType, organizationId);
         if (!alias) {
           const newAlias = await this.aliasRepo.upsert({
-            organizationId,
+            organizationId: toObjectId(organizationId),
             canonicalId: canonical.canonicalId,
             alias: rawSkillId,
             aliasType,
@@ -208,7 +209,7 @@ export class SkillIdentityResolver {
       source: 'MANUAL',
       extractedBy,
       correlationId,
-      organizationId,
+      organizationId: toObjectId(organizationId),
       status: AliasStatus.ACTIVE,
     });
   }

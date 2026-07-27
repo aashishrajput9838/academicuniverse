@@ -402,12 +402,14 @@ class CertificatesAdapter extends BaseAdapter {
     reviewer: any
   ): Promise<string[]> {
     const orgOid = toObjectId(reviewer.organizationId);
+    const title = fields.certificateTitle ?? fields.title ?? fields.certificateName ?? fields.courseName ?? fields.workshopName ?? fields.name ?? 'Unknown Certificate';
+    const issuer = fields.issuer ?? fields.issuingOrganization ?? 'Unknown';
     const result = await CertificateRecord.findOneAndUpdate(
       {
         organizationId: orgOid,
         personId,
-        title: fields.title ?? fields.certificateName ?? 'Unknown Certificate',
-        issuer: fields.issuer ?? fields.issuingOrganization ?? 'Unknown',
+        title,
+        issuer,
       },
       {
         $set: {
@@ -418,6 +420,13 @@ class CertificatesAdapter extends BaseAdapter {
       },
       { upsert: true, new: true, session }
     );
+    console.log('[DIAGNOSTIC_LOG] Review approval CertificateRecord created/updated:', {
+      organizationId: orgOid.toString(),
+      personId: personId.toString(),
+      insertedCertificateRecordId: result._id.toString(),
+      title: result.title,
+      issuer: result.issuer,
+    });
     return [String(result._id)];
   }
   async deleteCanonical(
@@ -903,6 +912,12 @@ export class RoutingExecutor {
 
     const writes: RoutingExecutionWrite[] = [];
     const targetModuleIds = [routingDecision.primaryModule, ...routingDecision.secondaryModules].filter(Boolean);
+
+    if (kr?.documentCategory === 'CERTIFICATE' || finalFields?.certificateTitle || finalFields?.title) {
+      if (!targetModuleIds.includes('certificates')) {
+        targetModuleIds.push('certificates');
+      }
+    }
 
     logger.info('Executing routing decisions', {
       processingId: kr.processingId,

@@ -68,6 +68,12 @@ export class GrowthProfileService {
 
     // Load certificates
     const certRecs = await CertificateRecord.find({ organizationId: toObjectId(organizationId), personId: person._id }).lean();
+    console.log('[DIAGNOSTIC_LOG] Growth profile query:', {
+      organizationId,
+      personId: person._id.toString(),
+      certRecsFound: certRecs.length,
+      certRecsDetails: certRecs.map(c => ({ id: c._id.toString(), title: c.title, issuer: c.issuer })),
+    });
     const certificates: CertificateDTO[] = certRecs.map((c) => ({
       id: c._id.toString(),
       sourceDocumentId: c.sourceDocumentId.toString(),

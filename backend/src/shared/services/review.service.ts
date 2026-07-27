@@ -207,7 +207,7 @@ async function writeCertificateRecord(
 ): Promise<string[]> {
   const orgOid = toObjectId(reviewer.organizationId);
   const sourceOid = upload._id;
-  const title = fields.title ?? fields.certificateName ?? fields.name ?? 'Unknown Certificate';
+  const title = fields.certificateTitle ?? fields.title ?? fields.certificateName ?? fields.courseName ?? fields.workshopName ?? fields.name ?? 'Unknown Certificate';
   const issuer = fields.issuer ?? fields.issuingOrganization ?? 'Unknown';
   const issuedDate = fields.issueDate ? new Date(normalizeDate(fields.issueDate).isoDateTime) : new Date();
 
@@ -228,6 +228,14 @@ async function writeCertificateRecord(
     upsert: true,
     new: true,
     session,
+  });
+
+  console.log('[DIAGNOSTIC_LOG] Review approval CertificateRecord created/updated:', {
+    organizationId: orgOid.toString(),
+    personId: personId.toString(),
+    insertedCertificateRecordId: result._id.toString(),
+    title: result.title,
+    issuer: result.issuer,
   });
 
   // Cross-Module Synchronization with Resume Builder!
@@ -458,7 +466,8 @@ export class ReviewService {
 
         newVersion = ((kr as any).version ?? 1) + 1;
 
-        const personId = await resolveOrCreatePerson(reviewer.userId, reviewer.organizationId, session);
+        const targetUserId = upload.userId ? String(upload.userId) : reviewer.userId;
+        const personId = await resolveOrCreatePerson(targetUserId, reviewer.organizationId, session);
 
         // Determine routing: use override > stored routing > legacy fallback
         const storedRouting = (kr as any).routingDecision;
@@ -587,7 +596,8 @@ export class ReviewService {
 
       newVersion = ((kr as any).version ?? 1) + 1;
 
-      const personId = await resolveOrCreatePerson(reviewer.userId, reviewer.organizationId, undefined);
+      const targetUserId = upload.userId ? String(upload.userId) : reviewer.userId;
+      const personId = await resolveOrCreatePerson(targetUserId, reviewer.organizationId, undefined as any);
 
       const storedRouting = (kr as any).routingDecision;
       const hasRoutingDecision = storedRouting && storedRouting.primaryModule;

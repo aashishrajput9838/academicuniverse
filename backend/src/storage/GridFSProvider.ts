@@ -41,10 +41,9 @@ export class GridFSProvider implements StorageProvider {
     })
 
     await new Promise<void>((resolve, reject) => {
-      uploadStream.end(file, (err: any, fileDoc: any) => {
-        if (err) return reject(err)
-        resolve()
-      })
+      uploadStream.on('error', (err: any) => reject(err))
+      uploadStream.on('finish', () => resolve())
+      uploadStream.end(file)
     })
 
     // The file's ObjectId is available via uploadStream.id

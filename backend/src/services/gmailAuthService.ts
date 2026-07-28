@@ -60,16 +60,36 @@ export const getStoredGmailTokens = async (userId: string): Promise<{ accessToke
     return normalizeResolvedGmailTokens(user.gmailTokens as IGmailTokens);
 };
 
+export const getRedirectUri = (): string => {
+    const configured = process.env.GOOGLE_REDIRECT_URI?.trim();
+    const isProd = process.env.NODE_ENV === 'production';
+
+    if (configured) {
+        if (isProd && configured.includes('localhost')) {
+            console.warn('[Google OAuth Audit] Overriding localhost GOOGLE_REDIRECT_URI in production to https://academicuniverse.onrender.com/api/gmail/callback');
+            return 'https://academicuniverse.onrender.com/api/gmail/callback';
+        }
+        return configured;
+    }
+
+    const backendUrl = process.env.BACKEND_URL || process.env.APP_URL || (
+        isProd
+            ? 'https://academicuniverse.onrender.com'
+            : `http://localhost:${process.env.PORT || 10000}`
+    );
+    return `${backendUrl.replace(/\/$/, '')}/api/gmail/callback`;
+};
+
 export const getOAuth2Client = () => {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+    const redirectUri = getRedirectUri();
 
     if (!clientId || !clientSecret || !redirectUri) {
         console.error('Missing Google OAuth environment variables:', { 
             clientId: !!clientId, 
             clientSecret: !!clientSecret, 
-            redirectUri: !!redirectUri 
+            redirectUri 
         });
         throw new Error('Google OAuth configuration is incomplete');
     }

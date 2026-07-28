@@ -40,12 +40,21 @@ export const gmailCallback = async (req: Request, res: Response) => {
         const { code, state, error } = req.query;
 
         const getFrontendUrl = () => {
-            const origin = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:3000';
-            // If it's a comma-separated list, take the first one
-            return origin.split(',')[0].trim();
+            const origin = process.env.FRONTEND_URL || process.env.CORS_ORIGIN;
+            const isProd = process.env.NODE_ENV === 'production';
+
+            if (origin && origin.trim()) {
+                const first = origin.split(',')[0].trim();
+                if (isProd && first.includes('localhost')) {
+                    return 'https://academicuniverse.vercel.app';
+                }
+                return first;
+            }
+
+            return isProd ? 'https://academicuniverse.vercel.app' : 'http://localhost:3000';
         };
         const frontendUrl = getFrontendUrl();
-        const redirectUrl = `${frontendUrl}/dashboard/student/events`;
+        const redirectUrl = `${frontendUrl.replace(/\/$/, '')}/dashboard/student/events`;
 
         if (error) {
             console.error('Gmail OAuth error:', error);
@@ -92,11 +101,21 @@ export const gmailCallback = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error('Error handling Gmail callback:', error);
         const getFrontendUrl = () => {
-            const origin = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:3000';
-            // If it's a comma-separated list, take the first one
-            return origin.split(',')[0].trim();
+            const origin = process.env.FRONTEND_URL || process.env.CORS_ORIGIN;
+            const isProd = process.env.NODE_ENV === 'production';
+
+            if (origin && origin.trim()) {
+                const first = origin.split(',')[0].trim();
+                if (isProd && first.includes('localhost')) {
+                    return 'https://academicuniverse.vercel.app';
+                }
+                return first;
+            }
+
+            return isProd ? 'https://academicuniverse.vercel.app' : 'http://localhost:3000';
         };
         const frontendUrl = getFrontendUrl();
+        const redirectUrl = `${frontendUrl.replace(/\/$/, '')}/dashboard/student/events`;
         
         delete req.session?.gmail_oauth_state;
         delete req.session?.gmail_oauth_user_id;
@@ -108,7 +127,7 @@ export const gmailCallback = async (req: Request, res: Response) => {
         else if (error.message?.includes('redirect_uri_mismatch')) errorCode = 'redirect_mismatch';
         else if (error.message?.includes('configuration is incomplete')) errorCode = 'config_incomplete';
 
-        return res.redirect(`${frontendUrl}/dashboard/student/events?gmail_error=${errorCode}`);
+        return res.redirect(`${redirectUrl}?gmail_error=${errorCode}`);
     }
 };
 

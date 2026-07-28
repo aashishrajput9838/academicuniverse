@@ -5,33 +5,32 @@ import { EncryptionUtil } from '../utils/encryption';
 
 const normalizeResolvedGmailTokens = (tokens: IGmailTokens): { accessToken: string; refreshToken: string; expiryDate: number } => {
     if (!tokens || typeof tokens !== 'object') {
-        throw new Error('Gmail token payload is malformed');
+        return { accessToken: '', refreshToken: '', expiryDate: 0 };
     }
 
-    if (tokens.accessToken && tokens.refreshToken) {
+    if (tokens.accessToken || tokens.refreshToken) {
         return {
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
+            accessToken: tokens.accessToken || '',
+            refreshToken: tokens.refreshToken || '',
             expiryDate: tokens.expiryDate || 0,
         };
     }
 
     if (tokens.encryptedToken && tokens.iv) {
-        const decrypted = EncryptionUtil.decrypt(tokens.encryptedToken, tokens.iv);
-        const parsed = JSON.parse(decrypted) as { accessToken?: string; refreshToken?: string; expiryDate?: number };
-
-        if (!parsed.accessToken || !parsed.refreshToken) {
-            throw new Error('Encrypted Gmail token payload is malformed');
+        try {
+            const decrypted = EncryptionUtil.decrypt(tokens.encryptedToken, tokens.iv);
+            const parsed = JSON.parse(decrypted) as { accessToken?: string; refreshToken?: string; expiryDate?: number };
+            return {
+                accessToken: parsed.accessToken || '',
+                refreshToken: parsed.refreshToken || '',
+                expiryDate: parsed.expiryDate || tokens.expiryDate || 0,
+            };
+        } catch (decErr) {
+            console.warn('[Gmail Auth] Failed to decrypt stored tokens:', decErr);
         }
-
-        return {
-            accessToken: parsed.accessToken,
-            refreshToken: parsed.refreshToken,
-            expiryDate: parsed.expiryDate || tokens.expiryDate || 0,
-        };
     }
 
-    throw new Error('Gmail token payload is malformed');
+    return { accessToken: '', refreshToken: '', expiryDate: 0 };
 };
 
 const persistEncryptedGmailTokens = async (user: any, tokens: { accessToken: string; refreshToken: string; expiryDate: number }) => {
@@ -151,7 +150,14 @@ export const handleGmailCallback = async (code: string, userId: string) => {
     const user = await User.findById(userId);
     if (!user) throw new Error(`User not found with ID: ${userId}`);
 
-    const existingTokens = user.gmailTokens ? normalizeResolvedGmailTokens(user.gmailTokens as IGmailTokens) : null;
+    let existingTokens: { accessToken: string; refreshToken: string; expiryDate: number } | null = null;
+    try {
+        if (user.gmailTokens) {
+            existingTokens = normalizeResolvedGmailTokens(user.gmailTokens as IGmailTokens);
+        }
+    } catch (e) {
+        console.warn('[Gmail Auth] Failed to read existing tokens, proceeding with new tokens:', e);
+    }
 
     // Update the user's gmail tokens
     // CRITICAL: Google only sends refresh_token on the first consent.

@@ -5,7 +5,7 @@ import {
   ExtractionOptions,
 } from './milestone2.types';
 import { ExtractedDocument, ExtractedRun } from '../docxExtraction.service';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'crypto';
 import { HeadingDetector } from './headingDetector.service';
 import {
   RESUME_PLACEHOLDERS,

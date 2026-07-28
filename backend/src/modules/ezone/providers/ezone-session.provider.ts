@@ -1,5 +1,5 @@
 import { chromium, Browser, BrowserContext, Page } from 'playwright';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'crypto';
 import { Logger } from '../../../shared/utils';
 import { EzoneLogger } from '../services/ezone-logger.service';
 import * as fs from 'fs';

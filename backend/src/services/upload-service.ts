@@ -1,11 +1,11 @@
-import { v4 as uuidv4 } from 'uuid';
 import * as crypto from 'crypto';
 import { GridFSProvider } from '../storage/GridFSProvider';
 import { UaipUpload } from '../models/UaipUpload';
 import { eventBus } from '../events/EventBus';
 import { UaipEvent } from '../events/UaipEvents';
 import './pipeline-orchestrator';
-// import { Types } from 'mongoose'; // not needed
+
+const uuidv4 = crypto.randomUUID;
 
 // Supported MIME types for UAIP uploads (MVP)
 const SUPPORTED_MIME_TYPES = new Set([

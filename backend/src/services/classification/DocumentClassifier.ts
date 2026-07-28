@@ -4,7 +4,7 @@ import { UaipEvent } from '../../events/UaipEvents';
 import { KnowledgeRecordModel } from '../../models/KnowledgeRecord';
 import { logStage } from '../../utils/stageLogger';
 import { SupportedCategory } from '../../shared/application/uaipConfig';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'crypto';
 
 export type DocumentCategory = SupportedCategory | 'UNKNOWN';
 export type DocumentSubtype = string | undefined;

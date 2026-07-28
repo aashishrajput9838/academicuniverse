@@ -1,7 +1,7 @@
 /// <reference path="./types.d.ts" />
 import { MongoClient, GridFSBucket, ObjectId } from 'mongodb'
 import { StorageProvider } from './StorageProvider'
-import { v4 as uuidv4 } from 'uuid'
+import { randomUUID as uuidv4 } from 'crypto'
 
 type MongoClientInstance = InstanceType<typeof MongoClient>
 

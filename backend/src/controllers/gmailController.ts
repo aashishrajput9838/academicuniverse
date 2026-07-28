@@ -7,6 +7,8 @@ import { markMessageAsRead } from '../services/gmailMessageService';
 import { sendResponse, sendError } from '../utils/response';
 import User from '../models/User';
 
+import jwt from 'jsonwebtoken';
+
 declare module 'express-session' {
     interface SessionData {
         gmail_oauth_state?: string;
@@ -14,10 +16,12 @@ declare module 'express-session' {
     }
 }
 
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
 export const connectGmail = async (req: any, res: Response) => {
     try {
         const userId = req.user.userId || req.user._id;
-        const oauthState = crypto.randomBytes(32).toString('hex');
+        const oauthState = jwt.sign({ userId: String(userId), purpose: 'gmail_oauth' }, JWT_SECRET, { expiresIn: '15m' });
 
         req.session = req.session || {};
         req.session.gmail_oauth_state = oauthState;
@@ -52,14 +56,26 @@ export const gmailCallback = async (req: Request, res: Response) => {
             return res.redirect(`${redirectUrl}?gmail_error=missing_params`);
         }
 
-        const sessionState = req.session?.gmail_oauth_state;
-        const sessionUserId = req.session?.gmail_oauth_user_id;
+        // Verify state parameter via JWT decoding first (cookie-less), fallback to session
+        let userId: string | null = null;
+        try {
+            const decoded = jwt.verify(String(state), JWT_SECRET) as { userId: string; purpose?: string };
+            if (decoded && decoded.userId && decoded.purpose === 'gmail_oauth') {
+                userId = decoded.userId;
+            }
+        } catch (jwtErr) {
+            const sessionState = req.session?.gmail_oauth_state;
+            const sessionUserId = req.session?.gmail_oauth_user_id;
+            if (sessionState && sessionUserId && sessionState === state) {
+                userId = sessionUserId;
+            }
+        }
 
-        if (!sessionState || !sessionUserId || sessionState !== state) {
+        if (!userId) {
+            console.error('[Gmail OAuth] State parameter verification failed (invalid token or expired session)');
             return res.redirect(`${redirectUrl}?gmail_error=invalid_state`);
         }
 
-        const userId = sessionUserId;
         await handleGmailCallback(code as string, userId);
 
         // Initial sync right after connecting

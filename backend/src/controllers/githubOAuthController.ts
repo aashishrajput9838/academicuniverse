@@ -6,6 +6,10 @@ import getGithubOAuthService from '../services/githubOAuthService';
 import analyticsService from '../services/analyticsService';
 import { sendResponse, sendError } from '../utils/response';
 
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
 // Extend the Express session interface
 declare module 'express-session' {
   interface SessionData {
@@ -39,10 +43,11 @@ export const connectGithub = async (req: AuthenticatedRequest, res: Response) =>
       return sendError(res, 401, 'Authentication required');
     }
 
-    const state = crypto.randomBytes(32).toString('hex');
+    const firebaseUid = req.user.firebaseUid || req.user.userId;
+    const state = jwt.sign({ firebaseUid, purpose: 'github_oauth' }, JWT_SECRET, { expiresIn: '15m' });
 
     req.session.github_oauth_state = state;
-    req.session.firebase_uid = req.user.firebaseUid!;
+    req.session.firebase_uid = firebaseUid;
 
     const githubOAuthService = getGithubOAuthService();
     const authUrl = githubOAuthService.getAuthorizationUrl(state);
@@ -72,15 +77,21 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
       return sendError(res, 400, 'State parameter is required for CSRF protection');
     }
 
-    // Verify the state parameter to prevent CSRF attacks
-    if (state !== req.session.github_oauth_state) {
-      return sendError(res, 400, 'Invalid state parameter');
+    // Verify the state parameter (JWT decoded first, fallback to session)
+    let firebaseUid: string | null = null;
+    try {
+      const decoded = jwt.verify(state, JWT_SECRET) as { firebaseUid: string; purpose?: string };
+      if (decoded && decoded.firebaseUid && decoded.purpose === 'github_oauth') {
+        firebaseUid = decoded.firebaseUid;
+      }
+    } catch (jwtErr) {
+      if (state === req.session.github_oauth_state) {
+        firebaseUid = req.session.firebase_uid || null;
+      }
     }
 
-    // Get the Firebase UID from session
-    const firebaseUid = req.session.firebase_uid;
     if (!firebaseUid) {
-      return sendError(res, 400, 'Session expired or invalid');
+      return sendError(res, 400, 'Invalid state parameter or expired session');
     }
 
     // Exchange the authorization code for an access token

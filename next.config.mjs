@@ -7,7 +7,6 @@ const nextConfig = {
   serverExternalPackages: [
     "mongodb",
     "mongoose",
-    "uuid",
     "jsonwebtoken",
     "winston",
     "@google/genai",

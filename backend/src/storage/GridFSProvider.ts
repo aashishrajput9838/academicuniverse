@@ -1,4 +1,3 @@
-/// <reference path="../../../storage/types.d.ts" />
 import { MongoClient, GridFSBucket, ObjectId } from 'mongodb'
 import { StorageProvider } from './StorageProvider'
 import { randomUUID as uuidv4 } from 'crypto'

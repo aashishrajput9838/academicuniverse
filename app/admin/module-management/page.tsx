@@ -59,7 +59,8 @@ export default function ModuleManagementPage() {
         ...state,
       }))
 
-      const res = await fetch('/api/module-visibility/batch', {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5003';
+      const res = await fetch(`${API_BASE_URL}/api/module-visibility/batch`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

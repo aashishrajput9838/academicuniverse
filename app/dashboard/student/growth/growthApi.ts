@@ -111,7 +111,11 @@ export async function fetchProcessingStatus(
   });
 
   if (!response.ok) {
-    throw new Error('processing-status-request-failed');
+    const errorPayload = await response.json().catch(() => null);
+    const message = errorPayload?.message || `Processing status failed with status ${response.status}`;
+    const err = new Error(message) as any;
+    err.status = response.status;
+    throw err;
   }
 
   const payload = await response.json();

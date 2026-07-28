@@ -59,6 +59,8 @@ const REGISTERED_MODULES: Omit<ModuleConfig, 'isEnabled' | 'isVisible'>[] = [
   { key: 'career-verified-profile', name: 'Career & Verified Profile', category: 'career', sortOrder: 19 },
 ];
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5003';
+
 export function ModuleVisibilityProvider({ children }: { children: ReactNode }) {
   const [modules, setModules] = useState<Map<string, ModuleConfig>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -66,7 +68,7 @@ export function ModuleVisibilityProvider({ children }: { children: ReactNode }) 
   const fetchVisibility = useCallback(async () => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('backendToken') : null;
-      const response = await fetch('/api/module-visibility', {
+      const response = await fetch(`${API_BASE_URL}/api/module-visibility`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         cache: 'no-store',
       });

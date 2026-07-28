@@ -64,6 +64,21 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
           state.uploads = history.items;
           state.historyLoading = false;
         });
+
+        // Clean up polling for any processingIds that are no longer in history
+        const activeHistoryPids = new Set(history.items.map((i) => i.processingId));
+        Object.keys(get()._pollingIntervals).forEach((pid) => {
+          if (!activeHistoryPids.has(pid)) {
+            get().stopPolling(pid);
+          }
+        });
+
+        // Start polling for non-terminal items
+        history.items.forEach((item) => {
+          if (!TERMINAL_STATUSES.has(item.status)) {
+            get().startPolling(token, item.processingId);
+          }
+        });
       } catch {
         set((state) => {
           state.historyLoading = false;
@@ -100,6 +115,13 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
     },
 
     pollStatus: async (token: string, processingId: string) => {
+      // If the processingId was removed from uploads list, stop polling immediately
+      const exists = get().uploads.some((u) => u.processingId === processingId);
+      if (!exists && get()._pollingIntervals[processingId]) {
+        get().stopPolling(processingId);
+        return;
+      }
+
       try {
         const status = await fetchProcessingStatus(token, processingId);
         set((state) => {
@@ -123,8 +145,21 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
         if (TERMINAL_STATUSES.has(status.status)) {
           get().stopPolling(processingId);
         }
-      } catch {
-        // Swallow polling errors — retry on next interval
+      } catch (err: any) {
+        // ALWAYS stop polling if item returned 404 (deleted/not found) or 401/403 (unauthorized)
+        if (
+          err?.status === 404 ||
+          err?.status === 401 ||
+          err?.status === 403 ||
+          String(err?.message).includes('404') ||
+          String(err?.message).includes('401')
+        ) {
+          get().stopPolling(processingId);
+          set((state) => {
+            state.uploads = state.uploads.filter((u) => u.processingId !== processingId);
+            delete state.processingStatuses[processingId];
+          });
+        }
       }
     },
 
@@ -169,9 +204,6 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
 
     fetchStatusDetail: async (token: string, processingId: string) => {
       const currentStatus = get().processingStatuses[processingId];
-      // Only skip if we already have a detailed status AND it is not yet a review-terminal state.
-      // IMPORTANT: Do NOT use TERMINAL_STATUSES here — that set covers pipeline statuses (SUCCESS/FAILED),
-      // not review outcomes. A document with status=SUCCESS may still transition from PENDING_REVIEW → APPROVED/REJECTED.
       if (
         currentStatus &&
         TERMINAL_STATUSES.has(currentStatus.status) &&
@@ -185,7 +217,6 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
         set((state) => {
           state.processingStatuses[processingId] = status;
 
-          // Sync all relevant fields to the uploads list item
           const index = state.uploads.findIndex((u) => u.processingId === processingId);
           if (index !== -1) {
             state.uploads[index].status = status.status as GrowthUploadStatus;
@@ -203,7 +234,6 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
     },
 
     refreshItem: async (token: string, processingId: string) => {
-      // Unconditionally re-fetch — called after approve/reject to bust any cached state
       try {
         const status = await fetchProcessingStatus(token, processingId);
         set((state) => {
@@ -221,7 +251,7 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
           }
         });
       } catch {
-        // Suppress errors — stale state is better than a crash
+        // Suppress errors
       }
     },
 
@@ -245,4 +275,3 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
     },
   }))
 );
-

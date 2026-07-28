@@ -31,8 +31,7 @@ console.log("[CONFIG_AUDIT] Loading environment from:", envPath);
 dotenv.config({ path: envPath, override: true });
 
 if (process.env.NODE_ENV === 'production' && !process.env.OPENROUTER_API_KEY) {
-  console.error('Required environment variable OPENROUTER_API_KEY is missing in production');
-  process.exit(1);
+  console.warn('[CONFIG_AUDIT] OPENROUTER_API_KEY is not set. OpenRouter provider will be disabled; Gemini will be used as primary AI provider.');
 }
 
 // Now import all other modules after env is loaded

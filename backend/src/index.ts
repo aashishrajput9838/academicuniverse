@@ -16,18 +16,35 @@ console.log('=== INDEX.TS STARTED ===');
 import fs from 'fs';
 import dotenv from 'dotenv';
 
-// Determine environment mode before loading env files
+// ── Env file loading strategy ─────────────────────────────────────────────
+// Production  → only .env (set via Render environment variables, not a file)
+// Development → .env.development (deployment defaults / Render-facing URLs)
+//             + .env.local (local machine overrides, takes priority — gitignored)
 const effectiveNodeEnv = process.env.NODE_ENV || 'development';
 process.env.NODE_ENV = effectiveNodeEnv;
-const envPath = effectiveNodeEnv === 'production' ? '.env' : '.env.development';
 
-if (effectiveNodeEnv !== 'production' && !fs.existsSync(envPath)) {
-  console.warn(`[CONFIG_AUDIT] Expected env file '${envPath}' not found. Falling back to '.env' if available.`);
+if (effectiveNodeEnv === 'production') {
+  // Production: load .env if present (Render injects vars directly, file is optional)
+  if (fs.existsSync('.env')) {
+    dotenv.config({ path: '.env', override: true });
+  }
+} else {
+  // Step 1: Load deployment defaults from .env.development
+  if (fs.existsSync('.env.development')) {
+    dotenv.config({ path: '.env.development', override: true });
+    console.log('[ENV] Loaded .env.development (deployment defaults)');
+  } else {
+    console.warn('[ENV] .env.development not found — skipping deployment defaults');
+  }
+
+  // Step 2: Load .env.local as local machine override (wins over .env.development)
+  if (fs.existsSync('.env.local')) {
+    dotenv.config({ path: '.env.local', override: true });
+    console.log('[ENV] Loaded .env.local (local machine overrides applied)');
+  } else {
+    console.log('[ENV] No .env.local found — using .env.development values as-is');
+  }
 }
-
-console.log("[CONFIG_AUDIT] Effective NODE_ENV:", process.env.NODE_ENV);
-console.log("[CONFIG_AUDIT] Loading environment from:", envPath);
-dotenv.config({ path: envPath, override: true });
 
 if (process.env.NODE_ENV === 'production' && !process.env.OPENROUTER_API_KEY) {
   console.warn('[CONFIG_AUDIT] OPENROUTER_API_KEY is not set. OpenRouter provider will be disabled; Gemini will be used as primary AI provider.');
@@ -158,7 +175,7 @@ app.use(session({
 app.use('/api', routes);
 
 /**
- * Health check
+ * Health check — /health
  */
 app.get('/health', (req, res) => {
   logger.info('Health check requested', { requestId: req.requestId });
@@ -168,6 +185,18 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     requestId: req.requestId,
   });
+});
+
+/**
+ * Root health check — GET / and HEAD /
+ * Render (and other platforms) send HEAD / to verify the service is alive.
+ * Return 200 silently so the notFoundHandler never fires for health probes.
+ */
+app.get('/', (_req, res) => {
+  res.status(200).json({ status: 'ok', service: 'academic-universe-backend' });
+});
+app.head('/', (_req, res) => {
+  res.status(200).end();
 });
 
 /**

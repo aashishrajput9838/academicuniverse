@@ -42,6 +42,10 @@ export const connectDB = async () => {
     const maskedUri = MONGODB_URI.replace(/\/\/.*:.*@/, '//****:****@');
     console.log(`Connecting to MongoDB at: ${maskedUri}`);
 
+    mongoose.connection.on('error', (err) => {
+      console.error('[MongoDB Driver Error]:', err.message);
+    });
+
     await mongoose.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 5000, // Faster timeout for dev
     } as any);

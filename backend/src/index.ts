@@ -10,7 +10,6 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('UNHANDLED REJECTION! 💥');
   console.error('Reason:', reason);
   console.error('Promise:', promise);
-  process.exit(1);
 });
 
 console.log('=== INDEX.TS STARTED ===');

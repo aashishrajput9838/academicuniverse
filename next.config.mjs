@@ -4,7 +4,22 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  serverExternalPackages: ["mongodb", "mongoose", "uuid", "jsonwebtoken"],
+  serverExternalPackages: [
+    "mongodb",
+    "mongoose",
+    "uuid",
+    "jsonwebtoken",
+    "winston",
+    "@google/genai",
+    "axios",
+    "xlsx",
+    "sharp",
+    "tesseract.js",
+    "pdf-parse",
+    "pdf-lib",
+    "mammoth",
+    "gridfs-stream",
+  ],
   images: {
     remotePatterns: [
       {

@@ -190,6 +190,19 @@ const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
     try {
+        if (process.env.NODE_ENV !== 'test') {
+            const server = app.listen(PORT, () => {
+                logger.info(`Server running on port ${PORT}`, {
+                    port: PORT,
+                    environment: process.env.NODE_ENV || 'development',
+                });
+            });
+
+            server.on('error', (err: any) => {
+                logger.error(`Server error on port ${PORT}`, { error: err });
+            });
+        }
+
         await connectDB();
         logger.info('Connected to MongoDB');
 
@@ -203,41 +216,20 @@ const startServer = async () => {
         resumeClassificationEventListener.start();
         logger.info('Event-driven subsystems initialized');
 
-        if (process.env.NODE_ENV !== 'test') {
-            const server = app.listen(PORT, () => {
-                logger.info(`Server running on port ${PORT}`, {
-                    port: PORT,
-                    environment: process.env.NODE_ENV || 'development',
-                });
+        // Start the scheduler service after server is running
+        schedulerService.start();
+        logger.info('Scheduler service started');
 
-                // Start the scheduler service after server is running
-                schedulerService.start();
-                logger.info('Scheduler service started');
-
-                // Initialize Knowledge Queue Service (singleton) only once
-                if (!(global as any).knowledgeQueueService) {
-                  const knowledgeJobRepo = new KnowledgeJobRepository();
-                  const knowledgeDispatcher = new KnowledgeDispatcher();
-                  const knowledgeQueueService = new KnowledgeQueueService(knowledgeJobRepo, knowledgeDispatcher);
-                  knowledgeQueueService.start();
-                  (global as any).knowledgeQueueService = knowledgeQueueService;
-                }
-                // else: already running
-
-            });
-
-            server.on('error', (err: any) => {
-                logger.error(`Server error on port ${PORT}`, { error: err });
-            });
-
-            server.on('listening', () => {
-                const address = server.address();
-                logger.info('Server listening', { address });
-            });
+        // Initialize Knowledge Queue Service (singleton) only once
+        if (!(global as any).knowledgeQueueService) {
+          const knowledgeJobRepo = new KnowledgeJobRepository();
+          const knowledgeDispatcher = new KnowledgeDispatcher();
+          const knowledgeQueueService = new KnowledgeQueueService(knowledgeJobRepo, knowledgeDispatcher);
+          knowledgeQueueService.start();
+          (global as any).knowledgeQueueService = knowledgeQueueService;
         }
     } catch (error) {
         logger.error('Server startup failed', { error });
-        process.exit(1);
     }
 };
 

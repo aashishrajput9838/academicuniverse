@@ -1,0 +1,36 @@
+{
+  "documentId": "SAMPLE_MS_ORG01_001",
+  "category": "MARKSHEET",
+  "studentName": "Aashish Kumar Rajput",
+  "rollNumber": "21CS001",
+  "semester": "5",
+  "sgpa": 8.45,
+  "cgpa": 8.32,
+  "issueDate": "2024-12-15",
+  "courseMarks": [
+    {
+      "courseCode": "CS501",
+      "courseName": "Machine Learning",
+      "marksObtained": 88,
+      "maxMarks": 100
+    },
+    {
+      "courseCode": "CS502",
+      "courseName": "Database Systems",
+      "marksObtained": 91,
+      "maxMarks": 100
+    },
+    {
+      "courseCode": "CS503",
+      "courseName": "Operating Systems",
+      "marksObtained": 79,
+      "maxMarks": 100
+    },
+    {
+      "courseCode": "CS504",
+      "courseName": "Computer Networks",
+      "marksObtained": 84,
+      "maxMarks": 100
+    }
+  ]
+}

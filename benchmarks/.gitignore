@@ -1,0 +1,22 @@
+# Never commit raw documents, API keys, or generated results
+dataset/**/*.pdf
+dataset/**/*.png
+dataset/**/*.jpg
+dataset/**/*.jpeg
+dataset/manifest.json
+
+# Ground truth contains PII — keep out of version control
+ground-truth/*.json
+!ground-truth/SAMPLE_MS_ORG01_001.json
+
+# Generated results
+results/
+
+# Node
+node_modules/
+dist/
+
+# Environment
+.env
+.env.*
+!.env.example

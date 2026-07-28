@@ -1,0 +1,34 @@
+version: "3.9"
+
+services:
+  benchmark:
+    build:
+      context: .
+      dockerfile: benchmarks/Dockerfile
+    image: academicuniverse-benchmark:1.0.0
+    container_name: au_benchmark
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - NODE_ENV=benchmark
+    volumes:
+      # Mount dataset and ground truth from host (never committed to git)
+      - ./benchmarks/dataset:/app/benchmarks/dataset:ro
+      - ./benchmarks/ground-truth:/app/benchmarks/ground-truth:ro
+      # Output results back to host
+      - ./benchmarks/results:/app/benchmarks/results
+    # Override to run pilot: docker compose run benchmark npm run pilot
+    # Override to run full:  docker compose run benchmark npm run run:full
+    command: ["npm", "run", "doctor"]
+
+  # Optional: run unit tests in isolation
+  test:
+    build:
+      context: .
+      dockerfile: benchmarks/Dockerfile
+    image: academicuniverse-benchmark:1.0.0
+    container_name: au_benchmark_test
+    command: ["npm", "test"]
+    volumes:
+      - ./benchmarks/dataset:/app/benchmarks/dataset:ro
+      - ./benchmarks/ground-truth:/app/benchmarks/ground-truth:ro

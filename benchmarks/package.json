@@ -1,0 +1,35 @@
+{
+  "name": "@academicuniverse/benchmark",
+  "version": "1.0.0",
+  "description": "Academic Universe DIC Benchmark & Evaluation Framework",
+  "private": true,
+  "scripts": {
+    "doctor": "ts-node cli/benchmark.ts doctor",
+    "validate": "ts-node cli/benchmark.ts validate",
+    "pilot": "ts-node cli/benchmark.ts pilot",
+    "run:full": "ts-node cli/benchmark.ts run",
+    "resume": "ts-node cli/benchmark.ts resume",
+    "compare": "ts-node cli/benchmark.ts compare",
+    "export": "ts-node cli/benchmark.ts export",
+    "stats": "ts-node cli/benchmark.ts stats",
+    "clean": "ts-node cli/benchmark.ts clean",
+    "report": "ts-node cli/benchmark.ts report",
+    "synthetic:generate": "ts-node synthetic-generator/cli/syntheticCli.ts generate",
+    "synthetic:validate": "ts-node synthetic-generator/cli/syntheticCli.ts validate",
+    "synthetic:import": "ts-node synthetic-generator/cli/syntheticCli.ts import",
+    "test": "jest --config jest.config.js --runInBand"
+  },
+  "dependencies": {
+    "axios": "^1.18.1",
+    "commander": "^12.1.0",
+    "pdf-lib": "^1.17.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.19.43",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.12",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

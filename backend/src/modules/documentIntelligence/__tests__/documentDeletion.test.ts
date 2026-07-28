@@ -190,12 +190,13 @@ describe('Document Intelligence soft deletion', () => {
     expect(session.commitTransaction).toHaveBeenCalledTimes(1);
   });
 
-  it('refuses deletion of a PROCESSING upload', async () => {
+  it('allows deletion of a PROCESSING upload', async () => {
     const upload: any = {
       processingId,
       organizationId,
       status: 'PROCESSING',
-      save: jest.fn(),
+      fileHash: 'file-hash',
+      save: jest.fn().mockResolvedValue(undefined),
     };
     (UaipUpload.findOne as jest.Mock).mockReturnValue(sessionQuery(upload));
     (KnowledgeRecordModel.findOne as jest.Mock).mockReturnValue(
@@ -208,10 +209,9 @@ describe('Document Intelligence soft deletion', () => {
       deletedBy
     );
 
-    expect(result).toEqual({ outcome: 'NOT_DELETABLE', processingId });
-    expect(upload.save).not.toHaveBeenCalled();
-    expect(KnowledgeRecordModel.updateMany).not.toHaveBeenCalled();
-    expect(ReviewHistory.updateMany).not.toHaveBeenCalled();
+    expect(result).toEqual(expect.objectContaining({ outcome: 'DELETED', processingId }));
+    expect(upload.status).toBe('DELETED');
+    expect(upload.save).toHaveBeenCalledWith({ session });
   });
 
   it('allows deletion of a VALIDATION_ERROR upload', async () => {

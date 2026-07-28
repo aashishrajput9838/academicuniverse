@@ -40,21 +40,16 @@ const resolveReviewStatus = (
 };
 
 const isDocumentDeletable = (
-  uploadStatus: string,
+  _uploadStatus: string,
   krReviewStatus?: string | null
 ): boolean => {
-  // Block active processing states
-  if (uploadStatus === 'PENDING' || uploadStatus === 'PROCESSING') {
-    return false;
-  }
-
   // Block approved documents — canonical records exist, rollback required first
   if (krReviewStatus === 'APPROVED') {
     return false;
   }
 
-  // All other terminal states are deletable:
-  // FAILED, VALIDATION_ERROR, SUCCESS+PENDING_REVIEW, SUCCESS+REJECTED, NOT_READY, etc.
+  // All non-approved workflow documents (including PENDING, PROCESSING, FAILED, REJECTED, etc.)
+  // can be soft-deleted by the user.
   return true;
 };
 

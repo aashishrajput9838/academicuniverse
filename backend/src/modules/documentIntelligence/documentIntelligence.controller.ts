@@ -205,7 +205,7 @@ export class DocumentIntelligenceController {
         return;
       }
       if (result.outcome === 'NOT_DELETABLE') {
-        sendError(res, 409, 'Document cannot be deleted because it is actively processing or has already produced approved canonical records.');
+        sendError(res, 409, 'Document cannot be deleted because it has already produced approved canonical records. Perform a rollback before deletion.');
         return;
       }
 

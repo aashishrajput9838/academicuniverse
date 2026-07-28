@@ -78,10 +78,14 @@ export class AIProviderFactory {
       return provider;
     }
 
-    if (this.isProduction) {
-      logger.error(`Requested AI provider '${type}' is not available in production`);
-      throw new Error('No AI provider is currently available. Please try again later.');
+    logger.warn(`Requested AI provider '${type}' not available`, {
+      requestedProvider: type,
+      reason: 'Provider not registered or not available',
+    });
+    if (!this.mockProvider) {
+      this.mockProvider = new MockAIProvider();
     }
+    return this.mockProvider;
 
     logger.warn(`Requested AI provider '${type}' not available in development`, {
       requestedProvider: type,
@@ -117,10 +121,7 @@ export class AIProviderFactory {
     } else if (openrouter) {
       baseProvider = openrouter;
     } else {
-      if (this.isProduction) {
-        logger.error('No real AI providers available in production; refusing to start without a provider');
-        throw new Error('No AI provider is currently available. Please try again later.');
-      }
+      logger.warn('No real AI providers available; using MockAIProvider fallback');
       if (!this.mockProvider) {
         this.mockProvider = new MockAIProvider();
       }

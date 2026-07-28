@@ -16,6 +16,8 @@ const nextConfig = {
     "sharp",
     "tesseract.js",
     "pdf-parse",
+    "pdf-to-img",
+    "pdfjs-dist",
     "pdf-lib",
     "mammoth",
     "gridfs-stream",

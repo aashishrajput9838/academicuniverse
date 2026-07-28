@@ -57,4 +57,14 @@ export class DocumentIntelligenceService {
   ) {
     return this.repo.softDeleteDocument(organizationId, processingId, deletedBy);
   }
+
+  /** Bulk soft-delete all Review Required documents for a user in an organization. */
+  async bulkDeleteReviewRequired(
+    organizationId: string,
+    userId: string,
+    requestId?: string
+  ) {
+    return this.repo.bulkDeleteReviewRequired(organizationId, userId, requestId);
+  }
 }
+

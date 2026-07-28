@@ -166,6 +166,34 @@ export async function softDeleteDocument(
   }
 }
 
+export interface BulkDeleteResult {
+  totalMatched: number;
+  successfullyDeleted: number;
+  failedCount: number;
+  failedProcessingIds: string[];
+  deletedProcessingIds: string[];
+  durationMs: number;
+}
+
+/** Bulk soft-delete all Review Required documents for the authenticated user and organization. */
+export async function bulkDeleteReviewRequiredDocuments(
+  token: string
+): Promise<BulkDeleteResult> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/document-intelligence/documents/review-required`,
+    {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  const payload = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(payload?.message || `Request failed with status ${res.status}`);
+  }
+  return payload.data as BulkDeleteResult;
+}
+
 export async function getReviewHistory(
   token: string,
   processingId: string,
@@ -181,3 +209,4 @@ export async function getRoutingInfo(
   const res = await reviewRequest('GET', `/${encodeURIComponent(processingId)}/routing`, token);
   return res.data as RoutingInfo;
 }
+

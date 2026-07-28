@@ -40,6 +40,8 @@ interface GrowthUploadState {
   refreshItem: (token: string, processingId: string) => Promise<void>;
   /** Remove a soft-deleted item immediately from all Growth Hub sections. */
   removeUpload: (processingId: string) => void;
+  /** Bulk-remove soft-deleted items immediately from Growth Hub sections. */
+  bulkRemoveUploads: (processingIds: string[]) => void;
 }
 
 export const useGrowthUploadStore = create<GrowthUploadState>()(
@@ -230,5 +232,17 @@ export const useGrowthUploadStore = create<GrowthUploadState>()(
         delete state.processingStatuses[processingId];
       });
     },
+
+    bulkRemoveUploads: (processingIds: string[]) => {
+      const pidSet = new Set(processingIds);
+      processingIds.forEach((pid) => get().stopPolling(pid));
+      set((state) => {
+        state.uploads = state.uploads.filter((upload) => !pidSet.has(upload.processingId));
+        processingIds.forEach((pid) => {
+          delete state.processingStatuses[pid];
+        });
+      });
+    },
   }))
 );
+

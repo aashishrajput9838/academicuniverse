@@ -18,6 +18,7 @@ import type {
   DicDocumentListResponse,
   DicAnalytics,
   DicDeleteDocumentResult,
+  DicBulkDeleteResult,
   DicListQueryParams,
   DicReviewStatus,
 } from './documentIntelligence.types';
@@ -629,4 +630,217 @@ export class DocumentIntelligenceRepository {
       }
     }
   }
+
+  /**
+   * Bulk soft-delete all Review Required documents for a specific user within an organization.
+   * Strictly validates organizationId and uploadedBy/userId ownership.
+   * Wrapped in a transaction where supported, with bulkWrite/updateMany performance.
+   */
+  async bulkDeleteReviewRequired(
+    organizationId: string,
+    userId: string,
+    requestId?: string
+  ): Promise<DicBulkDeleteResult> {
+    const startTime = Date.now();
+
+    // 1. Fetch candidate uploads for this org and user
+    const userFilter = {
+      organizationId,
+      status: { $ne: 'DELETED' },
+      $or: [{ uploadedBy: userId }, { userId: userId }],
+    };
+
+    const candidateUploads = await UaipUpload.find(userFilter).lean();
+
+    if (candidateUploads.length === 0) {
+      return {
+        totalMatched: 0,
+        successfullyDeleted: 0,
+        failedCount: 0,
+        failedProcessingIds: [],
+        deletedProcessingIds: [],
+        durationMs: Date.now() - startTime,
+      };
+    }
+
+    const candidatePids = candidateUploads.map((u: any) => String(u.processingId));
+
+    // 2. Fetch KnowledgeRecords for these candidate processingIds
+    const knowledgeRecords = await KnowledgeRecordModel.find({
+      processingId: { $in: candidatePids },
+      status: { $ne: 'DELETED' },
+    }).lean();
+
+    const krByPid = new Map(
+      knowledgeRecords.map((kr: any) => [String(kr.processingId), kr])
+    );
+
+    // 3. Filter strictly for REVIEW_REQUIRED / PENDING_REVIEW documents that are deletable
+    const eligibleUploads = candidateUploads.filter((upload: any) => {
+      const kr: any = krByPid.get(String(upload.processingId));
+      const uploadStatus = String(upload.status);
+      const krReviewStatus = kr ? String(kr.reviewStatus ?? '') : null;
+      const reviewStatus = resolveReviewStatus(uploadStatus, krReviewStatus);
+
+      // Must be PENDING_REVIEW (or reviewStatus PENDING_REVIEW) and deletable (not APPROVED, not PROCESSING)
+      const isReviewRequired =
+        reviewStatus === 'PENDING_REVIEW' ||
+        krReviewStatus === 'PENDING_REVIEW' ||
+        upload.reviewStatus === 'PENDING_REVIEW';
+
+      return isReviewRequired && isDocumentDeletable(uploadStatus, krReviewStatus);
+    });
+
+    const totalMatched = eligibleUploads.length;
+    if (totalMatched === 0) {
+      return {
+        totalMatched: 0,
+        successfullyDeleted: 0,
+        failedCount: 0,
+        failedProcessingIds: [],
+        deletedProcessingIds: [],
+        durationMs: Date.now() - startTime,
+      };
+    }
+
+    const eligiblePids = eligibleUploads.map((u: any) => String(u.processingId));
+    const deletedAt = new Date();
+
+    // Check transaction support
+    let supportsTransactions = false;
+    try {
+      if (mongoose.connection && mongoose.connection.db) {
+        const isMasterResult = await mongoose.connection.db.admin().command({ isMaster: 1 });
+        supportsTransactions = !!(isMasterResult.setName || isMasterResult.hosts);
+      }
+    } catch (err) {
+      logger.warn('[DIC] Failed to query MongoDB isMaster command; assuming standalone mode', err);
+    }
+
+    const performDatabaseSoftDelete = async (session?: mongoose.ClientSession) => {
+      // BulkWrite for UaipUpload to update status, deletedAt, deletedBy and unique fileHash
+      const bulkOps = eligibleUploads.map((upload: any) => {
+        const pid = String(upload.processingId);
+        const updateFields: Record<string, any> = {
+          status: 'DELETED',
+          deletedAt,
+          deletedBy: userId,
+          fileHash: `deleted-${pid}`,
+        };
+        if (upload.fileHash) {
+          updateFields.deletedFileHash = upload.fileHash;
+        }
+
+        return {
+          updateOne: {
+            filter: { _id: upload._id, status: { $ne: 'DELETED' } },
+            update: { $set: updateFields },
+          },
+        };
+      });
+
+      const options = session ? { session } : {};
+      await UaipUpload.bulkWrite(bulkOps, options);
+
+      await KnowledgeRecordModel.updateMany(
+        { processingId: { $in: eligiblePids }, status: { $ne: 'DELETED' } },
+        {
+          $set: {
+            status: 'DELETED',
+            deletedAt,
+            deletedBy: userId,
+          },
+        },
+        options
+      );
+
+      await ReviewHistory.updateMany(
+        {
+          processingId: { $in: eligiblePids },
+          action: 'DRAFT_SAVED',
+          status: { $ne: 'DELETED' },
+        },
+        {
+          $set: {
+            status: 'DELETED',
+            deletedAt,
+            deletedBy: userId,
+          },
+        },
+        options
+      );
+    };
+
+    if (supportsTransactions) {
+      const session = await mongoose.startSession();
+      try {
+        session.startTransaction();
+        await performDatabaseSoftDelete(session);
+        await session.commitTransaction();
+      } catch (err) {
+        await session.abortTransaction();
+        logger.error('[DIC] Bulk delete transaction failed and aborted:', err);
+        throw err;
+      } finally {
+        await session.endSession();
+      }
+    } else {
+      await performDatabaseSoftDelete();
+    }
+
+    // External artifact cleanup (GridFS, Cloudinary, OCR cache)
+    const failedProcessingIds: string[] = [];
+    const successfullyDeletedPids: string[] = [];
+
+    for (const upload of eligibleUploads) {
+      const pid = String(upload.processingId);
+      let artifactFailed = false;
+
+      const storageId = (upload as any).storageId as string | undefined;
+      if (storageId) {
+        try {
+          const gridFs = new GridFSProvider();
+          await gridFs.delete(storageId);
+        } catch (err) {
+          logger.warn(`[DIC] Failed to delete GridFS file ${storageId} for ${pid} during bulk delete:`, err);
+          artifactFailed = true;
+        }
+      }
+
+      try {
+        await OCRService.clearProcessingId(pid);
+      } catch (err) {
+        logger.warn(`[DIC] Failed to clear OCR idempotency for ${pid} during bulk delete:`, err);
+        artifactFailed = true;
+      }
+
+      if (artifactFailed) {
+        failedProcessingIds.push(pid);
+      }
+      successfullyDeletedPids.push(pid);
+    }
+
+    const durationMs = Date.now() - startTime;
+
+    logger.info('[DIC] Bulk delete Review Required files completed', {
+      userId,
+      organizationId,
+      totalMatched,
+      successfullyDeleted: successfullyDeletedPids.length,
+      failedCount: failedProcessingIds.length,
+      durationMs,
+      requestId,
+      timestamp: deletedAt.toISOString(),
+    });
+
+    return {
+      totalMatched,
+      successfullyDeleted: successfullyDeletedPids.length,
+      failedCount: failedProcessingIds.length,
+      failedProcessingIds,
+      deletedProcessingIds: successfullyDeletedPids,
+      durationMs,
+    };
+  }
 }
+

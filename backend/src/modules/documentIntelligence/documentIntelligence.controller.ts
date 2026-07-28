@@ -214,4 +214,40 @@ export class DocumentIntelligenceController {
       next(err);
     }
   };
+
+  /**
+   * DELETE /api/document-intelligence/documents/review-required
+   * Bulk soft-deletes all Review Required documents belonging to the authenticated user's organization.
+   */
+  public bulkDeleteReviewRequired = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const organizationId = (req as any).organizationId as string;
+      const userId = (req as any).user?.userId as string;
+      const requestId = (req as any).requestId as string | undefined;
+
+      if (!organizationId) {
+        sendError(res, 403, 'Organization context required');
+        return;
+      }
+      if (!userId) {
+        sendError(res, 401, 'Authentication required');
+        return;
+      }
+
+      const result = await this.service.bulkDeleteReviewRequired(
+        organizationId,
+        userId,
+        requestId
+      );
+
+      sendResponse(res, 200, result, `Successfully processed bulk deletion of ${result.successfullyDeleted} Review Required files`);
+    } catch (err) {
+      next(err);
+    }
+  };
 }
+

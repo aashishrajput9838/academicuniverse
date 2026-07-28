@@ -34,6 +34,12 @@ router.get('/documents', controller.listDocuments);
 router.get('/documents/:processingId', controller.getDocumentDetail);
 
 /**
+ * DELETE /api/document-intelligence/documents/review-required
+ * Bulk soft-deletes all Review Required documents for the authenticated user and organization.
+ */
+router.delete('/documents/review-required', controller.bulkDeleteReviewRequired);
+
+/**
  * DELETE /api/document-intelligence/documents/:processingId
  * Soft-deletes the upload, KnowledgeRecord, and saved review drafts only.
  */

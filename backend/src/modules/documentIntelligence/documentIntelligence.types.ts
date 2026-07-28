@@ -55,6 +55,17 @@ export interface DicDeleteDocumentResult {
   deletedAt?: string;
 }
 
+/** Result of a bulk soft-delete operation for Review Required files */
+export interface DicBulkDeleteResult {
+  totalMatched: number;
+  successfullyDeleted: number;
+  failedCount: number;
+  failedProcessingIds: string[];
+  deletedProcessingIds: string[];
+  durationMs: number;
+}
+
+
 /** Analytics summary */
 export interface DicAnalytics {
   totalDocuments: number;

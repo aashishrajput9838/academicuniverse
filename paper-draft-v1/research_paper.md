@@ -32,7 +32,7 @@ This paper introduces the Academic Universe Document Intelligence Core (AU DIC),
 
 We validate the complete research paper generation pipeline using a minimal validation dataset of five synthetic academic documents. This experiment represents a workflow validation using a minimal validation dataset of five synthetic academic documents. Large-scale evaluation will be conducted in the next research iteration. The validation confirms that all 20 required sections, figures, tables, citations, and cross-references are correctly generated and internally consistent.
 
-The remainder of this paper is organized as follows. Section 5 reviews relevant literature in document intelligence, multimodal LLMs, and HITL systems. Section 6 discusses related enterprise systems. Section 7 identifies the research gap. Section 8 states the research objectives. Section 9 describes the proposed methodology. Section 10 presents the system architecture. Section 11 describes the dataset. Section 12 details the experimental setup. Section 13 defines evaluation metrics. Section 14 presents experimental results. Section 15 discusses findings. Sections 16-18 address threats to validity, limitations, and future work. Section 19 concludes.
+The remainder of this paper reviews related literature (Sections 5–6), identifies the research gap and objectives (Sections 7–8), presents the proposed methodology and system architecture (Sections 9–10), describes the experimental design and results (Sections 11–14), and concludes with discussion, limitations, and future directions (Sections 15–19).
 
 ---
 

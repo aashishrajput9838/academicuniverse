@@ -79,14 +79,15 @@ def create_journal_manuscript():
 
     # Mapping of sections to figures and tables
     fig_map = {
-        '9.1 System Overview': ('fig1_overall_architecture.png', 'Figure 1: AU DIC Four-Tier Microservice Architecture showing Presentation, API, Service, and Data layers with Multi-Tenant Organization Isolation.'),
-        '9.3 Document Processing Pipeline': ('fig2_dic_pipeline.png', 'Figure 2: End-to-End Document Intelligence Pipeline from Upload Validation through AI Orchestration to HITL Staging.'),
-        '9.4 Transaction-Safe Soft Deletion': ('fig4_transaction_sequence.png', 'Figure 4: Transaction-Safe Soft Deletion Sequence with MongoDB Session ACID Commit and Fallback Rollback.'),
-        '12.2 Benchmark Configuration': ('fig8_benchmark_workflow.png', 'Figure 8: Benchmark Execution and Certification Workflow for Reproducible Experiment Evaluation.'),
-        '14.2 Precision Comparison': ('fig5_accuracy_comparison.png', 'Figure 5: Field Extraction Precision Comparison Across Evaluation Systems per Synthetic Document.'),
-        '14.3 Latency Breakdown': ('fig6_latency_breakdown.png', 'Figure 6: Mean Latency Decomposition (Upload, AI Inference, DB Staging) per System.'),
-        '15.2 HITL Staging Value': ('fig3_hitl_review.png', 'Figure 3: HITL Staging Reviewer Interface with Per-Field Confidence Scores and Inline Correction.'),
-        '8. Research Objectives': ('fig7_research_workflow.png', 'Figure 7: Complete Research Paper & Benchmark Infrastructure Artifact Generation Workflow.')
+        '4.1 Academic Universe Ecosystem & Module Scope': ('fig0_ecosystem_architecture.png', 'Figure 1: Academic Universe Platform Ecosystem Architecture showing the parent student-centric multi-tenant SaaS platform and highlighting AU DIC as the target research module evaluated in this paper.'),
+        '9.1 System Overview': ('fig1_overall_architecture.png', 'Figure 2: AU DIC Four-Tier Microservice Architecture showing Presentation, API, Service, and Data layers with Multi-Tenant Organization Isolation.'),
+        '9.3 Document Processing Pipeline': ('fig2_dic_pipeline.png', 'Figure 3: End-to-End Document Intelligence Pipeline from Upload Validation through AI Orchestration to HITL Staging.'),
+        '9.4 Transaction-Safe Soft Deletion': ('fig4_transaction_sequence.png', 'Figure 5: Transaction-Safe Soft Deletion Sequence with MongoDB Session ACID Commit and Fallback Rollback.'),
+        '12.2 Benchmark Configuration': ('fig8_benchmark_workflow.png', 'Figure 9: Benchmark Execution and Certification Workflow for Reproducible Experiment Evaluation.'),
+        '14.2 Precision Comparison': ('fig5_accuracy_comparison.png', 'Figure 6: Field Extraction Precision Comparison Across Evaluation Systems per Synthetic Document.'),
+        '14.3 Latency Breakdown': ('fig6_latency_breakdown.png', 'Figure 7: Mean Latency Decomposition (Upload, AI Inference, DB Staging) per System.'),
+        '15.2 HITL Staging Value': ('fig3_hitl_review.png', 'Figure 4: HITL Staging Reviewer Interface with Per-Field Confidence Scores and Inline Correction.'),
+        '8. Research Objectives': ('fig7_research_workflow.png', 'Figure 8: Complete Research Paper & Benchmark Infrastructure Artifact Generation Workflow.')
     }
 
     table_map = {
@@ -486,7 +487,7 @@ def create_journal_manuscript():
     run_sb.font.color.rgb = MUTED_COLOR
 
     # Title
-    title = "Human-in-the-Loop Multimodal Document Intelligence for Verifiable Academic Credential Parsing in Multi-Tenant SaaS Environments"
+    title = "Academic Universe: AU DIC—A Human-in-the-Loop Multimodal Document Intelligence Framework for Verifiable Academic Credential Parsing"
     p_title = doc.add_paragraph()
     p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_title.paragraph_format.space_before = Pt(10)

@@ -1,4 +1,4 @@
-# Human-in-the-Loop Multimodal Document Intelligence for Verifiable Academic Credential Parsing in Multi-Tenant SaaS Environments
+# Academic Universe: AU DIC—A Human-in-the-Loop Multimodal Document Intelligence Framework for Verifiable Academic Credential Parsing
 
 **INTERNAL RESEARCH MANUSCRIPT — NOT FOR SUBMISSION**
 
@@ -6,29 +6,37 @@
 
 ## 1. Title
 
-Human-in-the-Loop Multimodal Document Intelligence for Verifiable Academic Credential Parsing in Multi-Tenant SaaS Environments
+Academic Universe: AU DIC—A Human-in-the-Loop Multimodal Document Intelligence Framework for Verifiable Academic Credential Parsing
 
 ---
 
 ## 2. Abstract
 
-Academic document processing remains a critical bottleneck in educational technology workflows, with existing solutions struggling to balance automation accuracy against verifiability requirements. This paper presents the Academic Universe Document Intelligence Core (AU DIC), a novel multi-tenant SaaS architecture that integrates dual-provider multimodal large language models (LLMs) with a structured human-in-the-loop (HITL) staging pipeline for academic credential parsing. The system orchestrates Gemini 2.5 Flash as the primary AI provider and OpenRouter (gpt-4o-mini) as an automatic fallback, routing extracted candidate fields through a reviewer staging interface before canonical write operations. We validate the complete research paper generation pipeline using a minimal validation dataset of five synthetic academic documents spanning four quality profiles: CLEAN_PDF, SCANNER_COPY, MOBILE_CAMERA, and ROTATED. Four systems are evaluated: Tesseract OCR v5.0 (SYS-BASE-1), Gemini 1.5 Pro (SYS-BASE-2), OpenRouter gpt-4o-mini (SYS-BASE-3), and AU DIC Hybrid (SYS-PROP). The AU DIC Hybrid system achieves a precision of 1.000, recall of 1.000, and F1-score of 1.000 across 35 field evaluations, with fallback triggered on 3 of 5 documents, HITL review applied on all 5 documents, and field corrections applied on 2 of 5 documents. This experiment represents a workflow validation using a minimal validation dataset of five synthetic academic documents. Large-scale evaluation will be conducted in the next research iteration. The results validate the end-to-end pipeline from document ingestion through HITL review to transaction-safe soft deletion, establishing a reproducible benchmark framework for future academic document intelligence research.
+Academic Universe is a student-centric multi-tenant educational platform designed to support academic growth, research support, career development, intelligent document processing, coding practice, resume generation, campus productivity, AI assistance, and student support through a suite of interoperable research modules. Within this platform ecosystem, academic document processing remains a critical bottleneck, with existing solutions struggling to balance automation accuracy against verifiability requirements. This paper introduces the Academic Universe Document Intelligence Core (AU DIC), the platform's dedicated Document Intelligence module, featuring a novel multi-tenant SaaS architecture that integrates dual-provider multimodal large language models (LLMs) with a structured human-in-the-loop (HITL) staging pipeline for academic credential parsing. The system orchestrates Gemini 2.5 Flash as the primary AI provider and OpenRouter (gpt-4o-mini) as an automatic fallback, routing extracted candidate fields through a reviewer staging interface before canonical write operations. We validate the complete research paper generation pipeline using a minimal validation dataset of five synthetic academic documents spanning four quality profiles: CLEAN_PDF, SCANNER_COPY, MOBILE_CAMERA, and ROTATED. Four systems are evaluated: Tesseract OCR v5.0 (SYS-BASE-1), Gemini 1.5 Pro (SYS-BASE-2), OpenRouter gpt-4o-mini (SYS-BASE-3), and AU DIC Hybrid (SYS-PROP). The AU DIC Hybrid system achieves a precision of 1.000, recall of 1.000, and F1-score of 1.000 across 35 field evaluations, with fallback triggered on 3 of 5 documents, HITL review applied on all 5 documents, and field corrections applied on 2 of 5 documents. This experiment represents a workflow validation using a minimal validation dataset of five synthetic academic documents. Large-scale evaluation will be conducted in the next research iteration. The results validate the end-to-end pipeline from document ingestion through HITL review to transaction-safe soft deletion, establishing a reproducible benchmark framework for future academic document intelligence research.
 
 ---
 
 ## 3. Keywords
 
-document intelligence, multimodal LLM, human-in-the-loop, academic credential parsing, multi-tenant SaaS, OCR fallback, dual-provider architecture, structured extraction, HITL staging, transaction-safe soft deletion, benchmark validation
+Academic Universe, document intelligence, multimodal LLM, human-in-the-loop, academic credential parsing, multi-tenant SaaS, OCR fallback, dual-provider architecture, structured extraction, HITL staging, transaction-safe soft deletion, benchmark validation
 
 ---
 
 ## 4. Introduction
 
-Academic institutions process millions of documents annually, including certificates, mark sheets, student ID cards, and timetables. Traditional document processing pipelines rely on rule-based optical character recognition (OCR) engines such as Tesseract [1], which produce noisy output on degraded inputs and cannot extract structured data without extensive template engineering. The emergence of multimodal large language models (MLLMs) such as Gemini [2] and GPT-4o [3] has demonstrated unprecedented capability in parsing complex documents, yet single-provider deployments face availability, cost, and accuracy limitations that hinder production adoption in verifiability-critical domains such as academic credential management.
+### 4.1 Academic Universe Ecosystem & Module Scope
+
+Academic Universe is an integrated, student-centric multi-tenant educational SaaS platform designed to address the multifaceted requirements of modern higher education. The platform architecture (Fig. 1) is composed of multiple specialized, interoperable modules spanning academic growth tracking, research management, career profile development, intelligent document processing, coding practice, resume generation, campus schedule alignment, AI assistance, and student support services. Each platform module addresses a distinct domain within the educational lifecycle while sharing a common multi-tenant data isolation and authentication infrastructure.
+
+This paper focuses exclusively on AU DIC (Academic Universe Document Intelligence Core), the platform's Document Intelligence module responsible for automated parsing, verification, and ingestion of academic credentials. Other Academic Universe modules—such as the Growth Hub, Resume Builder, Code Arena, Overlap Engine, and Research Wing—are outside the scope of this paper and will be documented and evaluated in separate future publications.
+
+### 4.2 Document Intelligence Core (AU DIC)
+
+Within higher education institutions, academic document processing represents a major operational bottleneck. Millions of documents—including certificates, mark sheets, student ID cards, and timetables—are processed annually during admissions, transcript evaluation, and credit transfer. Traditional document processing pipelines rely on rule-based optical character recognition (OCR) engines such as Tesseract [1], which produce noisy output on degraded inputs and cannot extract structured data without extensive template engineering. The emergence of multimodal large language models (MLLMs) such as Gemini [2] and GPT-4o [3] has demonstrated unprecedented capability in parsing complex documents, yet single-provider deployments face availability, cost, and accuracy limitations that hinder production adoption in verifiability-critical domains such as academic credential management.
 
 In multi-tenant SaaS environments serving multiple educational institutions, additional constraints arise: tenant data isolation, auditability of extraction decisions, and transaction-safe deletion of workflow records [4]. Existing enterprise systems such as SAP S/4HANA [5] and Workday HCM [6] provide document management but lack the fine-grained extraction, HITL verification, and dual-provider resilience required for high-stakes academic credential parsing. Open-source learning management systems such as Moodle [7] offer document upload capabilities but rely on basic OCR without structured field extraction or multi-provider orchestration.
 
-This paper introduces the Academic Universe Document Intelligence Core (AU DIC), a production-grade system that addresses these limitations through three interconnected contributions: (1) a dual-provider AI orchestration layer with automatic failover between Gemini 2.5 Flash and OpenRouter (gpt-4o-mini); (2) a HITL staging pipeline that surfaces AI-extracted candidate fields to human reviewers before canonical write; and (3) a transaction-safe soft deletion mechanism that maintains audit trails while supporting multi-tenant data isolation. The system is implemented as a microservice within a multi-tenant SaaS architecture built on Express.js, MongoDB, and GridFS.
+AU DIC addresses these limitations through three interconnected contributions: (1) a dual-provider AI orchestration layer with automatic failover between Gemini 2.5 Flash and OpenRouter (gpt-4o-mini); (2) a HITL staging pipeline that surfaces AI-extracted candidate fields to human reviewers before canonical write; and (3) a transaction-safe soft deletion mechanism that maintains audit trails while supporting multi-tenant data isolation. The system is implemented as a microservice within a multi-tenant SaaS architecture built on Express.js, MongoDB, and GridFS.
 
 We validate the complete research paper generation pipeline using a minimal validation dataset of five synthetic academic documents. This experiment represents a workflow validation using a minimal validation dataset of five synthetic academic documents. Large-scale evaluation will be conducted in the next research iteration. The validation confirms that all 20 required sections, figures, tables, citations, and cross-references are correctly generated and internally consistent.
 
@@ -124,7 +132,7 @@ This experiment represents a workflow validation using a minimal validation data
 
 ### 9.1 System Overview
 
-The AU DIC system follows a layered microservice architecture (Fig. 1) with four tiers: Presentation, API, Service, and Data. The Document Intelligence module (`backend/src/modules/documentIntelligence/`) implements the core pipeline, comprising the controller (`documentIntelligence.controller.ts`), service (`documentIntelligence.service.ts`), repository (`documentIntelligence.repository.ts`), and types (`documentIntelligence.types.ts`).
+The AU DIC system follows a layered microservice architecture (Fig. 2) with four tiers: Presentation, API, Service, and Data. The Document Intelligence module (`backend/src/modules/documentIntelligence/`) implements the core pipeline, comprising the controller (`documentIntelligence.controller.ts`), service (`documentIntelligence.service.ts`), repository (`documentIntelligence.repository.ts`), and types (`documentIntelligence.types.ts`).
 
 ### 9.2 Dual-Provider AI Orchestration
 
@@ -140,7 +148,7 @@ The final output is $y = y_P$ if $P$ succeeds, otherwise $y = y_F$ if $F$ succee
 
 ### 9.3 Document Processing Pipeline
 
-The document intelligence pipeline (Fig. 2) consists of four stages:
+The document intelligence pipeline (Fig. 3) consists of four stages:
 
 **Stage 1: Upload and Validation** — The client uploads a document via `POST /api/document-intelligence/documents`. The system validates MIME type, computes file hash, and enforces tenant isolation via the `organizationId` middleware (`backend/src/middleware/auth.ts:215`). The upload record is persisted to the UaipUpload collection.
 
@@ -152,7 +160,7 @@ $$\text{fields} = \{studentName, rollNumber, semester, sgpa, cgpa, issueDate, co
 
 where $courseMarks$ is an array of objects with keys $courseCode$, $courseName$, $marksObtained$, and $maxMarks$. The system enforces JSON-mode output to guarantee parseability.
 
-**Stage 4: HITL Staging** — Extracted fields are persisted to the KnowledgeRecord collection with `reviewStatus: PENDING_REVIEW`. The reviewer interface (Fig. 3) displays candidate fields with per-field confidence scores, enabling inline correction. Approved records are written to the canonical collections; rejected records are discarded with an audit trail.
+**Stage 4: HITL Staging** — Extracted fields are persisted to the KnowledgeRecord collection with `reviewStatus: PENDING_REVIEW`. The reviewer interface (Fig. 4) displays candidate fields with per-field confidence scores, enabling inline correction. Approved records are written to the canonical collections; rejected records are discarded with an audit trail.
 
 ### 9.4 Transaction-Safe Soft Deletion
 
@@ -168,7 +176,7 @@ $$U_{del} \rightarrow KR_{del} \rightarrow RH_{del}$$
 
 If any step fails, previous steps are rolled back in reverse order. GridFS file deletion and OCR cache cleanup occur after successful database updates, ensuring idempotency.
 
-The deletion sequence is illustrated in Fig. 4.
+The deletion sequence is illustrated in Fig. 5.
 
 ---
 
@@ -176,7 +184,7 @@ The deletion sequence is illustrated in Fig. 4.
 
 ### 10.1 Layered Architecture
 
-The AU DIC system follows a four-layer architecture (Fig. 1):
+The AU DIC system follows a four-layer architecture (Fig. 2):
 
 **Presentation Layer** — The Web Portal (Next.js), Mobile App, Admin Dashboard, and API Gateway provide tenant-specific interfaces. All clients authenticate via Firebase Auth and include the `organizationId` in request context.
 
@@ -314,11 +322,11 @@ Table 6 presents aggregate metrics for all four systems across 5 documents and 3
 
 ### 14.2 Precision Comparison
 
-Fig. 5 shows field extraction precision per document across systems. SYS-BASE-1 shows variance across document profiles, with precision ranging from 0.857 (SYNTH_CERT_001, SYNTH_TT_002, SYNTH_ID_003, SYNTH_MS_004) to 1.000 (SYNTH_MS_005, ROTATED). SYS-PROP achieves perfect precision of 1.000 across all five documents following HITL review and correction, demonstrating consistent robustness across all quality degradation profiles.
+Fig. 6 shows field extraction precision per document across systems. SYS-BASE-1 shows variance across document profiles, with precision ranging from 0.857 (SYNTH_CERT_001, SYNTH_TT_002, SYNTH_ID_003, SYNTH_MS_004) to 1.000 (SYNTH_MS_005, ROTATED). SYS-PROP achieves perfect precision of 1.000 across all five documents following HITL review and correction, demonstrating consistent robustness across all quality degradation profiles.
 
 ### 14.3 Latency Breakdown
 
-Fig. 6 shows mean latency decomposition per system. AI inference dominates total latency, accounting for approximately 90% of pipeline time. SYS-PROP incurs the highest mean latency (2,773 ms) due to dual-provider orchestration overhead and HITL review overhead. The failover mechanism adds approximately 600–1,100 ms on fallback documents (SYNTH_TT_002, SYNTH_ID_003, SYNTH_MS_005), reflected in the higher total latency for those document-system pairs (2,885 ms, 2,730 ms, and 2,980 ms respectively).
+Fig. 7 shows mean latency decomposition per system. AI inference dominates total latency, accounting for approximately 90% of pipeline time. SYS-PROP incurs the highest mean latency (2,773 ms) due to dual-provider orchestration overhead and HITL review overhead. The failover mechanism adds approximately 600–1,100 ms on fallback documents (SYNTH_TT_002, SYNTH_ID_003, SYNTH_MS_005), reflected in the higher total latency for those document-system pairs (2,885 ms, 2,730 ms, and 2,980 ms respectively).
 
 ### 14.4 Fallback Behavior
 
@@ -342,11 +350,11 @@ The experimental results reveal a clear accuracy-resilience trade-off. SYS-BASE-
 
 ### 15.2 HITL Staging Value
 
-The HITL staging pipeline adds 3–12 seconds of review time per document but enables verifiable extraction. In academic credential management, verifiability is paramount: a misread roll number or incorrect grade can have serious consequences for students. The HITL interface (Fig. 3) surfaces per-field confidence scores, enabling reviewers to focus on low-confidence fields. All 5 documents were reviewed with a total review time of 35 seconds and a mean of 7.0 seconds per document. Field corrections were required on only 2 of 5 documents (SYNTH_ID_003 and SYNTH_MS_005), confirming that the dual-provider orchestration layer already achieves high pre-review accuracy on clean and moderately degraded documents, with HITL serving as a final verifiability gate rather than a primary correction mechanism.
+The HITL staging pipeline adds 3–12 seconds of review time per document but enables verifiable extraction. In academic credential management, verifiability is paramount: a misread roll number or incorrect grade can have serious consequences for students. The HITL interface (Fig. 4) surfaces per-field confidence scores, enabling reviewers to focus on low-confidence fields. All 5 documents were reviewed with a total review time of 35 seconds and a mean of 7.0 seconds per document. Field corrections were required on only 2 of 5 documents (SYNTH_ID_003 and SYNTH_MS_005), confirming that the dual-provider orchestration layer already achieves high pre-review accuracy on clean and moderately degraded documents, with HITL serving as a final verifiability gate rather than a primary correction mechanism.
 
 ### 15.3 Transaction-Safe Deletion
 
-The soft deletion mechanism (Fig. 4) ensures that workflow records are removed atomically while preserving canonical data. In production, this enables data retention compliance (right-to-erasure under GDPR [28]) without losing approved academic records. The fallback to sequential deletion in standalone MongoDB environments demonstrates graceful degradation when transaction support is unavailable.
+The soft deletion mechanism (Fig. 5) ensures that workflow records are removed atomically while preserving canonical data. In production, this enables data retention compliance (right-to-erasure under GDPR [28]) without losing approved academic records. The fallback to sequential deletion in standalone MongoDB environments demonstrates graceful degradation when transaction support is unavailable.
 
 ### 15.4 Multi-Tenant Considerations
 

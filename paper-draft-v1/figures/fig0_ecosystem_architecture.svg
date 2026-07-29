@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F8FAFC"/>
+      <stop offset="100%" stop-color="#EDF2F7"/>
+    </linearGradient>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1B365D"/>
+      <stop offset="100%" stop-color="#2C4D75"/>
+    </linearGradient>
+    <linearGradient id="targetGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBEB"/>
+      <stop offset="100%" stop-color="#FEF3C7"/>
+    </linearGradient>
+    <linearGradient id="targetHeaderGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#B45309"/>
+    </linearGradient>
+    <linearGradient id="moduleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F1F5F9"/>
+    </linearGradient>
+    
+    <!-- Drop Shadows -->
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.08"/>
+    </filter>
+    <filter id="targetShadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#D97706" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="800" fill="url(#bgGrad)"/>
+  
+  <!-- Outer Platform Container -->
+  <rect x="30" y="30" width="1140" height="740" rx="16" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2" filter="url(#shadow)"/>
+
+  <!-- Top Title Banner -->
+  <path d="M 30 46 A 16 16 0 0 1 46 30 L 1154 30 A 16 16 0 0 1 1170 46 L 1170 100 L 30 100 Z" fill="url(#headerGrad)"/>
+  <text x="600" y="62" font-family="Calibri, Arial, sans-serif" font-size="24" font-weight="bold" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">ACADEMIC UNIVERSE PLATFORM ECOSYSTEM</text>
+  <text x="600" y="86" font-family="Calibri, Arial, sans-serif" font-size="14" fill="#94A3B8" text-anchor="middle">Student-Centric Multi-Tenant Educational SaaS Architecture • Research Module Breakdown</text>
+
+  <!-- Ecosystem Sub-Label -->
+  <rect x="50" y="115" width="1100" height="36" rx="6" fill="#F1F5F9" stroke="#E2E8F0"/>
+  <text x="600" y="138" font-family="Calibri, Arial, sans-serif" font-size="14" font-weight="bold" fill="#334155" text-anchor="middle">Parent Platform Context: Interoperable Modules Supporting the Complete Student Lifecycle</text>
+
+  <!-- HIGHLIGHTED TARGET RESEARCH MODULE (AU DIC) -->
+  <g transform="translate(60, 170)">
+    <rect x="0" y="0" width="1080" height="195" rx="12" fill="url(#targetGrad)" stroke="#F59E0B" stroke-width="3" filter="url(#targetShadow)"/>
+    
+    <!-- Target Badge Header -->
+    <rect x="0" y="0" width="1080" height="42" rx="12" fill="url(#targetHeaderGrad)"/>
+    <path d="M 0 30 L 1080 30 L 1080 42 L 0 42 Z" fill="#B45309"/>
+    <text x="25" y="27" font-family="Calibri, Arial, sans-serif" font-size="17" font-weight="bold" fill="#FFFFFF">TARGET RESEARCH MODULE (THIS PAPER): AU DIC</text>
+    <rect x="760" y="8" width="300" height="26" rx="13" fill="#FFFFFF"/>
+    <text x="910" y="25" font-family="Calibri, Arial, sans-serif" font-size="12" font-weight="bold" fill="#B45309" text-anchor="middle">EVALUATED IN THIS STUDY (V1.0.0)</text>
+
+    <!-- Module Core Title -->
+    <text x="30" y="72" font-family="Calibri, Arial, sans-serif" font-size="20" font-weight="bold" fill="#1E293B">Academic Universe Document Intelligence Core (AU DIC)</text>
+    <text x="30" y="93" font-family="Calibri, Arial, sans-serif" font-size="13" fill="#475569">Verifiable Academic Credential Parsing • Multi-Tenant Multimodal AI &amp; HITL Staging Pipeline</text>
+
+    <!-- Inner Key Features Grid -->
+    <g transform="translate(30, 108)">
+      <!-- Feature 1 -->
+      <rect x="0" y="0" width="240" height="65" rx="8" fill="#FFFFFF" stroke="#FCD34D" stroke-width="1.5"/>
+      <text x="15" y="24" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#92400E">Dual-Provider AI</text>
+      <text x="15" y="44" font-family="Calibri, Arial, sans-serif" font-size="11" fill="#64748B">Gemini 2.5 Flash + OpenRouter</text>
+      
+      <!-- Feature 2 -->
+      <rect x="260" y="0" width="240" height="65" rx="8" fill="#FFFFFF" stroke="#FCD34D" stroke-width="1.5"/>
+      <text x="275" y="24" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#92400E">HITL Staging Staging</text>
+      <text x="275" y="44" font-family="Calibri, Arial, sans-serif" font-size="11" fill="#64748B">Candidate Review &amp; Audit Trail</text>
+      
+      <!-- Feature 3 -->
+      <rect x="520" y="0" width="240" height="65" rx="8" fill="#FFFFFF" stroke="#FCD34D" stroke-width="1.5"/>
+      <text x="535" y="24" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#92400E">Soft Deletion</text>
+      <text x="535" y="44" font-family="Calibri, Arial, sans-serif" font-size="11" fill="#64748B">ACID Commit &amp; Fallback Rollback</text>
+      
+      <!-- Feature 4 -->
+      <rect x="780" y="0" width="240" height="65" rx="8" fill="#FFFFFF" stroke="#FCD34D" stroke-width="1.5"/>
+      <text x="795" y="24" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#92400E">Multi-Tenant SaaS</text>
+      <text x="795" y="44" font-family="Calibri, Arial, sans-serif" font-size="11" fill="#64748B">organizationId Data Isolation</text>
+    </g>
+  </g>
+
+  <!-- OTHER ECOSYSTEM PLATFORM MODULES (OUTSIDE PAPER SCOPE) -->
+  <text x="60" y="395" font-family="Calibri, Arial, sans-serif" font-size="15" font-weight="bold" fill="#334155">OTHER ACADEMIC UNIVERSE ECOSYSTEM MODULES (OUTSIDE SCOPE OF THIS PAPER • FUTURE PUBLICATIONS)</text>
+
+  <g transform="translate(60, 410)">
+    <!-- Column 1: Academic & Growth -->
+    <rect x="0" y="0" width="345" height="280" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.5"/>
+    <rect x="0" y="0" width="345" height="34" rx="10" fill="#1E293B"/>
+    <path d="M 0 20 L 345 20 L 345 34 L 0 34 Z" fill="#1E293B"/>
+    <text x="172" y="22" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">ACADEMIC &amp; GROWTH WING</text>
+    
+    <g transform="translate(15, 48)">
+      <rect x="0" y="0" width="315" height="42" rx="6" fill="url(#moduleGrad)" stroke="#CBD5E1"/>
+      <text x="12" y="25" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1E293B">Growth Hub &amp; Skills Tracker</text>
+      
+      <rect x="0" y="52" width="315" height="42" rx="6" fill="url(#moduleGrad)" stroke="#CBD5E1"/>
+      <text x="12" y="77" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1E293B">Academic Records &amp; Transcripts</text>
+      
+      <rect x="0" y="104" width="315" height="42" rx="6" fill="url(#moduleGrad)" stroke="#CBD5E1"/>
+      <text x="12" y="129" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1E293B">Academic Schedule &amp; Calendar</text>
+
+      <rect x="0" y="156" width="315" height="42" rx="6" fill="url(#moduleGrad)" stroke="#CBD5E1"/>
+      <text x="12" y="181" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1E293B">Sync College Profile &amp; Faculty Finder</text>
+    </g>
+
+    <!-- Column 2: Career & Research -->
+    <rect x="367" y="0" width="345" height="280" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.5"/>
+    <rect x="367" y="0" width="345" height="34" rx="10" fill="#1E293B"/>
+    <path d="M 367 20 L 712 20 L 712 34 L 367 34 Z" fill="#1E293B"/>
+    <text x="540" y="22" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">CAREER &amp; RESEARCH WING</text>
+    
+    <g transform="translate(382, 48)">
+      <rect x="0" y="0" width="315" height="42" rx="6" fill="url(#moduleGrad)" stroke="#CBD5E1"/>
+      <text x="12" y="25" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1E293B">Research Wing &amp; Paper Repository</text>
+      
+      <rect x="0" y="52" width="315" height="42" rx="6" fill="url(#moduleGrad)" stroke="#CBD5E1"/>
+      <text x="12" y="77" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1E293B">Resume Builder &amp; Career Profile</text>
+      
+      <rect x="0" y="104" width="315" height="42" rx="6" fill="url(#moduleGrad)" stroke="#CBD5E1"/>
+      <text x="12" y="129" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1E293B">Code Arena &amp; Technical Assessment</text>
+
+      <rect x="0" y="156" width="315" height="42" rx="6" fill="url(#moduleGrad)" stroke="#CBD5E1"/>
+      <text x="12" y="181" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1E293B">Overlap Engine (Schedule Alignment)</text>
+    </g>
+
+    <!-- Column 3: AI Assistance & Student Services -->
+    <rect x="735" y="0" width="345" height="280" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.5"/>
+    <rect x="735" y="0" width="345" height="34" rx="10" fill="#1E293B"/>
+    <path d="M 735 20 L 1080 20 L 1080 34 L 735 34 Z" fill="#1E293B"/>
+    <text x="907" y="22" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#FFFFFF" text-anchor="middle">AI ASSISTANCE &amp; STUDENT SUPPORT</text>
+    
+    <g transform="translate(750, 48)">
+      <rect x="0" y="0" width="315" height="42" rx="6" fill="url(#moduleGrad)" stroke="#CBD5E1"/>
+      <text x="12" y="25" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1E293B">AI Chatbot &amp; Academic Assistant</text>
+      
+      <rect x="0" y="52" width="315" height="42" rx="6" fill="url(#moduleGrad)" stroke="#CBD5E1"/>
+      <text x="12" y="77" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1E293B">Campus Productivity &amp; Gmail Sync</text>
+      
+      <rect x="0" y="104" width="315" height="42" rx="6" fill="url(#moduleGrad)" stroke="#CBD5E1"/>
+      <text x="12" y="129" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1E293B">Emotional &amp; Peer Support Portal</text>
+
+      <rect x="0" y="156" width="315" height="42" rx="6" fill="url(#moduleGrad)" stroke="#CBD5E1"/>
+      <text x="12" y="181" font-family="Calibri, Arial, sans-serif" font-size="13" font-weight="bold" fill="#1E293B">Multi-Tenant Admin &amp; Governance</text>
+    </g>
+  </g>
+
+  <!-- Footnote Scope Boundary Disclaimer -->
+  <g transform="translate(60, 705)">
+    <rect x="0" y="0" width="1080" height="45" rx="6" fill="#EFF6FF" stroke="#93C5FD"/>
+    <text x="20" y="27" font-family="Calibri, Arial, sans-serif" font-size="12" font-weight="bold" fill="#1E40AF">Research Scope Boundary:</text>
+    <text x="165" y="27" font-family="Calibri, Arial, sans-serif" font-size="12" fill="#1E3A8A">This publication evaluates exclusively the AU DIC module (highlighted above). Surrounding ecosystem modules are outside the research scope of this study and will be evaluated in separate dedicated publications.</text>
+  </g>
+</svg>

@@ -1,11 +1,15 @@
 import os
 import re
+import sys
 import docx
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
 from docx.oxml import parse_xml
 from docx.oxml.ns import nsdecls
+
+sys.path.append(os.path.join(os.getcwd(), 'paper-draft-v1'))
+from latex_to_omml import convert_latex_to_omml_element
 
 def create_journal_manuscript():
     doc = docx.Document()
@@ -350,12 +354,10 @@ def create_journal_manuscript():
 
                     # Clean markdown bold/italic markers
                     has_bold = '**' in cell_text
-                    clean_text = re.sub(r'\*\*(.*?)\*\*', r'\1', cell_text)
-                    clean_text = re.sub(r'\*(.*?)\*', r'\1', clean_text)
-                    # Clean inline code markers
-                    clean_text = re.sub(r'`(.*?)`', r'\1', clean_text)
-                    # Clean LaTeX math ($...$)
-                    clean_text = re.sub(r'\$(.*?)\$', r'\1', clean_text)
+                    clean_text_no_md = re.sub(r'\*\*(.*?)\*\*', r'\1', cell_text)
+                    clean_text_no_md = re.sub(r'\*(.*?)\*', r'\1', clean_text_no_md)
+                    clean_text_no_md = re.sub(r'`(.*?)`', r'\1', clean_text_no_md)
+                    clean_text = re.sub(r'\$(.*?)\$', r'\1', clean_text_no_md)
 
                     # Determine if cell contains short numeric data (center it)
                     is_numeric = bool(re.match(r'^[\d\.\,\%\-\s]+$', clean_text.strip()))
@@ -369,31 +371,63 @@ def create_journal_manuscript():
                     else:
                         p.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
-                    run = p.add_run(clean_text)
-                    run.font.name = 'Calibri'
-                    run.font.size = Pt(9) if num_cols >= 8 else Pt(9.5)
+                    # Render cell runs and math objects
+                    if '$' in cell_text:
+                        tokens = re.split(r'(\$.*?\$)', cell_text)
+                        for tok in tokens:
+                            if not tok:
+                                continue
+                            if tok.startswith('$') and tok.endswith('$'):
+                                try:
+                                    omml_elem = convert_latex_to_omml_element(tok, is_display=False)
+                                    p._p.append(omml_elem)
+                                except Exception:
+                                    r = p.add_run(tok.strip('$'))
+                                    r.font.name = 'Calibri'
+                                    r.font.size = Pt(8.5) if (is_header and num_cols >= 8) else Pt(9.5)
+                            else:
+                                clean_t = re.sub(r'\*\*(.*?)\*\*', r'\1', tok)
+                                clean_t = re.sub(r'\*(.*?)\*', r'\1', clean_t)
+                                clean_t = re.sub(r'`(.*?)`', r'\1', clean_t)
+                                if clean_t:
+                                    r = p.add_run(clean_t)
+                                    r.font.name = 'Calibri'
+                                    r.font.size = Pt(8.5) if (is_header and num_cols >= 8) else Pt(9.5)
+                                    if is_header:
+                                        r.font.bold = True
+                                        r.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+                                    elif has_bold:
+                                        r.font.bold = True
+                                        r.font.color.rgb = DARK_COLOR
+                                    else:
+                                        r.font.color.rgb = BODY_COLOR
+                    else:
+                        run = p.add_run(clean_text)
+                        run.font.name = 'Calibri'
+                        run.font.size = Pt(9) if num_cols >= 8 else Pt(9.5)
+
+                        if is_header:
+                            set_cell_background(cell, NAVY_HEX)
+                            run.font.bold = True
+                            run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+                            run.font.size = Pt(8.5) if num_cols >= 8 else Pt(9.5)
+                        else:
+                            if r_idx % 2 == 0:
+                                set_cell_background(cell, LIGHT_BG_HEX)
+                            else:
+                                set_cell_background(cell, "FFFFFF")
+
+                            if has_bold:
+                                run.font.bold = True
+                                run.font.color.rgb = DARK_COLOR
+                            else:
+                                run.font.color.rgb = BODY_COLOR
+
+                        if len(clean_text) < 25:
+                            _set_cell_no_wrap(cell)
 
                     if is_header:
                         set_cell_background(cell, NAVY_HEX)
-                        run.font.bold = True
-                        run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-                        run.font.size = Pt(8.5) if num_cols >= 8 else Pt(9.5)
-                    else:
-                        # Alternating row shading (skip header in count)
-                        if r_idx % 2 == 0:
-                            set_cell_background(cell, LIGHT_BG_HEX)
-                        else:
-                            set_cell_background(cell, "FFFFFF")
-
-                        if has_bold:
-                            run.font.bold = True
-                            run.font.color.rgb = DARK_COLOR
-                        else:
-                            run.font.color.rgb = BODY_COLOR
-
-                        # Prevent awkward word splitting for short cells
-                        if len(clean_text) < 25:
-                            _set_cell_no_wrap(cell)
 
                 # Add heavier border below header row
                 if is_header:
@@ -567,16 +601,20 @@ def create_journal_manuscript():
 
                 # Math equations ($$...$$)
                 if b_str.startswith('$$') and b_str.endswith('$$'):
-                    eq_text = b_str.strip('$').strip()
                     p_eq = doc.add_paragraph()
                     p_eq.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     p_eq.paragraph_format.space_before = Pt(8)
                     p_eq.paragraph_format.space_after = Pt(8)
-                    run_eq = p_eq.add_run(eq_text)
-                    run_eq.font.name = 'Cambria Math'
-                    run_eq.font.size = Pt(11)
-                    run_eq.font.italic = True
-                    run_eq.font.color.rgb = NAVY_COLOR
+                    try:
+                        omml_elem = convert_latex_to_omml_element(b_str, is_display=True)
+                        p_eq._p.append(omml_elem)
+                    except Exception:
+                        eq_text = b_str.strip('$').strip()
+                        run_eq = p_eq.add_run(eq_text)
+                        run_eq.font.name = 'Cambria Math'
+                        run_eq.font.size = Pt(11)
+                        run_eq.font.italic = True
+                        run_eq.font.color.rgb = NAVY_COLOR
                     continue
 
                 # Bullet points
@@ -587,22 +625,38 @@ def create_journal_manuscript():
                     p_bullet.paragraph_format.line_spacing = 1.15
                     
                     bullet_text = b_str[2:].strip()
-                    if '**' in bullet_text:
-                        parts = bullet_text.split('**')
-                        for idx, pt in enumerate(parts):
-                            r = p_bullet.add_run(pt)
+                    tokens = re.split(r'(\$.*?\$|\*\*.*?\*\*|\*.*?\*|`.*?`)', bullet_text)
+                    for tok in tokens:
+                        if not tok:
+                            continue
+                        if tok.startswith('$') and tok.endswith('$'):
+                            try:
+                                omml_elem = convert_latex_to_omml_element(tok, is_display=False)
+                                p_bullet._p.append(omml_elem)
+                            except Exception:
+                                r = p_bullet.add_run(tok.strip('$'))
+                                r.font.name = 'Cambria Math'
+                        elif tok.startswith('**') and tok.endswith('**'):
+                            r = p_bullet.add_run(tok[2:-2])
                             r.font.name = 'Calibri'
                             r.font.size = Pt(11)
-                            if idx % 2 == 1:
-                                r.font.bold = True
-                                r.font.color.rgb = DARK_COLOR
-                            else:
-                                r.font.color.rgb = BODY_COLOR
-                    else:
-                        r = p_bullet.add_run(bullet_text)
-                        r.font.name = 'Calibri'
-                        r.font.size = Pt(11)
-                        r.font.color.rgb = BODY_COLOR
+                            r.font.bold = True
+                            r.font.color.rgb = DARK_COLOR
+                        elif tok.startswith('*') and tok.endswith('*'):
+                            r = p_bullet.add_run(tok[1:-1])
+                            r.font.name = 'Calibri'
+                            r.font.size = Pt(11)
+                            r.font.italic = True
+                        elif tok.startswith('`') and tok.endswith('`'):
+                            r = p_bullet.add_run(tok[1:-1])
+                            r.font.name = 'Consolas'
+                            r.font.size = Pt(10)
+                            r.font.color.rgb = NAVY_COLOR
+                        else:
+                            r = p_bullet.add_run(tok)
+                            r.font.name = 'Calibri'
+                            r.font.size = Pt(11)
+                            r.font.color.rgb = BODY_COLOR
                     continue
 
                 # References (Section 20 hanging indent)
@@ -624,11 +678,18 @@ def create_journal_manuscript():
                 p_p.paragraph_format.space_after = Pt(6)
                 p_p.paragraph_format.line_spacing = 1.15
 
-                tokens = re.split(r'(\*\*.*?\*\*|\*.*?\*|`.*?`)', b_str)
+                tokens = re.split(r'(\$.*?\$|\*\*.*?\*\*|\*.*?\*|`.*?`)', b_str)
                 for tok in tokens:
                     if not tok:
                         continue
-                    if tok.startswith('**') and tok.endswith('**'):
+                    if tok.startswith('$') and tok.endswith('$'):
+                        try:
+                            omml_elem = convert_latex_to_omml_element(tok, is_display=False)
+                            p_p._p.append(omml_elem)
+                        except Exception:
+                            r = p_p.add_run(tok.strip('$'))
+                            r.font.name = 'Cambria Math'
+                    elif tok.startswith('**') and tok.endswith('**'):
                         r = p_p.add_run(tok[2:-2])
                         r.font.bold = True
                         r.font.color.rgb = DARK_COLOR

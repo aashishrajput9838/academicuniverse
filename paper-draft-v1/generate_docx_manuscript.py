@@ -101,94 +101,312 @@ def create_journal_manuscript():
     rendered_figures = set()
     rendered_tables = set()
 
-    def render_markdown_table(doc, table_md_content, title_caption):
-        lines = [line.strip() for line in table_md_content.strip().split('\n') if line.strip()]
-        
-        # Caption
-        p_cap = doc.add_paragraph()
-        p_cap.paragraph_format.space_before = Pt(14)
-        p_cap.paragraph_format.space_after = Pt(4)
-        p_cap.paragraph_format.keep_with_next = True
-        run_cap = p_cap.add_run(title_caption)
-        run_cap.font.name = 'Calibri'
-        run_cap.font.size = Pt(10.5)
-        run_cap.font.bold = True
-        run_cap.font.color.rgb = DARK_COLOR
+    # ---- Per-table column width ratios (proportional, summing to 1.0) ----
+    # Manually tuned for optimal readability in 6.5" text width (8.5" - 2" margins).
+    TABLE_COL_WIDTHS = {
+        'table1_system_feature_matrix.md': [0.22, 0.22, 0.19, 0.19, 0.18],   # 5 cols: Feature + 4 systems
+        'table2_tech_stack.md':            [0.10, 0.16, 0.18, 0.36, 0.20],    # 5 cols: Layer, Comp, Tech, Source, Ref
+        'table3_dataset_summary.md': {
+            2: [0.30, 0.70],                                                   # 2 cols: Attribute | Value
+            10: [0.14, 0.11, 0.12, 0.10, 0.12, 0.08, 0.07, 0.07, 0.10, 0.09],# 10 cols: inventory
+            3: [0.25, 0.40, 0.35],                                             # 3 cols: Profile | Desc | Degradation
+        },
+        'table4_evaluation_metrics.md': {
+            3: [0.22, 0.38, 0.40],                                             # 3 cols: Metric | Formula | Desc
+            2: [0.30, 0.70],                                                   # 2 cols: Notation | Meaning
+        },
+        'table5_benchmark_results.md':     [0.14, 0.11, 0.06, 0.06, 0.06, 0.12, 0.08, 0.11, 0.13, 0.07],  # 10 cols
+        'table6_aggregate_metrics.md': {
+            13: [0.09, 0.06, 0.07, 0.07, 0.07, 0.07, 0.07, 0.07, 0.07, 0.09, 0.07, 0.09, 0.07, 0.07],
+            5:  [0.20, 0.20, 0.20, 0.20, 0.20],                                # 5 cols: latency breakdown
+        },
+        'table7_category_breakdown.md': {
+            9:  [0.13, 0.06, 0.10, 0.10, 0.10, 0.10, 0.08, 0.10, 0.13],       # 9 cols: category
+            6:  [0.16, 0.16, 0.10, 0.16, 0.16, 0.16],                          # 6 cols: quality profile
+            2:  [0.45, 0.55],                                                   # 2 cols: HITL impact
+        },
+        'table8_threats_to_validity.md':   [0.07, 0.30, 0.10, 0.53],           # 4 cols: ID, Threat, Severity, Mitigation
+        'table9_limitations.md':           [0.15, 0.30, 0.25, 0.30],           # 4 cols: Limitation, Desc, Impact, Resolution
+        'table10_future_work.md': {
+            4:  [0.07, 0.22, 0.53, 0.10],                                      # 4 cols: ID, Item, Description, Priority
+            3:  [0.10, 0.30, 0.60],                                            # 3 cols: ID, Item, Description (research)
+        },
+    }
 
-        # Parse MD table
-        table_rows = []
+    USABLE_WIDTH_INCHES = 6.5  # 8.5" page - 2" total margins
+
+    def _get_col_widths(table_filename, num_cols):
+        """Resolve column widths for a given table. Returns list of Inches."""
+        spec = TABLE_COL_WIDTHS.get(table_filename)
+        if spec is None:
+            # Fallback: equal widths
+            w = USABLE_WIDTH_INCHES / num_cols
+            return [Inches(w)] * num_cols
+        if isinstance(spec, dict):
+            ratios = spec.get(num_cols)
+            if ratios is None:
+                w = USABLE_WIDTH_INCHES / num_cols
+                return [Inches(w)] * num_cols
+            return [Inches(r * USABLE_WIDTH_INCHES) for r in ratios]
+        # Direct list
+        if len(spec) == num_cols:
+            return [Inches(r * USABLE_WIDTH_INCHES) for r in spec]
+        w = USABLE_WIDTH_INCHES / num_cols
+        return [Inches(w)] * num_cols
+
+    def _apply_autofit_window(table):
+        """Set table layout to AutoFit to Window via OOXML."""
+        tblPr = table._tbl.tblPr
+        tblW = parse_xml(f'<w:tblW {nsdecls("w")} w:w="5000" w:type="pct"/>')
+        existing = tblPr.findall('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tblW')
+        for e in existing:
+            tblPr.remove(e)
+        tblPr.append(tblW)
+
+    def _set_cell_no_wrap(cell):
+        """Prevent awkward mid-word splitting inside a cell."""
+        tcPr = cell._tc.get_or_add_tcPr()
+        tcPr.append(parse_xml(f'<w:noWrap {nsdecls("w")}/>'))
+
+    def _set_paragraph_keep_lines(paragraph):
+        """Keep all lines of a paragraph on the same page."""
+        pPr = paragraph._p.get_or_add_pPr()
+        pPr.append(parse_xml(f'<w:keepLines {nsdecls("w")}/>'))
+
+    def _set_cell_width(cell, width_inches):
+        """Explicitly set preferred cell width."""
+        tcPr = cell._tc.get_or_add_tcPr()
+        tw = int(width_inches / Inches(1) * 1440)  # convert to twips
+        tcW = parse_xml(f'<w:tcW {nsdecls("w")} w:w="{tw}" w:type="dxa"/>')
+        existing = tcPr.findall('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tcW')
+        for e in existing:
+            tcPr.remove(e)
+        tcPr.append(tcW)
+
+    def _apply_professional_borders(table):
+        """IEEE-style three-line table borders: heavy top/bottom, thin inside horizontal, no vertical."""
+        tblPr = table._tbl.tblPr
+        existing = tblPr.findall('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tblBorders')
+        for e in existing:
+            tblPr.remove(e)
+        borders = parse_xml(
+            f'<w:tblBorders {nsdecls("w")}>'
+            f'<w:top w:val="single" w:sz="12" w:space="0" w:color="{NAVY_HEX}"/>'
+            f'<w:bottom w:val="single" w:sz="12" w:space="0" w:color="{NAVY_HEX}"/>'
+            f'<w:left w:val="none"/>'
+            f'<w:right w:val="none"/>'
+            f'<w:insideH w:val="single" w:sz="4" w:space="0" w:color="{BORDER_HEX}"/>'
+            f'<w:insideV w:val="none"/>'
+            f'</w:tblBorders>'
+        )
+        tblPr.append(borders)
+
+    def _apply_header_bottom_border(row, num_cols):
+        """Add a heavier bottom border to the header row to separate it from data."""
+        for c_idx in range(num_cols):
+            cell = row.cells[c_idx]
+            tcPr = cell._tc.get_or_add_tcPr()
+            tcBorders = parse_xml(
+                f'<w:tcBorders {nsdecls("w")}>'
+                f'<w:bottom w:val="single" w:sz="8" w:space="0" w:color="{NAVY_HEX}"/>'
+                f'</w:tcBorders>'
+            )
+            tcPr.append(tcBorders)
+
+    def render_markdown_table(doc, table_md_content, title_caption, table_filename=""):
+        """Build a professional journal-quality table from Markdown source.
+        
+        Features:
+        - Per-table optimized column widths
+        - AutoFit to Window
+        - Vertical centering in all cells
+        - No-wrap / keep-lines to prevent awkward word splitting
+        - Header row repeats across pages
+        - IEEE-style three-line borders with navy header band
+        - Alternating row shading for readability
+        - Generous cell padding
+        """
+        lines = [line.strip() for line in table_md_content.strip().split('\n') if line.strip()]
+
+        # ---- Parse all sub-tables and notes ----
+        all_sub_tables = []
+        current_rows = []
         note_text = ""
+        sub_headers = []
+
         for line in lines:
+            if line.startswith('#'):
+                # Sub-table header — flush previous
+                if current_rows:
+                    all_sub_tables.append((sub_headers[-1] if sub_headers else "", current_rows))
+                    current_rows = []
+                sub_headers.append(line.lstrip('#').strip())
+                continue
             if line.startswith('|') and '|' in line[1:]:
-                # Check separator line
                 if re.match(r'^\|[\s\:\-\|]+\|$', line):
                     continue
                 cells = [c.strip() for c in line.split('|')[1:-1]]
-                table_rows.append(cells)
+                current_rows.append(cells)
             elif line.startswith('>') or 'Note:' in line:
                 note_text += " " + line.lstrip('>').strip()
+            # Skip non-table lines (bullet points, plain text descriptions)
 
-        if not table_rows:
+        if current_rows:
+            all_sub_tables.append((sub_headers[-1] if sub_headers else "", current_rows))
+
+        if not all_sub_tables:
             return
 
-        num_rows = len(table_rows)
-        num_cols = max(len(r) for r in table_rows)
+        # ---- Table Caption ----
+        p_cap = doc.add_paragraph()
+        p_cap.paragraph_format.space_before = Pt(16)
+        p_cap.paragraph_format.space_after = Pt(5)
+        p_cap.paragraph_format.keep_with_next = True
+        p_cap.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
-        tbl = doc.add_table(rows=num_rows, cols=num_cols)
-        tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
-        set_table_borders(tbl)
+        # Split caption into "Table N:" (bold) + rest (regular italic)
+        cap_match = re.match(r'^(Table\s+\d+[\.\:]?)\s*(.*)', title_caption)
+        if cap_match:
+            run_label = p_cap.add_run(cap_match.group(1) + " ")
+            run_label.font.name = 'Calibri'
+            run_label.font.size = Pt(10)
+            run_label.font.bold = True
+            run_label.font.color.rgb = NAVY_COLOR
 
-        for r_idx, row in enumerate(table_rows):
-            tr = tbl.rows[r_idx]
-            trPr = tr._tr.get_or_add_trPr()
-            trPr.append(parse_xml(f'<w:cantSplit {nsdecls("w")}/>'))
+            run_desc = p_cap.add_run(cap_match.group(2))
+            run_desc.font.name = 'Calibri'
+            run_desc.font.size = Pt(10)
+            run_desc.font.italic = True
+            run_desc.font.color.rgb = DARK_COLOR
+        else:
+            run_cap = p_cap.add_run(title_caption)
+            run_cap.font.name = 'Calibri'
+            run_cap.font.size = Pt(10)
+            run_cap.font.bold = True
+            run_cap.font.color.rgb = DARK_COLOR
 
-            is_header = (r_idx == 0)
-            if is_header:
-                trPr.append(parse_xml(f'<w:tblHeader {nsdecls("w")}/>'))
+        # ---- Render each sub-table ----
+        for st_idx, (sub_title, table_rows) in enumerate(all_sub_tables):
+            if not table_rows:
+                continue
 
-            for c_idx in range(num_cols):
-                if c_idx < len(row):
-                    cell_text = row[c_idx]
-                else:
-                    cell_text = ""
+            # Sub-table heading (if multi-section table files like table3, table4, etc.)
+            if sub_title and len(all_sub_tables) > 1:
+                p_sub = doc.add_paragraph()
+                p_sub.paragraph_format.space_before = Pt(10)
+                p_sub.paragraph_format.space_after = Pt(3)
+                p_sub.paragraph_format.keep_with_next = True
+                run_sub = p_sub.add_run(sub_title)
+                run_sub.font.name = 'Calibri'
+                run_sub.font.size = Pt(9.5)
+                run_sub.font.bold = True
+                run_sub.font.italic = True
+                run_sub.font.color.rgb = DARK_COLOR
 
-                cell = tr.cells[c_idx]
-                cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-                set_cell_margins(cell, top=100, bottom=100, left=150, right=150)
+            num_rows = len(table_rows)
+            num_cols = max(len(r) for r in table_rows)
+            col_widths = _get_col_widths(table_filename, num_cols)
 
-                p = cell.paragraphs[0]
-                p.paragraph_format.space_before = Pt(2)
-                p.paragraph_format.space_after = Pt(2)
-                p.paragraph_format.line_spacing = 1.05
+            # Create table
+            tbl = doc.add_table(rows=num_rows, cols=num_cols)
+            tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
 
-                clean_cell_text = re.sub(r'\*\*(.*?)\*\*', r'\1', cell_text)
-                clean_cell_text = re.sub(r'\*(.*?)\*', r'\1', clean_cell_text)
+            # Professional borders and AutoFit
+            _apply_professional_borders(tbl)
+            _apply_autofit_window(tbl)
 
-                run = p.add_run(clean_cell_text)
-                run.font.name = 'Calibri'
-                run.font.size = Pt(9.5)
+            # ---- Populate cells ----
+            for r_idx, row in enumerate(table_rows):
+                tr = tbl.rows[r_idx]
+                trPr = tr._tr.get_or_add_trPr()
 
+                # Prevent row splitting across pages
+                trPr.append(parse_xml(f'<w:cantSplit {nsdecls("w")}/>'))
+
+                is_header = (r_idx == 0)
                 if is_header:
-                    set_cell_background(cell, NAVY_HEX)
-                    run.font.bold = True
-                    run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-                else:
-                    if r_idx % 2 == 1:
-                        set_cell_background(cell, "FFFFFF")
-                    else:
-                        set_cell_background(cell, LIGHT_BG_HEX)
-                    if '**' in cell_text or cell_text.startswith('**'):
-                        run.font.bold = True
-                    run.font.color.rgb = BODY_COLOR
+                    # Header row repeats on every page
+                    trPr.append(parse_xml(f'<w:tblHeader {nsdecls("w")}/>'))
 
+                for c_idx in range(num_cols):
+                    cell_text = row[c_idx] if c_idx < len(row) else ""
+                    cell = tr.cells[c_idx]
+
+                    # Vertical centering
+                    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+                    # Set explicit column width
+                    _set_cell_width(cell, col_widths[c_idx])
+
+                    # Cell padding
+                    set_cell_margins(cell, top=80, bottom=80, left=120, right=120)
+
+                    # Paragraph formatting
+                    p = cell.paragraphs[0]
+                    p.paragraph_format.space_before = Pt(1)
+                    p.paragraph_format.space_after = Pt(1)
+                    p.paragraph_format.line_spacing = 1.10
+                    _set_paragraph_keep_lines(p)
+
+                    # Clean markdown bold/italic markers
+                    has_bold = '**' in cell_text
+                    clean_text = re.sub(r'\*\*(.*?)\*\*', r'\1', cell_text)
+                    clean_text = re.sub(r'\*(.*?)\*', r'\1', clean_text)
+                    # Clean inline code markers
+                    clean_text = re.sub(r'`(.*?)`', r'\1', clean_text)
+                    # Clean LaTeX math ($...$)
+                    clean_text = re.sub(r'\$(.*?)\$', r'\1', clean_text)
+
+                    # Determine if cell contains short numeric data (center it)
+                    is_numeric = bool(re.match(r'^[\d\.\,\%\-\s]+$', clean_text.strip()))
+
+                    if is_header:
+                        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    elif is_numeric:
+                        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    elif c_idx == 0 and num_cols > 3:
+                        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    else:
+                        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+                    run = p.add_run(clean_text)
+                    run.font.name = 'Calibri'
+                    run.font.size = Pt(9) if num_cols >= 8 else Pt(9.5)
+
+                    if is_header:
+                        set_cell_background(cell, NAVY_HEX)
+                        run.font.bold = True
+                        run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+                        run.font.size = Pt(8.5) if num_cols >= 8 else Pt(9.5)
+                    else:
+                        # Alternating row shading (skip header in count)
+                        if r_idx % 2 == 0:
+                            set_cell_background(cell, LIGHT_BG_HEX)
+                        else:
+                            set_cell_background(cell, "FFFFFF")
+
+                        if has_bold:
+                            run.font.bold = True
+                            run.font.color.rgb = DARK_COLOR
+                        else:
+                            run.font.color.rgb = BODY_COLOR
+
+                        # Prevent awkward word splitting for short cells
+                        if len(clean_text) < 25:
+                            _set_cell_no_wrap(cell)
+
+                # Add heavier border below header row
+                if is_header:
+                    _apply_header_bottom_border(tr, num_cols)
+
+        # ---- Table footnote ----
         if note_text:
             p_note = doc.add_paragraph()
             p_note.paragraph_format.space_before = Pt(3)
-            p_note.paragraph_format.space_after = Pt(12)
+            p_note.paragraph_format.space_after = Pt(14)
             run_n = p_note.add_run(note_text.strip())
             run_n.font.name = 'Calibri'
-            run_n.font.size = Pt(9.0)
+            run_n.font.size = Pt(8.5)
             run_n.font.italic = True
             run_n.font.color.rgb = MUTED_COLOR
 
@@ -343,7 +561,7 @@ def create_journal_manuscript():
                         if key not in rendered_tables and key.lower() in sub_h.lower():
                             tbl_f, tbl_cap = table_map[key]
                             if tbl_f in table_files:
-                                render_markdown_table(doc, table_files[tbl_f], tbl_cap)
+                                render_markdown_table(doc, table_files[tbl_f], tbl_cap, table_filename=tbl_f)
                                 rendered_tables.add(key)
                     continue
 
@@ -435,7 +653,7 @@ def create_journal_manuscript():
                     if key not in rendered_tables and key.lower() in h_text.lower():
                         tbl_f, tbl_cap = table_map[key]
                         if tbl_f in table_files:
-                            render_markdown_table(doc, table_files[tbl_f], tbl_cap)
+                            render_markdown_table(doc, table_files[tbl_f], tbl_cap, table_filename=tbl_f)
                             rendered_tables.add(key)
 
     # Ensure any remaining unrendered tables/figures are appended at their relevant locations
@@ -446,7 +664,7 @@ def create_journal_manuscript():
 
     for key, (tbl_f, tbl_cap) in table_map.items():
         if key not in rendered_tables and tbl_f in table_files:
-            render_markdown_table(doc, table_files[tbl_f], tbl_cap)
+            render_markdown_table(doc, table_files[tbl_f], tbl_cap, table_filename=tbl_f)
             rendered_tables.add(key)
 
     out_docx_path = os.path.join(base_dir, 'AU_DIC_Research_Paper_v1.docx')
@@ -454,9 +672,15 @@ def create_journal_manuscript():
         doc.save(out_docx_path)
         print(f"Successfully generated publication-ready manuscript at: {out_docx_path}")
     except PermissionError:
-        alt_path = os.path.join(base_dir, 'AU_DIC_Research_Paper_v1_final.docx')
-        doc.save(alt_path)
-        print(f"File locked. Successfully generated publication-ready manuscript at: {alt_path}")
+        alt_path = os.path.join(base_dir, 'AU_DIC_Research_Paper_v1_rebuilt.docx')
+        try:
+            doc.save(alt_path)
+            print(f"File locked. Successfully generated manuscript at: {alt_path}")
+        except PermissionError:
+            import time
+            alt_path2 = os.path.join(base_dir, f'AU_DIC_Research_Paper_v1_{int(time.time())}.docx')
+            doc.save(alt_path2)
+            print(f"Primary files locked. Saved manuscript to: {alt_path2}")
 
 if __name__ == '__main__':
     create_journal_manuscript()

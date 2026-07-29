@@ -42,8 +42,8 @@ export class ManifestBuilder {
       documents: entries,
     };
 
-    // Deterministic hash based on seed, count, and document fields (excluding wall-clock timestamps)
-    const strippedEntries = entries.map(({ generatedTimestamp, ...rest }) => rest);
+    // Deterministic hash based on seed, count, documentId, category, qualityProfile, and template (independent of wall-clock PDF timestamp/checksum/pngPath)
+    const strippedEntries = entries.map(({ generatedTimestamp, checksumSha256, pngPath, ...rest }) => rest);
     const deterministicPayload = JSON.stringify({ seed, totalDocuments: entries.length, documents: strippedEntries });
     const manifestHash = 'SHA256_' + crypto.createHash('sha256').update(deterministicPayload).digest('hex').substring(0, 16);
 

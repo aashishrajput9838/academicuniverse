@@ -2,16 +2,18 @@
  * Academic Universe — Field Comparison Engine
  * Performs intelligent comparison between extracted predictions and ground truth.
  * Supports exact match, case-insensitive, numeric tolerance, date normalization,
- * whitespace normalization, array-level subject/marks comparison, and partial matching.
+ * whitespace normalization, and configurable courseMarks comparison modes.
  */
 
-import { FieldMatchResult, ExtractedCourseMark } from '../types/benchmark.types';
+import { FieldMatchResult, ExtractedCourseMark, CourseMarksComparisonMode } from '../types/benchmark.types';
+export { CourseMarksComparisonMode };
 
 export interface ComparisonOptions {
-  numericTolerancePct: number;  // e.g. 0.01 = 1%
+  numericTolerancePct: number;
   caseInsensitive: boolean;
   normalizeWhitespace: boolean;
   normalizeDates: boolean;
+  courseMarksMode: CourseMarksComparisonMode;
 }
 
 const DEFAULT_OPTIONS: ComparisonOptions = {
@@ -19,6 +21,7 @@ const DEFAULT_OPTIONS: ComparisonOptions = {
   caseInsensitive: true,
   normalizeWhitespace: true,
   normalizeDates: true,
+  courseMarksMode: CourseMarksComparisonMode.PER_ARRAY,
 };
 
 export class FieldComparisonEngine {
@@ -32,11 +35,9 @@ export class FieldComparisonEngine {
    * Compare a single scalar field value.
    */
   compareField(fieldName: string, expected: unknown, actual: unknown): FieldMatchResult {
-    // Both null/undefined => match (field not applicable)
     if (this.isNullish(expected) && this.isNullish(actual)) {
       return { fieldName, expected, actual, isMatch: true, matchScore: 1.0 };
     }
-    // One null, other present => mismatch
     if (this.isNullish(expected) !== this.isNullish(actual)) {
       const reason = this.isNullish(expected)
         ? 'Extracted a field that is not in ground truth (false positive)'
@@ -44,30 +45,104 @@ export class FieldComparisonEngine {
       return { fieldName, expected, actual, isMatch: false, matchScore: 0.0, reason };
     }
 
-    // Numeric comparison with tolerance
     if (typeof expected === 'number' && typeof actual === 'number') {
       return this.compareNumeric(fieldName, expected, actual);
     }
 
-    // String comparison
     if (typeof expected === 'string' && typeof actual === 'string') {
       return this.compareString(fieldName, expected, actual);
     }
 
-    // Fallback: strict equality
     const isMatch = expected === actual;
     return {
       fieldName, expected, actual, isMatch,
       matchScore: isMatch ? 1.0 : 0.0,
-      reason: isMatch ? undefined : `Type or value mismatch`,
+      reason: isMatch ? undefined : 'Type or value mismatch',
     };
   }
 
   /**
    * Compare course marks arrays.
-   * Uses courseCode as matching key; then compares marksObtained and maxMarks.
+   * Mode determines whether the array is treated as a single field or per-course.
    */
   compareCourseMarks(
+    expected: ExtractedCourseMark[],
+    actual: ExtractedCourseMark[]
+  ): FieldMatchResult[] {
+    if (this.options.courseMarksMode === CourseMarksComparisonMode.PER_ARRAY) {
+      return this.compareCourseMarksAsSingleField(expected, actual);
+    }
+    return this.compareCourseMarksPerCourse(expected, actual);
+  }
+
+  /**
+   * Compare course marks as a single atomic field.
+   * isMatch = true only if ALL courses match exactly.
+   */
+  private compareCourseMarksAsSingleField(
+    expected: ExtractedCourseMark[] = [],
+    actual: ExtractedCourseMark[] = []
+  ): FieldMatchResult[] {
+    const expList = expected || [];
+    const actList = actual || [];
+
+    const expMap = new Map<string, ExtractedCourseMark>();
+    for (const cm of expList) {
+      expMap.set(this.normalizeStr(cm.courseCode), cm);
+    }
+
+    const matchedKeys = new Set<string>();
+    let allMatch = true;
+    const mismatchDetails: string[] = [];
+
+    for (const act of actList) {
+      const key = this.normalizeStr(act.courseCode);
+      const exp = expMap.get(key);
+      if (!exp) {
+        allMatch = false;
+        mismatchDetails.push(`Unexpected course: ${act.courseCode}`);
+        continue;
+      }
+      matchedKeys.add(key);
+
+      const marksMatch = this.withinTolerance(exp.marksObtained, act.marksObtained);
+      const maxMatch = this.withinTolerance(exp.maxMarks, act.maxMarks);
+      const nameMatch = this.normalizeStr(exp.courseName) === this.normalizeStr(act.courseName);
+
+      if (!marksMatch || !maxMatch || !nameMatch) {
+        allMatch = false;
+        const parts: string[] = [];
+        if (!marksMatch) parts.push(`marks: ${exp.marksObtained} vs ${act.marksObtained}`);
+        if (!maxMatch) parts.push(`max: ${exp.maxMarks} vs ${act.maxMarks}`);
+        if (!nameMatch) parts.push(`name: "${exp.courseName}" vs "${act.courseName}"`);
+        mismatchDetails.push(`${act.courseCode}: ${parts.join('; ')}`);
+      }
+    }
+
+    // Check for missing courses
+    for (const [key, exp] of expMap) {
+      if (!matchedKeys.has(key)) {
+        allMatch = false;
+        mismatchDetails.push(`Missing course: ${exp.courseCode}`);
+      }
+    }
+
+    return [
+      {
+        fieldName: 'courseMarks',
+        expected,
+        actual,
+        isMatch: allMatch,
+        matchScore: allMatch ? 1.0 : 0.0,
+        reason: allMatch ? undefined : `Array mismatch: ${mismatchDetails.join('; ')}`,
+      },
+    ];
+  }
+
+  /**
+   * Compare course marks per individual course (legacy behavior).
+   */
+  private compareCourseMarksPerCourse(
     expected: ExtractedCourseMark[],
     actual: ExtractedCourseMark[]
   ): FieldMatchResult[] {
@@ -78,7 +153,6 @@ export class FieldComparisonEngine {
     }
     const matchedKeys = new Set<string>();
 
-    // Match actual against expected
     for (const act of actual) {
       const key = this.normalizeStr(act.courseCode);
       const exp = expectedMap.get(key);
@@ -111,7 +185,6 @@ export class FieldComparisonEngine {
       });
     }
 
-    // Detect missed ground truth courses
     for (const [key, exp] of expectedMap) {
       if (!matchedKeys.has(key)) {
         results.push({
@@ -142,7 +215,6 @@ export class FieldComparisonEngine {
       results.push(this.compareField(field, expected[field], actual[field]));
     }
 
-    // Course marks array
     if (expected['courseMarks'] || actual['courseMarks']) {
       const expMarks = (expected['courseMarks'] as ExtractedCourseMark[]) || [];
       const actMarks = (actual['courseMarks'] as ExtractedCourseMark[]) || [];
@@ -159,7 +231,7 @@ export class FieldComparisonEngine {
     return {
       fieldName, expected, actual, isMatch,
       matchScore: isMatch ? 1.0 : 0.0,
-      reason: isMatch ? undefined : `Numeric mismatch: expected ${expected}, got ${actual} (tolerance: ${this.options.numericTolerancePct * 100}%)`,
+      reason: isMatch ? undefined : `Numeric mismatch: expected ${expected}, got ${actual}`,
     };
   }
 
@@ -179,7 +251,6 @@ export class FieldComparisonEngine {
       a = a.toLowerCase();
     }
     const isMatch = e === a;
-    // Compute partial match score using Levenshtein-based similarity
     const score = isMatch ? 1.0 : this.similarity(e, a);
     return {
       fieldName, expected, actual, isMatch,
@@ -209,7 +280,6 @@ export class FieldComparisonEngine {
     return (val || '').trim().toLowerCase().replace(/\s+/g, ' ');
   }
 
-  /** Simple Levenshtein-based similarity ratio */
   private similarity(a: string, b: string): number {
     if (a.length === 0 && b.length === 0) return 1.0;
     const maxLen = Math.max(a.length, b.length);

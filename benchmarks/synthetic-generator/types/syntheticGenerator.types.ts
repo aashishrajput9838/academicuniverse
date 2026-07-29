@@ -110,6 +110,7 @@ export interface SyntheticManifestEntry {
   fileSizeBytes: number;
   groundTruthFile: string;
   relativeDocPath: string;
+  pngPath?: string;
 }
 
 export interface SyntheticManifest {

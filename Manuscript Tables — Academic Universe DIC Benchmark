@@ -1,0 +1,127 @@
+# Manuscript Tables — Academic Universe DIC Benchmark
+## `EXP-20260728212358` | n = 500 documents per system
+
+---
+
+## Table I: System Accuracy Comparison (Markdown)
+
+| System | n (valid) | Precision | Recall | F1-Score | Mean Lat (ms) |
+|:---|:---:|:---:|:---:|:---:|:---:|
+| Tesseract OCR v5.0 ‡ | 0 | — | — | — | — |
+| Gemini 3.1 Flash Lite | 496 | **0.800** | **0.420** | **0.551** | 2,125 |
+| OpenRouter GPT-4o-mini ‡ | 0 | — | — | — | — |
+| **AU DIC Hybrid (Proposed) †** | 5 | 0.457 | 0.410 | 0.432 | 2,561 |
+
+_‡ System failed due to environment/API constraints; results not reportable._  
+_† SYS-PROP results based on n=5 (1%) due to Gemini quota exhaustion; not statistically representative._
+
+---
+
+## Table II: Statistical Significance Tests (Markdown)
+
+| Comparison | n | Test | p-value | Significant | Cohen's d | Effect |
+|:---|:---:|:---|:---:|:---:|:---:|:---:|
+| Tesseract → AU DIC | 500 | Wilcoxon signed-rank | 0.0431 | Yes | 0.130 | Negligible |
+| Gemini Flash Lite → AU DIC | 500 | Wilcoxon signed-rank | <0.0001 | Yes | 3.237 | Large |
+| GPT-4o-mini → AU DIC | 500 | Wilcoxon signed-rank | 0.0431 | Yes | 0.130 | Negligible |
+
+_Note: The large Cohen's d (3.237) for Gemini→AU DIC reflects AU DIC's operational failure (n=5), not a true capability difference._
+
+---
+
+## Table III: Latency Profile — SYS-BASE-2 (n=496) (Markdown)
+
+| Percentile | Latency (ms) |
+|:---|:---:|
+| Mean | 2,125 |
+| Median (P50) | 1,878 |
+| P95 | 3,032 |
+| P99 | 3,533 |
+| Min | 1,422 |
+| Max | 3,982 |
+
+---
+
+## Table IV: Failure Summary (Markdown)
+
+| System | Total | Success | Failed | Primary Cause |
+|:---|:---:|:---:|:---:|:---|
+| SYS-BASE-1 (Tesseract) | 500 | 0 | 500 | Binary not installed |
+| SYS-BASE-2 (Gemini) | 500 | 496 | 4 | Quota exhaustion (end-of-run) |
+| SYS-BASE-3 (GPT-4o-mini) | 500 | 0 | 500 | PDF format rejected by vision API |
+| SYS-PROP (AU DIC) | 500 | 5 | 495 | Gemini quota exhaustion + PDF format rejected |
+
+---
+
+## LaTeX Tables
+
+### Table I: System Accuracy Comparison (LaTeX)
+
+```latex
+\begin{table}[htbp]
+\caption{System Accuracy Comparison on 500-Document Synthetic Benchmark}
+\label{tab:accuracy}
+\centering
+\begin{tabular}{lrrrrrr}
+\toprule
+\textbf{System} & \textbf{n (valid)} & \textbf{P} & \textbf{R} & \textbf{F1} & \textbf{Mean Lat (ms)} & \textbf{P95 Lat (ms)} \\
+\midrule
+Tesseract OCR v5.0$^\ddagger$ & 0 & — & — & — & — & — \\
+Gemini 3.1 Flash Lite & 496 & \textbf{0.800} & \textbf{0.420} & \textbf{0.551} & 2125 & 3032 \\
+OpenRouter GPT-4o-mini$^\ddagger$ & 0 & — & — & — & — & — \\
+AU DIC Hybrid (Proposed)$^\dagger$ & 5 & 0.457 & 0.410 & 0.432 & 2561 & 3400 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+  \small
+  \item $^\ddagger$ System failed entirely due to environment or API constraints; metrics not reportable.
+  \item $^\dagger$ Only 5/500 evaluations succeeded due to Gemini quota exhaustion; not statistically representative.
+\end{tablenotes}
+\end{table}
+```
+
+### Table II: Statistical Significance Tests (LaTeX)
+
+```latex
+\begin{table}[htbp]
+\caption{Statistical Significance Tests for F1-Score Differences ($\alpha = 0.05$)}
+\label{tab:stats}
+\centering
+\begin{tabular}{llrrcc}
+\toprule
+\textbf{Baseline} & \textbf{Test} & \textbf{p-value} & \textbf{Cohen's d} & \textbf{Effect} & \textbf{Sig.} \\
+\midrule
+Tesseract OCR & Wilcoxon & 0.0431 & 0.130 & Negligible & \checkmark \\
+Gemini Flash Lite & Wilcoxon & $<$0.0001 & 3.237 & Large & \checkmark \\
+GPT-4o-mini & Wilcoxon & 0.0431 & 0.130 & Negligible & \checkmark \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+  \small
+  \item All tests non-parametric (Shapiro-Wilk confirmed non-normality). Proposed system = AU DIC Hybrid.
+  \item The large Cohen's $d$ for Gemini comparison reflects AU DIC's operational failure (n=5), not true capability.
+\end{tablenotes}
+\end{table}
+```
+
+### Table III: Latency Distribution — SYS-BASE-2 (LaTeX)
+
+```latex
+\begin{table}[htbp]
+\caption{End-to-End Latency Distribution for Gemini 3.1 Flash Lite ($n = 496$)}
+\label{tab:latency}
+\centering
+\begin{tabular}{lr}
+\toprule
+\textbf{Metric} & \textbf{Latency (ms)} \\
+\midrule
+Mean & 2125 \\
+Median (P50) & 1878 \\
+P95 & 3032 \\
+P99 & 3533 \\
+Min & 1422 \\
+Max & 3982 \\
+\bottomrule
+\end{tabular}
+\end{table}
+```

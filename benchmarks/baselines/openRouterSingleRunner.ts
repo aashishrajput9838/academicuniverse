@@ -1,8 +1,3 @@
-/**
- * Baseline 3 — OpenRouter Single Runner (SYS-BASE-3)
- * Direct OpenRouter (gpt-4o-mini) extraction — no fallback, no staging.
- */
-
 import axios from 'axios';
 import { IBaselineRunner, RunnerInput, RunnerOutput } from './baselineRunner.interface';
 import { ExtractionPrediction } from '../types/benchmark.types';
@@ -19,6 +14,15 @@ const EXTRACTION_PROMPT = `You are an academic document parser. Extract the foll
 }
 No explanation, no markdown, raw JSON only.`;
 
+async function convertPdfToPng(buffer: Buffer): Promise<Buffer> {
+  try {
+    const { pdfToImg } = require('pdf-to-img');
+    return await pdfToImg(buffer, { format: 'png', density: 200 });
+  } catch {
+    throw new Error('pdf-to-img conversion failed: poppler may not be installed');
+  }
+}
+
 export class OpenRouterSingleRunner implements IBaselineRunner {
   readonly systemId = 'SYS-BASE-3' as const;
   readonly displayName = 'OpenRouter gpt-4o-mini (Single, No Fallback)';
@@ -30,9 +34,7 @@ export class OpenRouterSingleRunner implements IBaselineRunner {
     this.model = model;
   }
 
-  async initialize(): Promise<void> {
-    // Initialization complete — missing API key handled gracefully in extract()
-  }
+  async initialize(): Promise<void> {}
 
   async extract(input: RunnerInput): Promise<RunnerOutput> {
     const start = Date.now();
@@ -40,28 +42,33 @@ export class OpenRouterSingleRunner implements IBaselineRunner {
     try {
       const aiStart = Date.now();
 
-      // OpenRouter vision only accepts real images (not PDFs or text files)
       const isRealImage = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(input.mimeType);
-      const base64Data = input.fileBuffer.toString('base64');
+      const isPdf = input.mimeType === 'application/pdf';
+      let imageBuffer: Buffer;
+      let imageMimeType: string;
 
-      let messages: any[];
       if (isRealImage) {
-        // Vision mode: send as image_url
-        const dataUrl = `data:${input.mimeType};base64,${base64Data}`;
-        messages = [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: EXTRACTION_PROMPT },
-              { type: 'image_url', image_url: { url: dataUrl } },
-            ],
-          },
-        ];
+        imageBuffer = input.fileBuffer;
+        imageMimeType = input.mimeType;
+      } else if (isPdf) {
+        imageBuffer = await convertPdfToPng(input.fileBuffer);
+        imageMimeType = 'image/png';
       } else {
-        // Text mode: for PDFs and other binary docs, we cannot send inline
-        // Return a structured "unsupported" response so the pipeline records it properly
-        throw new Error(`File type ${input.mimeType} is not supported by OpenRouter vision API. Only image/png, image/jpeg, image/gif, image/webp are accepted.`);
+        throw new Error(`File type ${input.mimeType} is not supported by OpenRouter vision API.`);
       }
+
+      const base64Data = imageBuffer.toString('base64');
+      const dataUrl = `data:${imageMimeType};base64,${base64Data}`;
+
+      const messages = [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: EXTRACTION_PROMPT },
+            { type: 'image_url', image_url: { url: dataUrl } },
+          ],
+        },
+      ];
 
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',

@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 650" font-family="Arial, sans-serif" font-size="14">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+    <marker id="arrowhead-open" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="none" stroke="#333" stroke-width="1"/>
+    </marker>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1000" height="650" fill="#f8f9fa"/>
+  
+  <!-- Title -->
+  <text x="500" y="35" text-anchor="middle" font-size="20" font-weight="bold" fill="#1a1a2e">Fig. 4. Transaction-Safe Soft Deletion Sequence</text>
+  
+  <!-- Lifelines -->
+  <rect x="50" y="55" width="160" height="30" rx="4" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
+  <text x="130" y="75" text-anchor="middle" font-size="13" font-weight="bold" fill="#0d47a1">Client</text>
+  
+  <rect x="250" y="55" width="160" height="30" rx="4" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+  <text x="330" y="75" text-anchor="middle" font-size="13" font-weight="bold" fill="#4a148c">Controller</text>
+  
+  <rect x="450" y="55" width="160" height="30" rx="4" fill="#e8f5e9" stroke="#388e3c" stroke-width="2"/>
+  <text x="530" y="75" text-anchor="middle" font-size="13" font-weight="bold" fill="#1b5e20">Service</text>
+  
+  <rect x="650" y="55" width="160" height="30" rx="4" fill="#fff3e0" stroke="#f57c00" stroke-width="2"/>
+  <text x="730" y="75" text-anchor="middle" font-size="13" font-weight="bold" fill="#e65100">Repository</text>
+  
+  <rect x="850" y="55" width="140" height="30" rx="4" fill="#eceff1" stroke="#455a64" stroke-width="2"/>
+  <text x="920" y="75" text-anchor="middle" font-size="13" font-weight="bold" fill="#263238">MongoDB</text>
+  
+  <!-- Lifeline vertical lines -->
+  <line x1="130" y1="85" x2="130" y2="600" stroke="#1976d2" stroke-width="1.5"/>
+  <line x1="330" y1="85" x2="330" y2="600" stroke="#7b1fa2" stroke-width="1.5"/>
+  <line x1="530" y1="85" x2="530" y2="600" stroke="#388e3c" stroke-width="1.5"/>
+  <line x1="730" y1="85" x2="730" y2="600" stroke="#f57c00" stroke-width="1.5"/>
+  <line x1="920" y1="85" x2="920" y2="600" stroke="#455a64" stroke-width="1.5"/>
+  
+  <!-- Sequence arrows -->
+  <!-- 1. Client -> Controller -->
+  <line x1="130" y1="110" x2="330" y2="110" stroke="#1976d2" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="230" y="100" text-anchor="middle" font-size="11" fill="#0d47a1">DELETE /documents/:id</text>
+  
+  <!-- 2. Controller -> Service -->
+  <line x1="330" y1="140" x2="530" y2="140" stroke="#7b1fa2" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="430" y="130" text-anchor="middle" font-size="11" fill="#4a148c">softDeleteDocument()</text>
+  
+  <!-- 3. Service -> Repository -->
+  <line x1="530" y1="170" x2="730" y2="170" stroke="#388e3c" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="630" y="160" text-anchor="middle" font-size="11" fill="#1b5e20">softDeleteDocument()</text>
+  
+  <!-- 4. Repository -> MongoDB: Check support -->
+  <line x1="730" y1="200" x2="920" y2="200" stroke="#f57c00" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="825" y="190" text-anchor="middle" font-size="11" fill="#e65100">isMaster command</text>
+  
+  <!-- 5. MongoDB -> Repository: Support result -->
+  <line x1="920" y1="230" x2="730" y2="230" stroke="#455a64" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="825" y="220" text-anchor="middle" font-size="11" fill="#263238">supportsTransactions</text>
+  
+  <!-- Transaction mode box -->
+  <rect x="550" y="245" width="360" height="90" rx="6" fill="#e8f5e9" stroke="#388e3c" stroke-width="1.5" stroke-dasharray="5,5"/>
+  <text x="730" y="265" text-anchor="middle" font-size="12" font-weight="bold" fill="#1b5e20">Transaction Mode (Replica Set)</text>
+  <line x1="730" y1="275" x2="920" y2="275" stroke="#388e3c" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <text x="825" y="268" text-anchor="middle" font-size="10" fill="#1b5e20">startSession()</text>
+  <line x1="920" y1="290" x2="730" y2="290" stroke="#455a64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <text x="825" y="283" text-anchor="middle" font-size="10" fill="#263238">Session created</text>
+  <line x1="730" y1="305" x2="920" y2="305" stroke="#388e3c" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <text x="825" y="298" text-anchor="middle" font-size="10" fill="#1b5e20">session.startTransaction()</text>
+  <line x1="920" y1="320" x2="730" y2="320" stroke="#455a64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <text x="825" y="313" text-anchor="middle" font-size="10" fill="#263238">Transaction started</text>
+  
+  <!-- Atomic operations within transaction -->
+  <text x="730" y="350" text-anchor="middle" font-size="12" font-weight="bold" fill="#1b5e20">Atomic Operations (with session)</text>
+  
+  <line x1="530" y1="360" x2="730" y2="360" stroke="#388e3c" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <text x="630" y="352" text-anchor="middle" font-size="10" fill="#1b5e20">update UaipUpload</text>
+  
+  <line x1="530" y1="380" x2="730" y2="380" stroke="#388e3c" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <text x="630" y="372" text-anchor="middle" font-size="10" fill="#1b5e20">update KnowledgeRecord</text>
+  
+  <line x1="530" y1="400" x2="730" y2="400" stroke="#388e3c" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <text x="630" y="392" text-anchor="middle" font-size="10" fill="#1b5e20">update ReviewHistory</text>
+  
+  <!-- Commit -->
+  <line x1="730" y1="420" x2="920" y2="420" stroke="#388e3c" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="825" y="412" text-anchor="middle" font-size="11" fill="#1b5e20">commitTransaction()</text>
+  
+  <!-- Response back -->
+  <line x1="920" y1="450" x2="730" y2="450" stroke="#455a64" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="825" y="442" text-anchor="middle" font-size="11" fill="#263238">Committed</text>
+  
+  <line x1="730" y1="480" x2="530" y2="480" stroke="#388e3c" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="630" y="472" text-anchor="middle" font-size="11" fill="#1b5e20">result: DELETED</text>
+  
+  <line x1="530" y1="510" x2="330" y2="510" stroke="#7b1fa2" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="430" y="502" text-anchor="middle" font-size="11" fill="#4a148c">200 OK</text>
+  
+  <line x1="330" y1="540" x2="130" y2="540" stroke="#1976d2" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="230" y="532" text-anchor="middle" font-size="11" fill="#0d47a1">Document deleted</text>
+  
+  <!-- Standalone fallback note -->
+  <rect x="50" y="570" width="900" height="50" rx="4" fill="#fff9c4" stroke="#f57f17" stroke-width="1"/>
+  <text x="500" y="600" text-anchor="middle" font-size="12" fill="#e65100">Standalone Mode: Sequential soft deletes with manual rollback if any step fails (no MongoDB transaction support).</text>
+  
+  <!-- Legend -->
+  <text x="500" y="640" text-anchor="middle" font-size="11" fill="#666">Arrow style: Solid = synchronous call | Dashed box = transaction boundary</text>
+</svg>

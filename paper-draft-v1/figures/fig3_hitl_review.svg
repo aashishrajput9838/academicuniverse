@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" font-family="Arial, sans-serif" font-size="14">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1000" height="700" fill="#f8f9fa"/>
+  
+  <!-- Title -->
+  <text x="500" y="40" text-anchor="middle" font-size="20" font-weight="bold" fill="#1a1a2e">Fig. 3. HITL Review UI &amp; Candidate Staging</text>
+  
+  <!-- Main Layout: Three Panels -->
+  
+  <!-- Left Panel: Document Viewer -->
+  <rect x="30" y="60" width="300" height="600" rx="8" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
+  <text x="180" y="85" text-anchor="middle" font-size="14" font-weight="bold" fill="#0d47a1">Document Viewer</text>
+  
+  <rect x="50" y="100" width="260" height="180" rx="4" fill="#bbdefb" stroke="#1976d2" stroke-width="1"/>
+  <text x="180" y="195" text-anchor="middle" font-size="12" fill="#333">[Uploaded Document Preview]</text>
+  <text x="180" y="215" text-anchor="middle" font-size="11" fill="#666">SYNTH_CERT_001.pdf</text>
+  
+  <text x="50" y="310" font-size="12" font-weight="bold" fill="#0d47a1">OCR Confidence Overlay</text>
+  <rect x="50" y="320" width="260" height="80" rx="4" fill="#fff" stroke="#1976d2" stroke-width="1"/>
+  <text x="180" y="355" text-anchor="middle" font-size="11" fill="#666">[Annotated document with</text>
+  <text x="180" y="375" text-anchor="middle" font-size="11" fill="#666">confidence heatmap]</text>
+  
+  <text x="50" y="430" font-size="12" font-weight="bold" fill="#0d47a1">Document Metadata</text>
+  <rect x="50" y="440" width="260" height="90" rx="4" fill="#fff" stroke="#1976d2" stroke-width="1"/>
+  <text x="70" y="465" font-size="11" fill="#333">Category: CERTIFICATE</text>
+  <text x="70" y="485" font-size="11" fill="#333">Quality: CLEAN_PDF</text>
+  <text x="70" y="505" font-size="11" fill="#333">Uploaded: 2026-07-29</text>
+  <text x="70" y="525" font-size="11" fill="#333">Tenant: University A</text>
+  
+  <!-- Center Panel: Candidate Fields -->
+  <rect x="350" y="60" width="320" height="600" rx="8" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+  <text x="510" y="85" text-anchor="middle" font-size="14" font-weight="bold" fill="#4a148c">Candidate Fields Staging</text>
+  
+  <rect x="370" y="100" width="280" height="450" rx="4" fill="#fff" stroke="#7b1fa2" stroke-width="1"/>
+  
+  <!-- Field: studentName -->
+  <text x="380" y="125" font-size="12" font-weight="bold" fill="#4a148c">studentName</text>
+  <rect x="380" y="130" width="260" height="35" rx="3" fill="#e1bee7" stroke="#7b1fa2" stroke-width="1"/>
+  <text x="510" y="152" text-anchor="middle" font-size="11" fill="#333">Tanya Verma</text>
+  <text x="645" y="152" text-anchor="end" font-size="10" fill="#2e7d32">[0.95]</text>
+  
+  <!-- Field: rollNumber -->
+  <text x="380" y="190" font-size="12" font-weight="bold" fill="#4a148c">rollNumber</text>
+  <rect x="380" y="195" width="260" height="35" rx="3" fill="#e1bee7" stroke="#7b1fa2" stroke-width="1"/>
+  <text x="510" y="217" text-anchor="middle" font-size="11" fill="#333">2021329554</text>
+  <text x="645" y="217" text-anchor="end" font-size="10" fill="#2e7d32">[0.92]</text>
+  
+  <!-- Field: semester -->
+  <text x="380" y="255" font-size="12" font-weight="bold" fill="#4a148c">semester</text>
+  <rect x="380" y="260" width="260" height="35" rx="3" fill="#fff9c4" stroke="#f57f17" stroke-width="1"/>
+  <text x="510" y="282" text-anchor="middle" font-size="11" fill="#333">Semester 1</text>
+  <text x="645" y="282" text-anchor="end" font-size="10" fill="#f57f17">[0.65] Low</text>
+  
+  <!-- Field: sgpa -->
+  <text x="380" y="320" font-size="12" font-weight="bold" fill="#4a148c">sgpa</text>
+  <rect x="380" y="325" width="260" height="35" rx="3" fill="#e1bee7" stroke="#7b1fa2" stroke-width="1"/>
+  <text x="510" y="347" text-anchor="middle" font-size="11" fill="#333">8.0</text>
+  <text x="645" y="347" text-anchor="end" font-size="10" fill="#2e7d32">[0.88]</text>
+  
+  <!-- Field: cgpa -->
+  <text x="380" y="385" font-size="12" font-weight="bold" fill="#4a148c">cgpa</text>
+  <rect x="380" y="390" width="260" height="35" rx="3" fill="#ffebee" stroke="#c62828" stroke-width="1"/>
+  <text x="510" y="412" text-anchor="middle" font-size="11" fill="#333">7.97</text>
+  <text x="645" y="412" text-anchor="end" font-size="10" fill="#c62828">[0.42] Flagged</text>
+  
+  <!-- Field: courseMarks -->
+  <text x="380" y="450" font-size="12" font-weight="bold" fill="#4a148c">courseMarks (5)</text>
+  <rect x="380" y="455" width="260" height="70" rx="3" fill="#fff" stroke="#7b1fa2" stroke-width="1"/>
+  <text x="510" y="480" text-anchor="middle" font-size="10" fill="#333">CS106: 64/100</text>
+  <text x="510" y="495" text-anchor="middle" font-size="10" fill="#333">CS101: 70/100</text>
+  <text x="510" y="510" text-anchor="middle" font-size="10" fill="#333">+3 more...</text>
+  
+  <!-- Right Panel: Review Actions -->
+  <rect x="690" y="60" width="280" height="600" rx="8" fill="#fff3e0" stroke="#f57c00" stroke-width="2"/>
+  <text x="830" y="85" text-anchor="middle" font-size="14" font-weight="bold" fill="#e65100">Review Actions</text>
+  
+  <text x="710" y="115" font-size="12" font-weight="bold" fill="#e65100">Reviewer: Dr. Sharma</text>
+  <text x="710" y="135" font-size="11" fill="#666">Role: Academic Registrar</text>
+  <text x="710" y="155" font-size="11" fill="#666">Tenant: University A</text>
+  
+  <rect x="700" y="180" width="260" height="45" rx="6" fill="#4caf50" stroke="#388e3c" stroke-width="2"/>
+  <text x="830" y="210" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">APPROVE</text>
+  
+  <rect x="700" y="240" width="260" height="45" rx="6" fill="#f44336" stroke="#c62828" stroke-width="2"/>
+  <text x="830" y="270" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">REJECT</text>
+  
+  <rect x="700" y="300" width="260" height="45" rx="6" fill="#ff9800" stroke="#f57c00" stroke-width="2"/>
+  <text x="830" y="330" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">REQUEST REVISION</text>
+  
+  <!-- Editable Fields -->
+  <text x="710" y="375" font-size="12" font-weight="bold" fill="#e65100">Correction Log</text>
+  <rect x="700" y="385" width="260" height="120" rx="4" fill="#fff" stroke="#f57c00" stroke-width="1"/>
+  <text x="710" y="405" font-size="10" fill="#333">[2026-07-29 14:05:23]</text>
+  <text x="710" y="425" font-size="10" fill="#333">cgpa: 7.97 -> 7.97 (confirmed)</text>
+  <text x="710" y="445" font-size="10" fill="#c62828">semester: "Sem 1" -> "Semester 1"</text>
+  <text x="710" y="465" font-size="10" fill="#2e7d32">No other fields modified</text>
+  
+  <!-- Action History -->
+  <text x="710" y="530" font-size="12" font-weight="bold" fill="#e65100">Action History</text>
+  <rect x="700" y="540" width="260" height="100" rx="4" fill="#fff" stroke="#f57c00" stroke-width="1"/>
+  <text x="710" y="560" font-size="10" fill="#333">1. Upload (user)</text>
+  <text x="710" y="575" font-size="10" fill="#333">2. AI Extraction (system)</text>
+  <text x="710" y="590" font-size="10" fill="#333">3. Staged (system)</text>
+  <text x="710" y="605" font-size="10" fill="#2e7d32">4. Approved (Dr. Sharma)</text>
+  
+  <!-- Connecting lines -->
+  <line x1="330" y1="200" x2="350" y2="200" stroke="#1976d2" stroke-width="1.5" stroke-dasharray="4,4"/>
+  <line x1="670" y1="200" x2="690" y2="200" stroke="#f57c00" stroke-width="1.5" stroke-dasharray="4,4"/>
+  
+  <!-- Bottom note -->
+  <text x="500" y="680" text-anchor="middle" font-size="11" fill="#666" font-style="italic">HITL staging ensures human verification before canonical write. All actions are auditable and tenant-scoped.</text>
+</svg>

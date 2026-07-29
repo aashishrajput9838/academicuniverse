@@ -19,7 +19,7 @@ const benchmarkRoot = path.resolve(__dirname, '../..');
 program
   .name('synthetic')
   .description('Academic Universe — Synthetic Academic Document Generator CLI')
-  .version('1.0.0');
+  .version('1.1.0');
 
 // Command 1: init
 program

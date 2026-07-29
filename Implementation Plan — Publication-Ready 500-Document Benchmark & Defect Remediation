@@ -1,0 +1,67 @@
+# Implementation Plan — Publication-Ready 500-Document Benchmark & Defect Remediation
+
+This implementation plan details the technical fixes, validation protocol, dataset regeneration, execution strategy, and report generation required to conduct a publication-grade benchmark of the Academic Universe Document Intelligence Core (AU DIC Hybrid) against baseline systems.
+
+---
+
+## Technical Strategy & Architecture Overview
+
+The previous official 500-document benchmark (`EXP-20260728212358`) successfully validated pipeline execution but uncovered three critical infrastructure defects that prevented valid statistical evaluation of SYS-PROP and SYS-BASE-3:
+
+1. **Defect D1 (Format Constraint):** OpenRouter vision API rejects base64 PDFs (`application/pdf`) with HTTP 400.
+2. **Defect D2 (Quota Limitation):** Gemini API free-tier rolling quota exhausted after sustained ~7h processing across prior systems, causing 429 cascades in SYS-PROP.
+3. **Defect D3 (Category Tagging Defect):** `DatasetLoader.inferCategory()` defaulted all synthetic documents in `dataset/RAW` to `EDGE_CASE` instead of reading the true category from Ground Truth JSON metadata.
+
+---
+
+## Proposed Changes
+
+### Component 1: Benchmark Core Pipeline & Infrastructure Defect Fixes
+
+#### [MODIFY] [`datasetLoader.ts`](file:///C:/github/academicuniverse.com/academicuniverse/benchmarks/dataset/datasetLoader.ts)
+- **Fix Defect D3 (Category Propagation):** In `buildManifestFromDirectory()`, check if the Ground Truth JSON exists for each document (`ground-truth/${docId}.json`). If present, parse its `category` property directly rather than calling `inferCategory()`. This guarantees 100% accurate document category propagation into `dataset/manifest.json`.
+
+#### [MODIFY] [`openRouterSingleRunner.ts`](file:///C:/github/academicuniverse.com/academicuniverse/benchmarks/baselines/openRouterSingleRunner.ts) & [`academicUniverseDICRunner.ts`](file:///C:/github/academicuniverse.com/academicuniverse/benchmarks/baselines/academicUniverseDICRunner.ts)
+- **Fix Defect D1 (PNG Conversion for Vision API):** Update OpenRouter calls to convert incoming PDF buffers to PNG using `pdf-to-img` dynamically if `mimeType === 'application/pdf'`.
+- Ensure base64 PNG data URL (`data:image/png;base64,...`) is sent to OpenRouter `/chat/completions`.
+
+#### [MODIFY] [`pipelineExecutor.ts`](file:///C:/github/academicuniverse.com/academicuniverse/benchmarks/runners/pipelineExecutor.ts) & [`benchmarkOrchestrator.ts`](file:///C:/github/academicuniverse.com/academicuniverse/benchmarks/runners/pipelineExecutor.ts)
+- **Fix Defect D2 (Rate Limiting & Inter-Request Throttle):** 
+  - Increase inter-request delay to **2,500ms** between API requests.
+  - Implement exponential backoff for HTTP 429 rate limit errors (up to 5 retries, initial delay 5,000ms, multiplier 2.0).
+  - Increase inter-system cooldown in `BenchmarkOrchestrator` from **10s** to **30s** to allow rolling quota windows to clear.
+
+---
+
+### Component 2: Dataset Regeneration & Validation (Seed 100, n=500)
+
+#### [MODIFY] [`generate500Dataset.ts`](file:///C:/github/academicuniverse.com/academicuniverse/benchmarks/scripts/generate500Dataset.ts)
+- Regenerate deterministic 500-document dataset using `seed: 100`.
+- Verify manifest integrity, SHA-256 checksums, and Ground Truth schema compliance.
+- Confirm category breakdown across 11 standard academic categories (MARKSHEET, TRANSCRIPT, CERTIFICATE, WORKSHOP_CERTIFICATE, INTERNSHIP_CERTIFICATE, HACKATHON_CERTIFICATE, TIMETABLE, EXAM_TIMETABLE, ADMIT_CARD, FEE_RECEIPT, STUDENT_ID).
+
+---
+
+### Component 3: Execution & Statistical Analysis Pipeline
+
+- Execute the complete 500-document benchmark across all 4 configured systems (`SYS-BASE-1`, `SYS-BASE-2`, `SYS-BASE-3`, `SYS-PROP`).
+- Recompute all evaluation metrics:
+  - Overall Precision, Recall, F1-Score
+  - Per-field accuracy (studentName, rollNumber, semester, sgpa, cgpa, issueDate)
+  - Per-category accuracy across all 11 categories
+  - Latency statistics: Mean, Median (P50), P95, P99
+  - Statistical significance tests (Wilcoxon signed-rank test, Cohen's d effect size ratings)
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Run `npm test` inside `benchmarks/` to ensure all existing unit tests pass.
+- Run `npx ts-node benchmarks/scripts/testApiConnectivity.ts` to verify API key validity and connectivity.
+- Verify dataset generation script execution: `npx ts-node benchmarks/scripts/generate500Dataset.ts`.
+
+### Manual Verification
+1. Inspect `benchmarks/dataset/manifest.json` to confirm no documents have category `EDGE_CASE` unless explicitly designed as edge cases.
+2. Confirm OpenRouter PNG conversion works on sample PDF.
+3. Monitor live log execution during full benchmark run to verify rate-limit compliance and 0 unhandled failures.

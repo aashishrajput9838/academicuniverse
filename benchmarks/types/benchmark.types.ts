@@ -1,6 +1,13 @@
 /**
  * Academic Universe — Benchmark & Evaluation Framework Types
  * Strict TypeScript Interfaces for Experimental Evaluation of DIC Subsystem
+ *
+ * CANONICAL HITL SEMANTICS (locked — do not change):
+ *   Decision 1: reviewRequired=true && fieldsCorrected=0 is VALID.
+ *               A reviewer may inspect without correcting.
+ *   Decision 2: fieldsCorrected > 0 → reviewRequired MUST be true.
+ *   Decision 3: reviewDurationSec measures human review time, NOT correction time.
+ *   Decision 4: fallbackTriggered does NOT imply reviewRequired.
  */
 
 export type DocumentCategory =
@@ -17,8 +24,11 @@ export type DocumentCategory =
   | 'STUDENT_ID'
   | 'UNKNOWN'
   | 'EDGE_CASE';
+
 export type SupportedFileFormat = 'pdf' | 'png' | 'jpeg' | 'jpg';
 export type BaselineSystemId = 'SYS-BASE-1' | 'SYS-BASE-2' | 'SYS-BASE-3' | 'SYS-PROP';
+import { CourseMarksComparisonMode } from '../validation/fieldComparisonMode';
+export { CourseMarksComparisonMode };
 
 export interface BenchmarkDocument {
   documentId: string;
@@ -73,6 +83,15 @@ export interface FieldMatchResult {
   reason?: string;
 }
 
+/**
+ * Canonical document evaluation result.
+ * fieldMatches is the single source of truth.
+ * fieldScores MUST always be computed from fieldMatches — never manually set.
+ *
+ * hitlMetrics.reviewRequired semantics:
+ *   true  → human reviewed this document (duration > 0, corrections may be 0 or more)
+ *   false → no human review performed (duration = 0, corrections = 0)
+ */
 export interface DocumentEvaluationResult {
   experimentId: string;
   documentId: string;
@@ -88,7 +107,12 @@ export interface DocumentEvaluationResult {
     dbStagingMs: number;
     totalPipelineMs: number;
   };
+  /** Single source of truth for all field-level metrics */
   fieldMatches: FieldMatchResult[];
+  /**
+   * DERIVED from fieldMatches. Must always match computeFieldMetrics(fieldMatches).
+   * Stored for serialization convenience only — never set independently.
+   */
   fieldScores: {
     truePositives: number;
     falsePositives: number;
@@ -98,6 +122,12 @@ export interface DocumentEvaluationResult {
     f1Score: number;
   };
   hitlMetrics: {
+    /**
+     * true  → human reviewed this evaluation (reviewDurationSec > 0)
+     * false → no human review performed
+     * NOTE: reviewRequired=true with fieldsCorrected=0 is VALID (review without correction).
+     */
+    reviewRequired: boolean;
     reviewDurationSec: number;
     fieldsCorrected: number;
     finalAction: 'APPROVED' | 'REJECTED';
@@ -127,7 +157,11 @@ export interface AggregateMetrics {
     fallbackRecoveryRate: number; // percentage 0 - 100
   };
   hitlMetrics: {
-    meanReviewDurationSec: number;
+    totalDocsWithReview: number;
+    totalDocsWithCorrections: number;
+    totalReviewDurationSec: number;
+    meanReviewDurationSec: number;  // mean over ALL successful docs (0 for non-reviewed)
+    totalFieldsCorrected: number;
     humanCorrectionRate: number; // percentage 0 - 100
   };
   categoryBreakdown: Record<DocumentCategory, {
@@ -169,7 +203,36 @@ export interface ExperimentRunCheckpoint {
   experimentId: string;
   startTime: string;
   lastUpdated: string;
+  /** Random seed used for any stochastic operations in this run */
+  seed: string;
   completedDocumentIds: string[];
   pendingDocumentIds: string[];
   results: DocumentEvaluationResult[];
+}
+
+/**
+ * Benchmark Certification — generated after every successful benchmark execution.
+ * Only produced when ALL validation rules pass.
+ */
+export interface BenchmarkCertificate {
+  certificateVersion: '1.0';
+  experimentId: string;
+  generatedAt: string;
+  datasetVersion: string;
+  datasetHash: string;
+  manifestHash: string;
+  randomSeed: string;
+  gitCommit: string;
+  executionEnvironment: {
+    nodeVersion: string;
+    platform: string;
+    arch: string;
+  };
+  configuration: Record<string, unknown>;
+  validationRulesExecuted: string[];
+  validationStatus: 'PASS' | 'FAIL';
+  validationErrorCount: number;
+  validationWarningCount: number;
+  artifactVersions: Record<string, string>;
+  certifiedAt: string;
 }

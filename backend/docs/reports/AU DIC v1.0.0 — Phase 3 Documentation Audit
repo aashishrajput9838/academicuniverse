@@ -1,0 +1,38 @@
+# Documentation Audit Report
+## AU DIC v1.0.0 — Phase 3 Documentation Audit
+
+**Audited:** 2026-07-30  
+**Scope:** Repository documentation, READMEs, setup guides, and inline documentation
+
+---
+
+## 1. Documentation Inventory & Status
+
+| Document | Location | Status | Quality Score | Action Required |
+|---|---|---|---|---|
+| `README.md` (Root) | Repository Root | ⚠️ Outdated | 75/100 | Needs integration of AU DIC microservice architecture & research paper citations. |
+| `backend/README.md` | `backend/` | ✅ Detailed | 90/100 | Excellent overview of Express RBAC and MongoDB schemas. |
+| `DEVELOPMENT_SETUP.md` | Repository Root | ⚠️ Diagnostic-focused | 65/100 | Refactor to `TROUBLESHOOTING.md` and complement with standard `INSTALLATION.md`. |
+| `benchmarks/README.md` | `benchmarks/` | ✅ Comprehensive | 92/100 | Details CLI commands, synthetic dataset pipeline, and evaluation modes. |
+| `research_paper.md` | `paper-draft-v1/` | ✅ Frozen | 100/100 | Immutable research baseline (Certified v1.0.0). |
+| `PROJECT_STRUCTURE.md` | `docs/` | ❌ Missing | 0/100 | Create comprehensive file map. |
+| `ARCHITECTURE.md` | `docs/` | ❌ Missing | 0/100 | Create overall system & DIC module architecture document. |
+| `API_DOCUMENTATION.md` | `docs/` | ❌ Missing | 0/100 | Create REST API reference for Document Intelligence endpoints. |
+
+---
+
+## 2. Identified Gaps & Recommendations
+
+1. **Root README Enhancement**:
+   - Add clear badges for Benchmark Certification Status (PASS), Version (`v1.0.0`), and Research Paper link.
+   - Include a dedicated section for **AU DIC (Document Intelligence Core)** alongside the main SaaS platform overview.
+
+2. **Developer Onboarding Guides**:
+   - Create explicit step-by-step setup guides (`INSTALLATION.md` and `SETUP.md`) separating Local Development, Docker, and Benchmark execution environment setup.
+
+3. **API & Architecture Specifications**:
+   - Generate `ARCHITECTURE.md` visualizing the 4-layer architecture, failover flow, and soft deletion workflow.
+   - Generate `api_documentation.md` covering all 29 REST routes with payloads, security scopes, and response schemas.
+
+4. **Open Source & Research Navigation**:
+   - Add `CONTRIBUTING.md`, `CHANGELOG.md`, `RELEASE_NOTES_V1.md`, and `CITATION.cff` for academic citation of the AU DIC paper.

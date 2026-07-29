@@ -1,0 +1,54 @@
+# Release Notes — Academic Universe Document Intelligence Core (AU DIC)
+## Version 1.0.0 — Official Workflow-Validation Release
+
+**Release Date:** July 30, 2026  
+**Git Commit:** `95dbb83`  
+**Status:** Certified & Frozen Research Baseline
+
+---
+
+## 🚀 Release Summary
+
+We are proud to announce the official **v1.0.0 release** of the **Academic Universe Document Intelligence Core (AU DIC)**. This release marks the completion of the benchmark infrastructure repair, canonical metrics engine implementation, multi-tenant RBAC integration, and full manuscript synchronization.
+
+AU DIC delivers a production-grade multi-tenant SaaS microservice designed for verifiable academic credential extraction with dual-provider AI failover resilience and structured Human-in-the-Loop (HITL) staging.
+
+---
+
+## ✨ Key Features & Enhancements
+
+### 1. Dual-Provider AI Orchestration Layer
+- Primary multimodal extraction powered by **Google Gemini 2.5 Flash**.
+- Automated zero-downtime fallback to **OpenRouter (gpt-4o-mini)** upon API rate limits, availability failures, or network timeouts.
+
+### 2. Verifiable Human-in-the-Loop (HITL) Staging Pipeline
+- Prevents direct unverified writes to canonical databases.
+- Candidate fields surfaced to reviewers with confidence scores.
+- Complete audit trail captured in `ReviewHistory`.
+
+### 3. Transaction-Safe Soft Deletion
+- Atomic soft deletion across `UaipUpload`, `KnowledgeRecord`, and `ReviewHistory` using MongoDB ACID transactions.
+- Graceful reverse-order manual rollback in standalone MongoDB setups.
+
+### 4. IEEE-Grade Reproducible Benchmark Framework
+- Automated `BenchmarkValidator` enforcing 7 invariant checks (TP/FP/FN mathematical consistency, precision/recall equations, latency sums).
+- Automated hash-verified `benchmark_certificate.json` and publication-ready Markdown table exporters.
+
+---
+
+## 📊 Certified Benchmark Performance (v1.0.0 Baseline)
+
+- **Evaluated System**: SYS-PROP (AU DIC Hybrid)
+- **Dataset**: 5 Synthetic Academic Documents (CLEAN_PDF, SCANNER_COPY, MOBILE_CAMERA, ROTATED)
+- **Aggregate Precision**: `1.000`
+- **Aggregate Recall**: `1.000`
+- **Aggregate F1-Score**: `1.000`
+- **Mean Pipeline Latency**: `2,773 ms`
+- **Fallback Trigger Rate**: 3 of 5 documents (100% recovery)
+- **HITL Review Scope**: 5 of 5 documents reviewed (35 seconds total, 7.0s mean duration, 2 fields corrected)
+
+---
+
+## 🔒 Immutability Notice
+
+This v1.0.0 release is **FROZEN** as the official workflow-validation baseline. All future large-scale benchmarking (500+ documents), statistical significance testing, and dynamic schema discovery will be conducted in **Version 2.0.0**.

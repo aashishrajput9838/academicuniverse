@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" font-family="Arial, sans-serif" font-size="14">
+  <!-- Background -->
+  <rect width="900" height="600" fill="#f8f9fa"/>
+  
+  <!-- Title -->
+  <text x="450" y="35" text-anchor="middle" font-size="18" font-weight="bold" fill="#1a1a2e">Fig. 5. Field Extraction Precision Comparison</text>
+  <text x="450" y="55" text-anchor="middle" font-size="12" fill="#666">AU DIC Validation Dataset (N=5 documents, 7 fields each)</text>
+  
+  <!-- Chart area -->
+  <rect x="80" y="80" width="780" height="450" fill="#fff" stroke="#ccc" stroke-width="1"/>
+  
+  <!-- Y-axis -->
+  <line x1="100" y1="80" x2="100" y2="530" stroke="#333" stroke-width="2"/>
+  <text x="60" y="310" text-anchor="middle" font-size="12" font-weight="bold" fill="#333" transform="rotate(-90 60 310)">Precision</text>
+  
+  <!-- Y-axis labels -->
+  <text x="90" y="95" text-anchor="end" font-size="11" fill="#333">1.0</text>
+  <line x1="100" y1="90" x2="860" y2="90" stroke="#eee" stroke-width="1"/>
+  <text x="90" y="180" text-anchor="end" font-size="11" fill="#333">0.8</text>
+  <line x1="100" y1="175" x2="860" y2="175" stroke="#eee" stroke-width="1"/>
+  <text x="90" y="270" text-anchor="end" font-size="11" fill="#333">0.6</text>
+  <line x1="100" y1="265" x2="860" y2="265" stroke="#eee" stroke-width="1"/>
+  <text x="90" y="360" text-anchor="end" font-size="11" fill="#333">0.4</text>
+  <line x1="100" y1="355" x2="860" y2="355" stroke="#eee" stroke-width="1"/>
+  <text x="90" y="450" text-anchor="end" font-size="11" fill="#333">0.2</text>
+  <line x1="100" y1="445" x2="860" y2="445" stroke="#eee" stroke-width="1"/>
+  <text x="90" y="535" text-anchor="end" font-size="11" fill="#333">0.0</text>
+  <line x1="100" y1="530" x2="860" y2="530" stroke="#333" stroke-width="2"/>
+  
+  <!-- Grid lines -->
+  <line x1="100" y1="90" x2="860" y2="90" stroke="#eee" stroke-width="1"/>
+  <line x1="100" y1="175" x2="860" y2="175" stroke="#eee" stroke-width="1"/>
+  <line x1="100" y1="265" x2="860" y2="265" stroke="#eee" stroke-width="1"/>
+  <line x1="100" y1="355" x2="860" y2="355" stroke="#eee" stroke-width="1"/>
+  <line x1="100" y1="445" x2="860" y2="445" stroke="#eee" stroke-width="1"/>
+  
+  <!-- Bars for each document -->
+  <!-- SYNTH_CERT_001 -->
+  <rect x="120" y="175" width="30" height="355" fill="#1976d2" opacity="0.8"/>
+  <text x="135" y="168" text-anchor="middle" font-size="10" fill="#0d47a1">0.71</text>
+  <rect x="155" y="90" width="30" height="440" fill="#388e3c" opacity="0.8"/>
+  <text x="170" y="83" text-anchor="middle" font-size="10" fill="#1b5e20">0.86</text>
+  <rect x="190" y="90" width="30" height="440" fill="#f57c00" opacity="0.8"/>
+  <text x="205" y="83" text-anchor="middle" font-size="10" fill="#e65100">0.86</text>
+  <rect x="225" y="90" width="30" height="440" fill="#c2185b" opacity="0.8"/>
+  <text x="240" y="83" text-anchor="middle" font-size="10" fill="#880e4f">0.86</text>
+  
+  <!-- SYNTH_TT_002 -->
+  <rect x="280" y="175" width="30" height="355" fill="#1976d2" opacity="0.8"/>
+  <text x="295" y="168" text-anchor="middle" font-size="10" fill="#0d47a1">0.63</text>
+  <rect x="315" y="90" width="30" height="440" fill="#388e3c" opacity="0.8"/>
+  <text x="330" y="83" text-anchor="middle" font-size="10" fill="#1b5e20">1.00</text>
+  <rect x="350" y="90" width="30" height="440" fill="#f57c00" opacity="0.8"/>
+  <text x="365" y="83" text-anchor="middle" font-size="10" fill="#e65100">1.00</text>
+  <rect x="385" y="90" width="30" height="440" fill="#c2185b" opacity="0.8"/>
+  <text x="400" y="83" text-anchor="middle" font-size="10" fill="#880e4f">0.86</text>
+  
+  <!-- SYNTH_ID_003 -->
+  <rect x="440" y="175" width="30" height="355" fill="#1976d2" opacity="0.8"/>
+  <text x="455" y="168" text-anchor="middle" font-size="10" fill="#0d47a1">0.71</text>
+  <rect x="475" y="90" width="30" height="440" fill="#388e3c" opacity="0.8"/>
+  <text x="490" y="83" text-anchor="middle" font-size="10" fill="#1b5e20">1.00</text>
+  <rect x="510" y="90" width="30" height="440" fill="#f57c00" opacity="0.8"/>
+  <text x="525" y="83" text-anchor="middle" font-size="10" fill="#e65100">1.00</text>
+  <rect x="545" y="90" width="30" height="440" fill="#c2185b" opacity="0.8"/>
+  <text x="560" y="83" text-anchor="middle" font-size="10" fill="#880e4f">0.86</text>
+  
+  <!-- SYNTH_MS_004 -->
+  <rect x="600" y="265" width="30" height="265" fill="#1976d2" opacity="0.8"/>
+  <text x="615" y="258" text-anchor="middle" font-size="10" fill="#0d47a1">0.57</text>
+  <rect x="635" y="90" width="30" height="440" fill="#388e3c" opacity="0.8"/>
+  <text x="650" y="83" text-anchor="middle" font-size="10" fill="#1b5e20">1.00</text>
+  <rect x="670" y="90" width="30" height="440" fill="#f57c00" opacity="0.8"/>
+  <text x="685" y="83" text-anchor="middle" font-size="10" fill="#e65100">1.00</text>
+  <rect x="705" y="90" width="30" height="440" fill="#c2185b" opacity="0.8"/>
+  <text x="720" y="83" text-anchor="middle" font-size="10" fill="#880e4f">0.86</text>
+  
+  <!-- SYNTH_MS_005 -->
+  <rect x="760" y="90" width="30" height="440" fill="#1976d2" opacity="0.8"/>
+  <text x="775" y="83" text-anchor="middle" font-size="10" fill="#0d47a1">0.86</text>
+  <rect x="795" y="90" width="30" height="440" fill="#388e3c" opacity="0.8"/>
+  <text x="810" y="83" text-anchor="middle" font-size="10" fill="#1b5e20">1.00</text>
+  <rect x="830" y="90" width="30" height="440" fill="#f57c00" opacity="0.8"/>
+  <text x="845" y="83" text-anchor="middle" font-size="10" fill="#e65100">1.00</text>
+  <rect x="865" y="90" width="30" height="440" fill="#c2185b" opacity="0.8"/>
+  <text x="880" y="83" text-anchor="middle" font-size="10" fill="#880e4f">0.86</text>
+  
+  <!-- X-axis labels -->
+  <text x="180" y="555" text-anchor="middle" font-size="11" fill="#333">SYNTH_CERT_001</text>
+  <text x="340" y="555" text-anchor="middle" font-size="11" fill="#333">SYNTH_TT_002</text>
+  <text x="500" y="555" text-anchor="middle" font-size="11" fill="#333">SYNTH_ID_003</text>
+  <text x="660" y="555" text-anchor="middle" font-size="11" fill="#333">SYNTH_MS_004</text>
+  <text x="820" y="555" text-anchor="middle" font-size="11" fill="#333">SYNTH_MS_005</text>
+  
+  <!-- X-axis title -->
+  <text x="450" y="580" text-anchor="middle" font-size="12" font-weight="bold" fill="#333">Document ID</text>
+  
+  <!-- Legend -->
+  <rect x="150" y="590" width="600" height="25" rx="4" fill="#fff" stroke="#ccc" stroke-width="1"/>
+  <rect x="170" y="597" width="16" height="12" fill="#1976d2" opacity="0.8"/>
+  <text x="192" y="608" font-size="11" fill="#333">SYS-BASE-1 (Tesseract)</text>
+  <rect x="340" y="597" width="16" height="12" fill="#388e3c" opacity="0.8"/>
+  <text x="362" y="608" font-size="11" fill="#333">SYS-BASE-2 (Gemini)</text>
+  <rect x="510" y="597" width="16" height="12" fill="#f57c00" opacity="0.8"/>
+  <text x="532" y="608" font-size="11" fill="#333">SYS-BASE-3 (OpenRouter)</text>
+  <rect x="690" y="597" width="16" height="12" fill="#c2185b" opacity="0.8"/>
+  <text x="712" y="608" font-size="11" fill="#333">SYS-PROP (AU DIC)</text>
+  
+  <!-- Note -->
+  <text x="450" y="80" text-anchor="middle" font-size="10" fill="#666" font-style="italic">Precision = TP / (TP + FP) per document across 7 core fields</text>
+</svg>

@@ -1,6 +1,15 @@
 /**
  * Academic Universe — Metrics Engine
  * Aggregates per-document evaluation results into publication-ready metrics.
+ *
+ * DESIGN PRINCIPLE: All aggregate metrics are RECOMPUTED from fieldMatches.
+ * This engine NEVER trusts stored fieldScores. This guarantees mathematical
+ * consistency between per-document and aggregate metrics at all times.
+ *
+ * HITL aggregation semantics:
+ *   meanReviewDurationSec = totalReviewDurationSec / successfulEvaluations
+ *   (denominator is ALL successful docs — 0 for non-reviewed docs is included)
+ *   This matches the denominator used in validateAggregates() in BenchmarkValidator.
  */
 
 import {
@@ -8,19 +17,26 @@ import {
   AggregateMetrics,
   DocumentCategory,
 } from '../types/benchmark.types';
+import { computeFieldMetrics } from './metricsCalculator';
 
 export class MetricsEngine {
   /**
    * Compute aggregate metrics from a batch of document evaluation results.
+   * ALL metrics are recomputed from fieldMatches — stored fieldScores are ignored.
    */
   computeAggregate(results: DocumentEvaluationResult[]): AggregateMetrics {
     const successful = results.filter((r) => r.success);
     const failed = results.filter((r) => !r.success);
 
-    // Overall extraction scores
-    const totalTP = this.sum(successful.map((r) => r.fieldScores.truePositives));
-    const totalFP = this.sum(successful.map((r) => r.fieldScores.falsePositives));
-    const totalFN = this.sum(successful.map((r) => r.fieldScores.falseNegatives));
+    // ─── Recompute overall extraction scores from fieldMatches ──────────────
+    let totalTP = 0, totalFP = 0, totalFN = 0;
+    for (const result of successful) {
+      const metrics = computeFieldMetrics(result.fieldMatches);
+      totalTP += metrics.tp;
+      totalFP += metrics.fp;
+      totalFN += metrics.fn;
+    }
+
     const overallPrecision = totalTP + totalFP > 0 ? totalTP / (totalTP + totalFP) : 0;
     const overallRecall = totalTP + totalFN > 0 ? totalTP / (totalTP + totalFN) : 0;
     const overallF1 =
@@ -28,11 +44,11 @@ export class MetricsEngine {
         ? (2 * overallPrecision * overallRecall) / (overallPrecision + overallRecall)
         : 0;
 
-    // Latency statistics
+    // ─── Latency statistics ─────────────────────────────────────────────────
     const latencies = successful.map((r) => r.latencyMs.totalPipelineMs);
     const latencyStats = this.computeLatencyStats(latencies);
 
-    // Fallback metrics
+    // ─── Fallback metrics ───────────────────────────────────────────────────
     const fallbackAttempts = successful.filter((r) => r.fallbackTriggered).length;
     const fallbackSuccesses = successful.filter(
       (r) => r.fallbackTriggered && r.success
@@ -40,25 +56,32 @@ export class MetricsEngine {
     const fallbackRecoveryRate =
       fallbackAttempts > 0 ? (fallbackSuccesses / fallbackAttempts) * 100 : 0;
 
-    // HITL metrics
-    const reviewDurations = successful.map((r) => r.hitlMetrics.reviewDurationSec);
-    const totalCorrected = this.sum(successful.map((r) => r.hitlMetrics.fieldsCorrected));
-    const totalExtractedFields = this.sum(
-      successful.map(
-        (r) => r.fieldScores.truePositives + r.fieldScores.falsePositives + r.fieldScores.falseNegatives
-      )
+    // ─── HITL metrics ────────────────────────────────────────────────────────
+    // Denominator for mean: ALL successful docs (non-reviewed docs contribute 0).
+    // This matches the denominator in BenchmarkValidator.validateAggregates().
+    const totalDocsWithReview = successful.filter((r) => r.hitlMetrics.reviewRequired).length;
+    const totalDocsWithCorrections = successful.filter((r) => r.hitlMetrics.fieldsCorrected > 0).length;
+    const totalReviewDurationSec = successful.reduce(
+      (sum, r) => sum + r.hitlMetrics.reviewDurationSec, 0
     );
+    const totalFieldsCorrected = successful.reduce(
+      (sum, r) => sum + r.hitlMetrics.fieldsCorrected, 0
+    );
+    const meanReviewDurationSec = successful.length > 0
+      ? totalReviewDurationSec / successful.length
+      : 0;
+    const totalExtractedFields = totalTP + totalFP + totalFN;
     const humanCorrectionRate =
-      totalExtractedFields > 0 ? (totalCorrected / totalExtractedFields) * 100 : 0;
+      totalExtractedFields > 0 ? (totalFieldsCorrected / totalExtractedFields) * 100 : 0;
 
-    // Category breakdown — covers all categories the document classifier can produce
-    const categories = [
+    // ─── Category breakdown ─────────────────────────────────────────────────
+    const categories: DocumentCategory[] = [
       'MARKSHEET', 'TRANSCRIPT', 'CERTIFICATE',
       'WORKSHOP_CERTIFICATE', 'INTERNSHIP_CERTIFICATE', 'HACKATHON_CERTIFICATE',
       'TIMETABLE', 'EXAM_TIMETABLE', 'ADMIT_CARD',
       'FEE_RECEIPT', 'STUDENT_ID', 'UNKNOWN', 'EDGE_CASE',
-    ] as const;
-    const categoryBreakdown: AggregateMetrics['categoryBreakdown'] = {} as any;
+    ];
+    const categoryBreakdown: AggregateMetrics['categoryBreakdown'] = {} as AggregateMetrics['categoryBreakdown'];
 
     for (const cat of categories) {
       const catResults = successful.filter((r) => r.category === cat);
@@ -66,9 +89,15 @@ export class MetricsEngine {
         categoryBreakdown[cat] = { count: 0, precision: 0, recall: 0, f1Score: 0, meanLatencyMs: 0 };
         continue;
       }
-      const catTP = this.sum(catResults.map((r) => r.fieldScores.truePositives));
-      const catFP = this.sum(catResults.map((r) => r.fieldScores.falsePositives));
-      const catFN = this.sum(catResults.map((r) => r.fieldScores.falseNegatives));
+
+      let catTP = 0, catFP = 0, catFN = 0;
+      for (const res of catResults) {
+        const m = computeFieldMetrics(res.fieldMatches);
+        catTP += m.tp;
+        catFP += m.fp;
+        catFN += m.fn;
+      }
+
       const p = catTP + catFP > 0 ? catTP / (catTP + catFP) : 0;
       const r = catTP + catFN > 0 ? catTP / (catTP + catFN) : 0;
       const f1 = p + r > 0 ? (2 * p * r) / (p + r) : 0;
@@ -91,7 +120,11 @@ export class MetricsEngine {
         fallbackRecoveryRate,
       },
       hitlMetrics: {
-        meanReviewDurationSec: this.mean(reviewDurations),
+        totalDocsWithReview,
+        totalDocsWithCorrections,
+        totalReviewDurationSec,
+        meanReviewDurationSec,
+        totalFieldsCorrected,
         humanCorrectionRate,
       },
       categoryBreakdown,
@@ -100,6 +133,7 @@ export class MetricsEngine {
 
   /**
    * Compute per-field metrics across all documents for a given system.
+   * Recomputes from fieldMatches, does not trust stored metrics.
    */
   computePerFieldMetrics(
     results: DocumentEvaluationResult[]
@@ -132,7 +166,7 @@ export class MetricsEngine {
     return result;
   }
 
-  // --- Helpers ---
+  // ─── Private helpers ──────────────────────────────────────────────────────
 
   private computeLatencyStats(values: number[]): AggregateMetrics['latencyStats'] {
     if (values.length === 0) {
@@ -152,10 +186,6 @@ export class MetricsEngine {
   private mean(arr: number[]): number {
     if (arr.length === 0) return 0;
     return arr.reduce((s, v) => s + v, 0) / arr.length;
-  }
-
-  private sum(arr: number[]): number {
-    return arr.reduce((s, v) => s + v, 0);
   }
 
   private percentile(sorted: number[], pct: number): number {

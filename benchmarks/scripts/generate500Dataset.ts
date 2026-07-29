@@ -9,9 +9,9 @@ async function main() {
   const pipeline = new SyntheticPipeline(root);
   const outDir = path.join(root, 'synthetic-dataset-500');
 
-  console.log('🚀 Phase 7 — Generating 500 synthetic PDF documents (Seed: 100)...');
+  console.log('🚀 Phase 7 — Generating 500 synthetic PDF documents (Seed: 42)...');
   const genResult = await pipeline.generateDataset({
-    seed: 100,
+    seed: 42,
     count: 500,
     outputDir: outDir,
   });

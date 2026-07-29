@@ -1,0 +1,35 @@
+# Open Source Readiness Report
+## AU DIC v1.0.0 — Phase 9 Open Source Audit
+
+**Audited:** 2026-07-30  
+**Scope:** Community Health Files, Licensing, Security, GitHub Presentation
+
+---
+
+## 1. Readiness Audit Matrix
+
+| Item | File / Standard | Status | Action Needed |
+|---|---|---|---|
+| **License** | `LICENSE` | ⚠️ Referenced | Add standard MIT License file to repository root. |
+| **Contributing Guide** | `CONTRIBUTING.md` | ❌ Missing | Create community contribution & benchmark submission guidelines. |
+| **Code of Conduct** | `CODE_OF_CONDUCT.md` | ❌ Missing | Adopt Contributor Covenant v2.1. |
+| **Security Policy** | `SECURITY.md` | ❌ Missing | Add vulnerability disclosure policy & security contacts. |
+| **Issue Templates** | `.github/ISSUE_TEMPLATE/` | ❌ Missing | Add Bug Report and Feature Request YAML templates. |
+| **PR Template** | `.github/PULL_REQUEST_TEMPLATE.md` | ❌ Missing | Create standard PR checklist. |
+| **Git Hygiene** | `.gitignore` | ✅ Good | Add minor additions for `logs/` and `tmp/`. |
+
+---
+
+## 2. Open Source Release Package Components
+
+1. **Repository Badges**:
+   - License (MIT)
+   - Benchmark Status (Certified v1.0.0)
+   - Node.js (>=20.0.0)
+   - Frameworks (Next.js 16, Express 5, MongoDB 7)
+
+2. **Citation Standard (`CITATION.cff`)**:
+   - Provide standard BibTeX citation snippet for the AU DIC paper to enable academic attribution.
+
+3. **Release Tagging**:
+   - Create Git tag `v1.0.0` pointing to commit `95dbb83` with release artifacts attached.

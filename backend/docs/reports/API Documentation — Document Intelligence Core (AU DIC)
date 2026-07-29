@@ -1,0 +1,121 @@
+# API Documentation — Document Intelligence Core (AU DIC)
+## REST API Reference — Version 1.0.0
+
+Base URL: `http://localhost:5000/api/document-intelligence`  
+Authentication: `Bearer <JWT_TOKEN>` (Header: `Authorization`)  
+Tenant Scope: Enforced via `organizationId` from authenticated user context.
+
+---
+
+## Endpoint Summary
+
+| Method | Endpoint | Description | Scope |
+|---|---|---|---|
+| `POST` | `/documents` | Upload & initiate document extraction pipeline | `STUDENT`, `FACULTY`, `ADMIN` |
+| `GET` | `/documents` | List uploaded documents with pagination & filter | Tenant-scoped |
+| `GET` | `/documents/:id` | Retrieve document details & extracted knowledge records | Tenant-scoped |
+| `POST` | `/review/:id` | Submit HITL review (approve / edit / reject fields) | `FACULTY`, `ADMIN` |
+| `DELETE` | `/documents/:id` | Soft delete document, knowledge record & history | `ADMIN` / Owner |
+
+---
+
+## Endpoint Details
+
+### 1. Upload & Process Document
+
+`POST /api/document-intelligence/documents`
+
+**Headers**:
+```http
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: multipart/form-data
+```
+
+**Form Data Parameters**:
+- `file` (File, required): PDF or Image (JPEG, PNG, WEBP). Max 10MB.
+- `category` (String, optional): `CERTIFICATE`, `MARKSHEET`, `TIMETABLE`, `STUDENT_ID`. Auto-detected if omitted.
+
+**Response (`201 Created`)**:
+```json
+{
+  "success": true,
+  "data": {
+    "documentId": "65b2f8a910c2e40012a9b123",
+    "filename": "SYNTH_CERT_001.pdf",
+    "category": "CERTIFICATE",
+    "status": "PENDING_REVIEW",
+    "primaryProvider": "Gemini 2.5 Flash",
+    "fallbackTriggered": false,
+    "extractedFields": {
+      "studentName": "Tanya Verma",
+      "rollNumber": "2021329554",
+      "semester": "Semester 1",
+      "sgpa": 8.0,
+      "cgpa": 7.97,
+      "issueDate": "2023-04-20"
+    },
+    "latencyMs": {
+      "uploadMs": 120,
+      "aiInferenceMs": 980,
+      "dbStagingMs": 45,
+      "totalPipelineMs": 1145
+    }
+  }
+}
+```
+
+---
+
+### 2. Submit HITL Review
+
+`POST /api/document-intelligence/review/:id`
+
+**Request Body**:
+```json
+{
+  "action": "APPROVED",
+  "correctedFields": [
+    {
+      "fieldName": "rollNumber",
+      "correctedValue": "2021329554"
+    }
+  ],
+  "reviewDurationSec": 7.0
+}
+```
+
+**Response (`200 OK`)**:
+```json
+{
+  "success": true,
+  "message": "HITL review recorded and knowledge record canonicalized successfully",
+  "data": {
+    "documentId": "65b2f8a910c2e40012a9b123",
+    "reviewStatus": "APPROVED",
+    "canonicalStatus": "COMMITTED"
+  }
+}
+```
+
+---
+
+### 3. Transaction-Safe Soft Delete
+
+`DELETE /api/document-intelligence/documents/:id`
+
+**Response (`200 OK`)**:
+```json
+{
+  "success": true,
+  "message": "Document and associated workflow records soft deleted atomically",
+  "data": {
+    "documentId": "65b2f8a910c2e40012a9b123",
+    "recordsDeleted": {
+      "uaipUpload": 1,
+      "knowledgeRecords": 1,
+      "reviewHistory": 1
+    },
+    "transactionMode": "ACID_SESSION"
+  }
+}
+```

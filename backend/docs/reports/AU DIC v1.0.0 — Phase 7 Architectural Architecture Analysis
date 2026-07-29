@@ -1,0 +1,69 @@
+# Architecture Review
+## AU DIC v1.0.0 — Phase 7 Architectural Architecture Analysis
+
+**Audited:** 2026-07-30  
+**Scope:** Core Architecture, Microservices Layer, Data Layer, Pipeline Flow
+
+---
+
+## 1. High-Level Architecture Overview
+
+AU DIC is built as a modular microservice embedded within the Academic Universe multi-tenant platform.
+
+```
++-----------------------------------------------------------------------+
+|                           PRESENTATION TIER                           |
+|       Next.js 16 Web Portal  |  Mobile App  |  Admin Dashboard        |
++-----------------------------------------------------------------------+
+                                   | HTTP / REST (JWT + orgId Context)
++-----------------------------------------------------------------------+
+|                               API TIER                                |
+|   Express 5 Middleware: Auth / Org Isolation / RBAC / Validation       |
++-----------------------------------------------------------------------+
+                                   |
++-----------------------------------------------------------------------+
+|                             SERVICE TIER                              |
+|                                                                       |
+|  +-----------------------------------------------------------------+  |
+|  |                DocumentIntelligenceService                      |  |
+|  +-----------------------------------------------------------------+  |
+|         |                        |                       |            |
+|         v                        v                       v            |
+|  +--------------+     +--------------------+   +-------------------+  |
+|  |  OCRService  |     | FailoverAIProvider |   | Staging/Write Ops |  |
+|  +--------------+     +--------------------+   +-------------------+  |
+|     (Tesseract)       /                    \                          |
+|                      v                      v                         |
+|            Gemini 2.5 Flash          OpenRouter                       |
+|           (Primary Provider)      (gpt-4o-mini Fallback)              |
++-----------------------------------------------------------------------+
+                                   |
++-----------------------------------------------------------------------+
+|                             DATA TIER                                 |
+|   MongoDB 7 (UaipUpload | KnowledgeRecord | ReviewHistory) | GridFS   |
++-----------------------------------------------------------------------+
+```
+
+---
+
+## 2. Core Architectural Patterns
+
+### A. Dual-Provider AI Failover Pattern
+- Implemented in `FailoverAIProvider` (`backend/src/core/ai/failover.provider.ts`).
+- Executes primary inference $y_P = P(x)$ on Gemini 2.5 Flash.
+- Catches availability failures ($E_P \in \mathcal{E}_{avail}$) and dynamically redirects to OpenRouter ($y_F = F(x)$).
+- Preserves continuous uptime under API rate limits or regional service outages.
+
+### B. HITL Staging Pipeline
+- Prevents direct, unverified writes of AI predictions to canonical databases.
+- Extracted JSON candidate payloads write to `KnowledgeRecord` with `reviewStatus: PENDING_REVIEW`.
+- Field-level confidence scores trigger high-contrast UI highlighting for manual human review.
+- Approved extractions transition to canonical records atomically.
+
+### C. Multi-Tenant Query Scoping
+- Strict tenant isolation enforced at repository boundaries.
+- Database query template: `$match: { organizationId: req.user.organizationId, status: { $ne: "DELETED" } }`.
+
+### D. Transaction-Safe Soft Deletion
+- Uses MongoDB Client Sessions (`session.startTransaction()`) to perform atomic soft deletion across `UaipUpload`, `KnowledgeRecord`, and `ReviewHistory`.
+- Includes graceful fallback for standalone MongoDB instances with manual reverse-order rollback.

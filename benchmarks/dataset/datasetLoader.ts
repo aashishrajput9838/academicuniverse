@@ -59,7 +59,6 @@ export class DatasetLoader {
     });
 
     for (const catDir of categoryDirs) {
-      const category = this.inferCategory(catDir);
       const catPath = path.join(datasetDir, catDir);
       const files = fs.readdirSync(catPath);
 
@@ -72,6 +71,19 @@ export class DatasetLoader {
         const stat = fs.statSync(filePath);
         const checksum = await this.computeSha256(filePath);
         const gtPath = path.join(this.config.groundTruthDir, `${docId}.json`);
+
+        let category: DocumentCategory = 'EDGE_CASE';
+        if (fs.existsSync(gtPath)) {
+          try {
+            const gtRaw = fs.readFileSync(gtPath, 'utf-8');
+            const gt = JSON.parse(gtRaw);
+            if (gt.category) {
+              category = gt.category;
+            }
+          } catch {
+            // Keep EDGE_CASE if GT parsing fails
+          }
+        }
 
         documents.push({
           documentId: docId,
@@ -187,18 +199,6 @@ export class DatasetLoader {
       stream.on('end', () => resolve(hash.digest('hex')));
       stream.on('error', reject);
     });
-  }
-
-  private inferCategory(dirName: string): DocumentCategory {
-    const lower = dirName.toLowerCase();
-    if (lower.includes('marksheet')) return 'MARKSHEET';
-    if (lower.includes('certificate')) return 'CERTIFICATE';
-    if (lower.includes('timetable') || lower.includes('schedule')) return 'TIMETABLE';
-    if (lower.includes('transcript')) return 'TRANSCRIPT';
-    if (lower.includes('admit')) return 'ADMIT_CARD';
-    if (lower.includes('receipt') || lower.includes('fee')) return 'FEE_RECEIPT';
-    if (lower.includes('student_id') || lower.includes('id')) return 'STUDENT_ID';
-    return 'EDGE_CASE';
   }
 
   private inferQuality(dirName: string): 'HIGH' | 'MEDIUM' | 'LOW' | 'SCANNED' {

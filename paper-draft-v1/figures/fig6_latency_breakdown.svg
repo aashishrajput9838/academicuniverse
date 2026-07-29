@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" font-family="Arial, sans-serif" font-size="14">
+  <!-- Background -->
+  <rect width="900" height="600" fill="#f8f9fa"/>
+  
+  <!-- Title -->
+  <text x="450" y="35" text-anchor="middle" font-size="18" font-weight="bold" fill="#1a1a2e">Fig. 6. Latency Breakdown &amp; Failover Recovery</text>
+  <text x="450" y="55" text-anchor="middle" font-size="12" fill="#666">AU DIC Validation Dataset (mean latency per document)</text>
+  
+  <!-- Chart area -->
+  <rect x="80" y="80" width="780" height="420" fill="#fff" stroke="#ccc" stroke-width="1"/>
+  
+  <!-- Y-axis -->
+  <line x1="100" y1="80" x2="100" y2="500" stroke="#333" stroke-width="2"/>
+  <text x="55" y="300" text-anchor="middle" font-size="12" font-weight="bold" fill="#333" transform="rotate(-90 55 300)">Latency (ms)</text>
+  
+  <!-- Y-axis labels -->
+  <text x="90" y="95" text-anchor="end" font-size="11" fill="#333">3000</text>
+  <line x1="100" y1="90" x2="860" y2="90" stroke="#eee" stroke-width="1"/>
+  <text x="90" y="175" text-anchor="end" font-size="11" fill="#333">2500</text>
+  <line x1="100" y1="170" x2="860" y2="170" stroke="#eee" stroke-width="1"/>
+  <text x="90" y="260" text-anchor="end" font-size="11" fill="#333">2000</text>
+  <line x1="100" y1="255" x2="860" y2="255" stroke="#eee" stroke-width="1"/>
+  <text x="90" y="345" text-anchor="end" font-size="11" fill="#333">1500</text>
+  <line x1="100" y1="340" x2="860" y2="340" stroke="#eee" stroke-width="1"/>
+  <text x="90" y="430" text-anchor="end" font-size="11" fill="#333">1000</text>
+  <line x1="100" y1="425" x2="860" y2="425" stroke="#eee" stroke-width="1"/>
+  <text x="90" y="505" text-anchor="end" font-size="11" fill="#333">500</text>
+  <line x1="100" y1="500" x2="860" y2="500" stroke="#333" stroke-width="2"/>
+  
+  <!-- Grid lines -->
+  <line x1="100" y1="90" x2="860" y2="90" stroke="#eee" stroke-width="1"/>
+  <line x1="100" y1="170" x2="860" y2="170" stroke="#eee" stroke-width="1"/>
+  <line x1="100" y1="255" x2="860" y2="255" stroke="#eee" stroke-width="1"/>
+  <line x1="100" y1="340" x2="860" y2="340" stroke="#eee" stroke-width="1"/>
+  <line x1="100" y1="425" x2="860" y2="425" stroke="#eee" stroke-width="1"/>
+  
+  <!-- Bar group 1: SYS-BASE-1 (Tesseract) - avg total = 1228ms -->
+  <rect x="120" y="358" width="30" height="142" fill="#1976d2" opacity="0.9"/>
+  <text x="135" y="351" text-anchor="middle" font-size="10" fill="#0d47a1">1,228</text>
+  <rect x="120" y="468" width="30" height="32" fill="#64b5f6" opacity="0.9"/>
+  <text x="135" y="476" text-anchor="middle" font-size="9" fill="#0d47a1">122</text>
+  <rect x="120" y="428" width="30" height="40" fill="#42a5f5" opacity="0.9"/>
+  <text x="135" y="436" text-anchor="middle" font-size="9" fill="#0d47a1">1,056</text>
+  <rect x="120" y="485" width="30" height="15" fill="#90caf9" opacity="0.9"/>
+  <text x="135" y="493" text-anchor="middle" font-size="9" fill="#0d47a1">50</text>
+  
+  <!-- Bar group 2: SYS-BASE-2 (Gemini) - avg total = 2082ms -->
+  <rect x="200" y="246" width="30" height="254" fill="#388e3c" opacity="0.9"/>
+  <text x="215" y="239" text-anchor="middle" font-size="10" fill="#1b5e20">2,082</text>
+  <rect x="200" y="468" width="30" height="32" fill="#81c784" opacity="0.9"/>
+  <text x="215" y="476" text-anchor="middle" font-size="9" fill="#1b5e20">122</text>
+  <rect x="200" y="312" width="30" height="156" fill="#66bb6a" opacity="0.9"/>
+  <text x="215" y="320" text-anchor="middle" font-size="9" fill="#1b5e20">1,955</text>
+  <rect x="200" y="480" width="30" height="20" fill="#a5d6a7" opacity="0.9"/>
+  <text x="215" y="488" text-anchor="middle" font-size="9" fill="#1b5e20">105</text>
+  
+  <!-- Bar group 3: SYS-BASE-3 (OpenRouter) - avg total = 2447ms -->
+  <rect x="280" y="198" width="30" height="302" fill="#f57c00" opacity="0.9"/>
+  <text x="295" y="191" text-anchor="middle" font-size="10" fill="#e65100">2,447</text>
+  <rect x="280" y="468" width="30" height="32" fill="#ffb74d" opacity="0.9"/>
+  <text x="295" y="476" text-anchor="middle" font-size="9" fill="#e65100">122</text>
+  <rect x="280" y="272" width="30" height="196" fill="#ffa726" opacity="0.9"/>
+  <text x="295" y="280" text-anchor="middle" font-size="9" fill="#e65100">2,205</text>
+  <rect x="280" y="480" width="30" height="20" fill="#ffcc80" opacity="0.9"/>
+  <text x="295" y="488" text-anchor="middle" font-size="9" fill="#e65100">120</text>
+  
+  <!-- Bar group 4: SYS-PROP (AU DIC) - avg total = 2796ms -->
+  <rect x="360" y="143" width="30" height="357" fill="#c2185b" opacity="0.9"/>
+  <text x="375" y="136" text-anchor="middle" font-size="10" fill="#880e4f">2,796</text>
+  <rect x="360" y="468" width="30" height="32" fill="#f06292" opacity="0.9"/>
+  <text x="375" y="476" text-anchor="middle" font-size="9" fill="#880e4f">123</text>
+  <rect x="360" y="228" width="30" height="240" fill="#ec407a" opacity="0.9"/>
+  <text x="375" y="236" text-anchor="middle" font-size="9" fill="#880e4f">2,530</text>
+  <rect x="360" y="480" width="30" height="20" fill="#f48fb1" opacity="0.9"/>
+  <text x="375" y="488" text-anchor="middle" font-size="9" fill="#880e4f">143</text>
+  
+  <!-- Failover annotation -->
+  <rect x="420" y="280" width="200" height="40" rx="4" fill="#ffebee" stroke="#c62828" stroke-width="1.5"/>
+  <text x="520" y="300" text-anchor="middle" font-size="11" fill="#c62828">Failover trigger: 3/5 docs</text>
+  <text x="520" y="315" text-anchor="middle" font-size="10" fill="#666">Primary -> OpenRouter</text>
+  <line x1="420" y1="300" x2="360" y2="300" stroke="#c62828" stroke-width="1.5" stroke-dasharray="4,4" marker-end="url(#arrowhead-open)"/>
+  
+  <!-- X-axis labels -->
+  <text x="150" y="530" text-anchor="middle" font-size="12" fill="#333">SYS-BASE-1</text>
+  <text x="230" y="530" text-anchor="middle" font-size="12" fill="#333">SYS-BASE-2</text>
+  <text x="310" y="530" text-anchor="middle" font-size="12" fill="#333">SYS-BASE-3</text>
+  <text x="390" y="530" text-anchor="middle" font-size="12" fill="#333">SYS-PROP</text>
+  
+  <!-- X-axis title -->
+  <text x="450" y="555" text-anchor="middle" font-size="12" font-weight="bold" fill="#333">System</text>
+  
+  <!-- Legend -->
+  <rect x="200" y="560" width="500" height="25" rx="4" fill="#fff" stroke="#ccc" stroke-width="1"/>
+  <rect x="220" y="567" width="16" height="12" fill="#42a5f5" opacity="0.9"/>
+  <text x="242" y="578" font-size="11" fill="#333">AI Inference</text>
+  <rect x="330" y="567" width="16" height="12" fill="#90caf9" opacity="0.9"/>
+  <text x="352" y="578" font-size="11" fill="#333">DB Staging</text>
+  <rect x="430" y="567" width="16" height="12" fill="#64b5f6" opacity="0.9"/>
+  <text x="452" y="578" font-size="11" fill="#333">Upload</text>
+  
+  <!-- Note -->
+  <text x="450" y="80" text-anchor="middle" font-size="10" fill="#666" font-style="italic">Stacked bars represent mean latency components per system across 5 documents</text>
+</svg>

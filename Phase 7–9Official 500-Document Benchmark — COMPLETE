@@ -1,0 +1,136 @@
+# Walkthrough
+
+---
+
+## Phase 7–9: Official 500-Document Benchmark — COMPLETE ✅
+
+### Experiment: `EXP-20260728212358`
+**Runtime:** 2026-07-28T21:23:54Z → 2026-07-29T04:41:54Z (~7h 18m)  
+**Git commit:** `95dbb83` pushed to `origin/main`
+
+### Results Summary
+
+| System | Valid Evals | F1 | Precision | Recall | Mean Lat |
+|:---|:---:|:---:|:---:|:---:|:---:|
+| SYS-BASE-1 (Tesseract) | 0/500 | — | — | — | — |
+| **SYS-BASE-2 (Gemini Flash Lite)** | **496/500** | **0.551** | **0.800** | **0.420** | **2,125ms** |
+| SYS-BASE-3 (OpenRouter GPT-4o-mini) | 0/500 | — | — | — | — |
+| SYS-PROP (AU DIC Hybrid) | 5/500 ‡ | 0.432 | 0.457 | 0.410 | 2,561ms |
+
+_‡ 495/500 failures due to Gemini quota exhaustion + OpenRouter PDF format rejection_
+
+### Key Findings
+1. **SYS-BASE-2** is the only valid large-scale result: **F1=0.551, P=0.800, R=0.420** at 99.2% uptime
+2. **Recall (0.420) is the primary limitation** — model under-extracts rather than hallucinating
+3. **SYS-PROP operational failure** was infrastructural, not algorithmic (quota + PDF format mismatch)
+4. **Dataset category tagging defect** — all docs tagged `EDGE_CASE` instead of true document type
+5. **Statistical tests** all significant (Wilcoxon, α=0.05); Cohen's d=3.237 for BASE-2→PROP reflects failure, not capability
+
+### Infrastructure Defects Found
+| # | Defect | Severity |
+|:---:|:---|:---:|
+| D1 | Gemini free-tier quota exhaustion after 7h sustained use | HIGH |
+| D2 | OpenRouter vision API rejects `application/pdf` (requires `image/*`) | HIGH |
+| D3 | Synthetic dataset `category` field hardcoded to `EDGE_CASE` | MEDIUM |
+| D4 | 2s throttle insufficient for overnight quota window | MEDIUM |
+| D5 | Tesseract binary not installed in execution environment | LOW |
+
+### Artifacts Generated
+- [`EXP-20260728212358_final_benchmark_report.md`](file:///C:/github/academicuniverse.com/academicuniverse/benchmarks/results/reports/EXP-20260728212358_final_benchmark_report.md)
+- [`EXP-20260728212358_manuscript_tables_final.md`](file:///C:/github/academicuniverse.com/academicuniverse/benchmarks/results/reports/EXP-20260728212358_manuscript_tables_final.md)
+- [`EXP-20260728212358_raw_metrics.json`](file:///C:/github/academicuniverse.com/academicuniverse/benchmarks/results/reports/EXP-20260728212358_raw_metrics.json)
+- [`EXP-20260728212358_statistical_tests.json`](file:///C:/github/academicuniverse.com/academicuniverse/benchmarks/results/reports/EXP-20260728212358_statistical_tests.json)
+- All 24 raw result files in `benchmarks/results/logs/EXP-20260728212358_*`
+
+### Recommended Next Steps
+1. Convert synthetic dataset PDFs → PNGs (fixes D2 for both SYS-BASE-3 and SYS-PROP fallback)
+2. Obtain paid Gemini API key (fixes D1, D4)
+3. Fix `syntheticGenerator.ts` category field propagation (fixes D3)
+4. Re-run `EXP-FINAL` under corrected conditions
+
+--- — Synthetic Academic Document Generator
+
+Built a production-grade, independent **Synthetic Academic Document Generator** integrated with the Academic Universe Research Platform.
+
+---
+
+## 📦 Delivered Modules
+
+### 1. Core Generator Infrastructure (`benchmarks/synthetic-generator/`)
+
+| Module | File | Description |
+|:---|:---|:---|
+| Domain Types | [syntheticGenerator.types.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/types/syntheticGenerator.types.ts) | Strict TypeScript domain interfaces for configurations, profiles, and manifests |
+| Seeded PRNG | [seededRandom.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/core/seededRandom.ts) | Mulberry32 PRNG algorithm for 100% deterministic, seed-reproducible generation |
+| Data Fabricator | [dataFabricator.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/core/dataFabricator.ts) | Generates coherent student profiles, roll numbers, course marks, grades, and dates |
+| Template Engine | [templateEngine.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/core/templateEngine.ts) | Pluggable architecture supporting 4 fictional university templates (VTU, SRIT, NIES, IGCE) |
+| Quality Profiles | [qualityProfiles.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/core/qualityProfiles.ts) | 9 reusable quality profiles + mandatory `SYNTHETIC RESEARCH DATASET` watermark & footer |
+
+### 2. Document Generators (`benchmarks/synthetic-generator/generators/`)
+
+| Document Type | ExtendedCategory | Generator |
+|:---|:---|:---|
+| Semester Marksheet | MARKSHEET | [marksheetGenerator.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/generators/marksheetGenerator.ts) |
+| Skill & Degree Certificates | CERTIFICATE / WORKSHOP / INTERNSHIP / HACKATHON | [certificateGenerator.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/generators/certificateGenerator.ts) |
+| Consolidated Transcript | TRANSCRIPT | [transcriptGenerator.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/generators/transcriptGenerator.ts) |
+| Class & Exam Timetable | TIMETABLE / EXAM_TIMETABLE | [timetableGenerator.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/generators/timetableGenerator.ts) |
+| Exam Hall Ticket | ADMIT_CARD | [admitCardGenerator.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/generators/admitCardGenerator.ts) |
+| Fee Payment Receipt | FEE_RECEIPT | [feeReceiptGenerator.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/generators/feeReceiptGenerator.ts) |
+| Student Identity Card | STUDENT_ID | [studentIdGenerator.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/generators/studentIdGenerator.ts) |
+
+### 3. Pipeline & Validation (`benchmarks/synthetic-generator/pipeline/`)
+
+| Module | File | Purpose |
+|:---|:---|:---|
+| Ground Truth Builder | [groundTruthBuilder.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/pipeline/groundTruthBuilder.ts) | Generates 100% matching Ground Truth JSON schemas for every PDF |
+| Manifest & Report Builder | [manifestBuilder.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/pipeline/manifestBuilder.ts) | Creates `manifest.json`, `metadata.json`, and `generation-report.md` |
+| Quality Checker | [qualityChecker.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/pipeline/qualityChecker.ts) | Verifies PDF checksums, GT schema match, document IDs, and file existence |
+| Pipeline Orchestrator | [syntheticPipeline.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/pipeline/syntheticPipeline.ts) | Runs end-to-end generation & provides `importToDatasetManager()` |
+
+### 4. CLI, API, UI & Tests
+
+| Component | File | Description |
+|:---|:---|:---|
+| CLI Tool | [syntheticCli.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/cli/syntheticCli.ts) | Commands: `generate`, `validate`, `import`, `init` |
+| Generation API | [route.ts (generate)](file:///c:/github/academicuniverse.com/academicuniverse/app/api/synthetic/generate/route.ts) | POST `/api/synthetic/generate` |
+| Import API | [route.ts (import)](file:///c:/github/academicuniverse.com/academicuniverse/app/api/synthetic/import/route.ts) | POST `/api/synthetic/import` |
+| Web Dashboard UI | [page.tsx](file:///c:/github/academicuniverse.com/academicuniverse/app/dashboard/student/synthetic-generator/page.tsx) | Parameter controls, category picker, template toggles, generate & import actions |
+| Test Suite | [syntheticGenerator.test.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/synthetic-generator/tests/syntheticGenerator.test.ts) | Seed reproducibility, GT consistency, quality profile, and manifest hash tests |
+
+---
+
+## 🧪 Test Results
+
+```
+PASS synthetic-generator/tests/syntheticGenerator.test.ts
+PASS dataset-pipeline/tests/datasetPipeline.test.ts
+PASS dataset-manager/tests/datasetManager.test.ts
+PASS dataset-manager/tests/annotationPlatform.test.ts
+PASS tests/benchmark.test.ts
+
+Test Suites: 5 passed, 5 total
+Tests:       61 passed, 61 total
+Snapshots:   0 total
+Time:        4.39 s
+```
+
+---
+
+## 🛠️ CLI Quick Reference
+
+```bash
+# Generate 50 synthetic documents (Seed: 42)
+npm run synthetic:generate -- --count 50 --seed 42
+
+# Validate dataset integrity & GT matching
+npm run synthetic:validate
+
+# Import generated dataset into Dataset Manager RAW folder
+npm run synthetic:import
+```
+
+---
+
+## 🌐 Web UI Path
+
+Navigate to: `http://localhost:3000/dashboard/student/synthetic-generator`

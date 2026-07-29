@@ -1,8 +1,3 @@
-/**
- * Proposed System Runner (SYS-PROP) — Academic Universe DIC Hybrid Pipeline
- * Full dual-provider failover: Gemini primary → OpenRouter fallback → candidate staging simulation.
- */
-
 import axios from 'axios';
 import { IBaselineRunner, RunnerInput, RunnerOutput } from './baselineRunner.interface';
 import { ExtractionPrediction } from '../types/benchmark.types';
@@ -18,6 +13,15 @@ const EXTRACTION_PROMPT = `You are an academic document parser. Extract the foll
   "courseMarks": [{ "courseCode": string, "courseName": string, "marksObtained": number, "maxMarks": number }]
 }
 Do not include any explanation or markdown. Return raw JSON only.`;
+
+async function convertPdfToPng(buffer: Buffer): Promise<Buffer> {
+  try {
+    const { pdfToImg } = require('pdf-to-img');
+    return await pdfToImg(buffer, { format: 'png', density: 200 });
+  } catch {
+    throw new Error('pdf-to-img conversion failed: poppler may not be installed');
+  }
+}
 
 export interface AUDICRunnerConfig {
   geminiApiKey: string;
@@ -46,9 +50,7 @@ export class AcademicUniverseDICRunner implements IBaselineRunner {
     };
   }
 
-  async initialize(): Promise<void> {
-    // Initialization complete — missing API keys handled gracefully in extract()
-  }
+  async initialize(): Promise<void> {}
 
   async extract(input: RunnerInput): Promise<RunnerOutput> {
     const pipelineStart = Date.now();
@@ -139,11 +141,22 @@ export class AcademicUniverseDICRunner implements IBaselineRunner {
 
   private async callOpenRouter(input: RunnerInput): Promise<string> {
     const isRealImage = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(input.mimeType);
-    if (!isRealImage) {
-      throw new Error(`OpenRouter fallback: file type ${input.mimeType} is not supported by vision API. Only image/* is accepted.`);
+    const isPdf = input.mimeType === 'application/pdf';
+    let imageBuffer: Buffer;
+    let imageMimeType: string;
+
+    if (isRealImage) {
+      imageBuffer = input.fileBuffer;
+      imageMimeType = input.mimeType;
+    } else if (isPdf) {
+      imageBuffer = await convertPdfToPng(input.fileBuffer);
+      imageMimeType = 'image/png';
+    } else {
+      throw new Error(`OpenRouter fallback: file type ${input.mimeType} is not supported by vision API.`);
     }
-    const base64Data = input.fileBuffer.toString('base64');
-    const dataUrl = `data:${input.mimeType};base64,${base64Data}`;
+
+    const base64Data = imageBuffer.toString('base64');
+    const dataUrl = `data:${imageMimeType};base64,${base64Data}`;
     const response = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
       {

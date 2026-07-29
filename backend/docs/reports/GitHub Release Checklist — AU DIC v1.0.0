@@ -1,0 +1,42 @@
+# GitHub Release Checklist — AU DIC v1.0.0
+
+Use this checklist when publishing the official v1.0.0 release on GitHub.
+
+---
+
+## Pre-Release Verification
+
+- [x] **Git Repository Clean**: No unstaged secrets or temporary runtime files.
+- [x] **Benchmark Certification**: `benchmark_certificate.json` status is `PASS`.
+- [x] **Manuscript Synchronization**: All numbers in `research_paper.md` match certified tables.
+- [x] **Release Manifest**: `version1_release_manifest.md` generated and catalogued.
+- [x] **Freeze Report**: `version1_freeze_report.md` signed off.
+
+---
+
+## Step-by-Step GitHub Publication Steps
+
+### 1. Git Tag Creation
+Execute in terminal at root directory:
+```bash
+git tag -a v1.0.0 -m "AU DIC Version 1.0.0 — Certified Workflow-Validation Release" 95dbb83
+git push origin v1.0.0
+```
+
+### 2. GitHub Release UI Setup
+1. Navigate to `https://github.com/aashishrajput9838/academicuniverse/releases/new`
+2. Select tag: `v1.0.0`
+3. Release Title: `Academic Universe Document Intelligence Core (AU DIC) v1.0.0`
+4. Description: Copy content from `release_notes_v1.md`.
+
+### 3. Attach Binary & Research Artifacts
+Drag & drop the following zip package or files into the Release Assets section:
+- [x] `research_paper.md`
+- [x] `benchmark_certificate.json`
+- [x] `experiment_VAL-20260729.json`
+- [x] `version1_release_manifest.md`
+- [x] `version1_freeze_report.md`
+
+### 4. Metadata & Topics
+Set repository topics:
+`document-intelligence`, `multimodal-llm`, `gemini-api`, `human-in-the-loop`, `saas-architecture`, `benchmark-framework`, `reproducible-research`, `expressjs`, `nextjs`

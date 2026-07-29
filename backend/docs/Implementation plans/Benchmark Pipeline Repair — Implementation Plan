@@ -1,0 +1,268 @@
+# Benchmark Pipeline Repair — Implementation Plan
+
+**Project**: AU DIC Benchmark Infrastructure  
+**Scope**: Phases 1–16 — Root Cause Analysis through Full Test Suite  
+**Objective**: Make every generated benchmark artifact mathematically correct, deterministic, reproducible, and internally consistent.
+
+---
+
+## Background
+
+The peer review identified fatal data inconsistencies in `experiment_VAL-20260729.json`. The root cause has been traced through the complete pipeline via static code analysis. The problems exist at **two distinct layers**:
+
+1. **The stored legacy benchmark JSON** (`paper-draft-v1/benchmark-results/experiment_VAL-20260729.json`) — contains incorrect `fieldScores` that do not match its own `fieldMatches`.
+2. **The live pipeline code** (`benchmarks/`) — partially repaired (validation infrastructure exists) but has remaining bugs and a critical **non-determinism defect** in HITL simulation.
+
+---
+
+## Root Cause Analysis — Findings
+
+### RCA-1: Stored `fieldScores` Do Not Match `fieldMatches` in Legacy JSON
+
+The benchmark JSON was originally produced with `fieldScores` **simulated independently** from `fieldMatches`. The peer review caught three specific violations:
+
+| Document | System | isMatch=true count | Stored TP | Computed TP | Verdict |
+|---|---|---|---|---|---|
+| SYNTH_CERT_001 | SYS-PROP | 7 (all match) | 6 | **7** | ❌ WRONG |
+| SYNTH_MS_004 | SYS-BASE-1 | 6 of 7 match | 4 | **6** | ❌ WRONG |
+| SYNTH_MS_005 | SYS-BASE-1 | 7 of 7 match | 6 | **7** | ❌ WRONG |
+| SYNTH_TT_002 | SYS-BASE-1 | 6 of 7 match | 5 | **6** | ❌ WRONG |
+
+### RCA-2: HITL Metrics Are Inconsistent
+
+The JSON stores non-zero `reviewDurationSec` for all 5 SYS-PROP documents (total = 35s), but Table 7 claims only 2 of 5 documents required review. `fieldsCorrected` totals 2 in JSON but Table 7 reports 3.
+
+### RCA-3: Non-Deterministic HITL Simulation
+
+`pipelineExecutor.ts` line 203:
+```typescript
+const fieldsCorrected = reviewDurationSec > 0 ? Math.max(0, Math.floor(Math.random() * 3)) : 0;
+```
+`Math.random()` is unseeded — **every run produces different `fieldsCorrected` values**. This violates the IEEE reproducibility requirement.
+
+### RCA-4: Latency Discrepancy in Table 6
+
+SYS-PROP mean latency reported as 2,796 ms. Computed from JSON: (2650+2885+2730+2620+2980)/5 = **2,773 ms** (not 2,796). Table 6 has a 23 ms fabrication error.
+
+### RCA-5: Missing HITL `reviewRequired` Flag
+
+The `DocumentEvaluationResult` type has no `reviewRequired: boolean` field. The validator therefore cannot enforce the rule: `reviewDurationSec > 0 ↔ reviewRequired = true`. This makes HITL invariant checking incomplete.
+
+### RCA-6: `exportValidatedResults` Has a Type Error Bug
+
+In `resultExporter.ts` lines 205–206:
+```typescript
+const allErrors: BenchmarkValidator['errors'] = [];
+const allWarnings: BenchmarkValidator['warnings'] = [];
+```
+`BenchmarkValidator` has no public `errors` or `warnings` properties. These should be `ValidationError[]` and `string[]`. This is a **compile-time type bug** that will crash the export in strict TS mode.
+
+### RCA-7: Table Generator Table 7 Is Manually Authored
+
+`paper-draft-v1/tables/table7_category_breakdown.md` contains hardcoded HITL impact metrics that contradict the JSON. There is no code path that auto-generates this table from the JSON — it was typed manually.
+
+### RCA-8: Unsupported Claim in Table 6
+
+`table6_aggregate_metrics.md` states: *"SYS-PROP achieves the highest precision-recall balance (F1 = 0.882) among all systems"*. The same table shows SYS-BASE-2 at F1=0.958 and SYS-BASE-3 at F1=0.943. This is factually wrong and must be corrected in the generated Performance Analysis section.
+
+### RCA-9: `validateAggregates` HITL Mean Calculation Is Wrong
+
+In `benchmarkValidator.ts` lines 162–163:
+```typescript
+if (aggregates.hitlMetrics.meanReviewDurationSec > 0 && docsWithReview > 0) {
+  const expectedMean = totalReviewDuration / docsWithReview;
+```
+The mean is divided by `docsWithReview` (docs with review > 0), but `MetricsEngine.computeAggregate()` divides by `all successful docs`. These denominators differ → the validator produces false positives on valid data.
+
+### RCA-10: `pipelineProperties.test.ts` Has Wrong Import Paths
+
+```typescript
+import { computeFieldMetrics, ... } from '../metrics/metricsCalculator';
+import { BenchmarkValidator } from '../validation/benchmarkValidator';
+import { MetricsEngine } from '../metrics/metricsEngine';
+```
+This test file lives in `tests/property/` but imports from `../metrics/` (one level up from `tests/`), which resolves to `tests/metrics/` — **incorrect**. Paths should be `../../metrics/` and `../../validation/`.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Decision required on HITL Semantics**: The peer reviewer asks: should `reviewDurationSec > 0` for ALL 5 SYS-PROP documents, or only 2? Both are valid design choices, but they produce different Table 7 values. **The chosen definition must match the JSON.**
+>
+> **Proposed Resolution**: Define `reviewRequired = reviewDurationSec > 0`. Under this definition, ALL 5 SYS-PROP documents are reviewed (35s total, mean 7.0s per doc). Table 7's claim of "2 of 5" is then corrected to "5 of 5 (100%)". The `fieldsCorrected` count in Table 7 is corrected to 2 (matching the JSON sum).
+
+> [!WARNING]
+> **Latency Values**: The 23ms discrepancy in SYS-PROP mean latency (2,773 ms computed vs 2,796 ms reported) is resolved by recomputing from the JSON. No manual correction needed — the table generator will compute the correct value automatically.
+
+> [!CAUTION]
+> **`experiment_VAL-20260729.json` will be regenerated** by a new Python/TypeScript script that reads `fieldMatches`, computes correct `fieldScores`, and rewrites the file. The old file will be backed up as `experiment_VAL-20260729.ORIG.json`. **No values are manually patched** — all values flow from the canonical computation.
+
+---
+
+## Open Questions
+
+1. Should the legacy JSON be regenerated programmatically (script reads `fieldMatches` → computes `fieldScores` → writes corrected JSON), or should the corrected JSON be treated as the new ground truth and future runs only use the live pipeline?
+   - **Proposed**: Programmatic correction script. A `scripts/rectify_legacy_json.ts` that loads the JSON, validates every document, recomputes all `fieldScores`, and writes the corrected file. This satisfies "no manual editing" and is reproducible.
+
+2. The `reviewDurationSec` values (5, 8, 12, 3, 7) for SYS-PROP: are these authoritative (keep them) or should they be zeroed out for the 3 non-correction documents?
+   - **Proposed**: Keep all 5 non-zero values. SYS-PROP always performs a review scan (even without corrections). This is technically consistent with the HITL architecture. Update Table 7 accordingly.
+
+---
+
+## Proposed Changes
+
+---
+
+### Component: Legacy Benchmark JSON Rectification
+
+#### [NEW] `benchmarks/scripts/rectify_legacy_json.ts`
+
+A one-shot script that:
+1. Reads `paper-draft-v1/benchmark-results/experiment_VAL-20260729.json`
+2. For every evaluation: computes `fieldScores` from `fieldMatches` using `computeFieldMetrics()`
+3. Validates all mathematical invariants using `BenchmarkValidator`
+4. Writes `experiment_VAL-20260729.json` (corrected) and creates `experiment_VAL-20260729.ORIG.json` backup
+5. Prints a report of every change made
+
+---
+
+### Component: Bug Fixes to Core Pipeline Code
+
+#### [MODIFY] [pipelineExecutor.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/runners/pipelineExecutor.ts)
+
+- **Fix RCA-3**: Replace `Math.random()` with a seeded deterministic function based on `documentId + systemId`
+- **Fix**: Add `reviewRequired` to hitlMetrics derivation
+
+#### [MODIFY] [resultExporter.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/exporters/resultExporter.ts)
+
+- **Fix RCA-6**: Replace invalid `BenchmarkValidator['errors']` types with `ValidationError[]` and `string[]`
+- **Fix RCA-8**: Replace hardcoded Performance Analysis text with computed text derived from sorted F1 scores
+
+#### [MODIFY] [benchmarkValidator.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/validation/benchmarkValidator.ts)
+
+- **Fix RCA-9**: Align `validateAggregates()` HITL mean denominator with `MetricsEngine.computeAggregate()` denominator (use `successful.length`, not `docsWithReview`)
+- **Add**: Validate new `reviewRequired` flag consistency
+
+#### [MODIFY] [benchmark.types.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/types/benchmark.types.ts)
+
+- **Add**: `reviewRequired: boolean` field to `hitlMetrics` in `DocumentEvaluationResult`
+- **Add**: `seed?: string` field to `ExperimentRunCheckpoint` for determinism tracking
+
+---
+
+### Component: Table Generator — Auto-Generated Tables
+
+#### [MODIFY] [resultExporter.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/exporters/resultExporter.ts) — `hitlToMarkdownSection()`
+
+Rewrite to compute and emit all HITL Impact Analysis values directly from `AggregateMetrics`:
+- Documents requiring review: count from per-document `reviewDurationSec > 0`
+- Total review time: sum of all `reviewDurationSec`
+- Mean review time: total / docs with review
+- Total corrections: sum of `fieldsCorrected`
+- Corrections per reviewed doc: total corrections / docs with review
+- Fallback-to-HITL correlation: computed from per-document flags
+
+#### [NEW] `benchmarks/exporters/tableGenerators/table5Generator.ts`
+
+Generates Table 5 (per-document results) from `DocumentEvaluationResult[]` — fully automated, no hardcoded values.
+
+#### [NEW] `benchmarks/exporters/tableGenerators/table6Generator.ts`
+
+Generates Table 6 (aggregate metrics) from `Map<BaselineSystemId, AggregateMetrics>` with auto-computed Performance Analysis text.
+
+#### [NEW] `benchmarks/exporters/tableGenerators/table7Generator.ts`
+
+Generates Table 7 (HITL category breakdown) from `AggregateMetrics` for SYS-PROP — all HITL values computed from data.
+
+---
+
+### Component: Test Suite Fixes and Additions
+
+#### [MODIFY] [pipelineProperties.test.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/tests/property/pipelineProperties.test.ts)
+
+- **Fix RCA-10**: Correct all import paths from `../` to `../../`
+
+#### [MODIFY] [pipelineValidation.test.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/tests/integration/pipelineValidation.test.ts)
+
+- **Fix**: Remove unused `AggregateMetrics` import that is referenced but not imported at the top
+- **Add**: Test case for `reviewRequired` consistency
+- **Add**: Test case for seeded determinism of HITL simulation
+
+#### [MODIFY] [benchmarkValidator.test.ts](file:///c:/github/academicuniverse.com/academicuniverse/benchmarks/tests/unit/benchmarkValidator.test.ts)
+
+- **Add**: Test case for `validateAggregates()` HITL mean calculation after denominator fix
+- **Add**: Test case for `reviewRequired` validation
+
+#### [NEW] `benchmarks/tests/unit/rectifyLegacyJson.test.ts`
+
+- Tests that the rectify script produces mathematically consistent output
+- Tests that all fieldScores in corrected JSON are computed from fieldMatches
+- Tests that aggregate metrics in corrected JSON match per-document sums
+
+#### [NEW] `benchmarks/tests/integration/table5Generation.test.ts`
+#### [NEW] `benchmarks/tests/integration/table6Generation.test.ts`
+#### [NEW] `benchmarks/tests/integration/table7Generation.test.ts`
+
+Table generation integration tests: verify that every value in every generated table matches the source benchmark JSON.
+
+---
+
+### Component: Paper Table Files (Auto-Generated, Not Manually Edited)
+
+#### [MODIFY] [table5_benchmark_results.md](file:///c:/github/academicuniverse.com/academicuniverse/paper-draft-v1/tables/table5_benchmark_results.md)
+
+**Re-generated** from the corrected JSON by `table5Generator.ts`. All `fieldScores` will be recomputed.
+
+#### [MODIFY] [table6_aggregate_metrics.md](file:///c:/github/academicuniverse.com/academicuniverse/paper-draft-v1/tables/table6_aggregate_metrics.md)
+
+**Re-generated** by `table6Generator.ts`. Mean latency will be recomputed from JSON (2,773 ms, not 2,796 ms). Performance Analysis text will be corrected.
+
+#### [MODIFY] [table7_category_breakdown.md](file:///c:/github/academicuniverse.com/academicuniverse/paper-draft-v1/tables/table7_category_breakdown.md)
+
+**Re-generated** by `table7Generator.ts`. HITL Impact table will reflect correct values: 5 of 5 docs reviewed, 2 total corrections.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+
+```bash
+cd benchmarks
+
+# Fix import paths first, then run all tests
+npx jest --config jest.config.js --runInBand
+
+# Specifically verify:
+npx jest --config jest.config.js tests/unit/metricsCalculator.test.ts
+npx jest --config jest.config.js tests/unit/benchmarkValidator.test.ts
+npx jest --config jest.config.js tests/unit/fieldComparisonEngine.test.ts
+npx jest --config jest.config.js tests/integration/pipelineValidation.test.ts
+npx jest --config jest.config.js tests/property/pipelineProperties.test.ts
+```
+
+### Manual Verification
+
+1. After `rectify_legacy_json.ts` runs: confirm diff between ORIG and corrected shows only `fieldScores` changes
+2. Spot-check SYNTH_CERT_001/SYS-PROP: TP should be 7 (all 7 fieldMatches are `isMatch: true`)
+3. Verify Table 6 SYS-PROP mean latency = 2,773 ms (not 2,796)
+4. Verify Table 7 HITL section: 5 of 5 docs, 2 corrections, 35s total
+5. Run the full validator script and confirm zero errors on corrected JSON
+
+---
+
+## Execution Order
+
+1. Fix bug RCA-10 (import paths) so tests can run at all
+2. Fix bug RCA-6 (type error in resultExporter)
+3. Fix bug RCA-9 (HITL mean denominator mismatch)
+4. Fix bug RCA-3 (non-deterministic `Math.random()`)
+5. Add `reviewRequired` to types and validator
+6. Create `rectify_legacy_json.ts` script and run it
+7. Create table generator scripts (table5, table6, table7)
+8. Run table generators to produce corrected paper tables
+9. Add new unit/integration tests
+10. Run full test suite — all must pass
+11. Produce final validation report
+

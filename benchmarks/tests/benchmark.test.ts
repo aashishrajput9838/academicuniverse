@@ -83,28 +83,44 @@ describe('FieldComparisonEngine', () => {
 describe('MetricsEngine', () => {
   const engine = new MetricsEngine();
 
-  const makeResult = (tp: number, fp: number, fn: number, latMs: number, cat: any = 'MARKSHEET'): DocumentEvaluationResult => ({
-    experimentId: 'TEST',
-    documentId: `doc-${Math.random()}`,
-    category: cat,
-    systemId: 'SYS-PROP',
-    timestamp: new Date().toISOString(),
-    primaryProvider: 'gemini',
-    fallbackTriggered: false,
-    fallbackProvider: null,
-    latencyMs: { uploadMs: 10, aiInferenceMs: latMs - 10, dbStagingMs: 5, totalPipelineMs: latMs },
-    fieldMatches: [],
-    fieldScores: {
-      truePositives: tp,
-      falsePositives: fp,
-      falseNegatives: fn,
-      precision: tp + fp > 0 ? tp / (tp + fp) : 0,
-      recall: tp + fn > 0 ? tp / (tp + fn) : 0,
-      f1Score: 0,
-    },
-    hitlMetrics: { reviewDurationSec: 5, fieldsCorrected: 0, finalAction: 'APPROVED' },
-    success: true,
-  });
+  const makeResult = (tp: number, fp: number, fn: number, latMs: number, cat: any = 'MARKSHEET'): DocumentEvaluationResult => {
+    const fieldMatches = [];
+    for (let i = 0; i < tp; i++) {
+      fieldMatches.push({ fieldName: `tp_${i}`, expected: 'val', actual: 'val', isMatch: true, matchScore: 1.0 });
+    }
+    for (let i = 0; i < fp; i++) {
+      fieldMatches.push({ fieldName: `fp_${i}`, expected: 'val', actual: 'wrong', isMatch: false, matchScore: 0.0 });
+    }
+    for (let i = 0; i < fn; i++) {
+      fieldMatches.push({ fieldName: `fn_${i}`, expected: 'val', actual: null, isMatch: false, matchScore: 0.0 });
+    }
+    const precision = tp + fp > 0 ? tp / (tp + fp) : 0;
+    const recall = tp + fn > 0 ? tp / (tp + fn) : 0;
+    const f1Score = precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+
+    return {
+      experimentId: 'TEST',
+      documentId: `doc-${Math.random()}`,
+      category: cat,
+      systemId: 'SYS-PROP',
+      timestamp: new Date().toISOString(),
+      primaryProvider: 'gemini',
+      fallbackTriggered: false,
+      fallbackProvider: null,
+      latencyMs: { uploadMs: 10, aiInferenceMs: latMs - 10, dbStagingMs: 5, totalPipelineMs: latMs },
+      fieldMatches,
+      fieldScores: {
+        truePositives: tp,
+        falsePositives: fp,
+        falseNegatives: fn,
+        precision,
+        recall,
+        f1Score,
+      },
+      hitlMetrics: { reviewRequired: true, reviewDurationSec: 5, fieldsCorrected: 0, finalAction: 'APPROVED' },
+      success: true,
+    };
+  };
 
   test('perfect precision and recall', () => {
     const results = [makeResult(7, 0, 0, 100)];

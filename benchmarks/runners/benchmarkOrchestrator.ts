@@ -1,7 +1,11 @@
 /**
  * Academic Universe — Benchmark Orchestrator
  * Top-level coordinator: runs ALL baseline systems against the same document set,
- * aggregates metrics, runs statistics, exports all tables and results.
+ * validates results, aggregates metrics, runs statistics, exports all tables.
+ *
+ * Design Principle: No artifacts are generated until ALL validation checks pass.
+ * The pipeline aborts on the first validation failure in strict mode,
+ * or logs warnings and continues in non-strict mode.
  */
 
 import path from 'path';
@@ -18,36 +22,39 @@ import { GeminiSingleRunner } from '../baselines/geminiSingleRunner';
 import { OpenRouterSingleRunner } from '../baselines/openRouterSingleRunner';
 import { AcademicUniverseDICRunner } from '../baselines/academicUniverseDICRunner';
 import { AggregateMetrics, BaselineSystemId, DocumentEvaluationResult } from '../types/benchmark.types';
+import { CourseMarksComparisonMode } from '../validation/fieldComparisonMode';
 
 export interface OrchestratorOptions {
-  /** If set, only run a random sample of this size (for pilot runs) */
   sampleSize?: number;
-  /** Which system IDs to run (default: all four) */
   systems?: BaselineSystemId[];
-  /** Extra config overrides */
   configOverrides?: Partial<BenchmarkConfig>;
+  /** CourseMarks comparison mode for all runners */
+  courseMarksMode?: CourseMarksComparisonMode;
+  /** If true, abort on any validation failure */
+  strictValidation?: boolean;
 }
 
 export class BenchmarkOrchestrator {
   private config: BenchmarkConfig;
+  private courseMarksMode: CourseMarksComparisonMode;
+  private strictValidation: boolean;
 
-  constructor(configOverrides: Partial<BenchmarkConfig> = {}) {
+  constructor(configOverrides: Partial<BenchmarkConfig> = {}, opts: OrchestratorOptions = {}) {
     this.config = loadBenchmarkConfig(configOverrides);
+    this.courseMarksMode = opts.courseMarksMode || CourseMarksComparisonMode.PER_ARRAY;
+    this.strictValidation = opts.strictValidation || false;
   }
 
-  /** Execute pilot run (20-30 documents, all systems) */
   async runPilot(): Promise<void> {
     console.log('\n🧪 Starting PILOT BENCHMARK RUN (n=25)\n');
     await this.run({ sampleSize: 25 });
   }
 
-  /** Execute full benchmark (all 500 documents, all systems) */
   async runFull(): Promise<void> {
     console.log('\n🚀 Starting FULL BENCHMARK RUN (n=500)\n');
     await this.run({});
   }
 
-  /** Execute benchmark with custom options */
   async run(opts: OrchestratorOptions = {}): Promise<void> {
     const { sampleSize, systems } = opts;
 
@@ -67,7 +74,6 @@ export class BenchmarkOrchestrator {
       console.warn(`⚠️  ${duplicates.size} duplicate checksum groups detected. Review before proceeding.`);
     }
 
-    // Apply sampling if requested
     const documents = sampleSize
       ? datasetLoader.sample(sampleSize, 42)
       : valid;
@@ -91,7 +97,15 @@ export class BenchmarkOrchestrator {
     for (const runner of activeRunners) {
       console.log(`\n▶ Running: ${runner.displayName} (${runner.systemId})`);
       const logger = new BenchmarkLogger(this.config.logsDir, `${this.config.experimentId}_${runner.systemId}`);
-      const executor = new PipelineExecutor({ runner, config: this.config, documents, logger });
+      const executor = new PipelineExecutor({
+        runner,
+        config: this.config,
+        documents,
+        logger,
+        courseMarksMode: this.courseMarksMode,
+        simulatedReviewMs: runner.systemId === 'SYS-PROP' ? 5000 : 0,
+        strictValidation: this.strictValidation,
+      });
 
       const results = await executor.execute();
       allSystemResults.set(runner.systemId, results);
@@ -99,8 +113,7 @@ export class BenchmarkOrchestrator {
       const summary = logger.writeSummary(documents.length);
       console.log(`   ✓ Complete: ${summary.successCount}/${summary.totalDocuments} success, ${summary.failureCount} failed`);
 
-      // 10-second cooldown between systems to reset rate limit windows
-      await new Promise((resolve) => setTimeout(resolve, 10000));
+      await new Promise((resolve) => setTimeout(resolve, 30000));
     }
 
     // 4. Compute aggregate metrics per system
@@ -110,7 +123,27 @@ export class BenchmarkOrchestrator {
       aggregateBySystem.set(sysId, metricsEngine.computeAggregate(results));
     }
 
-    // 5. Statistical comparison (proposed system vs each baseline)
+    // 5. Run cross-system validation BEFORE any artifact generation
+    console.log('\n🔍 Running cross-system validation...');
+    const exporter = new ResultExporter(this.config.resultsDir);
+    const validationResult = exporter.exportValidatedResults(
+      Array.from(allSystemResults.values()).flat(),
+      aggregateBySystem.get('SYS-PROP')!,
+      this.config.experimentId
+    );
+
+    if (!validationResult.isValid) {
+      const report = BenchmarkValidator.generateReport(validationResult);
+      if (this.strictValidation) {
+        throw new Error(`Benchmark validation failed. Aborting artifact generation.\n${report}`);
+      } else {
+        console.warn(`⚠️  Validation warnings detected:\n${report}`);
+      }
+    } else {
+      console.log('✅ All validations passed. Generating artifacts...');
+    }
+
+    // 6. Statistical comparison
     const statsEngine = new StatisticsEngine();
     const propResults = allSystemResults.get('SYS-PROP') || [];
     const propF1Scores = propResults.map((r) => r.fieldScores.f1Score);
@@ -134,10 +167,7 @@ export class BenchmarkOrchestrator {
       }
     }
 
-    // 6. Export all results
-    const exporter = new ResultExporter(this.config.resultsDir);
-
-    // Build comparison rows for tables
+    // 7. Export all results (only after validation passes)
     const displayNames: Record<BaselineSystemId, string> = {
       'SYS-BASE-1': 'Tesseract OCR v5.0',
       'SYS-BASE-2': 'Gemini 1.5 Pro (Single)',
@@ -159,24 +189,20 @@ export class BenchmarkOrchestrator {
       });
     }
 
-    // Sort: baselines ordered alphabetically, proposed last
     const order: Record<string, number> = { 'SYS-BASE-1': 0, 'SYS-BASE-2': 1, 'SYS-BASE-3': 2, 'SYS-PROP': 3 };
     comparisonRows.sort((a, b) => (order[a.systemId] ?? 99) - (order[b.systemId] ?? 99));
 
-    const propAgg = aggregateBySystem.get('SYS-PROP');
-
-    exporter.exportJson(`${this.config.experimentId}_raw_metrics.json`, Object.fromEntries(aggregateBySystem));
-    exporter.exportJson(`${this.config.experimentId}_statistical_tests.json`, statTests);
     exporter.exportComparisonCsv(comparisonRows);
     exporter.exportComparisonMarkdown(comparisonRows);
     exporter.exportComparisonLatex(comparisonRows);
     exporter.exportStatisticsMarkdown(statTests);
+
+    const propAgg = aggregateBySystem.get('SYS-PROP');
     if (propAgg) {
       exporter.exportCategoryBreakdownMarkdown(propAgg);
       exporter.exportManuscriptReport(comparisonRows, statTests, propAgg, this.config.experimentId);
     }
 
-    // 7. Print summary to console
     this.printConsoleSummary(aggregateBySystem, statTests);
 
     console.log(`\n📁 All results saved to: ${this.config.resultsDir}`);

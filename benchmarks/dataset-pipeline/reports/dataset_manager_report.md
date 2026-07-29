@@ -1,25 +1,25 @@
 # AI Research Dataset Manager — Automatic Ingestion Report
-**Generated:** 2026-07-28T19:40:49.575Z | **Total Documents:** 66
+**Generated:** 2026-07-29T06:53:29.128Z | **Total Documents:** 1157
 
 ## Document Category Distribution
 | Category | Document Count | Percentage | Status |
 | :--- | :---: | :---: | :--- |
-| **Semester Marksheets** | 9 | 13.6% | Auto-Classified |
-| **Transcripts** | 2 | 3.0% | Auto-Classified |
-| **Certificates (Course)** | 14 | 21.2% | Auto-Classified |
-| **Workshop Certificates** | 12 | 18.2% | Auto-Classified |
-| **Internship Certificates** | 2 | 3.0% | Auto-Classified |
-| **Hackathon Certificates** | 6 | 9.1% | Auto-Classified |
-| **Timetables** | 4 | 6.1% | Auto-Classified |
-| **Exam Timetables** | 6 | 9.1% | Auto-Classified |
-| **Admit Cards** | 2 | 3.0% | Auto-Classified |
-| **Fee Receipts** | 6 | 9.1% | Auto-Classified |
-| **Student IDs** | 0 | 0.0% | Auto-Classified |
-| **Unknown / Review Req.** | 3 | 4.5% | Needs Review |
-| **TOTAL** | **66** | **100.0%** | — |
+| **Semester Marksheets** | 113 | 9.8% | Auto-Classified |
+| **Transcripts** | 101 | 8.7% | Auto-Classified |
+| **Certificates (Course)** | 119 | 10.3% | Auto-Classified |
+| **Workshop Certificates** | 108 | 9.3% | Auto-Classified |
+| **Internship Certificates** | 93 | 8.0% | Auto-Classified |
+| **Hackathon Certificates** | 109 | 9.4% | Auto-Classified |
+| **Timetables** | 104 | 9.0% | Auto-Classified |
+| **Exam Timetables** | 119 | 10.3% | Auto-Classified |
+| **Admit Cards** | 104 | 9.0% | Auto-Classified |
+| **Fee Receipts** | 100 | 8.6% | Auto-Classified |
+| **Student IDs** | 84 | 7.3% | Auto-Classified |
+| **Unknown / Review Req.** | 3 | 0.3% | Needs Review |
+| **TOTAL** | **1157** | **100.0%** | — |
 
 ## Quality & Review Summary
-- **Average AI Classification Confidence:** 90.0%
-- **Pending Human Review (Drafts):** 66
+- **Average AI Classification Confidence:** 93.0%
+- **Pending Human Review (Drafts):** 1157
 - **Verified Ground Truths:** 0
 - **Exact SHA-256 Duplicates:** 0

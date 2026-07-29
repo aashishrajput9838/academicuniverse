@@ -1,0 +1,41 @@
+# Developer Onboarding Report
+## AU DIC v1.0.0 — Phase 4 Setup & Onboarding Audit
+
+**Audited:** 2026-07-30  
+**Scope:** Local Development Setup, First Launch Experience, Dependency Management
+
+---
+
+## 1. Onboarding Flow Evaluation
+
+```
+[ Clone Repository ] ---> [ Copy .env.example ] ---> [ npm run install-all ] ---> [ npm run seed ] ---> [ Start Servers ]
+```
+
+| Step | Smoothness | Time Estimate | Verdict | Notes |
+|---|---|---|---|---|
+| **Prerequisites** | High | 5 mins | ✅ PASS | Node.js v20+, MongoDB, Firebase credentials required. |
+| **Dependencies** | High | 2 mins | ✅ PASS | Root `package.json` installs frontend dependencies; backend handles microservice deps. |
+| **Environment Config** | Medium | 3 mins | ✅ PASS | Clear `.env.example` templates provided in root and `/backend`. |
+| **Database Seeding** | High | 1 min | ✅ PASS | `npm run seed` initializes orgs, roles, permissions, and test accounts. |
+| **Server Startup** | High | 1 min | ✅ PASS | Concurrent execution via `./start-dev.ps1` or separate terminal tabs. |
+
+---
+
+## 2. Environment Configuration Matrix
+
+| Variable Name | Location | Mandatory? | Default / Example | Purpose |
+|---|---|---|---|---|
+| `PORT` | `backend/.env` | Yes | `5000` | Express API port |
+| `MONGODB_URI` | `backend/.env` | Yes | `mongodb://localhost:27017/academicuniverse` | Primary database URI |
+| `GEMINI_API_KEY` | `backend/.env` | Yes | `AIzaSy...` | Primary AI provider key |
+| `OPENROUTER_API_KEY` | `backend/.env` | Optional | `sk-or-v1-...` | Fallback AI provider key |
+| `JWT_SECRET` | `backend/.env` | Yes | `super-secret-jwt-key` | Auth token signing key |
+| `NEXT_PUBLIC_API_BASE_URL` | `.env.local` | Yes | `http://localhost:5000` | Frontend API base URL |
+
+---
+
+## 3. Developer Guidance Recommendations
+
+- Consolidate all setup instructions into a clean `INSTALLATION.md`.
+- Provide a `doctor` CLI command (`npm run doctor`) inside `benchmarks/` to check environment health (MongoDB connectivity, Node version, API keys) before running benchmarks.

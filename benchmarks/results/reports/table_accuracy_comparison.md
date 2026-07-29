@@ -1,0 +1,8 @@
+## Table II: Extraction Accuracy & Latency Comparison
+
+| System | Display Name | Precision | Recall | F1-Score | Mean Lat. (ms) | P95 Lat. (ms) | Fallback Rate |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| SYS-BASE-1 | Tesseract OCR v5.0 | 0.0000 | 0.0000 | 0.0000 | 0.0 | 0.0 | 0.00% |
+| SYS-BASE-2 | Gemini 1.5 Pro (Single) | 0.7999 | 0.4199 | 0.5508 | 2125.0 | 3032.0 | 0.00% |
+| SYS-BASE-3 | OpenRouter gpt-4o-mini | 0.0000 | 0.0000 | 0.0000 | 0.0 | 0.0 | 0.00% |
+| **SYS-PROP** | **AU DIC Hybrid (Proposed)** | **0.4571** | **0.4103** | **0.4324** | **2561.2** | **3400.0** | **0.00%** |

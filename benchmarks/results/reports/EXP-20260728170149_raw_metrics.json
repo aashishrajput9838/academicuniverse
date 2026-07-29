@@ -1,0 +1,222 @@
+{
+  "SYS-BASE-1": {
+    "totalDocuments": 25,
+    "successfulEvaluations": 0,
+    "failedEvaluations": 25,
+    "overallPrecision": 0,
+    "overallRecall": 0,
+    "overallF1Score": 0,
+    "latencyStats": {
+      "meanMs": 0,
+      "medianMs": 0,
+      "p95Ms": 0,
+      "p99Ms": 0,
+      "minMs": 0,
+      "maxMs": 0
+    },
+    "fallbackMetrics": {
+      "totalFallbackAttempts": 0,
+      "successfulFallbacks": 0,
+      "fallbackRecoveryRate": 0
+    },
+    "hitlMetrics": {
+      "meanReviewDurationSec": 0,
+      "humanCorrectionRate": 0
+    },
+    "categoryBreakdown": {
+      "MARKSHEET": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "TIMETABLE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "EDGE_CASE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      }
+    }
+  },
+  "SYS-BASE-2": {
+    "totalDocuments": 25,
+    "successfulEvaluations": 0,
+    "failedEvaluations": 25,
+    "overallPrecision": 0,
+    "overallRecall": 0,
+    "overallF1Score": 0,
+    "latencyStats": {
+      "meanMs": 0,
+      "medianMs": 0,
+      "p95Ms": 0,
+      "p99Ms": 0,
+      "minMs": 0,
+      "maxMs": 0
+    },
+    "fallbackMetrics": {
+      "totalFallbackAttempts": 0,
+      "successfulFallbacks": 0,
+      "fallbackRecoveryRate": 0
+    },
+    "hitlMetrics": {
+      "meanReviewDurationSec": 0,
+      "humanCorrectionRate": 0
+    },
+    "categoryBreakdown": {
+      "MARKSHEET": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "TIMETABLE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "EDGE_CASE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      }
+    }
+  },
+  "SYS-BASE-3": {
+    "totalDocuments": 25,
+    "successfulEvaluations": 0,
+    "failedEvaluations": 25,
+    "overallPrecision": 0,
+    "overallRecall": 0,
+    "overallF1Score": 0,
+    "latencyStats": {
+      "meanMs": 0,
+      "medianMs": 0,
+      "p95Ms": 0,
+      "p99Ms": 0,
+      "minMs": 0,
+      "maxMs": 0
+    },
+    "fallbackMetrics": {
+      "totalFallbackAttempts": 0,
+      "successfulFallbacks": 0,
+      "fallbackRecoveryRate": 0
+    },
+    "hitlMetrics": {
+      "meanReviewDurationSec": 0,
+      "humanCorrectionRate": 0
+    },
+    "categoryBreakdown": {
+      "MARKSHEET": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "TIMETABLE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "EDGE_CASE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      }
+    }
+  },
+  "SYS-PROP": {
+    "totalDocuments": 25,
+    "successfulEvaluations": 0,
+    "failedEvaluations": 25,
+    "overallPrecision": 0,
+    "overallRecall": 0,
+    "overallF1Score": 0,
+    "latencyStats": {
+      "meanMs": 0,
+      "medianMs": 0,
+      "p95Ms": 0,
+      "p99Ms": 0,
+      "minMs": 0,
+      "maxMs": 0
+    },
+    "fallbackMetrics": {
+      "totalFallbackAttempts": 0,
+      "successfulFallbacks": 0,
+      "fallbackRecoveryRate": 0
+    },
+    "hitlMetrics": {
+      "meanReviewDurationSec": 0,
+      "humanCorrectionRate": 0
+    },
+    "categoryBreakdown": {
+      "MARKSHEET": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "TIMETABLE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "EDGE_CASE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      }
+    }
+  }
+}

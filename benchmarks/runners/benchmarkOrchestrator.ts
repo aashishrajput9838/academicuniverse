@@ -98,6 +98,9 @@ export class BenchmarkOrchestrator {
 
       const summary = logger.writeSummary(documents.length);
       console.log(`   ✓ Complete: ${summary.successCount}/${summary.totalDocuments} success, ${summary.failureCount} failed`);
+
+      // 10-second cooldown between systems to reset rate limit windows
+      await new Promise((resolve) => setTimeout(resolve, 10000));
     }
 
     // 4. Compute aggregate metrics per system

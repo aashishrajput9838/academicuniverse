@@ -21,7 +21,7 @@ Do not include any explanation or markdown. Return raw JSON only.`;
 
 export class GeminiSingleRunner implements IBaselineRunner {
   readonly systemId = 'SYS-BASE-2' as const;
-  readonly displayName = 'Gemini 3.6 Flash (Single, No Fallback)';
+  readonly displayName = 'Gemini 3.1 Flash Lite (Single, No Fallback)';
   private apiKey: string;
 
   constructor() {
@@ -41,7 +41,7 @@ export class GeminiSingleRunner implements IBaselineRunner {
       const base64Data = input.fileBuffer.toString('base64');
 
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${this.apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${this.apiKey}`,
         {
           contents: [{
             parts: [
@@ -61,7 +61,7 @@ export class GeminiSingleRunner implements IBaselineRunner {
       return {
         systemId: this.systemId,
         prediction,
-        primaryProvider: 'gemini-3.6-flash',
+        primaryProvider: 'gemini-3.1-flash-lite',
         fallbackTriggered: false,
         fallbackProvider: null,
         latencyMs: { uploadMs, aiInferenceMs, dbStagingMs: 0, totalPipelineMs: Date.now() - start },
@@ -71,7 +71,7 @@ export class GeminiSingleRunner implements IBaselineRunner {
       return {
         systemId: this.systemId,
         prediction: {},
-        primaryProvider: 'gemini-3.6-flash',
+        primaryProvider: 'gemini-3.1-flash-lite',
         fallbackTriggered: false,
         fallbackProvider: null,
         latencyMs: { uploadMs, aiInferenceMs: 0, dbStagingMs: 0, totalPipelineMs: Date.now() - start },

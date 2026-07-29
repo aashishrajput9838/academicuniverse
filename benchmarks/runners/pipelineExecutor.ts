@@ -90,6 +90,11 @@ export class PipelineExecutor {
       checkpoint.pendingDocumentIds = pending.slice(i + 1).map((d) => d.documentId);
       checkpoint.lastUpdated = new Date().toISOString();
       this.saveCheckpoint(checkpoint);
+
+      // Inter-request throttling for API runners to prevent rate limiting (HTTP 429)
+      if (this.runner.systemId !== 'SYS-BASE-1' && i < pending.length - 1) {
+        await this.sleep(2000);
+      }
     }
 
     await this.runner.shutdown();

@@ -9,8 +9,12 @@ dataset/manifest.json
 ground-truth/*.json
 !ground-truth/SAMPLE_MS_ORG01_001.json
 
-# Generated results
-results/
+# Generated results — raw logs excluded (large files), reports included
+results/logs/
+# Allow human-readable reports and manuscript tables in version control
+!results/
+!results/reports/
+!results/reports/**
 
 # Node
 node_modules/

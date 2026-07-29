@@ -38,7 +38,7 @@ export class AcademicUniverseDICRunner implements IBaselineRunner {
     this.config = {
       geminiApiKey: process.env.GEMINI_API_KEY || '',
       openRouterApiKey: process.env.OPENROUTER_API_KEY || '',
-      geminiModel: 'gemini-3.6-flash',
+      geminiModel: 'gemini-3.1-flash-lite',
       openRouterModel: 'openai/gpt-4o-mini',
       timeoutMs: 30000,
       simulatedReviewMs: 0, // 0 = skip HITL timing simulation during automated runs

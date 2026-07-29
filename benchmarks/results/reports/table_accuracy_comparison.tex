@@ -1,0 +1,16 @@
+\begin{table}[!t]
+\renewcommand{\arraystretch}{1.3}
+\caption{Extraction Accuracy and Latency Comparison Across Baseline Systems}
+\label{tab:accuracy_comparison}
+\centering
+\begin{tabular}{llccccc}
+\hline
+\bfseries System & \bfseries Name & \bfseries P & \bfseries R & \bfseries F1 & \bfseries Lat\textsubscript{mean} (ms) & \bfseries Lat\textsubscript{P95} (ms) \\
+\hline
+SYS-BASE-1 & Tesseract OCR v5.0 & 0.000 & 0.000 & 0.000 & 0 & 0 \\
+SYS-BASE-2 & Gemini 1.5 Pro (Single) & 0.800 & 0.420 & 0.551 & 2125 & 3032 \\
+SYS-BASE-3 & OpenRouter gpt-4o-mini & 0.000 & 0.000 & 0.000 & 0 & 0 \\
+\textbf{SYS-PROP} & \textbf{AU DIC Hybrid (Proposed)} & \textbf{0.457} & \textbf{0.410} & \textbf{0.432} & \textbf{2561} & \textbf{3400} \\
+\hline
+\end{tabular}
+\end{table}

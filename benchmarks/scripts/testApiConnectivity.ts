@@ -16,7 +16,7 @@ async function testGemini(): Promise<void> {
     return;
   }
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_KEY}`;
     const response = await axios.post(
       url,
       { contents: [{ parts: [{ text: 'Reply with exactly: CONNECTIVITY_OK' }] }] },

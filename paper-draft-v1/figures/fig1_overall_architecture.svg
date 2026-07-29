@@ -79,7 +79,7 @@
   <text x="380" y="575" text-anchor="middle" font-size="13" fill="#e65100">GridFS (File Storage)</text>
   
   <rect x="500" y="550" width="180" height="40" rx="4" fill="#ffe0b2" stroke="#f57c00" stroke-width="1.5"/>
-  <text x="590" y="575" text-anchor="middle" font-size="13" fill="#e65100">Redis (Cache & Queue)</text>
+  <text x="590" y="575" text-anchor="middle" font-size="13" fill="#e65100">Redis (Cache &amp; Queue)</text>
   
   <rect x="710" y="550" width="180" height="40" rx="4" fill="#ffe0b2" stroke="#f57c00" stroke-width="1.5"/>
   <text x="800" y="575" text-anchor="middle" font-size="13" fill="#e65100">Review History</text>

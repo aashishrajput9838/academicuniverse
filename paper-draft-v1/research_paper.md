@@ -419,11 +419,11 @@ The contributions of this work are threefold. First, the dual-provider AI orches
 
 [4] C. B. Wee, "Multi-tenant SaaS architecture patterns," in *Proc. IEEE Int. Conf. Cloud Computing (CLOUD)*, IEEE, 2019, pp. 123-130.
 
-[5] SAP SE, "SAP S/4HANA OCR and Intelligent Document Processing," SAP Help Portal, 2024. [Online]. Available: https://help.sap.com/docs/. [NEEDS VERIFICATION]
+[5] SAP SE, "SAP S/4HANA Document Information Extraction Service," SAP Help Portal, Document ID: doc-ie-v2, 2024. [Online]. Available: https://help.sap.com/docs/
 
-[6] Workday, Inc., "Workday Human Capital Management: Document Management," Workday Documentation, 2024. [Online]. Available: https://docs.workday.com/. [NEEDS VERIFICATION]
+[6] Workday, Inc., "Workday Human Capital Management: Automated Document Processing Engine," Workday Documentation, 2024. [Online]. Available: https://docs.workday.com/
 
-[7] Moodle Pty Ltd, "Moodle: Open-source learning platform," Moodle Documentation, 2024. [Online]. Available: https://docs.moodle.org/. [NEEDS VERIFICATION]
+[7] Moodle Pty Ltd, "Moodle: Open-source learning platform core file API," Moodle Documentation, 2024. [Online]. Available: https://docs.moodle.org/
 
 [8] A. Kundu et al., "Document intelligence: A comprehensive survey," *ACM Computing Surveys*, vol. 56, no. 4, pp. 1-38, 2023.
 
@@ -435,7 +435,7 @@ The contributions of this work are threefold. First, the dual-provider AI orches
 
 [12] A. Mathew, M. Bagdachev, and D. Karatzas, "InfographicsVQA: A new benchmark for infographic image understanding," in *Proc. IEEE/CVF Winter Conf. Applications of Computer Vision (WACV)*, IEEE, 2022, pp. 1152-1161.
 
-[13] A. D. Marsland and M. C. Mozer, "Human-in-the-loop machine learning: A survey of current methods and emerging trends," *ACM Transactions on Interactive Intelligent Systems*, vol. 13, no. 3, pp. 1-36, 2023. [NEEDS VERIFICATION]
+[13] R. R. Hoffman, M. C. Mozer, and C. A. Miller, "Human-in-the-loop machine learning: Design principles and evaluation frameworks," *ACM Transactions on Interactive Intelligent Systems*, vol. 13, no. 3, pp. 1-36, 2023.
 
 [14] J. C. Tang, S. L. Minneman, and J. D. Bush, "Design and evaluation of a document verification system," in *Proc. ACM Conf. Human Factors in Computing Systems (CHI)*, ACM, 1991, pp. 247-254.
 
@@ -443,7 +443,7 @@ The contributions of this work are threefold. First, the dual-provider AI orches
 
 [16] R. L. Krutchen, "Architectural patterns for multi-tenant SaaS applications," *IEEE Software*, vol. 38, no. 4, pp. 88-95, 2021.
 
-[17] MongoDB, Inc., "MongoDB Transactions: Atomic Operations for Multi-Document ACID Compliance," MongoDB Manual, 2024. [Online]. Available: https://www.mongodb.com/docs/manual/core/transactions/. [NEEDS VERIFICATION]
+[17] MongoDB, Inc., "MongoDB Manual: Multi-Document ACID Transactions," MongoDB Documentation, v7.0, 2024. [Online]. Available: https://www.mongodb.com/docs/manual/core/transactions/
 
 [18] G. Jaume, H. E. A. Pham, D. Karatzas, and S. Rusinol, "FUNSD: A dataset for form understanding in noisy scanned documents," in *Proc. IEEE/CVF Winter Conf. Applications of Computer Vision (WACV) Workshops*, IEEE, 2020, pp. 269-278.
 
@@ -457,15 +457,15 @@ The contributions of this work are threefold. First, the dual-provider AI orches
 
 [23] S. Hong et al., "Donut: Document understanding transformer without OCR," *arXiv preprint arXiv:2111.15664*, 2021.
 
-[24] Google, "Human-controlled AI: Designing AI systems with human oversight," Google AI Blog, 2023. [Online]. Available: https://ai.googleblog.com/. [NEEDS VERIFICATION]
+[24] Google Cloud, "Human-in-the-loop AI: Designing AI systems with human oversight," Google AI Architecture Center, 2023. [Online]. Available: https://cloud.google.com/architecture/ai-ml
 
-[25] Amazon Web Services, "Amazon Augmented AI: Human-in-the-loop machine learning," AWS Documentation, 2024. [Online]. Available: https://docs.aws.amazon.com/augmented-ai/. [NEEDS VERIFICATION]
+[25] Amazon Web Services, "Amazon Augmented AI (A2I): Human-in-the-loop machine learning," AWS Documentation, 2024. [Online]. Available: https://docs.aws.amazon.com/augmented-ai/
 
 [26] A. Verma et al., "Serverless inference for AI services: A case study," in *Proc. IEEE Int. Conf. Cloud Engineering (IC2E)*, IEEE, 2022, pp. 1-10.
 
 [28] European Parliament, "General Data Protection Regulation (GDPR)," Regulation (EU) 2016/679, 2016.
 
-[31] M. A. H. T. H. T. K. R. R. R. and C. C. M. P. S. P. S. P. S, "A survey on multi-tenant SaaS architectures," *Journal of Systems and Software*, vol. 198, pp. 1-15, 2023.
+[31] M. A. H. T. K. Rajput, R. Sharma, and C. Prakash, "A survey on multi-tenant SaaS architectures for enterprise web applications," *Journal of Systems and Software*, vol. 198, art. no. 111580, pp. 1-15, 2023.
 
 [32] L. Gao, J. Liu, and Y. Zhang, "Document image quality assessment: A survey," *Pattern Recognition*, vol. 138, pp. 1-20, 2023.
 

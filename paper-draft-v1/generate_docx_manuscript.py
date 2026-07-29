@@ -450,8 +450,13 @@ def create_journal_manuscript():
             rendered_tables.add(key)
 
     out_docx_path = os.path.join(base_dir, 'AU_DIC_Research_Paper_v1.docx')
-    doc.save(out_docx_path)
-    print(f"Successfully generated publication-ready manuscript at: {out_docx_path}")
+    try:
+        doc.save(out_docx_path)
+        print(f"Successfully generated publication-ready manuscript at: {out_docx_path}")
+    except PermissionError:
+        alt_path = os.path.join(base_dir, 'AU_DIC_Research_Paper_v1_final.docx')
+        doc.save(alt_path)
+        print(f"File locked. Successfully generated publication-ready manuscript at: {alt_path}")
 
 if __name__ == '__main__':
     create_journal_manuscript()

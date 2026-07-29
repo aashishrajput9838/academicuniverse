@@ -4,18 +4,18 @@
 
 ## Field-Level Metrics
 
-| Metric | Formula | Description |
+| Metric | Definition / Formula | Description |
 |---|---|---|
-| **True Positive (TP)** | - | Field extracted correctly matching ground truth value |
-| **False Positive (FP)** | - | Field extracted but does not match ground truth (hallucination or misread) |
-| **False Negative (FN)** | - | Ground truth field missing from extraction |
+| **True Positive (TP)** | Count of correctly extracted fields | Field extracted correctly matching ground truth value |
+| **False Positive (FP)** | Count of incorrectly extracted fields | Field extracted but does not match ground truth (hallucination or misread) |
+| **False Negative (FN)** | Count of missed ground truth fields | Ground truth field missing from extraction |
 | **Precision (P)** | $P = \frac{TP}{TP + FP}$ | Proportion of extracted fields that are correct |
 | **Recall (R)** | $R = \frac{TP}{TP + FN}$ | Proportion of ground truth fields successfully extracted |
 | **F1-Score (F1)** | $F1 = \frac{2 \cdot P \cdot R}{P + R}$ | Harmonic mean of precision and recall |
 
 ## Latency Metrics
 
-| Metric | Formula | Description |
+| Metric | Definition / Formula | Description |
 |---|---|---|
 | **Upload Latency** | $t_{upload}$ | Time from upload initiation to storage completion (ms) |
 | **AI Inference Latency** | $t_{AI}$ | Time from prompt submission to AI response receipt (ms) |
@@ -24,10 +24,10 @@
 
 ## Document-Level Metrics
 
-| Metric | Formula | Description |
+| Metric | Definition / Formula | Description |
 |---|---|---|
-| **Document Success** | - | Boolean: pipeline completed without system error |
-| **Fallback Triggered** | - | Boolean: primary AI provider failed, fallback provider used |
+| **Document Success** | Boolean $\in \{0, 1\}$ | Pipeline completed without system error (1 = Success, 0 = Failure) |
+| **Fallback Triggered** | Boolean $\in \{0, 1\}$ | Primary AI provider failed, fallback provider used (1 = Yes, 0 = No) |
 | **HITL Review Duration** | $t_{review}$ | Time reviewer spent on document (seconds) |
 | **Fields Corrected** | $n_{corr}$ | Number of fields modified during HITL review |
 
@@ -35,7 +35,7 @@
 
 For a system evaluated on $N$ documents with $F$ fields per document:
 
-| Metric | Formula | Description |
+| Metric | Definition / Formula | Description |
 |---|---|---|
 | **Aggregate TP** | $TP_{agg} = \sum_{i=1}^{N} TP_i$ | Total true positives across all documents |
 | **Aggregate FP** | $FP_{agg} = \sum_{i=1}^{N} FP_i$ | Total false positives across all documents |

@@ -42,7 +42,14 @@ export class GithubOAuthService {
     const url = new URL('https://github.com/login/oauth/authorize');
     
     url.searchParams.append('client_id', this.clientId);
-    url.searchParams.append('redirect_uri', this.getRedirectUri());
+
+    const redirectUri = this.getRedirectUri();
+    // If redirectUri is valid production URL and not hardcoded localhost:10000, send it.
+    // Otherwise omit it so GitHub defaults to the registered Authorization callback URL on github.com
+    if (redirectUri && !redirectUri.includes('localhost:10000') && !redirectUri.includes('localhost:5003')) {
+      url.searchParams.append('redirect_uri', redirectUri);
+    }
+
     url.searchParams.append('scope', scope);
     url.searchParams.append('state', state);
     

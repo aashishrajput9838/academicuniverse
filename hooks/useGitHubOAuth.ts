@@ -10,6 +10,7 @@ interface UseGitHubOAuthOptions {
 interface UseGitHubOAuthReturn {
   connect: () => Promise<void>;
   triggerDirectConnect: (customUsername?: string) => Promise<void>;
+  exchangeCode: (code: string, state: string) => Promise<void>;
   connecting: boolean;
   error: string | null;
 }
@@ -182,5 +183,25 @@ export function useGitHubOAuth({ backendToken, onConnected }: UseGitHubOAuthOpti
     };
   }, []);
 
-  return { connect, triggerDirectConnect, connecting, error };
+  const exchangeCode = useCallback(async (codeParam: string, stateParam: string) => {
+    if (!backendToken) return;
+    setConnecting(true);
+    setError(null);
+    try {
+      await fetch(`${API_BASE_URL}/api/github/callback?code=${encodeURIComponent(codeParam)}&state=${encodeURIComponent(stateParam)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${backendToken}`,
+        },
+      });
+      setConnecting(false);
+      await onConnected?.();
+    } catch (err: any) {
+      console.error('Exchange code error:', err);
+      setError(err.message || 'Failed to exchange authorization code');
+      setConnecting(false);
+    }
+  }, [backendToken, onConnected]);
+
+  return { connect, triggerDirectConnect, exchangeCode, connecting, error };
 }

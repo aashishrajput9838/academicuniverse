@@ -13,13 +13,14 @@ interface EmptyStateProps {
 
 export function EmptyState({ onRetry, syncing }: EmptyStateProps) {
   const { backendToken, user } = useAuth();
-  const { connect: connectGitHub, triggerDirectConnect, connecting } = useGitHubOAuth({
+  const { connect: connectGitHub, triggerDirectConnect, exchangeCode, connecting } = useGitHubOAuth({
     backendToken,
     onConnected: onRetry,
   });
 
   const [showGithubModal, setShowGithubModal] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
+  const [redirectUrlInput, setRedirectUrlInput] = useState('');
   const [modalError, setModalError] = useState<string | null>(null);
 
   const actions = [
@@ -151,6 +152,57 @@ export function EmptyState({ onRetry, syncing }: EmptyStateProps) {
                 </button>
               </form>
 
+              {/* Paste Redirect URL / Code Resolver Form */}
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setModalError(null);
+                  if (!redirectUrlInput.trim()) return;
+
+                  try {
+                    let codeVal = redirectUrlInput.trim();
+                    let stateVal = '';
+
+                    if (codeVal.includes('code=')) {
+                      const parsedUrl = new URL(codeVal.startsWith('http') ? codeVal : `http://localhost/${codeVal}`);
+                      codeVal = parsedUrl.searchParams.get('code') || '';
+                      stateVal = parsedUrl.searchParams.get('state') || '';
+                    }
+
+                    if (!codeVal) {
+                      throw new Error('Could not find authorization code in the URL');
+                    }
+
+                    await exchangeCode(codeVal, stateVal);
+                    setShowGithubModal(false);
+                    onRetry?.();
+                  } catch (err: any) {
+                    setModalError(err.message || 'Failed to exchange code');
+                  }
+                }}
+                className="space-y-2 p-3 bg-slate-800/30 border border-slate-800 rounded-xl"
+              >
+                <label className="block text-[11px] font-semibold text-slate-400">
+                  Got a `localhost:10000` window? Paste redirected URL here:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={redirectUrlInput}
+                    onChange={(e) => setRedirectUrlInput(e.target.value)}
+                    placeholder="Paste http://localhost:10000/api/github/callback?code=... here"
+                    className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-mono"
+                  />
+                  <button
+                    type="submit"
+                    disabled={connecting || !redirectUrlInput.trim()}
+                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shrink-0 transition disabled:opacity-50"
+                  >
+                    Sync URL
+                  </button>
+                </div>
+              </form>
+
               <div className="relative flex items-center justify-center">
                 <div className="border-t border-slate-800 w-full"></div>
                 <span className="bg-slate-900 px-3 text-[10px] text-slate-500 font-mono uppercase absolute">OR</span>
@@ -160,14 +212,13 @@ export function EmptyState({ onRetry, syncing }: EmptyStateProps) {
               <button
                 type="button"
                 onClick={async () => {
-                  setShowGithubModal(false);
                   await connectGitHub();
                 }}
                 disabled={connecting}
                 className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition disabled:opacity-50"
               >
                 <Github className="w-4 h-4" />
-                <span>Connect via GitHub OAuth Window</span>
+                <span>Open GitHub OAuth Window</span>
               </button>
             </div>
           </div>

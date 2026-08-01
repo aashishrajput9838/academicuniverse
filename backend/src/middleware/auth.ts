@@ -7,7 +7,7 @@ import { firebaseAuth } from '../config/firebaseAdmin';
  * Middleware: Verify JWT token and attach user to request
  * This must be called on all protected routes
  */
-export const authenticateUser = (
+export const authenticateUser = async (
   req: any,
   res: Response,
   next: NextFunction
@@ -19,13 +19,48 @@ export const authenticateUser = (
       throw new AuthenticationError('No token provided. Please log in.');
     }
 
-    const decoded = verifyToken(token);
+    let decoded: JWTPayload;
+    try {
+      decoded = verifyToken(token);
+    } catch (jwtErr: any) {
+      // Fallback: If token was issued by Firebase, verify via firebaseAuth
+      try {
+        const firebaseDecoded = await firebaseAuth.verifyIdToken(token);
+        const { uid, email } = firebaseDecoded;
+        const { default: User } = await import('../models/User');
+        const user = await User.findOne({
+          $or: [{ firebaseUid: uid }, { email: email?.toLowerCase() }]
+        });
+
+        if (user) {
+          decoded = {
+            userId: user._id.toString(),
+            email: user.email,
+            organizationId: user.organizationId.toString(),
+            roleId: (user.roleId as any)?.toString() || 'STUDENT',
+            permissions: [],
+            isSuperAdmin: false,
+            name: user.name,
+          };
+        } else {
+          decoded = {
+            userId: uid,
+            email: email || 'user@sharda.ac.in',
+            organizationId: 'default-org-id',
+            roleId: 'STUDENT',
+            permissions: [],
+            isSuperAdmin: false,
+          };
+        }
+      } catch (fbErr) {
+        throw jwtErr;
+      }
+    }
 
     // Attach user data to request object
     req.user = decoded;
     
     // Failsafe for corrupted tokens from previous bug:
-    // If roleId is a stringified JSON object, extract the first 24-char hex ObjectId
     if (typeof req.user.roleId === 'string' && req.user.roleId.includes('_id')) {
       const match = req.user.roleId.match(/[0-9a-fA-F]{24}/);
       if (match) {

@@ -86,12 +86,17 @@ export class GoogleSheetsService {
         if (process.env.GOOGLE_SHEET_ID) {
             this.spreadsheetId = process.env.GOOGLE_SHEET_ID;
             logger.info(`Using provided Google Sheet ID: ${this.spreadsheetId}`);
-            await this.ensureSheetsExist();
+            try {
+                await this.ensureSheetsExist();
+            } catch (err: any) {
+                logger.warn('Failed to ensure sheets exist, disabling Google Sheets integration:', err.message);
+                this.isAvailable = false;
+                return null;
+            }
             return this.spreadsheetId;
         }
 
         try {
-            // 1. Search for existing spreadsheet
             const response = await this.drive.files.list({
                 q: `name = '${this.SPREADSHEET_NAME}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
                 fields: 'files(id, name)',
@@ -102,7 +107,6 @@ export class GoogleSheetsService {
                 this.spreadsheetId = response.data.files[0].id;
                 logger.info(`Found existing spreadsheet: ${this.spreadsheetId}`);
             } else {
-                // 2. Create new spreadsheet
                 const resource = {
                     properties: {
                         title: this.SPREADSHEET_NAME,
@@ -115,77 +119,84 @@ export class GoogleSheetsService {
                 this.spreadsheetId = spreadsheet.data.spreadsheetId;
                 logger.info(`Created new spreadsheet: ${this.spreadsheetId}`);
 
-                // 3. Create initial sheets
                 await this.ensureSheetsExist();
             }
 
             return this.spreadsheetId!;
-        } catch (error) {
-            logger.error('Failed to initialize Google Sheets:', error);
+        } catch (error: any) {
+            logger.warn('Failed to initialize Google Sheets, disabling integration:', error.message);
+            this.isAvailable = false;
             return null;
         }
     }
 
     private async ensureSheetsExist(): Promise<void> {
         if (!this.isAvailable || !this.spreadsheetId) return;
-        
-        const requiredSheets = [
-            'StudentProfile', 'Attendance', 'Subjects', 'CAMarks', 
-            'Timetable', 'Holidays', 'SyncLogs'
-        ];
+        try {
+            const requiredSheets = [
+                'StudentProfile', 'Attendance', 'Subjects', 'CAMarks', 
+                'Timetable', 'Holidays', 'SyncLogs'
+            ];
 
-        const spreadsheet = await this.sheets.spreadsheets.get({
-            spreadsheetId: this.spreadsheetId,
-        });
-
-        const existingSheets = spreadsheet.data.sheets.map((s: any) => s.properties.title);
-        const requests = [];
-
-        for (const sheetName of requiredSheets) {
-            if (!existingSheets.includes(sheetName)) {
-                requests.push({
-                    addSheet: {
-                        properties: { title: sheetName }
-                    }
-                });
-            }
-        }
-
-        if (requests.length > 0) {
-            await this.sheets.spreadsheets.batchUpdate({
+            const spreadsheet = await this.sheets.spreadsheets.get({
                 spreadsheetId: this.spreadsheetId,
-                resource: { requests },
             });
-            
-            // Add headers for new sheets
+
+            const existingSheets = spreadsheet.data.sheets.map((s: any) => s.properties.title);
+            const requests = [];
+
             for (const sheetName of requiredSheets) {
                 if (!existingSheets.includes(sheetName)) {
-                    await this.initializeSheetHeaders(sheetName);
+                    requests.push({
+                        addSheet: {
+                            properties: { title: sheetName }
+                        }
+                    });
                 }
             }
+
+            if (requests.length > 0) {
+                await this.sheets.spreadsheets.batchUpdate({
+                    spreadsheetId: this.spreadsheetId,
+                    resource: { requests },
+                });
+                
+                for (const sheetName of requiredSheets) {
+                    if (!existingSheets.includes(sheetName)) {
+                        await this.initializeSheetHeaders(sheetName);
+                    }
+                }
+            }
+        } catch (error: any) {
+            logger.warn('ensureSheetsExist failed, disabling Google Sheets:', error.message);
+            this.isAvailable = false;
         }
     }
 
     private async initializeSheetHeaders(sheetName: string): Promise<void> {
         if (!this.isAvailable || !this.spreadsheetId) return;
-        
-        const headers: Record<string, string[]> = {
-            StudentProfile: ['organizationId', 'userId', 'systemId', 'studentName', 'email', 'department', 'program', 'school', 'semester', 'status', 'syncTime'],
-            Attendance: ['organizationId', 'userId', 'systemId', 'totalClasses', 'presentClasses', 'absentClasses', 'attendancePercentage', 'syncTime'],
-            Subjects: ['organizationId', 'userId', 'systemId', 'courseCode', 'courseName', 'faculty', 'courseType', 'credits', 'attendancePercentage', 'syncTime'],
-            CAMarks: ['organizationId', 'userId', 'systemId', 'courseCode', 'courseName', 'assignment1', 'assignment2', 'assessment1', 'assessment2', 'total', 'syncTime'],
-            Timetable: ['day', 'time', 'courseName', 'faculty', 'room', 'syncTime'],
-            Holidays: ['holidayName', 'holidayDate', 'syncTime'],
-            SyncLogs: ['timestamp', 'step', 'status', 'message']
-        };
+        try {
+            const headers: Record<string, string[]> = {
+                StudentProfile: ['organizationId', 'userId', 'systemId', 'studentName', 'email', 'department', 'program', 'school', 'semester', 'status', 'syncTime'],
+                Attendance: ['organizationId', 'userId', 'systemId', 'totalClasses', 'presentClasses', 'absentClasses', 'attendancePercentage', 'syncTime'],
+                Subjects: ['organizationId', 'userId', 'systemId', 'courseCode', 'courseName', 'faculty', 'courseType', 'credits', 'attendancePercentage', 'syncTime'],
+                CAMarks: ['organizationId', 'userId', 'systemId', 'courseCode', 'courseName', 'assignment1', 'assignment2', 'assessment1', 'assessment2', 'total', 'syncTime'],
+                Timetable: ['day', 'time', 'courseName', 'faculty', 'room', 'syncTime'],
+                Holidays: ['holidayName', 'holidayDate', 'syncTime'],
+                SyncLogs: ['timestamp', 'step', 'status', 'message']
+            };
 
-        if (headers[sheetName]) {
-            await this.sheets.spreadsheets.values.update({
-                spreadsheetId: this.spreadsheetId,
-                range: `${sheetName}!A1`,
-                valueInputOption: 'RAW',
-                resource: { values: [headers[sheetName]] },
-            });
+            if (headers[sheetName]) {
+                await this.sheets.spreadsheets.values.update({
+                    spreadsheetId: this.spreadsheetId,
+                    range: `${sheetName}!A1`,
+                    valueInputOption: 'RAW',
+                    resource: { values: [headers[sheetName]] },
+                });
+            }
+        } catch (error: any) {
+            logger.warn('initializeSheetHeaders failed, disabling Google Sheets:', error.message);
+            this.isAvailable = false;
         }
     }
 
@@ -194,14 +205,19 @@ export class GoogleSheetsService {
      */
     public async appendRows(sheetName: string, rows: any[][]): Promise<void> {
         if (!this.isAvailable) return;
-        await this.initialize();
-        if (!this.spreadsheetId) return;
-        await this.sheets.spreadsheets.values.append({
-            spreadsheetId: this.spreadsheetId,
-            range: `${sheetName}!A:A`,
-            valueInputOption: 'RAW',
-            resource: { values: rows },
-        });
+        try {
+            await this.initialize();
+            if (!this.spreadsheetId || !this.isAvailable) return;
+            await this.sheets.spreadsheets.values.append({
+                spreadsheetId: this.spreadsheetId,
+                range: `${sheetName}!A:A`,
+                valueInputOption: 'RAW',
+                resource: { values: rows },
+            });
+        } catch (error: any) {
+            logger.warn('appendRows failed, disabling Google Sheets integration:', error.message);
+            this.isAvailable = false;
+        }
     }
 
     /**
@@ -209,13 +225,19 @@ export class GoogleSheetsService {
      */
     public async readRows(sheetName: string): Promise<any[][]> {
         if (!this.isAvailable) return [];
-        await this.initialize();
-        if (!this.spreadsheetId) return [];
-        const response = await this.sheets.spreadsheets.values.get({
-            spreadsheetId: this.spreadsheetId,
-            range: `${sheetName}!A:Z`,
-        });
-        return response.data.values || [];
+        try {
+            await this.initialize();
+            if (!this.spreadsheetId || !this.isAvailable) return [];
+            const response = await this.sheets.spreadsheets.values.get({
+                spreadsheetId: this.spreadsheetId,
+                range: `${sheetName}!A:Z`,
+            });
+            return response.data.values || [];
+        } catch (error: any) {
+            logger.warn('readRows failed, disabling Google Sheets integration:', error.message);
+            this.isAvailable = false;
+            return [];
+        }
     }
 
     /**
@@ -223,7 +245,12 @@ export class GoogleSheetsService {
      */
     public async logSync(step: string, status: 'SUCCESS' | 'FAILED' | 'PENDING', message: string): Promise<void> {
         if (!this.isAvailable) return;
-        const row = [new Date().toISOString(), step, status, message];
-        await this.appendRows('SyncLogs', [row]);
+        try {
+            const row = [new Date().toISOString(), step, status, message];
+            await this.appendRows('SyncLogs', [row]);
+        } catch (error: any) {
+            logger.warn('logSync failed, disabling Google Sheets integration:', error.message);
+            this.isAvailable = false;
+        }
     }
 }

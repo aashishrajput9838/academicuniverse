@@ -44,9 +44,7 @@ export const updateProfileController = async (req: AuthenticatedRequest, res: Re
       user.githubUsername = githubUsername;
     }
 
-    await user.save();
-
-    // Admission year is mandatory for students
+    // Admission year validation
     if (admissionYear === undefined || admissionYear === null || admissionYear === '') {
       return sendError(res, 400, 'Admission year is required');
     }
@@ -56,31 +54,56 @@ export const updateProfileController = async (req: AuthenticatedRequest, res: Re
       return sendError(res, 400, 'Admission year must be a valid four-digit year not in the future');
     }
 
-    const person = await Person.findOne({
+    user.admissionYear = year;
+    await user.save();
+
+    // 1. Find Person by userIds link
+    let person = await Person.findOne({
       organizationId: toObjectId(req.user.organizationId),
       userIds: toObjectId(req.user.userId),
     });
+
+    // 2. Fallback: Find Person by email
+    if (!person && user.email) {
+      person = await Person.findOne({
+        organizationId: toObjectId(req.user.organizationId),
+        primaryEmail: user.email.toLowerCase(),
+      });
+      if (person) {
+        const uId = toObjectId(req.user.userId);
+        if (!person.userIds.some((id) => id.equals(uId))) {
+          person.userIds.push(uId);
+        }
+      }
+    }
+
+    // 3. Fallback: Create new Person document if none exists yet
+    if (!person && user.email) {
+      person = new Person({
+        organizationId: toObjectId(req.user.organizationId),
+        primaryName: user.name,
+        primaryEmail: user.email.toLowerCase(),
+        admissionYear: year,
+        userIds: [toObjectId(req.user.userId)],
+      });
+    }
     
     if (person) {
       const previousAdmissionYear = person.admissionYear;
       person.admissionYear = year;
+      if (user.name) {
+        person.primaryName = user.name;
+      }
       await person.save();
 
-      // If admissionYear changed, log a warning.
-      // Changing admissionYear affects semesterNumber derivation for all existing AcademicRecords.
-      // A re-migration is required to recompute semesterNumber for affected records.
       if (previousAdmissionYear !== undefined && previousAdmissionYear !== year) {
-        logger.warn(`Admission year changed for person ${person._id} from ${previousAdmissionYear} to ${year}. Existing AcademicRecords may have inconsistent semesterNumber values. Consider running the semester migration script.`, { personId: person._id, previousAdmissionYear, newAdmissionYear: year });
+        logger.warn(`Admission year changed for person ${person._id} from ${previousAdmissionYear} to ${year}.`, { personId: person._id, previousAdmissionYear, newAdmissionYear: year });
       }
     }
 
     logger.info(`User profile updated for ${user.email}`, { userId: user._id, updatedFields: { name, githubUsername, admissionYear: year } });
 
-    // Fetch updated Person for response
-    const updatedPerson = await Person.findOne({
-      organizationId: toObjectId(req.user.organizationId),
-      userIds: toObjectId(req.user.userId),
-    }).lean();
+    const finalAdmissionYear = person?.admissionYear ?? user.admissionYear ?? year;
 
     return sendResponse(res, 200, {
       id: user._id,
@@ -88,7 +111,7 @@ export const updateProfileController = async (req: AuthenticatedRequest, res: Re
       email: user.email,
       githubUsername: user.githubUsername,
       role: (user.roleId as any)?.name || 'USER',
-      admissionYear: updatedPerson?.admissionYear,
+      admissionYear: finalAdmissionYear,
     }, 'Profile updated successfully');
   } catch (error: any) {
     logger.error('Error updating profile:', error);
@@ -112,11 +135,18 @@ export const getProfileController = async (req: AuthenticatedRequest, res: Respo
       return sendError(res, 404, 'User not found');
     }
 
-    // Fetch Person for admissionYear and canonical records
-    const person = await Person.findOne({
+    // Fetch Person for admissionYear and canonical records (by userIds or primaryEmail)
+    let person = await Person.findOne({
       organizationId: toObjectId(req.user.organizationId),
       userIds: toObjectId(req.user.userId),
     }).lean();
+
+    if (!person && user.email) {
+      person = await Person.findOne({
+        organizationId: toObjectId(req.user.organizationId),
+        primaryEmail: user.email.toLowerCase(),
+      }).lean();
+    }
 
     const certList: Array<{ id: string; name: string; issuer: string; issueDate?: string; status: string }> = [];
     const seenCerts = new Set<string>();
@@ -162,6 +192,8 @@ export const getProfileController = async (req: AuthenticatedRequest, res: Respo
       logger.warn('Failed to load resume draft certifications in getProfileController', e);
     }
 
+    const effectiveAdmissionYear = person?.admissionYear ?? user.admissionYear ?? null;
+
     return sendResponse(res, 200, {
       id: user._id,
       name: user.name,
@@ -172,7 +204,7 @@ export const getProfileController = async (req: AuthenticatedRequest, res: Respo
       linkedinConnected: Boolean(user.linkedinConnected),
       linkedinLastUpdated: user.linkedinLastUpdated,
       role: (user.roleId as any)?.name || 'USER',
-      admissionYear: person?.admissionYear,
+      admissionYear: effectiveAdmissionYear,
       certifications: certList,
       certificates: certList,
     }, 'Profile retrieved successfully');

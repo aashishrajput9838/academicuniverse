@@ -38,6 +38,7 @@ export interface IUser extends Document {
   linkedinUsername?: string;
   linkedinConnected?: boolean;
   linkedinLastUpdated?: Date;
+  admissionYear?: number;
   githubAccessToken?: IGithubAccessToken;
   gmailTokens?: IGmailTokens;
   isActive: boolean;
@@ -107,6 +108,9 @@ const userSchema = new Schema<IUser>(
     },
     linkedinLastUpdated: {
       type: Date,
+    },
+    admissionYear: {
+      type: Number,
     },
     githubAccessToken: {
       encryptedToken: String,

@@ -148,11 +148,12 @@ export class SyntheticPipeline {
       // 2. Optionally generate PNG for OpenRouter vision compatibility
       let pngPath: string | undefined;
       try {
-        const { pdfToImg } = require('pdf-to-img');
+        const { pdf } = await import('pdf-to-img');
+        const documentPages = await pdf(pdfBytes, { scale: 2 });
+        const firstPage = await documentPages.getPage(1);
         const pngFileName = `${documentId}.png`;
         const pngFilePath = path.join(docsDir, pngFileName);
-        const pngBuffer = await pdfToImg(pdfBytes, { format: 'png', density: 200 });
-        fs.writeFileSync(pngFilePath, pngBuffer);
+        fs.writeFileSync(pngFilePath, firstPage);
         pngPath = pngFilePath;
       } catch {
         // pdf-to-img not available (requires poppler system libraries); PNG will not be generated

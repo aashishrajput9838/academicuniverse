@@ -16,8 +16,9 @@ No explanation, no markdown, raw JSON only.`;
 
 async function convertPdfToPng(buffer: Buffer): Promise<Buffer> {
   try {
-    const { pdfToImg } = require('pdf-to-img');
-    return await pdfToImg(buffer, { format: 'png', density: 200 });
+    const { pdf } = await import('pdf-to-img');
+    const documentPages = await pdf(buffer, { scale: 2 });
+    return await documentPages.getPage(1);
   } catch {
     throw new Error('pdf-to-img conversion failed: poppler may not be installed');
   }

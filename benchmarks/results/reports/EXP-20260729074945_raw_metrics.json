@@ -1,0 +1,474 @@
+{
+  "SYS-BASE-1": {
+    "totalDocuments": 500,
+    "successfulEvaluations": 0,
+    "failedEvaluations": 500,
+    "overallPrecision": 0,
+    "overallRecall": 0,
+    "overallF1Score": 0,
+    "latencyStats": {
+      "meanMs": 0,
+      "medianMs": 0,
+      "p95Ms": 0,
+      "p99Ms": 0,
+      "minMs": 0,
+      "maxMs": 0
+    },
+    "fallbackMetrics": {
+      "totalFallbackAttempts": 0,
+      "successfulFallbacks": 0,
+      "fallbackRecoveryRate": 0
+    },
+    "hitlMetrics": {
+      "meanReviewDurationSec": 0,
+      "humanCorrectionRate": 0
+    },
+    "categoryBreakdown": {
+      "MARKSHEET": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "TRANSCRIPT": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "WORKSHOP_CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "INTERNSHIP_CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "HACKATHON_CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "TIMETABLE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "EXAM_TIMETABLE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "ADMIT_CARD": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "FEE_RECEIPT": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "STUDENT_ID": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "UNKNOWN": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "EDGE_CASE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      }
+    }
+  },
+  "SYS-BASE-2": {
+    "totalDocuments": 500,
+    "successfulEvaluations": 500,
+    "failedEvaluations": 0,
+    "overallPrecision": 0.7845254161043634,
+    "overallRecall": 0.34734116709818763,
+    "overallF1Score": 0.48150193263390384,
+    "latencyStats": {
+      "meanMs": 2697.856,
+      "medianMs": 2280,
+      "p95Ms": 4622,
+      "p99Ms": 6523,
+      "minMs": 1514,
+      "maxMs": 28550
+    },
+    "fallbackMetrics": {
+      "totalFallbackAttempts": 0,
+      "successfulFallbacks": 0,
+      "fallbackRecoveryRate": 0
+    },
+    "hitlMetrics": {
+      "meanReviewDurationSec": 0,
+      "humanCorrectionRate": 0
+    },
+    "categoryBreakdown": {
+      "MARKSHEET": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "TRANSCRIPT": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "CERTIFICATE": {
+        "count": 91,
+        "precision": 1,
+        "recall": 0.36363636363636365,
+        "f1Score": 0.5333333333333333,
+        "meanLatencyMs": 2464.736263736264
+      },
+      "WORKSHOP_CERTIFICATE": {
+        "count": 78,
+        "precision": 1,
+        "recall": 0.36363636363636365,
+        "f1Score": 0.5333333333333333,
+        "meanLatencyMs": 2532.1666666666665
+      },
+      "INTERNSHIP_CERTIFICATE": {
+        "count": 78,
+        "precision": 1,
+        "recall": 0.36363636363636365,
+        "f1Score": 0.5333333333333333,
+        "meanLatencyMs": 2432.641025641026
+      },
+      "HACKATHON_CERTIFICATE": {
+        "count": 87,
+        "precision": 1,
+        "recall": 0.36363636363636365,
+        "f1Score": 0.5333333333333333,
+        "meanLatencyMs": 2542.8390804597702
+      },
+      "TIMETABLE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "EXAM_TIMETABLE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "ADMIT_CARD": {
+        "count": 90,
+        "precision": 0.3050847457627119,
+        "recall": 0.3103448275862069,
+        "f1Score": 0.3076923076923077,
+        "meanLatencyMs": 3336.177777777778
+      },
+      "FEE_RECEIPT": {
+        "count": 76,
+        "precision": 0.7676767676767676,
+        "recall": 0.29726205997392435,
+        "f1Score": 0.42857142857142855,
+        "meanLatencyMs": 2840.7763157894738
+      },
+      "STUDENT_ID": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "UNKNOWN": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "EDGE_CASE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      }
+    }
+  },
+  "SYS-BASE-3": {
+    "totalDocuments": 500,
+    "successfulEvaluations": 0,
+    "failedEvaluations": 500,
+    "overallPrecision": 0,
+    "overallRecall": 0,
+    "overallF1Score": 0,
+    "latencyStats": {
+      "meanMs": 0,
+      "medianMs": 0,
+      "p95Ms": 0,
+      "p99Ms": 0,
+      "minMs": 0,
+      "maxMs": 0
+    },
+    "fallbackMetrics": {
+      "totalFallbackAttempts": 0,
+      "successfulFallbacks": 0,
+      "fallbackRecoveryRate": 0
+    },
+    "hitlMetrics": {
+      "meanReviewDurationSec": 0,
+      "humanCorrectionRate": 0
+    },
+    "categoryBreakdown": {
+      "MARKSHEET": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "TRANSCRIPT": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "WORKSHOP_CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "INTERNSHIP_CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "HACKATHON_CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "TIMETABLE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "EXAM_TIMETABLE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "ADMIT_CARD": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "FEE_RECEIPT": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "STUDENT_ID": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "UNKNOWN": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "EDGE_CASE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      }
+    }
+  },
+  "SYS-PROP": {
+    "totalDocuments": 500,
+    "successfulEvaluations": 3,
+    "failedEvaluations": 497,
+    "overallPrecision": 0.375,
+    "overallRecall": 0.2608695652173913,
+    "overallF1Score": 0.30769230769230765,
+    "latencyStats": {
+      "meanMs": 3559.6666666666665,
+      "medianMs": 3009,
+      "p95Ms": 4805,
+      "p99Ms": 4805,
+      "minMs": 2865,
+      "maxMs": 4805
+    },
+    "fallbackMetrics": {
+      "totalFallbackAttempts": 0,
+      "successfulFallbacks": 0,
+      "fallbackRecoveryRate": 0
+    },
+    "hitlMetrics": {
+      "meanReviewDurationSec": 0,
+      "humanCorrectionRate": 0
+    },
+    "categoryBreakdown": {
+      "MARKSHEET": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "TRANSCRIPT": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "WORKSHOP_CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "INTERNSHIP_CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "HACKATHON_CERTIFICATE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "TIMETABLE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "EXAM_TIMETABLE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "ADMIT_CARD": {
+        "count": 3,
+        "precision": 0.375,
+        "recall": 0.2608695652173913,
+        "f1Score": 0.30769230769230765,
+        "meanLatencyMs": 3559.6666666666665
+      },
+      "FEE_RECEIPT": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "STUDENT_ID": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "UNKNOWN": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      },
+      "EDGE_CASE": {
+        "count": 0,
+        "precision": 0,
+        "recall": 0,
+        "f1Score": 0,
+        "meanLatencyMs": 0
+      }
+    }
+  }
+}

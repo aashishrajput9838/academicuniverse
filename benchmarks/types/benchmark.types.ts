@@ -24,9 +24,12 @@ export type DocumentCategory =
   | 'STUDENT_ID'
   | 'UNKNOWN'
   | 'EDGE_CASE';
-
 export type SupportedFileFormat = 'pdf' | 'png' | 'jpeg' | 'jpg';
 export type BaselineSystemId = 'SYS-BASE-1' | 'SYS-BASE-2' | 'SYS-BASE-3' | 'SYS-PROP';
+export enum CourseMarksComparisonMode {
+  PER_COURSE = 'PER_COURSE',
+  PER_ARRAY = 'PER_ARRAY',
+}
 import { CourseMarksComparisonMode } from '../validation/fieldComparisonMode';
 export { CourseMarksComparisonMode };
 

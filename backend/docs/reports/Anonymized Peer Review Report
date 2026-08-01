@@ -1,0 +1,207 @@
+# Anonymized Peer Review Report
+
+**Journal**: *IEEE Transactions on Knowledge and Data Engineering (TKDE)* / *ACM Transactions on Intelligent Systems and Technology (TIST)*  
+**Manuscript Title**: Human-in-the-Loop Multimodal Document Intelligence for Verifiable Academic Credential Parsing in Multi-Tenant SaaS Environments  
+**Manuscript Version**: Version 1.0.0 (Workflow Validation Baseline, Experiment ID: `EXP-VAL-20260729`)  
+**Review Date**: 2026-07-30  
+**Reviewer Role**: Anonymous Peer Reviewer (Independent Infrastructure & AI Systems Auditor)
+
+---
+
+## Executive Summary & Recommendation
+
+| Parameter | Rating / Verdict |
+|---|---|
+| **Overall Scientific Score** | **6.5 / 10** |
+| **Final Verdict** | **MAJOR REVISION** |
+| **Acceptance Probability (As-Is)** | **Low (< 20%) without sample size scaling and citation cleanup** |
+| **Core Strengths** | Rigorous architectural design, transaction safety, clear HITL staging paradigm, honest workflow disclaimers. |
+| **Primary Bottlenecks** | Minimal dataset ($N=5$), pre- vs. post-HITL metric conflation, incomplete citation metadata (`[NEEDS VERIFICATION]`). |
+
+---
+
+## SECTION-BY-SECTION CRITICAL EVALUATION
+
+### 1. Title
+- **Evaluation**: The title is descriptive and accurately reflects the core domains (HITL, Multimodal LLM, Document Intelligence, Academic Credentials, Multi-Tenant SaaS).
+- **Critique**: At 18 words, it is slightly verbose. Words like *"Human-in-the-Loop Multimodal Document Intelligence"* are heavy. However, it covers all primary technical dimensions.
+- **Verdict**: Satisfactory, but could be tightened to: *"Verifiable Academic Credential Parsing via Dual-Provider LLM Orchestration and Human-in-the-Loop Staging"*.
+
+---
+
+### 2. Abstract
+- **Evaluation**: The abstract covers motivation, system design, evaluation setup ($N=5$), baseline systems, results ($F1=1.000$), and explicit workflow validation disclaimers.
+- **Critique**:
+  1. The abstract states SYS-PROP achieves $F1 = 1.000$. While technically certified post-HITL, reporting $100\%$ accuracy in an abstract without explicitly stating this is a **post-human-correction metric** can be misleading to a casual reader.
+  2. The disclaimer *"This experiment represents a workflow validation using a minimal validation dataset of five synthetic academic documents"* is included twice (lines 15 and 33), creating redundant prose.
+- **Verdict**: Major Revision needed to clarify pre-HITL vs. post-HITL accuracy in the abstract summary.
+
+---
+
+### 3. Introduction (§4)
+- **Evaluation**: Frames the academic document processing bottleneck well. Contrasts traditional rule-based OCR (Tesseract) against Multimodal LLMs (Gemini, GPT-4o). Identifies multi-tenant isolation and auditability requirements.
+- **Critique**:
+  - The paragraph on existing systems (SAP S/4HANA, Workday, Moodle) lacks empirical citations for their OCR accuracy limitations.
+  - The contributions listed (Dual-provider failover, HITL staging, Soft deletion) are well-structured, but contribution (3)—soft deletion—is largely standard database engineering (MongoDB session transactions). Claiming it as a primary scientific contribution is an overstatement.
+- **Verdict**: Minor Revision. Reframe soft deletion as an architectural component rather than a core research innovation.
+
+---
+
+### 4. Literature Review (§5) & Related Work (§6)
+- **Evaluation**: Reviews OCR engines (Tesseract v5, PaddleOCR), Multimodal LLMs (Gemini, GPT-4o), HITL systems, and multi-tenant architectures. Table 1 presents a comparative feature matrix against SAP, Workday, and Moodle.
+- **Critique**:
+  - **Missing Competitors**: Does not compare against specialized Document AI cloud services like AWS Textract, Google Cloud Document AI, or Azure Form Recognizer, which directly compete in structured form parsing.
+  - **Citation Metadata**: Citations [5], [6], [7], [13], [17], [24], [25] contain explicit `[NEEDS VERIFICATION]` markers in Section 20. Submitting a manuscript with draft verification tags is unacceptable for a final review.
+- **Verdict**: Major Revision. Replace enterprise ERP comparisons (SAP/Workday) with Document AI cloud engines (Textract/DocAI) and resolve all citation metadata placeholders.
+
+---
+
+### 5. Research Gap (§7)
+- **Evaluation**: Formulates three gaps: (1) Accuracy-Resilience Gap, (2) Automation-Verifiability Gap, and (3) Isolation-Usability Gap.
+- **Critique**:
+  - The gaps are logically articulated, but the term *"Accuracy-Resilience Gap"* is somewhat artificial—multi-provider failover is standard cloud architecture (circuit breakers / fallback handlers).
+  - Gap 2 (Automation vs. Verifiability) is the strongest and most legitimate scientific gap in the paper.
+- **Verdict**: Acceptable with minor tightening. Focus emphasis on Gap 2.
+
+---
+
+### 6. Research Objectives (§8) & Methodology (§9)
+- **Evaluation**: RO1–RO5 are clearly stated. Section 9 provides formal definitions for failover inference ($y = P(x)$ fallback to $F(x)$), multi-tenant scoping ($Q_{org}$), and soft delete transaction sets ($\mathcal{T} = \{U_{del}, KR_{del}, RH_{del}\}$).
+- **Critique**:
+  - The formalization in Section 9.2 ($y_P = P(x)$, $y_F = F(x)$) is clean and mathematically sound.
+  - The soft deletion sequence ($\mathcal{T}$) is well-formulated.
+  - **Ambiguity**: Section 9.3 states that Tesseract/PaddleOCR deskewing is applied in Stage 2, but Gemini 2.5 Flash operates directly on vision inputs. The exact visual pre-processing pipeline for LLM inputs vs. OCR baselines needs clearer separation.
+- **Verdict**: Satisfactory.
+
+---
+
+### 7. System Architecture (§10)
+- **Evaluation**: Describes Presentation, API, Service, and Data layers. Details `FailoverAIProvider` and `organizationId` multi-tenant query filter scoping.
+- **Critique**: Architecture is solid, production-grade enterprise design. Figures 1–4 support the text effectively.
+- **Verdict**: Strong section.
+
+---
+
+### 8. Dataset Description (§11) & Experimental Setup (§12)
+- **Evaluation**: Uses 5 synthetic documents (CERTIFICATE, TIMETABLE, STUDENT_ID, MARKSHEET) generated via synthetic generator v1.1.0 across CLEAN_PDF, SCANNER_COPY, MOBILE_CAMERA, ROTATED profiles.
+- **Critique**:
+  - **CRITICAL WEAKNESS**: $N=5$ documents is insufficient for a peer-reviewed journal paper. While the authors explicitly state this is a *"workflow validation using a minimal validation dataset"*, $N=5$ provides zero statistical power ($p$-values, confidence intervals cannot be computed).
+  - Ground truth JSON definitions are programmatically generated. Synthetic datasets can introduce generator bias where the extraction prompt matches the synthetic data template structure.
+- **Verdict**: Critical Revision required for journal acceptance. The $N=5$ run validates pipeline infrastructure, but a large-scale evaluation ($N \ge 500$) is mandatory for a final journal publication.
+
+---
+
+### 9. Evaluation Metrics (§13)
+- **Evaluation**: Defines document-level and field-level Precision ($P$), Recall ($R$), F1-score ($F1$), array matching for `courseMarks`, and pipeline latency decomposition ($T_{total} = T_{upload} + T_{AI} + T_{DB}$).
+- **Critique**:
+  - Equation (278) for exact array matching ($\text{TP}_{array}$) is mathematically formal and unambiguous.
+  - **Missing Metric**: Pre-HITL accuracy vs. Post-HITL accuracy is not explicitly separated in the metric equations. Adding $F1_{raw}$ (AI extraction alone) vs $F1_{final}$ (post-HITL) would significantly enhance methodological clarity.
+- **Verdict**: Good, with recommended addition of $F1_{raw}$ vs. $F1_{final}$.
+
+---
+
+### 10. Experimental Results (§14) & Discussion (§15)
+- **Evaluation**: Tables 5, 6, and 7 present certified results. SYS-PROP achieves $F1 = 1.000$ (with 3 fallbacks, 5 reviews, 2 corrections), mean latency $2,773\text{ ms}$. Baseline F1s: SYS-BASE-1 ($0.939$), SYS-BASE-2 ($0.986$), SYS-BASE-3 ($0.955$).
+- **Critique**:
+  - The results are internally consistent across text, abstract, conclusion, and Tables 5–7.
+  - The discussion in §15.1 honestly analyzes the latency-resilience trade-off ($2,773\text{ ms}$ vs. $2,073\text{ ms}$).
+  - However, because $N=5$, claiming SYS-PROP achieves superior aggregate performance over SYS-BASE-2 ($1.000$ vs $0.986$) is statistically unvalidated—it represents a difference of a single field error across 35 fields.
+- **Verdict**: Major Revision needed to add statistical significance caveats due to sample size.
+
+---
+
+### 11. Threats to Validity (§16), Limitations (§17), Future Work (§18)
+- **Evaluation**: Tables 8, 9, and 10 provide an exhaustive breakdown of threats (N=5, synthetic data, single reviewer), limitations, and future roadmap.
+- **Critique**: The authors deserve credit for exceptional transparency. Admitting the $N=5$ sample size limitation explicitly in Table 8 and Table 9 mitigates claims of deception, though it does not eliminate the reviewer's requirement for a larger evaluation dataset.
+- **Verdict**: Excellent self-awareness and limitation disclosure.
+
+---
+
+### 12. References (§20)
+- **Evaluation**: 33 references across OCR, LLMs, HITL, multi-tenancy, and benchmarks.
+- **Critique**:
+  - **Unverified Placeholders**: References [5], [6], [7], [13], [17], [24], [25] contain `[NEEDS VERIFICATION]` strings.
+  - **Incomplete Metadata**: Ref [13] (Marsland & Mozer) has formatting errors. Ref [31] has malformed author initials (`M. A. H. T. H. T. K. R. R. R.`).
+- **Verdict**: Critical Revision. Clean up all reference metadata.
+
+---
+
+## NOVELTY ASSESSMENT
+
+| Category | Component | Assessment |
+|---|---|---|
+| **Standard Engineering** | Soft deletion via MongoDB sessions, REST API controller layout, Docker setup | 0% Novel (Standard industry software patterns) |
+| **Incremental** | Primary-fallback LLM routing (Gemini $\rightarrow$ OpenRouter) | 30% Novel (Standard failover pattern applied to MLLMs) |
+| **Substantive Novelty** | Candidate staging HITL model for multi-tenant credential parsing | 70% Novel (Strong domain application for verifiability) |
+| **Publishable Value** | End-to-end verifiable extraction architecture & reproducible benchmark harness | **Publishable after dataset scale-up ($N \ge 500$)** |
+
+---
+
+## CLAIM VERIFICATION MATRIX
+
+| Claim Made in Paper | Status | Justification |
+|---|---|---|
+| *"Dual-provider failover prevents extraction disruption on rate limits"* | **Fully Supported** | Verified in EXP-VAL-20260729 (3 fallbacks triggered, 100% recovery) |
+| *"HITL staging enables verifiable extraction"* | **Fully Supported** | 2 extraction errors identified and corrected prior to canonical write |
+| *"Soft deletion maintains audit trails while enforcing data isolation"* | **Fully Supported** | Verified atomic session deletes across 3 collections |
+| *"SYS-PROP achieves superior accuracy to single-provider baselines"* | **Partially Supported** | F1=1.000 is post-human-correction. Raw pre-HITL accuracy is comparable to Gemini 1.5 Pro. |
+| *"Results generalize across academic credential parsing"* | **Unsupported** | N=5 synthetic documents cannot support generalization claims. |
+
+---
+
+## REVIEWER RISK ANALYSIS
+
+- **Risk of Immediate Desk Rejection**: **High** if submitted with $N=5$ sample size and `[NEEDS VERIFICATION]` tags.
+- **Risk of Major Revision**: **100%** — Any reputable journal reviewer will require scaling the benchmark to $N \ge 500$ documents to evaluate statistical significance.
+
+---
+
+## DETAILED WEAKNESSES & REQUIRED REVISIONS
+
+### Critical Revisions (Must Fix Before Journal Submission)
+
+1. **Dataset Scale-Up ($N \ge 500$)**:
+   - *Requirement*: Execute the evaluation pipeline on the 500-document benchmark dataset (`synthetic-dataset-500`) to compute confidence intervals, standard deviations, and statistical significance ($p$-values via Wilcoxon signed-rank test).
+
+2. **Reference Metadata Cleanup**:
+   - *Requirement*: Remove all `[NEEDS VERIFICATION]` placeholders from References [5], [6], [7], [13], [17], [24], [25] and fix malformed author strings in Ref [31].
+
+3. **Pre-HITL vs. Post-HITL Metric Disaggregation**:
+   - *Requirement*: Explicitly report raw AI extraction F1 ($F1_{raw}$) separately from post-HITL verified F1 ($F1_{final}$) in Table 6 to clearly isolate the AI model performance from human correction contribution.
+
+### Optional Improvements (Nice to Have)
+
+1. **Cloud Document AI Baseline Addition**: Include AWS Textract or Google Cloud Document AI as an additional baseline in Table 1 and Section 6.
+2. **Cost Analysis Breakdown**: Include an API cost column (\$/1,000 documents) in Table 6 comparing Gemini 2.5 Flash vs. OpenRouter gpt-4o-mini vs. Tesseract.
+
+---
+
+## SCIENTIFIC EVALUATION SCORES
+
+```
++-------------------------------------------------------------+
+|              AU DIC V1.0.0 SCIENTIFIC SCORECARD             |
++-------------------------------------------------------------+
+|  Dimension                  Score (0-10)   Status           |
++-------------------------------------------------------------+
+|  Novelty                     6.5 / 10      Moderate         |
+|  Technical Depth             8.5 / 10      High             |
+|  Methodology                 8.0 / 10      Strong           |
+|  Experimental Design         5.0 / 10      Weak (N=5)       |
+|  Writing Quality             8.5 / 10      High             |
+|  Reproducibility             9.5 / 10      Exceptional      |
+|  Scientific Rigor            7.0 / 10      Good             |
+|  Practical Impact            8.5 / 10      High             |
++-------------------------------------------------------------+
+|  OVERALL SCIENTIFIC SCORE:   6.5 / 10                       |
+|  RECOMMENDATION:             MAJOR REVISION                 |
++-------------------------------------------------------------+
+```
+
+---
+
+## Final Verdict Statement
+
+**MAJOR REVISION**
+
+*Justification*: The manuscript presents an exceptionally well-engineered system with clear architecture, transaction safety, dual-provider resilience, and a certified reproducible benchmark harness. However, as a scientific journal paper, evaluating on only 5 synthetic documents ($N=5$) prevents any meaningful statistical analysis or generalization claims. Furthermore, draft citation placeholders (`[NEEDS VERIFICATION]`) must be resolved. Upon executing the 500-document evaluation run ($N=500$) and disaggregating pre- vs. post-HITL extraction metrics, this manuscript will be fully suitable for publication in a top-tier IEEE/ACM journal.

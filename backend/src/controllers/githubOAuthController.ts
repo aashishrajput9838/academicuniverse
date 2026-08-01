@@ -142,10 +142,17 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
     await githubOAuthService.storeAccessToken(firebaseUid, accessToken);
 
     // Update the GitHub username
-    const user = await User.findOne({ firebaseUid });
+    const user = await User.findOne({ $or: [{ firebaseUid }, { _id: firebaseUid }] });
     if (user) {
       user.githubUsername = githubUsername;
       await user.save();
+    }
+
+    // Sync GitHub data & skills immediately
+    try {
+      await analyticsService.syncGithubData(firebaseUid);
+    } catch (syncErr: any) {
+      logger.warn('GitHub OAuth post-connect sync warning:', syncErr.message);
     }
 
     // Clear the session data

@@ -116,14 +116,54 @@ export function useGitHubOAuth({ backendToken, onConnected }: UseGitHubOAuthOpti
           // If popup blocked, auto-fallback to direct sync
           await triggerDirectConnect();
         } else {
+          let codeHandled = false;
           pollTimerRef.current = setInterval(async () => {
+            if (codeHandled) return;
+
+            // Attempt to inspect popup URL for code and state
+            try {
+              if (popup && !popup.closed) {
+                let currentHref = '';
+                try {
+                  currentHref = popup.location.href;
+                } catch (e) {
+                  // Cross-origin restriction while on github.com
+                }
+
+                if (currentHref && currentHref.includes('code=')) {
+                  const urlObj = new URL(currentHref);
+                  const codeParam = urlObj.searchParams.get('code');
+                  const stateParam = urlObj.searchParams.get('state');
+
+                  if (codeParam && stateParam) {
+                    codeHandled = true;
+                    clearInterval(pollTimerRef.current!);
+                    pollTimerRef.current = null;
+                    try { popup.close(); } catch (e) {}
+
+                    await fetch(`${API_BASE_URL}/api/github/callback?code=${encodeURIComponent(codeParam)}&state=${encodeURIComponent(stateParam)}`, {
+                      method: 'GET',
+                      headers: { 'Authorization': `Bearer ${backendToken}` }
+                    }).catch(() => null);
+
+                    setConnecting(false);
+                    await onConnected?.();
+                    return;
+                  }
+                }
+              }
+            } catch (err) {
+              // Ignore popup read error
+            }
+
             if (popup.closed) {
               clearInterval(pollTimerRef.current!);
               pollTimerRef.current = null;
-              // Check connection or auto-recover via direct sync
-              await triggerDirectConnect();
+              if (!codeHandled) {
+                await triggerDirectConnect();
+              }
             }
-          }, 800);
+          }, 600);
         }
       } else {
         await triggerDirectConnect();

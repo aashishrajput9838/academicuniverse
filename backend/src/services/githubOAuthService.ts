@@ -53,38 +53,61 @@ export class GithubOAuthService {
    * Exchanges the authorization code for an access token
    * @param code The authorization code received from GitHub
    * @param state The state parameter for CSRF protection
+   * @param customRedirectUri Optional custom redirect URI used during authorization
    * @returns The access token
    */
-  async exchangeCodeForToken(code: string, state: string): Promise<string> {
+  async exchangeCodeForToken(code: string, state: string, customRedirectUri?: string): Promise<string> {
     if (!this.clientId || !this.clientSecret) {
       throw new Error('GitHub OAuth is not configured. Please set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET environment variables.');
     }
     
-    try {
-      const response = await axios.post(
-        'https://github.com/login/oauth/access_token',
-        {
+    const redirectUrisToTry = [
+      customRedirectUri,
+      this.getRedirectUri(),
+      'http://localhost:10000/api/github/callback',
+      'http://localhost:5000/api/github/callback',
+      'http://localhost:3000/api/github/callback',
+      'https://academicuniverse.onrender.com/api/github/callback',
+      'https://academicuniverse.vercel.app/api/github/callback',
+      undefined,
+    ].filter((uri, index, self) => uri === undefined || (typeof uri === 'string' && uri.trim() !== '' && self.indexOf(uri) === index));
+
+    let lastError: any = null;
+
+    for (const uri of redirectUrisToTry) {
+      try {
+        const payload: any = {
           client_id: this.clientId,
           client_secret: this.clientSecret,
           code,
-          redirect_uri: this.getRedirectUri(),
-        },
-        {
-          headers: {
-            Accept: 'application/json',
-          },
+        };
+        if (uri) payload.redirect_uri = uri;
+
+        const response = await axios.post(
+          'https://github.com/login/oauth/access_token',
+          payload,
+          {
+            headers: {
+              Accept: 'application/json',
+            },
+          }
+        );
+
+        if (response.data && response.data.access_token) {
+          logger.info(`GitHub token exchange successful using redirect_uri: ${uri || 'none'}`);
+          return response.data.access_token;
         }
-      );
 
-      if (response.data.error) {
-        throw new Error(`GitHub OAuth error: ${response.data.error}`);
+        if (response.data && response.data.error) {
+          lastError = response.data.error_description || response.data.error;
+        }
+      } catch (error: any) {
+        lastError = error.response?.data?.error_description || error.message;
       }
-
-      return response.data.access_token;
-    } catch (error: any) {
-      logger.error('Error exchanging code for token:', error.message);
-      throw new Error(`Failed to exchange code for token: ${error.message}`);
     }
+
+    logger.error('Error exchanging code for token after trying all redirect URIs:', lastError);
+    throw new Error(`Failed to exchange code for token: ${lastError || 'Unknown error'}`);
   }
 
   /**

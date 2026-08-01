@@ -54,12 +54,17 @@ export class EzoneScraper {
         return !suspiciousTerms.some(term => value.toLowerCase().includes(term.toLowerCase()));
     }
 
+    public async extractData(page: Page, userId?: string, organizationId?: string, sessionId?: string, firebaseUid?: string): Promise<any> {
+        return await this.extractPageData(page, userId, organizationId, sessionId, firebaseUid);
+    }
+
     /**
      * Extract real profile and attendance data from the Ezone Home page
      * URL: https://student.sharda.ac.in/admin/home
      */
-    private async extractPageData(page: Page): Promise<any> {
-        return await page.evaluate(() => {
+    private async extractPageData(page: Page, userId?: string, organizationId?: string, sessionId?: string, firebaseUid?: string): Promise<any> {
+        try {
+            const extractedRawData = await page.evaluate(() => {
             const clean = (text: string) => {
                 if (!text) return '';
                 return text.trim().replace(/\s+/g, ' ');
@@ -317,7 +322,20 @@ export class EzoneScraper {
                 name: 0,
                 date: 1
             });
-            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Discovering navigation URLs from dashboard...', { category: 'EXTRACTION', actionType: 'page.evaluate', progress: 30 }, firebaseUid);
+
+            return {
+                profile,
+                attendance,
+                caMarks,
+                subjects,
+                timetable,
+                timetableMeta,
+                holidays
+            };
+        });
+
+        const ezoneLogger = (await import('../services/ezone-logger.service')).EzoneLogger.getInstance();
+        await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Discovering navigation URLs from dashboard...', { category: 'EXTRACTION', actionType: 'page.evaluate', progress: 30 }, firebaseUid);
             const navigationUrls = await page.evaluate(() => {
                 const urls: Record<string, string> = {};
                 const keywords: Record<string, string[]> = {
@@ -345,7 +363,7 @@ export class EzoneScraper {
 
             // Extract data from dashboard
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Extracting data from dashboard...', { category: 'EXTRACTION', actionType: 'page.evaluate', progress: 40 }, firebaseUid);
-            let mergedData = await this.extractPageData(page);
+            let mergedData = extractedRawData;
             logger.info(`[SCRAPER] dashboardExtract: ${JSON.stringify(mergedData.profile)}`);
             logger.info(`[SCRAPER] dashboardExtract attendance: ${JSON.stringify(mergedData.attendance)}`);
             logger.info(`[SCRAPER] dashboardExtract caMarks count: ${mergedData.caMarks?.length || 0}`);
@@ -629,84 +647,6 @@ export class EzoneScraper {
             };
 
                 // Try global window properties
-                const windowCgpa = (window as any).cgpa || (window as any).studentCgpa || (window as any).currentCgpa;
-                if (windowCgpa !== undefined && windowCgpa !== null) {
-                    return String(windowCgpa);
-                }
-
-                // Try to find cgpa in script tags
-                const scripts = Array.from(document.querySelectorAll('script'));
-                for (const script of scripts) {
-                    const text = script.textContent || '';
-                    const match = text.match(/var\s+cgpa\s*=\s*([\d.]+)/);
-                    if (match) {
-                        return match[1];
-                    }
-                }
-
-                // Try ApexCharts SVG data attributes
-                const cgpaPath = document.querySelector('[seriesName="CGPA"] path, [rel="1"][seriesName="CGPA"] path');
-                if (cgpaPath) {
-                    const value = cgpaPath.getAttribute('data:value');
-                    if (value) return value;
-                }
-
-                return null;
-            });
-
-            if (runtimeCgpa !== null && runtimeCgpa !== undefined && runtimeCgpa !== '0') {
-                logger.info(`[SCRAPER] CGPA extracted via runtime evaluation: ${runtimeCgpa}`);
-                return runtimeCgpa;
-            }
-        } catch (err) {
-            logger.warn(`[SCRAPER] Runtime CGPA extraction failed: ${(err as Error).message}`);
-        }
-
-        // Strategy 2: Try SVG data attributes as fallback
-        try {
-            const svgCgpa = await page.evaluate(() => {
-                const cgpaPath = document.querySelector('g[seriesName="CGPA"] path, [seriesName="CGPA"] path');
-                if (cgpaPath) {
-                    return cgpaPath.getAttribute('data:value');
-                }
-                return null;
-            });
-
-            if (svgCgpa) {
-                logger.info(`[SCRAPER] CGPA extracted via SVG data attribute: ${svgCgpa}`);
-                return svgCgpa;
-            }
-        } catch (err) {
-            logger.warn(`[SCRAPER] SVG CGPA extraction failed: ${(err as Error).message}`);
-        }
-
-        const reason = 'CGPA not found in window properties, script variables, or SVG data attributes';
-        logger.warn(`[SCRAPER] ${reason}`);
-        return 'N/A';
-    }
-
-    /**
-     * Handle mandatory popups, feedback forms, or modals that block the dashboard
-     */
-    private async handlePopups(page: Page, userId?: string, organizationId?: string, sessionId?: string, firebaseUid?: string): Promise<void> {
-        const ezoneLogger = (await import('../services/ezone-logger.service')).EzoneLogger.getInstance();
-        try {
-            const closeButtons = [
-                'button:has-text("Close")',
-                'button:has-text("Skip")',
-                '.modal-header .close',
-                '.close-modal',
-                '#close-btn'
-            ];
-
-            for (const selector of closeButtons) {
-                const btn = await page.$(selector);
-                if (btn && await btn.isVisible()) {
-                    if (userId && organizationId && sessionId) {
-                        await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'warning', `Blocking popup detected (${selector}). Attempting to bypass...`, { category: 'EXTRACTION', actionType: 'popup.close' }, firebaseUid);
-                    }
-                    await btn.click();
-                    await page.waitForTimeout(1000);
                 const windowCgpa = (window as any).cgpa || (window as any).studentCgpa || (window as any).currentCgpa;
                 if (windowCgpa !== undefined && windowCgpa !== null) {
                     return String(windowCgpa);

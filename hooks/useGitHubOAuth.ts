@@ -9,6 +9,7 @@ interface UseGitHubOAuthOptions {
 
 interface UseGitHubOAuthReturn {
   connect: () => Promise<void>;
+  triggerDirectConnect: (customUsername?: string) => Promise<void>;
   connecting: boolean;
   error: string | null;
 }
@@ -141,5 +142,5 @@ export function useGitHubOAuth({ backendToken, onConnected }: UseGitHubOAuthOpti
     };
   }, []);
 
-  return { connect, connecting, error };
+  return { connect, triggerDirectConnect, connecting, error };
 }

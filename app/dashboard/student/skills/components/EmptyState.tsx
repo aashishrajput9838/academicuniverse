@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { GraduationCap, Github, FileText, BookOpen } from 'lucide-react';
+import { useState } from 'react';
+import { GraduationCap, Github, FileText, BookOpen, Sparkles, Loader2, X, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/AuthContext';
 import { useGitHubOAuth } from '@/hooks/useGitHubOAuth';
@@ -12,19 +12,38 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ onRetry, syncing }: EmptyStateProps) {
-  const { backendToken } = useAuth();
-  const { connect: connectGitHub, connecting } = useGitHubOAuth({ backendToken });
+  const { backendToken, user } = useAuth();
+  const { connect: connectGitHub, triggerDirectConnect, connecting } = useGitHubOAuth({
+    backendToken,
+    onConnected: onRetry,
+  });
+
+  const [showGithubModal, setShowGithubModal] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const actions = [
     { icon: <GraduationCap className="w-5 h-5" />, label: 'Connect Academic Profile', description: 'Import your transcript', action: null },
-    { icon: <Github className="w-5 h-5" />, label: 'Connect GitHub', description: 'Sync your repositories', action: 'github' },
+    { icon: <Github className="w-5 h-5" />, label: 'Connect GitHub', description: 'Sync your repositories & skills', action: 'github' },
     { icon: <FileText className="w-5 h-5" />, label: 'Upload Certificates', description: 'Add professional certifications', action: null },
     { icon: <BookOpen className="w-5 h-5" />, label: 'Add Research', description: 'Link your publications', action: null },
   ];
 
   const handleAction = async (action: string | null) => {
     if (action === 'github') {
-      await connectGitHub();
+      setShowGithubModal(true);
+    }
+  };
+
+  const handleDirectConnectSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalError(null);
+    try {
+      await triggerDirectConnect(usernameInput.trim() || undefined);
+      setShowGithubModal(false);
+      onRetry?.();
+    } catch (err: any) {
+      setModalError(err.message || 'Failed to sync GitHub profile');
     }
   };
 
@@ -72,6 +91,87 @@ export function EmptyState({ onRetry, syncing }: EmptyStateProps) {
         >
           Refresh Profile
         </button>
+      )}
+
+      {/* GitHub Connection Modal */}
+      {showGithubModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden text-left">
+            <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white">
+                  <Github className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Connect GitHub Profile</h3>
+                  <p className="text-xs text-slate-400">Sync repositories & automatically extract technical skills</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowGithubModal(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {modalError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{modalError}</span>
+                </div>
+              )}
+
+              {/* Instant Username Sync Form */}
+              <form onSubmit={handleDirectConnectSubmit} className="space-y-3 p-4 bg-slate-800/50 border border-slate-700/60 rounded-xl">
+                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
+                  <Sparkles className="w-4 h-4" />
+                  <span>Instant GitHub Connect (Recommended)</span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Enter your GitHub username to instantly sync your repositories, languages, and skills without browser redirects.
+                </p>
+                <div>
+                  <input
+                    type="text"
+                    value={usernameInput}
+                    onChange={(e) => setUsernameInput(e.target.value)}
+                    placeholder="Enter GitHub username (e.g. aashishrajput9838)..."
+                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={connecting}
+                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center gap-2 transition disabled:opacity-50"
+                >
+                  {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  <span>Instant Sync Repositories & Skills</span>
+                </button>
+              </form>
+
+              <div className="relative flex items-center justify-center">
+                <div className="border-t border-slate-800 w-full"></div>
+                <span className="bg-slate-900 px-3 text-[10px] text-slate-500 font-mono uppercase absolute">OR</span>
+              </div>
+
+              {/* OAuth Flow Button */}
+              <button
+                type="button"
+                onClick={async () => {
+                  setShowGithubModal(false);
+                  await connectGitHub();
+                }}
+                disabled={connecting}
+                className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition disabled:opacity-50"
+              >
+                <Github className="w-4 h-4" />
+                <span>Connect via GitHub OAuth Window</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

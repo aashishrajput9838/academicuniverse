@@ -238,24 +238,32 @@ export function AddSkillsModal({
           </div>
 
           {/* Skill Level & Evidence Options */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-800">
+          <div className="space-y-4 pt-2 border-t border-slate-800">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-2">
-                Proficiency Level
+                Select Skill Level & Initial Proficiency
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                {(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'] as ProficiencyLevel[]).map((level) => (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {[
+                  { level: 'BEGINNER', label: 'Basic / Beginner', sub: '~35%', score: 35 },
+                  { level: 'INTERMEDIATE', label: 'Medium / Intermediate', sub: '~60%', score: 60 },
+                  { level: 'ADVANCED', label: 'Advanced', sub: '~80%', score: 80 },
+                  { level: 'EXPERT', label: 'Perfect / Expert', sub: '~95%', score: 95 },
+                ].map((item) => (
                   <button
-                    key={level}
+                    key={item.level}
                     type="button"
-                    onClick={() => setSelectedLevel(level)}
-                    className={`px-3 py-2 rounded-xl text-xs font-semibold border text-center transition ${
-                      selectedLevel === level
-                        ? 'bg-emerald-600 text-white border-emerald-500'
+                    onClick={() => {
+                      setSelectedLevel(item.level as ProficiencyLevel);
+                    }}
+                    className={`p-2.5 rounded-xl text-left border transition ${
+                      selectedLevel === item.level
+                        ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/50 ring-1 ring-emerald-500/30'
                         : 'bg-slate-800/60 text-slate-400 border-slate-700 hover:bg-slate-700'
                     }`}
                   >
-                    {level}
+                    <div className="text-xs font-bold">{item.label}</div>
+                    <div className="text-[10px] opacity-75 mt-0.5">{item.sub}</div>
                   </button>
                 ))}
               </div>
@@ -277,9 +285,6 @@ export function AddSkillsModal({
                 <option value="RESEARCH">Research Wing Output</option>
                 <option value="AI_INFERENCE">AI Skill Inference</option>
               </select>
-              <p className="text-[10px] text-slate-500 mt-1">
-                Evidence sources establish verification confidence scores.
-              </p>
             </div>
           </div>
         </div>

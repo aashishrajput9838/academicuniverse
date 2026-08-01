@@ -13,10 +13,10 @@ const proficiencyColors: Record<ProficiencyLevel, string> = {
 };
 
 const proficiencyLabel: Record<ProficiencyLevel, string> = {
-  BEGINNER: 'Beginner',
-  INTERMEDIATE: 'Intermediate',
+  BEGINNER: 'Basic',
+  INTERMEDIATE: 'Medium',
   ADVANCED: 'Advanced',
-  EXPERT: 'Expert',
+  EXPERT: 'Perfect',
 };
 
 interface SkillCardProps {

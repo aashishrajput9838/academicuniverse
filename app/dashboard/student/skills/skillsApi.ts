@@ -75,7 +75,7 @@ export async function fetchSkillSummary(backendToken: string): Promise<SkillSumm
 
 export async function addSkillsApi(
   backendToken: string,
-  skills: { skillName: string; category?: string; proficiencyLevel?: string; source?: string; notes?: string }[]
+  skills: { skillName: string; category?: string; proficiencyLevel?: string; proficiencyScore?: number; source?: string; notes?: string }[]
 ): Promise<any> {
   const response = await fetch(`${API_BASE_URL}/api/skills/me`, {
     method: 'POST',
@@ -97,7 +97,7 @@ export async function addSkillsApi(
 export async function updateSkillApi(
   backendToken: string,
   skillId: string,
-  payload: { proficiencyLevel?: string; category?: string; notes?: string }
+  payload: { proficiencyLevel?: string; proficiencyScore?: number; category?: string; notes?: string }
 ): Promise<any> {
   const response = await fetch(`${API_BASE_URL}/api/skills/me/${encodeURIComponent(skillId)}`, {
     method: 'PUT',

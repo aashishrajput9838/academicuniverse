@@ -504,7 +504,9 @@ export const addSkillsController = async (req: any, res: Response) => {
       const skillId = normalizeSkillId(name);
       const category = item.category || item.skillCategory || SkillCategory.TECHNICAL;
       const level = item.proficiencyLevel || item.level || 'INTERMEDIATE';
-      const score = getProficiencyScore(level);
+      const score = typeof item.proficiencyScore === 'number'
+        ? Math.max(0, Math.min(100, Math.round(item.proficiencyScore)))
+        : (typeof item.score === 'number' ? Math.max(0, Math.min(100, Math.round(item.score))) : getProficiencyScore(level));
       const source = item.source || SkillSource.MANUAL;
 
       // Check for existing record (Duplicate Prevention!)
@@ -599,6 +601,11 @@ export const updateSkillController = async (req: any, res: Response) => {
     if (body.proficiencyLevel || body.level) {
       record.proficiencyLevel = body.proficiencyLevel || body.level;
       record.proficiencyScore = getProficiencyScore(record.proficiencyLevel);
+    }
+
+    if (typeof body.proficiencyScore === 'number' || typeof body.score === 'number') {
+      const scoreVal = typeof body.proficiencyScore === 'number' ? body.proficiencyScore : body.score;
+      record.proficiencyScore = Math.max(0, Math.min(100, Math.round(scoreVal)));
     }
 
     if (body.skillCategory || body.category) {

@@ -10,13 +10,21 @@ export class GithubOAuthService {
   private clientSecret: string;
   private redirectUri: string;
 
+  private getRedirectUri(): string {
+    if (process.env.GITHUB_REDIRECT_URI && process.env.GITHUB_REDIRECT_URI.trim()) {
+      return process.env.GITHUB_REDIRECT_URI.trim();
+    }
+    const backendUrl = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || (process.env.NODE_ENV === 'production' ? 'https://academicuniverse.onrender.com' : 'http://localhost:5000');
+    return `${backendUrl.replace(/\/$/, '')}/api/github/callback`;
+  }
+
   constructor() {
     this.clientId = process.env.GITHUB_CLIENT_ID || '';
     this.clientSecret = process.env.GITHUB_CLIENT_SECRET || '';
-    this.redirectUri = `${process.env.BACKEND_URL || `http://localhost:${process.env.PORT || '5003'}`}/api/github/callback`;
+    this.redirectUri = this.getRedirectUri();
     
     if (!this.clientId || !this.clientSecret) {
-      logger.warn('GITHUB_CLIENT_ID and/or GITHUB_CLIENT_SECRET not set in environment variables. GitHub OAuth features will be unavailable.');
+      logger.warn('GITHUB_CLIENT_ID and/or GITHUB_CLIENT_SECRET not set in environment variables. GitHub OAuth will use direct sync fallback.');
     }
   }
 
@@ -34,7 +42,7 @@ export class GithubOAuthService {
     const url = new URL('https://github.com/login/oauth/authorize');
     
     url.searchParams.append('client_id', this.clientId);
-    url.searchParams.append('redirect_uri', this.redirectUri);
+    url.searchParams.append('redirect_uri', this.getRedirectUri());
     url.searchParams.append('scope', scope);
     url.searchParams.append('state', state);
     
@@ -59,7 +67,7 @@ export class GithubOAuthService {
           client_id: this.clientId,
           client_secret: this.clientSecret,
           code,
-          redirect_uri: this.redirectUri,
+          redirect_uri: this.getRedirectUri(),
         },
         {
           headers: {

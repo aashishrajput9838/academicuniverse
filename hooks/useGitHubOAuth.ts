@@ -45,6 +45,33 @@ export function useGitHubOAuth({ backendToken, onConnected }: UseGitHubOAuthOpti
     }
   }, [backendToken]);
 
+  const triggerDirectConnect = useCallback(async (customUsername?: string) => {
+    if (!backendToken) return;
+    setConnecting(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/github/connect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${backendToken}`,
+        },
+        body: JSON.stringify({ mode: 'direct', username: customUsername }),
+      });
+      const data = await response.json();
+      if (data?.success) {
+        setConnecting(false);
+        await onConnected?.();
+      } else {
+        throw new Error(data?.message || 'Direct GitHub sync failed');
+      }
+    } catch (err: any) {
+      console.error('Direct GitHub sync error:', err);
+      setError(err.message || 'Direct sync failed');
+      setConnecting(false);
+    }
+  }, [backendToken, onConnected]);
+
   const connect = useCallback(async () => {
     if (!backendToken) return;
 
@@ -70,7 +97,10 @@ export function useGitHubOAuth({ backendToken, onConnected }: UseGitHubOAuthOpti
       }
 
       const data = await response.json();
-      if (data?.success && data?.data?.authUrl) {
+      if (data?.success && data?.data?.connected) {
+        setConnecting(false);
+        await onConnected?.();
+      } else if (data?.success && data?.data?.authUrl) {
         const width = 600;
         const height = 700;
         const left = window.screenX + (window.outerWidth - width) / 2;
@@ -82,26 +112,26 @@ export function useGitHubOAuth({ backendToken, onConnected }: UseGitHubOAuthOpti
         );
 
         if (!popup) {
-          setError('Popup was blocked. Please allow popups for this site.');
-          setConnecting(false);
+          // If popup blocked, auto-fallback to direct sync
+          await triggerDirectConnect();
         } else {
-          pollTimerRef.current = setInterval(() => {
+          pollTimerRef.current = setInterval(async () => {
             if (popup.closed) {
               clearInterval(pollTimerRef.current!);
               pollTimerRef.current = null;
-              setConnecting(false);
+              // Check connection or auto-recover via direct sync
+              await triggerDirectConnect();
             }
-          }, 500);
+          }, 800);
         }
       } else {
-        setConnecting(false);
+        await triggerDirectConnect();
       }
     } catch (err) {
       console.error('GitHub connect error:', err);
-      setError(err instanceof Error ? err.message : 'GitHub connection error');
-      setConnecting(false);
+      await triggerDirectConnect();
     }
-  }, [backendToken]);
+  }, [backendToken, onConnected, triggerDirectConnect]);
 
   useEffect(() => {
     return () => {

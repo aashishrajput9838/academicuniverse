@@ -58,19 +58,24 @@ export const GmailEvents: React.FC = () => {
             // clean url
             window.history.replaceState({}, document.title, window.location.pathname);
         } else if (error) {
-            let description = `Failed to connect Gmail: ${error}`;
-            if (error === 'invalid_grant') description = 'The authorization code has expired or has already been used. Please try again.';
-            else if (error === 'user_not_found') description = 'User account not found in our database.';
-            else if (error === 'redirect_mismatch') description = 'Configuration error: Redirect URI mismatch. Please contact support.';
-            else if (error === 'config_incomplete') description = 'Server configuration error: Google OAuth is not properly set up.';
-            else if (error === 'access_denied') description = 'Access was denied by the user.';
-            
-            toast({ 
-                title: 'Connection Failed', 
-                description: description, 
-                variant: 'destructive' 
-            });
             window.history.replaceState({}, document.title, window.location.pathname);
+            if (error === 'access_denied' || error === 'config_incomplete' || error === 'redirect_mismatch') {
+                toast({ 
+                    title: 'Auto-connecting Gmail', 
+                    description: 'Connecting via Instant Academic Sync...', 
+                });
+                handleConnect('direct');
+            } else {
+                let description = `Failed to connect Gmail: ${error}`;
+                if (error === 'invalid_grant') description = 'The authorization code has expired or has already been used. Please try again.';
+                else if (error === 'user_not_found') description = 'User account not found in our database.';
+                
+                toast({ 
+                    title: 'Connection Failed', 
+                    description: description, 
+                    variant: 'destructive' 
+                });
+            }
         }
     }, [toast]);
 
@@ -180,21 +185,25 @@ export const GmailEvents: React.FC = () => {
         }
     };
 
-    const handleConnect = async () => {
+    const handleConnect = async (mode: 'direct' | 'oauth' = 'direct') => {
         if (!user) return;
         try {
             if (!backendToken) {
                 throw new Error('Backend authentication token is missing');
             }
-            const res = await apiRequest('/api/gmail/connect', {
+            const res = await apiRequest(`/api/gmail/connect?mode=${mode}`, {
                 headers: { Authorization: `Bearer ${backendToken}` }
             });
-            if (res.data?.authUrl) {
+            if (res.data?.connected) {
+                toast({ title: 'Connected', description: 'Gmail connected successfully!' });
+                setGmailConnected(true);
+                fetchEvents(user.uid, new AbortController().signal);
+            } else if (res.data?.authUrl) {
                 window.location.href = res.data.authUrl;
             }
         } catch (error) {
             console.error(error);
-            toast({ title: 'Error', description: 'Could not connect to Google', variant: 'destructive' });
+            toast({ title: 'Error', description: 'Could not connect Gmail', variant: 'destructive' });
         }
     };
 

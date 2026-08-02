@@ -9,6 +9,7 @@ import { SkillCard } from './components/SkillCard';
 import { SkillDetailPanel } from './components/SkillDetailPanel';
 import { AddSkillsModal } from './components/AddSkillsModal';
 import { EditSkillModal } from './components/EditSkillModal';
+import { RecruiterViewModal } from './components/RecruiterViewModal';
 import { EmptyState } from './components/EmptyState';
 import { ErrorState } from './components/ErrorState';
 import { SkeletonLoader } from '@/components/SkeletonLoader';

@@ -105,16 +105,16 @@ export function ModuleVisibilityProvider({ children }: { children: ReactNode }) 
 
   const isModuleVisible = useCallback(
     (key: string) => {
-      const module = modules.get(key);
-      return module ? module.isVisible : true;
+      const mod = modules.get(key);
+      return mod ? mod.isVisible : true;
     },
     [modules]
   );
 
   const isModuleEnabled = useCallback(
     (key: string) => {
-      const module = modules.get(key);
-      return module ? module.isEnabled && module.isVisible : true;
+      const mod = modules.get(key);
+      return mod ? mod.isEnabled && mod.isVisible : true;
     },
     [modules]
   );

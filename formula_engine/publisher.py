@@ -430,8 +430,8 @@ class IEEEPublisher:
 
 if __name__ == '__main__':
     md_path = r"C:\Users\elitebook840g89319\.gemini\antigravity-ide\brain\902d6e6c-b35a-4d3e-a983-59d2e321b9fc\paper2_academic_universe_growth_intelligence.md"
-    docx_path = r"c:\github\academicuniverse.com\academicuniverse\Academic_Universe_Paper2_v1.0_IEEE_Final_OMML.docx"
-    pdf_path = r"c:\github\academicuniverse.com\academicuniverse\Academic_Universe_Paper2_v1.0_IEEE_Final_OMML.pdf"
+    docx_path = r"c:\github\academicuniverse.com\academicuniverse\Academic_Universe_Paper2_v1.0_IEEE_OMML_Final.docx"
+    pdf_path = r"c:\github\academicuniverse.com\academicuniverse\Academic_Universe_Paper2_v1.0_IEEE_OMML_Final.pdf"
     fig1_path = r"c:\github\academicuniverse.com\academicuniverse\docs\figures\Figure1_Architecture_Pipeline.png"
     fig2_path = r"c:\github\academicuniverse.com\academicuniverse\docs\figures\Figure2_Decay_Sensitivity_Curves.png"
 

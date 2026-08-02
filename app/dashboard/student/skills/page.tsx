@@ -53,6 +53,7 @@ export default function StudentSkillsTracker() {
   // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<SkillRecordDTO | null>(null);
+  const [recruiterSkill, setRecruiterSkill] = useState<SkillRecordDTO | null>(null);
 
   const existingSkillIds = useMemo(() => {
     return new Set(profile?.skills?.map((s) => s.skillId.toLowerCase()) || []);
@@ -357,6 +358,12 @@ export default function StudentSkillsTracker() {
           onClose={() => setEditingSkill(null)}
           backendToken={backendToken || ''}
           onSuccess={() => backendToken && refresh(backendToken)}
+        />
+
+        {/* Recruiter Proof Report Modal */}
+        <RecruiterViewModal
+          skill={recruiterSkill}
+          onClose={() => setRecruiterSkill(null)}
         />
       </div>
     </div>

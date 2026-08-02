@@ -38,6 +38,20 @@ export function SkillCard({ skill, onSelect, onEdit, isSelected }: SkillCardProp
     });
   };
 
+  const getVerificationBadge = (status?: string, confidence?: number) => {
+    const conf = Math.round((confidence || 0.5) * 100);
+    switch (status) {
+      case 'VERIFIED':
+        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">✓ VERIFIED ({conf}%)</span>;
+      case 'HIGH_CONFIDENCE':
+        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/40">HIGH CONF ({conf}%)</span>;
+      case 'MEDIUM_CONFIDENCE':
+        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40">MED CONF ({conf}%)</span>;
+      default:
+        return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">PENDING ({conf}%)</span>;
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -52,8 +66,9 @@ export function SkillCard({ skill, onSelect, onEdit, isSelected }: SkillCardProp
       <div className="p-5">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-white font-semibold text-lg truncate">{skill.skillName}</h3>
+              {getVerificationBadge(skill.verificationStatus, skill.confidenceScore)}
               {onEdit && (
                 <button
                   type="button"
@@ -67,11 +82,18 @@ export function SkillCard({ skill, onSelect, onEdit, isSelected }: SkillCardProp
                 </button>
               )}
             </div>
-            <p className="text-slate-400 text-sm mt-0.5">{skill.skillId}</p>
+            <p className="text-slate-400 text-xs mt-0.5 font-medium flex items-center gap-2">
+              <span className="text-emerald-400/90">{skill.skillCategory}</span>
+              {skill.scoringModelVersion && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-500 border border-slate-700 font-mono">
+                  {skill.scoringModelVersion}
+                </span>
+              )}
+            </p>
           </div>
           <span
             className={cn(
-              'px-2.5 py-0.5 rounded-full text-xs font-medium border',
+              'px-2.5 py-0.5 rounded-full text-xs font-medium border ml-2 shrink-0',
               proficiencyColors[skill.proficiencyLevel],
             )}
           >
@@ -79,16 +101,28 @@ export function SkillCard({ skill, onSelect, onEdit, isSelected }: SkillCardProp
           </span>
         </div>
 
-        <div className="flex items-center gap-4 mb-4">
-          <div className="flex-1">
-            <div className="flex justify-between text-sm mb-1">
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <div className="flex justify-between text-xs mb-1">
               <span className="text-slate-400">Proficiency</span>
-              <span className="text-emerald-400 font-medium">{skill.proficiencyScore}%</span>
+              <span className="text-emerald-400 font-semibold">{skill.proficiencyScore}%</span>
             </div>
-            <div className="w-full bg-slate-700 rounded-full h-2">
+            <div className="w-full bg-slate-800 rounded-full h-1.5 border border-slate-700">
               <div
-                className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
                 style={{ width: `${skill.proficiencyScore}%` }}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-slate-400">Confidence</span>
+              <span className="text-cyan-400 font-semibold">{Math.round((skill.confidenceScore || 0.5) * 100)}%</span>
+            </div>
+            <div className="w-full bg-slate-800 rounded-full h-1.5 border border-slate-700">
+              <div
+                className="bg-cyan-500 h-1.5 rounded-full transition-all duration-500"
+                style={{ width: `${Math.round((skill.confidenceScore || 0.5) * 100)}%` }}
               />
             </div>
           </div>
@@ -96,12 +130,12 @@ export function SkillCard({ skill, onSelect, onEdit, isSelected }: SkillCardProp
 
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-4 text-slate-400">
-            <span className="flex items-center gap-1">
-              <Award className="w-4 h-4" />
-              {skill.evidenceCount} evidence
+            <span className="flex items-center gap-1 text-xs">
+              <Award className="w-3.5 h-3.5 text-emerald-400" />
+              {skill.evidenceCount} evidence artifacts
             </span>
-            <span className="flex items-center gap-1">
-              <Calendar className="w-4 h-4" />
+            <span className="flex items-center gap-1 text-xs">
+              <Calendar className="w-3.5 h-3.5 text-cyan-400" />
               {formatDate(skill.firstSeenAt)}
             </span>
           </div>
@@ -110,7 +144,7 @@ export function SkillCard({ skill, onSelect, onEdit, isSelected }: SkillCardProp
               e.stopPropagation();
               setExpanded(!expanded);
             }}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-slate-400 hover:text-white transition-colors p-1"
             aria-label={expanded ? 'Collapse' : 'Expand'}
           >
             {expanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
@@ -118,25 +152,37 @@ export function SkillCard({ skill, onSelect, onEdit, isSelected }: SkillCardProp
         </div>
 
         {expanded && (
-          <div className="mt-4 pt-4 border-t border-slate-700 space-y-3">
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <span className="text-slate-400 block">Category</span>
-                <span className="text-white font-medium">{skill.skillCategory}</span>
+          <div className="mt-4 pt-4 border-t border-slate-800 space-y-3">
+            {skill.recruiterExplanation && (
+              <div className="p-3 rounded-lg bg-slate-950/80 border border-slate-800 text-xs text-slate-300 space-y-1">
+                <span className="text-emerald-400 font-semibold block text-[11px] uppercase tracking-wider">Recruiter Proof Summary</span>
+                <p className="leading-relaxed text-slate-300">{skill.recruiterExplanation}</p>
               </div>
-              <div>
-                <span className="text-slate-400 block">Status</span>
-                <span className="text-white font-medium">{skill.status}</span>
+            )}
+
+            {skill.scoreBreakdown && (
+              <div className="p-3 rounded-lg bg-slate-950/50 border border-slate-800/80 space-y-2">
+                <span className="text-slate-400 font-medium text-[11px] block uppercase tracking-wider">SIE-1.0 Score Breakdown</span>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Volume Contribution:</span>
+                    <span className="text-slate-200 font-mono">{skill.scoreBreakdown.volume} pts</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Recency Weight:</span>
+                    <span className="text-slate-200 font-mono">{skill.scoreBreakdown.recency}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Ownership Ratio:</span>
+                    <span className="text-slate-200 font-mono">{Math.round((skill.scoreBreakdown.ownership || 1) * 100)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Complexity Factor:</span>
+                    <span className="text-slate-200 font-mono">{skill.scoreBreakdown.complexity}x</span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <span className="text-slate-400 block">First Seen</span>
-                <span className="text-white font-medium">{formatDate(skill.firstSeenAt)}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block">Evidence Count</span>
-                <span className="text-white font-medium">{skill.evidenceCount}</span>
-              </div>
-            </div>
+            )}
 
             {skill.explanation && (
               <div className="p-3 rounded-lg bg-slate-800/50 border border-slate-700 space-y-2">

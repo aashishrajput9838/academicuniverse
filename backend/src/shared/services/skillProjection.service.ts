@@ -25,11 +25,15 @@ export class SkillProjectionService {
   private evidenceRepo = new SkillEvidenceRepository();
 
   private readonly SOURCE_WEIGHTS: Record<SkillSource, number> = {
+    [SkillSource.AU_DIC]: 1.0,
     [SkillSource.CERTIFICATE]: 1.0,
     [SkillSource.ACADEMIC]: 0.9,
+    [SkillSource.LEETCODE]: 0.85,
     [SkillSource.RESEARCH]: 0.85,
+    [SkillSource.RESEARCH_PAPER]: 0.85,
     [SkillSource.PROJECT]: 0.8,
     [SkillSource.GITHUB]: 0.7,
+    [SkillSource.RESUME]: 0.6,
     [SkillSource.MANUAL]: 0.95,
     [SkillSource.AI_INFERENCE]: 0.6,
   };

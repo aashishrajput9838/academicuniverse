@@ -25,8 +25,22 @@ export type SkillRecordDTO = {
   aliases: string[];
   skillCategory: SkillCategory;
   skillSubcategory?: string;
+  scoringModelVersion?: string;
   proficiencyLevel: ProficiencyLevel;
   proficiencyScore: number;
+  confidenceScore?: number;
+  verificationStatus?: 'VERIFIED' | 'HIGH_CONFIDENCE' | 'MEDIUM_CONFIDENCE' | 'LOW_CONFIDENCE' | 'PENDING_EVIDENCE';
+  scoreBreakdown?: {
+    volume: number;
+    recency: number;
+    ownership: number;
+    complexity: number;
+    dominance: number;
+  };
+  recruiterExplanation?: string;
+  evidenceSources?: string[];
+  timelineData?: Array<{ year: number; evidenceCount: number; proficiencyScore: number }>;
+  relatedSkillIds?: string[];
   evidenceCount: number;
   firstSeenAt: string;
   lastVerifiedAt: string;

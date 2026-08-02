@@ -7,9 +7,23 @@ export interface SkillRecordDTO {
   aliases: string[];
   skillCategory: SkillCategory;
   skillSubcategory?: string;
+  scoringModelVersion?: string;
   proficiencyLevel: ProficiencyLevel;
   proficiencyScore: number;
+  confidenceScore?: number;
+  verificationStatus?: string;
+  scoreBreakdown?: {
+    volume: number;
+    recency: number;
+    ownership: number;
+    complexity: number;
+    dominance: number;
+  };
+  recruiterExplanation?: string;
   evidenceCount: number;
+  evidenceSources?: string[];
+  timelineData?: Array<{ year: number; evidenceCount: number; proficiencyScore: number }>;
+  relatedSkillIds?: string[];
   firstSeenAt: Date;
   lastVerifiedAt: Date;
   status: string;

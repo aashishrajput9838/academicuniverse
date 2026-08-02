@@ -1,5 +1,8 @@
 import axios from 'axios';
 import { User } from '../models';
+import { SkillRecord } from '../models/SkillRecord';
+import { SkillEvidence } from '../models/SkillEvidence';
+import { SkillStatus } from '../shared/enums/skills.enum';
 import { Logger } from '../utils/logger';
 import getGithubOAuthService from './githubOAuthService';
 import { eventBus } from '../events/EventBus';
@@ -156,6 +159,93 @@ export class AnalyticsService {
         languageCount: Object.keys(languages).length,
       });
 
+      // -------------------------------------------------------------
+      // Skill Intelligence Engine Integration (SIE-1.0)
+      // -------------------------------------------------------------
+      const evidenceLayer = (await import('./evidenceNormalizationLayer')).default;
+      const skillsEngine = (await import('./skillsIntelligenceEngine')).default;
+      const skillGraphService = (await import('./skillGraphService')).default;
+
+      const normalizedItems = evidenceLayer.normalizeGithubRepositories(nonForkRepos);
+      const groupedEvidence: Record<string, typeof normalizedItems> = {};
+
+      for (const item of normalizedItems) {
+        if (!groupedEvidence[item.skillId]) {
+          groupedEvidence[item.skillId] = [];
+        }
+        groupedEvidence[item.skillId].push(item);
+      }
+
+      let skillsCreatedCount = 0;
+
+      for (const [skillId, evidenceGroup] of Object.entries(groupedEvidence)) {
+        if (!evidenceGroup || evidenceGroup.length === 0) continue;
+
+        const skillName = evidenceGroup[0].skillName;
+        const category = evidenceGroup[0].category;
+
+        // 1. Evaluate with Scientific Engine
+        const evaluation = skillsEngine.evaluateSkill(skillId, skillName, category, evidenceGroup);
+        const relatedSkills = skillGraphService.getRelatedSkills(skillName);
+        const relatedSkillIds = relatedSkills.map((s) => s.skillId);
+
+        // 2. Persist Immutable SkillEvidence Documents
+        for (const item of evidenceGroup) {
+          await SkillEvidence.findOneAndUpdate(
+            {
+              organizationId,
+              personId: toObjectId(personId),
+              skillId,
+              sourceType: item.source,
+              repositoryId: item.sourceId,
+            },
+            {
+              $set: {
+                skillName,
+                primarySource: item.source,
+                sourceType: item.source,
+                payload: item.rawPayload,
+                confidence: evaluation.confidenceScore,
+                extractedBy: 'SIE-1.0',
+                effectiveFrom: item.timestamp,
+                repositoryName: item.rawPayload?.repoName,
+                bytesOfCode: item.volumeMetric * 1024,
+              },
+            },
+            { upsert: true, new: true }
+          );
+        }
+
+        // 3. Persist Research-Grade SkillRecord
+        await SkillRecord.findOneAndUpdate(
+          { organizationId, personId: toObjectId(personId), skillId },
+          {
+            $set: {
+              skillName,
+              aliases: [skillId],
+              skillCategory: category,
+              scoringModelVersion: evaluation.scoringModelVersion,
+              proficiencyLevel: evaluation.proficiencyLevel,
+              proficiencyScore: evaluation.proficiencyScore,
+              confidenceScore: evaluation.confidenceScore,
+              verificationStatus: evaluation.verificationStatus,
+              scoreBreakdown: evaluation.scoreBreakdown,
+              recruiterExplanation: evaluation.recruiterExplanation,
+              evidenceCount: evaluation.evidenceCount,
+              evidenceSources: evaluation.evidenceSources,
+              timelineData: evaluation.timelineData,
+              relatedSkillIds,
+              firstSeenAt: evaluation.firstSeenAt,
+              lastVerifiedAt: evaluation.lastVerifiedAt,
+              status: SkillStatus.ACTIVE,
+            },
+          },
+          { upsert: true, new: true }
+        );
+
+        skillsCreatedCount++;
+      }
+
       const languagesExtracted = Object.keys(languages).length;
 
       await eventBus.publish(UaipEvent.GithubUpdated, {
@@ -171,12 +261,12 @@ export class AnalyticsService {
         contributions,
       });
 
-      logger.info(`GithubUpdated event published for user: ${firebaseUid}`);
+      logger.info(`GithubUpdated event & SIE-1.0 skills processed for user: ${firebaseUid}`);
 
       return {
         repositoriesFetched: nonForkRepos.length,
         languagesExtracted,
-        skillsCreated: languagesExtracted,
+        skillsCreated: skillsCreatedCount,
         projectionsRebuilt: 1,
       };
     } catch (error: any) {

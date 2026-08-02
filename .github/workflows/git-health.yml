@@ -1,0 +1,47 @@
+name: Git Infrastructure Health & Integrity Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  git-health-audit:
+    name: Audit & Verify Dual Repository Infrastructure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PowerShell Engine
+        uses: powershell/script-method@v1
+        continue-on-error: true
+
+      - name: Verify Documentation Presence
+        run: |
+          echo "Checking workflow documentation..."
+          test -f docs/git-workflow.md || (echo "Missing docs/git-workflow.md" && exit 1)
+          test -f docs/git-audit-report.md || (echo "Missing docs/git-audit-report.md" && exit 1)
+          test -f docs/git-aliases.md || (echo "Missing docs/git-aliases.md" && exit 1)
+          test -f docs/disaster-recovery.md || (echo "Missing docs/disaster-recovery.md" && exit 1)
+          echo "Documentation verification passed."
+
+      - name: Execute Mirror Integrity Verification (pwsh)
+        shell: pwsh
+        run: |
+          ./scripts/check-mirror-integrity.ps1 -Branch main
+
+      - name: Execute Git Health Diagnostic Audit (pwsh)
+        shell: pwsh
+        run: |
+          ./scripts/git-health.ps1 -Branch main
+
+      - name: Execute Git Doctor Infrastructure Scan (pwsh)
+        shell: pwsh
+        run: |
+          ./scripts/git-doctor.ps1 -Branch main -AsJson

@@ -1,0 +1,20 @@
+name: Scheduled Daily Dual Mirror Parity Check
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Run daily at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  verify-mirror-parity:
+    name: Verify Commit Hash Parity Across Primary & Mirror
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Execute Dual Remote Mirror Integrity Scan
+        shell: pwsh
+        run: |
+          ./scripts/check-mirror-integrity.ps1 -Branch main

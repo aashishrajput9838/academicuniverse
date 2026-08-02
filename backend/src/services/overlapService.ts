@@ -1,3 +1,4 @@
+
 import { Logger } from '../utils/logger';
 import { NotFoundError, ValidationError } from '../utils/errors';
 import { EzoneAcademicProfile } from '../models/EzoneAcademicProfile';
@@ -108,9 +109,9 @@ export class OverlapService {
         isActive: { $ne: false },
         _id: { $ne: currentUser._id }
       })
-      .select('_id name email systemId department')
-      .lean()
-      .exec();
+        .select('_id name email systemId department')
+        .lean()
+        .exec();
 
       let profilesQuery: any = { organizationId };
 

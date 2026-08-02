@@ -19,6 +19,41 @@ export const STANDARD_TIME_SLOTS = [
   { index: 8, start: "15:50", end: "16:40", period: 9 }
 ];
 
+/**
+ * Helper: Convert "HH:MM" or "HH:MM:SS" string to minutes from midnight
+ */
+
+function parseTimeToMinutes(timeStr: string): number | null {
+  if (!timeStr) return null;
+  const clean = timeStr.trim();
+  const parts = clean.split(':');
+  if (parts.length < 2) return null;
+  const hours = parseInt(parts[0], 10);
+  const minutes = parseInt(parts[1], 10);
+  if (isNaN(hours) || isNaN(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
+/**
+ * Helper: Parse "09:00:00 - 09:50:00" or "09:00 - 09:50" time range into minute intervals
+ */
+function parseTimeRangeToMinutes(timeRangeStr: string): { start: number; end: number } | null {
+  if (!timeRangeStr) return null;
+  const parts = timeRangeStr.split('-');
+  if (parts.length !== 2) return null;
+  const start = parseTimeToMinutes(parts[0]);
+  const end = parseTimeToMinutes(parts[1]);
+  if (start === null || end === null || start >= end) return null;
+  return { start, end };
+}
+
+/**
+ * Helper: Check if two time intervals [startA, endA] and [startB, endB] overlap
+ */
+function doIntervalsOverlap(startA: number, endA: number, startB: number, endB: number): boolean {
+  return Math.max(startA, startB) < Math.min(endA, endB);
+}
+
 export interface StudentSearchResult {
   id: string;
   userId: string;
@@ -68,7 +103,6 @@ export class OverlapService {
       const organizationId = currentUser.organizationId;
       const cleanQuery = (query || '').trim();
 
-      // Find candidate users in the tenant (active only, excluding self)
       const tenantUsers = await User.find({
         organizationId,
         isActive: { $ne: false },
@@ -78,7 +112,6 @@ export class OverlapService {
       .lean()
       .exec();
 
-      // Find matching EzoneAcademicProfiles for this tenant
       let profilesQuery: any = { organizationId };
 
       if (cleanQuery) {
@@ -99,7 +132,7 @@ export class OverlapService {
 
       for (const p of profiles) {
         if (p.userId && p.userId.toString() === currentUser._id.toString()) {
-          continue; // Exclude self
+          continue;
         }
 
         const hasTimetable = Array.isArray(p.timetable) && p.timetable.length > 0;
@@ -188,7 +221,7 @@ export class OverlapService {
   /**
    * N-Way Scalable Overlap Engine.
    * Calculates common free slots for current user + selected studentIds.
-   * Strictly enforces that all participants must have synchronized timetables (syncStatus == SYNCED).
+   * Strictly enforces mathematical interval overlap matching.
    */
   async calculateStudentOverlap(targetStudentIds: string[], currentFirebaseUid: string): Promise<StudentOverlapResponse> {
     try {
@@ -196,47 +229,35 @@ export class OverlapService {
         throw new ValidationError('At least one target student must be selected');
       }
 
-      // 1. Resolve logged-in student
       const currentUser = await User.findOne({ firebaseUid: currentFirebaseUid }).exec();
       if (!currentUser) {
         throw new NotFoundError('Authenticated user not found');
       }
 
       const organizationId = currentUser.organizationId;
-      logger.info(`[OVERLAP-TRACE-1] Logged-in Student ID: ${currentUser._id.toString()} | Name: ${currentUser.name}`);
-      logger.info(`[OVERLAP-TRACE-2] Selected Student ID(s): ${JSON.stringify(targetStudentIds)}`);
 
-      // 3. MongoDB query for current user profile
-      const currentUserMongoQuery = { organizationId, userId: currentUser._id };
-      logger.info(`[OVERLAP-TRACE-3A] MongoDB Query (Current User): ${JSON.stringify(currentUserMongoQuery)}`);
-      
-      const currentProfile = await EzoneAcademicProfile.findOne(currentUserMongoQuery).exec();
+      const currentProfile = await EzoneAcademicProfile.findOne({ organizationId, userId: currentUser._id }).exec();
 
       if (!currentProfile || !Array.isArray(currentProfile.timetable) || currentProfile.timetable.length === 0) {
         throw new ValidationError(`Your schedule is not synced. Please sync your schedule via College Profile Sync first.`);
       }
 
-      // 3B. MongoDB query for selected target student profiles
       const objectIds = targetStudentIds
         .filter(id => mongoose.Types.ObjectId.isValid(id))
         .map(id => new mongoose.Types.ObjectId(id));
 
-      const targetProfilesQuery = {
+      const targetProfiles = await EzoneAcademicProfile.find({
         organizationId,
         $or: [
           { _id: { $in: objectIds } },
           { userId: { $in: objectIds } }
         ]
-      };
-      logger.info(`[OVERLAP-TRACE-3B] MongoDB Query (Target Students): ${JSON.stringify(targetProfilesQuery)}`);
-
-      const targetProfiles = await EzoneAcademicProfile.find(targetProfilesQuery).exec();
+      }).exec();
 
       if (targetProfiles.length === 0) {
         throw new NotFoundError('Selected student profiles were not found in your organization');
       }
 
-      // 4. Validate that ALL participants have valid synchronized timetables (reject un-synced users)
       const allProfiles = [currentProfile, ...targetProfiles];
 
       for (const profile of allProfiles) {
@@ -246,28 +267,16 @@ export class OverlapService {
         }
       }
 
-      // Resolve clean participant names (no "N/A")
       const participantNames = allProfiles.map(p => {
         if (p.studentName && p.studentName !== 'N/A') return p.studentName;
         return 'Student';
       });
 
-      logger.info(`[OVERLAP-TRACE-4] Resolved Participants (${allProfiles.length}): ${JSON.stringify(participantNames)}`);
-
-      // Log exact timetable documents for each participant
-      allProfiles.forEach((p, idx) => {
-        logger.info(`[OVERLAP-TRACE-4-TIMETABLE] Participant ${idx + 1} (${participantNames[idx]}): ${p.timetable.length} classes loaded`);
-      });
-
-      // 5. Parsed busy intervals & 6. Free intervals computed per participant
       const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       const participantFreeSlots: Record<string, number[]>[] = allProfiles.map((profile, idx) => {
-        const freeSlots = this.computeWeeklyFreeSlotsFromEzoneTimetable(profile.timetable);
-        logger.info(`[OVERLAP-TRACE-5/6] Participant ${idx + 1} (${participantNames[idx]}) Free Slots: ${JSON.stringify(freeSlots)}`);
-        return freeSlots;
+        return this.computeWeeklyFreeSlotsFromEzoneTimetable(profile.timetable);
       });
 
-      // 7. Compute N-way intersection of free slots for each day
       const commonFreeSlotsPerDay: Record<string, number[]> = {};
 
       for (const day of days) {
@@ -277,9 +286,7 @@ export class OverlapService {
           commonFreeSlotsPerDay[day] = intersection.sort((a, b) => a - b);
         }
       }
-      logger.info(`[OVERLAP-TRACE-7] Interval Intersection Output: ${JSON.stringify(commonFreeSlotsPerDay)}`);
 
-      // 8. Build continuous recommendation slots with AI Smart Ranking Score (0 - 100)
       const recommendations: RecommendationSlot[] = [];
 
       for (const day of days) {
@@ -294,8 +301,6 @@ export class OverlapService {
           const durationMinutes = block.length * 50;
 
           const { score, reason } = this.calculateSmartMeetingScore(day, block, durationMinutes);
-
-          logger.info(`[OVERLAP-TRACE-8] AI Scoring Input: Day=${day}, Slots=${JSON.stringify(block)}, Duration=${durationMinutes}m -> Score=${score} ("${reason}")`);
 
           recommendations.push({
             day,
@@ -315,16 +320,13 @@ export class OverlapService {
       const bestRecommendation = recommendations.length > 0 ? recommendations[0] : null;
       const otherRecommendations = recommendations.length > 1 ? recommendations.slice(1) : [];
 
-      const finalPayload: StudentOverlapResponse = {
+      return {
         bestRecommendation,
         otherRecommendations,
         totalParticipants: allProfiles.length,
         participantNames,
         message: recommendations.length === 0 ? 'No common free slot exists between selected students.' : undefined
       };
-
-      logger.info(`[OVERLAP-TRACE-9] Final Recommendation Payload Returned: ${JSON.stringify(finalPayload)}`);
-      return finalPayload;
 
     } catch (error) {
       logger.error('Error calculating student overlap:', error);
@@ -334,6 +336,7 @@ export class OverlapService {
 
   /**
    * Helper: Calculates free slot indices for standard periods based on E-Zone timetable
+   * Uses mathematical interval overlap checking [startA, endA] vs [startB, endB]
    */
   private computeWeeklyFreeSlotsFromEzoneTimetable(timetable: any[]): Record<string, number[]> {
     const weeklyFreeSlots: Record<string, number[]> = {};
@@ -351,9 +354,19 @@ export class OverlapService {
       const freeIndices: number[] = [];
 
       STANDARD_TIME_SLOTS.forEach(stdSlot => {
+        const slotStartMin = parseTimeToMinutes(stdSlot.start);
+        const slotEndMin = parseTimeToMinutes(stdSlot.end);
+
+        if (slotStartMin === null || slotEndMin === null) return;
+
         const isBusy = dayClasses.some(cls => {
-          const timeStr = cls.time || '';
-          return timeStr.includes(stdSlot.start);
+          const classTime = parseTimeRangeToMinutes(cls.time);
+          if (!classTime) {
+            // Fallback string matching if time cannot be parsed
+            return (cls.time || '').includes(stdSlot.start);
+          }
+          // Mathematical interval intersection check
+          return doIntervalsOverlap(slotStartMin, slotEndMin, classTime.start, classTime.end);
         });
 
         if (!isBusy) {

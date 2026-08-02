@@ -62,10 +62,18 @@ export class EzoneController {
      */
     getProfile = async (req: Request, res: Response): Promise<void> => {
         try {
-            const { userId, organizationId } = (req as any).user;
+            const authHeader = req.headers.authorization;
+            const user = (req as any).user;
+            const { userId, organizationId, email } = user || {};
+
+            logger.info(`[TRACE-GET-PROFILE] Authorization Header: ${authHeader ? 'RECEIVED (Bearer Token)' : 'NONE'}`);
+            logger.info(`[TRACE-GET-PROFILE] Authenticated req.user: ${JSON.stringify(user)}`);
+            logger.info(`[TRACE-GET-PROFILE] Target userId: ${userId} | organizationId: ${organizationId} | email: ${email}`);
+
             const profile = await this.ezoneService.getProfile(userId, organizationId);
 
             if (!profile) {
+                logger.warn(`[TRACE-GET-PROFILE] No profile found for userId: ${userId}`);
                 res.status(404).json({ 
                     success: false, 
                     message: 'Connect your Ezone account to load academic data.' 
@@ -73,6 +81,7 @@ export class EzoneController {
                 return;
             }
 
+            logger.info(`[TRACE-GET-PROFILE] Successfully retrieved profile for userId: ${userId} | Student Name: ${profile.studentName}`);
             res.status(200).json({ success: true, data: profile });
         } catch (error: any) {
             logger.error('Controller error in getProfile:', error);

@@ -42,33 +42,26 @@ export const authenticateUser = async (
       try {
         const firebaseDecoded = await firebaseAuth.verifyIdToken(token);
         const { uid, email } = firebaseDecoded;
-        const { default: User } = await import('../../models/User');
-        const user = await User.findOne({
-          $or: [{ firebaseUid: uid }, { email: email?.toLowerCase() }]
+        const cleanEmail = email ? email.trim().toLowerCase() : '';
+
+        const { UserService } = await import('../../services/userService');
+        const userDto = await UserService.findOrCreateCanonicalUser({
+          provider: 'google',
+          providerUserId: uid,
+          email: cleanEmail || `${uid}@sharda.ac.in`,
+          emailVerified: Boolean(firebaseDecoded.email_verified),
+          rawProfile: firebaseDecoded,
         });
 
-        if (user) {
-          decoded = {
-            userId: user._id.toString(),
-            email: user.email,
-            organizationId: user.organizationId.toString(),
-            roleId: (user.roleId as any)?.toString() || 'STUDENT',
-            permissions: [],
-            isSuperAdmin: false,
-            name: user.name,
-          };
-        } else {
-          const { default: Organization } = await import('../../models/Organization');
-          const defaultOrg = await Organization.findOne() || { _id: '66a1b2c3d4e5f67890123456' };
-          decoded = {
-            userId: uid,
-            email: email || 'user@sharda.ac.in',
-            organizationId: (defaultOrg as any)._id?.toString() || 'default-org-id',
-            roleId: 'STUDENT',
-            permissions: [],
-            isSuperAdmin: false,
-          };
-        }
+        decoded = {
+          userId: userDto._id,
+          email: userDto.email,
+          organizationId: userDto.organizationId,
+          roleId: userDto.roleId,
+          permissions: userDto.permissions,
+          isSuperAdmin: userDto.isSuperAdmin,
+          name: userDto.name,
+        };
       } catch (fbErr) {
         throw jwtErr;
       }

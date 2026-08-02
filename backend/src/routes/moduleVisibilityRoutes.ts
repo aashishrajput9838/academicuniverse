@@ -7,16 +7,17 @@ import {
   toggleModuleController,
   registerModuleController,
 } from '../controllers/moduleVisibilityController';
-import { authenticateUser } from '../middleware/auth';
-import { authorize } from '../middleware/auth';
+import { authenticateUser, authorize } from '../middleware/auth';
 
 const router = Router();
 
 router.use(authenticateUser);
 
-router.get('/', authorize('MANAGE_MODULES'), getAllModulesController);
-router.get('/:key', authorize('MANAGE_MODULES'), getModuleController);
+// Read endpoints accessible to all authenticated users
+router.get('/', getAllModulesController);
+router.get('/:key', getModuleController);
 
+// Administrative mutation endpoints require MANAGE_MODULES permission
 router.post('/register', authorize('MANAGE_MODULES'), registerModuleController);
 router.post('/batch', authorize('MANAGE_MODULES'), batchUpdateModulesController);
 router.patch('/:key', authorize('MANAGE_MODULES'), updateModuleController);

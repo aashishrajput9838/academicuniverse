@@ -389,8 +389,7 @@ export class EzoneScraper {
                     await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
                     await page.waitForTimeout(3000);
 
-                    await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', `Extracting ${pageInfo.key} data...`, { category: 'EXTRACTION', actionType: 'page.evaluate', progress: 60 }, firebaseUid);
-                    let pageData = await this.extractPageData(page);
+                    let pageData: any = {};
                     
                     // Special handling for attendance page: extract per-course attendance cards
                     if (pageInfo.key === 'attendance') {

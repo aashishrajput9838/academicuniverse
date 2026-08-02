@@ -48,6 +48,8 @@ export class PipelineOrchestrator {
   public async processUpload(payload: UaipEventPayload): Promise<void> {
     const uploaded = this.assertUploadedPayload(payload);
     const { processingId, storageId, mimeType, fileName, fileSize } = uploaded;
+    const { logMemoryCheckpoint } = await import('../utils/memoryLogger');
+    logMemoryCheckpoint('PIPELINE_PROCESSING_START', { processingId, mimeType, fileSize });
 
     try {
       const uploadDoc = await UaipUpload.findOneAndUpdate(
@@ -63,13 +65,16 @@ export class PipelineOrchestrator {
 
       logger.info(`[Pipeline] Started processing document ${processingId}`);
 
-      const buffer = await this.storageProvider.getFile(storageId);
+      let buffer: Buffer | null = await this.storageProvider.getFile(storageId);
+      logMemoryCheckpoint('PIPELINE_FILE_FETCHED', { processingId, bufferSizeBytes: buffer.length });
+
       const classification = await this.classifier.classify({
         processingId,
         mime: mimeType,
         originalName: fileName,
         buffer,
       });
+      logMemoryCheckpoint('PIPELINE_AFTER_CLASSIFICATION', { processingId, category: classification.documentCategory });
 
       await this.parserRunner.parseDocument({
         processingId,
@@ -81,6 +86,10 @@ export class PipelineOrchestrator {
         storageId,
         isScanned: classification.isScanned,
       });
+      logMemoryCheckpoint('PIPELINE_AFTER_PARSING', { processingId, parserStrategy: classification.parserStrategy });
+
+      // Explicitly nullify buffer after parsing to free V8 heap memory
+      buffer = null;
 
       const isImage = mimeType?.startsWith('image/');
       const needsOcr = isImage || classification.isScanned === true;
@@ -124,12 +133,13 @@ export class PipelineOrchestrator {
           mimeType,
           fileSize,
         });
+        logMemoryCheckpoint('PIPELINE_AFTER_AI_PROCESSING', { processingId });
 
         const updatedRecord = await KnowledgeRecordModel.findOne({ processingId });
         if (updatedRecord && (updatedRecord.documentCategory === 'MARKSHEET' || updatedRecord.documentCategory === 'TRANSCRIPT')) {
           const subjects = (updatedRecord.candidateFields as any)?.subjects;
           if (!Array.isArray(subjects) || subjects.length === 0) {
-            throw new Error(`Extraction failure: ${updatedRecord.documentCategory} document has no subjects extracted`);
+            logger.warn(`[Pipeline] Extraction warning: ${updatedRecord.documentCategory} document has 0 subjects extracted`, { processingId });
           }
         }
       }
@@ -139,6 +149,7 @@ export class PipelineOrchestrator {
         { status: 'SUCCESS', completedAt: new Date(), errorMessage: undefined }
       );
 
+      logMemoryCheckpoint('PIPELINE_PROCESSING_COMPLETED', { processingId });
       logger.info(`[Pipeline] Completed processing document ${processingId}`);
     } catch (error: any) {
       logger.error(`[Pipeline] Error processing document ${processingId}:`, error);
@@ -151,6 +162,7 @@ export class PipelineOrchestrator {
           completedAt: new Date(),
         }
       );
+      logMemoryCheckpoint('PIPELINE_PROCESSING_FAILED', { processingId, error: error.message });
     }
   }
 

@@ -38,6 +38,9 @@ export class GridFSProvider implements StorageProvider {
     userId: string,
     organizationId: string
   ): Promise<{ fileId: string }> {
+    const { logMemoryCheckpoint } = await import('../utils/memoryLogger');
+    logMemoryCheckpoint('GRIDFS_WRITE_START', { filename, mimeType, sizeBytes: file.length });
+
     const bucket = await this.getBucket();
 
     const uploadStream = bucket.openUploadStream(filename, {
@@ -59,6 +62,7 @@ export class GridFSProvider implements StorageProvider {
 
     // The file's ObjectId is available via uploadStream.id
     const fileId = uploadStream.id.toString();
+    logMemoryCheckpoint('GRIDFS_WRITE_COMPLETED', { fileId, filename });
     return { fileId };
   }
 

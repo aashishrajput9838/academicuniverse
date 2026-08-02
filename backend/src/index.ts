@@ -257,6 +257,9 @@ const startServer = async () => {
           knowledgeQueueService.start();
           (global as any).knowledgeQueueService = knowledgeQueueService;
         }
+
+        const { logMemoryCheckpoint } = await import('./utils/memoryLogger');
+        logMemoryCheckpoint('SERVER_STARTUP_COMPLETED', { port: PORT, env: process.env.NODE_ENV });
     } catch (error) {
         logger.error('Server startup failed', { error });
     }

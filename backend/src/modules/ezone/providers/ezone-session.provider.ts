@@ -35,6 +35,9 @@ export class EzoneSessionProvider {
      * Step 1: Trigger OTP by submitting the system ID
      */
     async triggerOtp(systemId: string, userId: string, organizationId: string, firebaseUid?: string): Promise<string> {
+        const { logMemoryCheckpoint } = await import('../../../utils/memoryLogger');
+        logMemoryCheckpoint('PLAYWRIGHT_LAUNCH_BEFORE', { systemId, activeSessionsCount: this.sessions.size });
+
         let browser: Browser | null = null;
         const sessionId = uuidv4();
         
@@ -55,7 +58,7 @@ export class EzoneSessionProvider {
                 ]
             });
 
-            await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'action', 'Creating browser context and page...', { category: 'AUTHENTICATION', actionType: 'browser.newContext', progress: 10 }, firebaseUid);
+            logMemoryCheckpoint('PLAYWRIGHT_LAUNCH_AFTER', { sessionId, activeSessionsCount: this.sessions.size + 1 });
 
             const context = await browser.newContext({
                 viewport: { width: 1280, height: 800 },

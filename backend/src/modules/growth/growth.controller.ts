@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { sendResponse } from '../../utils/response';
 import { GrowthProjectionService } from './growthProjection.service';
 import { UaipFacade } from '../../shared/application/UaipFacade';
+import logger from '../../utils/logger';
 
 export class GrowthController {
   constructor(
@@ -30,6 +31,14 @@ export class GrowthController {
   };
 
   public handleUpload = async (req: Request, res: Response, next: NextFunction) => {
+    const startTime = Date.now();
+    const { logMemoryCheckpoint, calculateMemoryDelta } = await import('../../utils/memoryLogger');
+    const startMemory = logMemoryCheckpoint('UPLOAD_REQUEST_RECEIVED', {
+      originalName: req.file?.originalname,
+      mimeType: req.file?.mimetype,
+      sizeBytes: req.file?.size,
+    });
+
     const file = req.file;
     try {
       if (!file) {
@@ -47,6 +56,10 @@ export class GrowthController {
         return res.status(403).json({ success: false, message: 'Organization context is required' });
       }
 
+      logMemoryCheckpoint('UPLOAD_MULTER_FILE_BUFFERED', {
+        bufferSizeBytes: file.buffer?.length || 0,
+      });
+
       // Delegate entirely to the UAIP facade — no pipeline internals visible here.
       const { processingId } = await this.uaip.submitDocument({
         buffer: file.buffer,
@@ -57,6 +70,14 @@ export class GrowthController {
         organizationId,
       });
 
+      const endMemory = logMemoryCheckpoint('UPLOAD_REQUEST_COMPLETED', {
+        processingId,
+        durationMs: Date.now() - startTime,
+      });
+
+      const delta = calculateMemoryDelta(startMemory, endMemory);
+      logger.info(`[UPLOAD-MEMORY-DELTA] POST /api/growth/documents`, { processingId, delta });
+
       return sendResponse(res, 202, { processingId }, 'Document upload accepted');
     } catch (err) {
       next(err);
@@ -64,6 +85,7 @@ export class GrowthController {
       if (file && file.buffer) {
         (file as any).buffer = null;
       }
+      logMemoryCheckpoint('UPLOAD_BUFFER_RELEASED');
     }
   };
 

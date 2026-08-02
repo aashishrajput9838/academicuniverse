@@ -7,10 +7,6 @@ import { detectRoleFromEmail } from './roleDetectionService';
 import { AuthPayload } from '../auth/provider';
 import { Types } from 'mongoose';
 
-/**
- * Canonical user data transferred out of the service layer.
- * All fields are primitives – no Mongoose documents or "any" casts.
- */
 export interface CanonicalUserDTO {
   _id: string;
   name: string;
@@ -24,63 +20,84 @@ export interface CanonicalUserDTO {
   isSectionRep: boolean;
 }
 
-/**
- * Service responsible for fetching or creating a canonical user based on the AuthPayload.
- * It ensures that organization and role are populated and returns a fully typed DTO.
- */
 export class UserService {
   /**
-   * Find an existing user linked to the AuthPayload or create a new one.
-   * Returns a typed DTO without any `any` casts.
+   * Find an existing user linked to the AuthPayload or create/update canonical user.
+   * Eliminates E11000 duplicate key errors by performing case-insensitive & provider ID queries and catching conflicts.
    */
   static async findOrCreateCanonicalUser(authPayload: AuthPayload): Promise<CanonicalUserDTO> {
-    // Attempt to find user by email (unique index assumed).
-    let user = await User.findOne({ email: authPayload.email })
+    const cleanEmail = authPayload.email ? authPayload.email.trim().toLowerCase() : '';
+    const emailRegex = cleanEmail ? new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') : null;
+
+    // 1. Query user by case-insensitive email OR providerUserId
+    const queryConditions: any[] = [];
+    if (emailRegex) queryConditions.push({ email: emailRegex });
+    if (authPayload.providerUserId) queryConditions.push({ firebaseUid: authPayload.providerUserId });
+
+    let user = await User.findOne({ $or: queryConditions })
       .populate([{ path: 'organizationId', select: 'name' }, { path: 'roleId', select: 'name' }]);
 
-    if (!user) {
-      // ── New user: resolve default organization and role ──
-      const organization = await Organization.findOne({ slug: 'sharda-university' });
+    if (user) {
+      // If user exists but firebaseUid was missing or changed, link it cleanly
+      if (!user.firebaseUid && authPayload.providerUserId) {
+        user.firebaseUid = authPayload.providerUserId;
+        await user.save();
+      }
+    } else {
+      // 2. Resolve default organization & role
+      const organization = await Organization.findOne({
+        $or: [{ slug: 'sharda-university' }, { name: /sharda/i }]
+      }) || await Organization.findOne();
+
       if (!organization) {
-        throw new Error('Default organization not found. Please run the seed script (npm run seed) to initialize the database.');
+        throw new Error('Default organization not found in database. Please seed the database.');
       }
 
-      // Detect role from email domain (e.g. ug.sharda.ac.in → STUDENT, fa.sharda.ac.in → FACULTY)
       let roleName = 'STUDENT';
       try {
-        const roleInfo = detectRoleFromEmail(authPayload.email);
+        const roleInfo = detectRoleFromEmail(cleanEmail);
         roleName = roleInfo.role;
       } catch {
-        // If email doesn't match any domain pattern, default to STUDENT
         roleName = 'STUDENT';
       }
 
-      // Find or fallback to any matching role in the organization
-      let role = await Role.findOne({ name: roleName, organizationId: organization._id });
+      let role = await Role.findOne({ name: roleName, organizationId: organization._id })
+        || await Role.findOne({ name: roleName })
+        || await Role.findOne({ organizationId: organization._id })
+        || await Role.findOne();
+
       if (!role) {
-        role = await Role.findOne({ name: roleName });
-      }
-      if (!role) {
-        // Last resort: find any role in the organization
-        role = await Role.findOne({ organizationId: organization._id });
-      }
-      if (!role) {
-        throw new Error(`No roles found in the database. Please run the seed script (npm run seed).`);
+        throw new Error(`No roles found in database. Please seed the database.`);
       }
 
-      user = new User({
-        name: authPayload.rawProfile?.name || authPayload.email.split('@')[0],
-        email: authPayload.email,
-        firebaseUid: authPayload.providerUserId,
-        organizationId: organization._id,
-        roleId: role._id,
-      });
-      await user.save();
-      // Populate after save to get actual documents.
-      await user.populate([{ path: 'organizationId', select: 'name' }, { path: 'roleId', select: 'name' }]);
+      try {
+        user = new User({
+          name: authPayload.rawProfile?.name || (cleanEmail ? cleanEmail.split('@')[0] : 'Student'),
+          email: cleanEmail,
+          firebaseUid: authPayload.providerUserId,
+          organizationId: organization._id,
+          roleId: role._id,
+          isActive: true
+        });
+        await user.save();
+        await user.populate([{ path: 'organizationId', select: 'name' }, { path: 'roleId', select: 'name' }]);
+      } catch (saveErr: any) {
+        // Fallback for E11000 duplicate key error race conditions
+        if (saveErr.code === 11000 || saveErr.message?.includes('E11000')) {
+          user = await User.findOne({ $or: queryConditions })
+            .populate([{ path: 'organizationId', select: 'name' }, { path: 'roleId', select: 'name' }]);
+
+          if (user && !user.firebaseUid && authPayload.providerUserId) {
+            user.firebaseUid = authPayload.providerUserId;
+            await user.save();
+          }
+        }
+        if (!user) {
+          throw saveErr;
+        }
+      }
     }
 
-    // At this point organizationId and roleId are populated documents.
     const org = (user.organizationId as Types.ObjectId | IOrganization) as IOrganization;
     const role = (user.roleId as Types.ObjectId | IRole) as IRole;
 
@@ -93,13 +110,12 @@ export class UserService {
       name: user.name,
       email: user.email,
       organizationId: (org._id as Types.ObjectId).toString(),
-      organizationName: org.name,
+      organizationName: org.name || 'University',
       roleId: (role._id as Types.ObjectId).toString(),
-      roleName: role.name,
+      roleName: role.name || 'STUDENT',
       permissions,
       isSuperAdmin,
       isSectionRep,
     };
   }
 }
-

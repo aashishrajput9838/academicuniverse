@@ -70,23 +70,27 @@ export default function EzoneSyncPage() {
         setLoading(true);
         setState('verifying');
         try {
-            // Step 1: Verify OTP and establish Ezone session
+            // Step 1: Verify OTP, scrape data, and persist to MongoDB
             const res = await ezoneApi.verifyOtp(systemId, otp, sessionId);
             
             if (res.success) {
-                toast({ title: 'Verified', description: 'Establishing session and syncing data...' });
                 setState('syncing');
                 
-                // Step 2: ONLY AFTER SUCCESSFUL VERIFICATION - Fetch profile data once
-                const profileRes = await ezoneApi.getProfile();
-                
-                if (profileRes.success && profileRes.data) {
-                    setProfile(profileRes.data);
+                // Use profile returned directly by verifyOtp or fetch via getProfile()
+                let profileData = res.data;
+                if (!profileData) {
+                    const profileRes = await ezoneApi.getProfile();
+                    if (profileRes.success && profileRes.data) {
+                        profileData = profileRes.data;
+                    }
+                }
+
+                if (profileData) {
+                    setProfile(profileData);
                     setState('completed');
                     toast({ title: 'Sync Complete', description: 'Your academic profile is now up to date.' });
                 } else {
-                    // Handle case where session established but data fetch failed
-                    throw new Error(profileRes.message || 'Failed to fetch synced profile');
+                    throw new Error('Verification completed, but profile data could not be retrieved.');
                 }
             } else {
                 throw new Error(res.message || 'Verification failed');
@@ -95,7 +99,6 @@ export default function EzoneSyncPage() {
             console.error('Sync Flow Error:', error);
             setState('otp_sent'); // Allow retry
             
-            // Handle 401 cleanly - stop retries and show message
             if (error.status === 401 || error.message?.includes('401')) {
                 toast({ 
                     title: 'Authentication Failed', 

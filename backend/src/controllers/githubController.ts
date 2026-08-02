@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { Logger } from '../utils/logger';
 import { ExternalAPIError, NotFoundError } from '../utils/errors';
 import { User } from '../models';
@@ -6,6 +7,18 @@ import githubService, { ProjectStats } from '../services/githubService';
 import analyticsService from '../services/analyticsService';
 
 const logger = new Logger('githubController');
+
+const findUserByReq = async (reqUser: { userId: string; firebaseUid?: string; email?: string }) => {
+  const firebaseUid = reqUser.firebaseUid || reqUser.userId;
+  const orConditions: any[] = [{ firebaseUid }];
+  if (mongoose.Types.ObjectId.isValid(reqUser.userId)) {
+    orConditions.push({ _id: reqUser.userId });
+  }
+  if (reqUser.email) {
+    orConditions.push({ email: reqUser.email });
+  }
+  return await User.findOne({ $or: orConditions });
+};
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -40,7 +53,8 @@ export const getProjectStats = async (req: AuthenticatedRequest, res: Response) 
     const { userId, email } = req.user;
     logger.info(`Fetching project stats for user: ${email} (User ID: ${userId})`);
 
-    const user = await User.findOne({ _id: userId }).populate('roleId');
+    const user = await findUserByReq(req.user);
+    if (user) await user.populate('roleId');
     userRecord = user;
 
     logger.info(`Attempting to find user by ID: ${userId}`);
@@ -156,7 +170,8 @@ export const refreshProjectStats = async (req: AuthenticatedRequest, res: Respon
     const { userId, email } = req.user;
     logger.info(`Refreshing project stats cache for user: ${email}`);
 
-    const user = await User.findOne({ _id: userId }).populate('roleId');
+    const user = await findUserByReq(req.user);
+    if (user) await user.populate('roleId');
 
     if (!user) {
       return res.status(404).json({
@@ -225,7 +240,8 @@ export const syncGithubData = async (req: AuthenticatedRequest, res: Response) =
     const { userId, email } = req.user;
     logger.info(`Manual GitHub sync requested for user: ${email}`);
 
-    const user = await User.findOne({ _id: userId }).populate('roleId');
+    const user = await findUserByReq(req.user);
+    if (user) await user.populate('roleId');
     if (!user) {
       return res.status(404).json({
         success: false,

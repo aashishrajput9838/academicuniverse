@@ -1,9 +1,19 @@
 import axios from 'axios';
+import mongoose from 'mongoose';
 import { EncryptionUtil } from '../utils/encryption';
 import { User } from '../models';
 import { Logger } from '../utils/logger';
 
 const logger = new Logger('githubOAuthService');
+
+const findUserByFirebaseOrId = async (identifier: string) => {
+  if (!identifier) return null;
+  const orConditions: any[] = [{ firebaseUid: identifier }];
+  if (mongoose.Types.ObjectId.isValid(identifier)) {
+    orConditions.push({ _id: identifier });
+  }
+  return await User.findOne({ $or: orConditions });
+};
 
 export class GithubOAuthService {
   private clientId: string;
@@ -126,7 +136,7 @@ export class GithubOAuthService {
     try {
       const { iv, encryptedData } = EncryptionUtil.encrypt(accessToken);
 
-      const user = await User.findOne({ firebaseUid });
+      const user = await findUserByFirebaseOrId(firebaseUid);
       if (!user) {
         throw new Error('User not found');
       }
@@ -174,7 +184,7 @@ export class GithubOAuthService {
    */
   async getAccessToken(firebaseUid: string): Promise<string> {
     try {
-      const user = await User.findOne({ firebaseUid });
+      const user = await findUserByFirebaseOrId(firebaseUid);
       if (!user || !user.githubAccessToken) {
         throw new Error('GitHub access token not found for user');
       }
@@ -195,7 +205,7 @@ export class GithubOAuthService {
    */
   async removeAccessToken(firebaseUid: string): Promise<void> {
     try {
-      const user = await User.findOne({ firebaseUid });
+      const user = await findUserByFirebaseOrId(firebaseUid);
       if (!user) {
         throw new Error('User not found');
       }
@@ -218,7 +228,7 @@ export class GithubOAuthService {
    */
   async hasGithubOAuthConnection(firebaseUid: string): Promise<boolean> {
     try {
-      const user = await User.findOne({ firebaseUid }).select('githubAccessToken');
+      const user = await findUserByFirebaseOrId(firebaseUid);
       return !!user?.githubAccessToken?.encryptedToken;
     } catch (error: any) {
       logger.error('Error checking GitHub OAuth connection status:', error.message);

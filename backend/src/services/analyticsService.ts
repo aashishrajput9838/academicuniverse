@@ -99,7 +99,12 @@ export class AnalyticsService {
       const repositories = await this.fetchUserRepositories(accessToken);
       const analytics = this.calculateDeveloperStats(repositories);
 
-      const user = await User.findOne({ firebaseUid }).select('organizationId githubUsername name email').lean();
+      const userConditions: any[] = [{ firebaseUid }];
+      if (require('mongoose').Types.ObjectId.isValid(firebaseUid)) {
+        userConditions.push({ _id: firebaseUid });
+      }
+
+      const user = await User.findOne({ $or: userConditions }).select('organizationId githubUsername name email').lean();
       if (!user) {
         throw new Error('User not found');
       }

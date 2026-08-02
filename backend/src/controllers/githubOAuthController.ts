@@ -7,8 +7,21 @@ import analyticsService from '../services/analyticsService';
 import { sendResponse, sendError } from '../utils/response';
 
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+const findUserByFirebaseOrId = async (identifier: string, email?: string) => {
+  if (!identifier) return null;
+  const orConditions: any[] = [{ firebaseUid: identifier }];
+  if (mongoose.Types.ObjectId.isValid(identifier)) {
+    orConditions.push({ _id: identifier });
+  }
+  if (email) {
+    orConditions.push({ email });
+  }
+  return await User.findOne({ $or: orConditions });
+};
 
 // Extend the Express session interface
 declare module 'express-session' {
@@ -50,7 +63,7 @@ export const connectGithub = async (req: AuthenticatedRequest, res: Response) =>
     // Instant Direct Connect Mode (Bypasses local callback url mismatches)
     if (mode === 'direct' || username) {
       const ghUsername = username || req.user.email?.split('@')[0] || 'aashishrajput9838';
-      const user = await User.findOne({ $or: [{ firebaseUid }, { _id: req.user.userId }, { email: req.user.email }] });
+      const user = await findUserByFirebaseOrId(firebaseUid, req.user.email);
       if (user) {
         user.githubUsername = ghUsername;
         const { EncryptionUtil } = await import('../utils/encryption');
@@ -79,7 +92,7 @@ export const connectGithub = async (req: AuthenticatedRequest, res: Response) =>
     } catch (authErr: any) {
       // Auto-fallback if OAuth is unconfigured or encounters configuration error
       const ghUsername = req.user.email?.split('@')[0] || 'aashishrajput9838';
-      const user = await User.findOne({ $or: [{ firebaseUid }, { _id: req.user.userId }, { email: req.user.email }] });
+      const user = await findUserByFirebaseOrId(firebaseUid, req.user.email);
       if (user) {
         user.githubUsername = ghUsername;
         const { EncryptionUtil } = await import('../utils/encryption');
@@ -142,7 +155,7 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
     await githubOAuthService.storeAccessToken(firebaseUid, accessToken);
 
     // Update the GitHub username
-    const user = await User.findOne({ $or: [{ firebaseUid }, { _id: firebaseUid }] });
+    const user = await findUserByFirebaseOrId(firebaseUid);
     if (user) {
       user.githubUsername = githubUsername;
       await user.save();

@@ -340,9 +340,12 @@ export class OverlapService {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
     for (const day of days) {
+      const targetDayLower = day.toLowerCase();
+      const dayPrefix = targetDayLower.substring(0, 3); // "mon", "tue", "wed", "thu", "fri", "sat"
+
       const dayClasses = (timetable || []).filter(item => {
-        const itemDay = item.day || '';
-        return itemDay.toLowerCase() === day.toLowerCase();
+        const itemDay = (item.day || '').trim().toLowerCase();
+        return itemDay.startsWith(dayPrefix) || itemDay.includes(targetDayLower);
       });
 
       const freeIndices: number[] = [];

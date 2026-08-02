@@ -1,23 +1,35 @@
 #!/bin/sh
-# Pre-Push Git Hook for Academic Universe Dual Repository Synchronization
-# Enforces configuration rules and remote availability before allowing git push.
+# Pre-Push Git Hook for Academic Universe Dual Repository Synchronization v2.0
+# Enforces configuration rules, branch identity, and dual push URLs before allowing push.
 
 echo "================================================================="
-echo "       PRE-PUSH DUAL REPOSITORY VALIDATION CHECK                "
+echo "       PRE-PUSH DUAL REPOSITORY VALIDATION CHECK v2.0           "
 echo "================================================================="
 
 PRIMARY_REPO="https://github.com/aashishrajput9838/academicuniverse.git"
 MIRROR_REPO="https://github.com/aashishrajput98381/academicuniverse.git"
 
-# 1. Verify Current Branch
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [ "$CURRENT_BRANCH" != "main" ]; then
-  echo "[REJECTED] Pushes are only allowed from the 'main' branch (Current: $CURRENT_BRANCH)"
+# 1. Verify Git Executable
+if ! command -v git >/dev/null 2>&1; then
+  echo "[REJECTED] Git CLI executable not found in PATH."
   exit 1
 fi
 
-# 2. Verify Dual Push URLs
-PUSH_URLS=$(git remote get-url --push --all origin)
+# 2. Verify Detached HEAD State
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+if [ "$CURRENT_BRANCH" = "HEAD" ]; then
+  echo "[REJECTED] Detached HEAD state detected. Pushes must originate from a named branch."
+  exit 1
+fi
+
+# 3. Verify Branch Target is 'main'
+if [ "$CURRENT_BRANCH" != "main" ]; then
+  echo "[REJECTED] Pushes are restricted to the 'main' branch (Current: $CURRENT_BRANCH)"
+  exit 1
+fi
+
+# 4. Verify Dual Push URLs Configuration
+PUSH_URLS=$(git remote get-url --push --all origin 2>/dev/null)
 
 HAS_PRIMARY=false
 HAS_MIRROR=false
@@ -43,7 +55,8 @@ if [ "$HAS_MIRROR" = "false" ]; then
   exit 1
 fi
 
-echo "[SUCCESS] Dual push URLs verified: Primary ($PRIMARY_REPO) & Mirror ($MIRROR_REPO)"
-echo "[SUCCESS] Branch '$CURRENT_BRANCH' verified. Proceeding with push."
+echo "[SUCCESS] Git executable & non-detached HEAD verified."
+echo "[SUCCESS] Target branch '$CURRENT_BRANCH' verified."
+echo "[SUCCESS] Dual push URLs verified: Primary & Mirror."
 echo "================================================================="
 exit 0

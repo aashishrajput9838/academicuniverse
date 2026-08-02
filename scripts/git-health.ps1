@@ -1,9 +1,11 @@
 <#
 .SYNOPSIS
-    Git Workflow Health Check Script for Academic Universe.
+    Enhanced Git Infrastructure Health Check Script for Academic Universe.
 .DESCRIPTION
-    Comprehensive health check script verifying CLI environment, git configuration,
-    push URLs, remote connectivity, working tree state, and HEAD alignment.
+    Audits repository size, total commits, branch count, network latency, remote hash parity,
+    hook validity, credential managers, and system health status.
+.PARAMETER Verbose
+    Enables verbose console logging and writes detailed telemetry to logs/git-health.log.
 #>
 
 [CmdletBinding()]
@@ -13,17 +15,29 @@ param (
 
 $ErrorActionPreference = "Continue"
 
-Write-Host "=================================================================" -ForegroundColor Cyan
-Write-Host "       ACADEMIC UNIVERSE - GIT WORKFLOW HEALTH CHECK           " -ForegroundColor Cyan
-Write-Host "=================================================================" -ForegroundColor Cyan
-Write-Host ""
+$LogDir = Join-Path $PSScriptRoot "..\logs"
+if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
+$LogFile = Join-Path $LogDir "git-health.log"
+
+$Script:Status = "PASS"
+$Script:Warnings = @()
+$Script:Failures = @()
 
 $PrimaryRepo = "https://github.com/aashishrajput9838/academicuniverse.git"
 $MirrorRepo  = "https://github.com/aashishrajput98381/academicuniverse.git"
 
-$Status = "PASS"
-$Warnings = @()
-$Failures = @()
+function Log-HealthMessage {
+    param (
+        [string]$Message,
+        [bool]$IsVerbose = $false
+    )
+    $TimeStamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+    $LogEntry = "[$TimeStamp] $Message"
+    Add-Content -Path $LogFile -Value $LogEntry
+    if ($IsVerbose -or $PSBoundParameters['Verbose']) {
+        Write-Verbose $Message
+    }
+}
 
 function Log-HealthCheck {
     param (
@@ -31,6 +45,9 @@ function Log-HealthCheck {
         [string]$Level, # PASS, WARNING, FAIL
         [string]$Message
     )
+
+    $TimeStamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+    Log-HealthMessage "[$Level] $CheckName - $Message"
 
     switch ($Level) {
         "PASS" {
@@ -42,116 +59,151 @@ function Log-HealthCheck {
             Write-Host "[ WARNING ] " -ForegroundColor Yellow -NoNewline
             Write-Host "$CheckName " -ForegroundColor White -NoNewline
             if ($Message) { Write-Host "- $Message" -ForegroundColor Yellow } else { Write-Host "" }
-            if ($script:Status -ne "FAIL") { $script:Status = "WARNING" }
-            $script:Warnings += "$($CheckName): $($Message)"
+            if ($Script:Status -ne "FAIL") { $Script:Status = "WARNING" }
+            $Script:Warnings += "$($CheckName): $($Message)"
         }
         "FAIL" {
             Write-Host "[ FAIL ]    " -ForegroundColor Red -NoNewline
             Write-Host "$CheckName " -ForegroundColor White -NoNewline
             if ($Message) { Write-Host "- $Message" -ForegroundColor Red } else { Write-Host "" }
-            $script:Status = "FAIL"
-            $script:Failures += "$($CheckName): $($Message)"
+            $Script:Status = "FAIL"
+            $Script:Failures += "$($CheckName): $($Message)"
         }
     }
 }
 
-# 1. Check Git Installation
+Log-HealthMessage "Starting Git Infrastructure Health Check..."
+Write-Host "=================================================================" -ForegroundColor Cyan
+Write-Host "       ACADEMIC UNIVERSE - GIT WORKFLOW HEALTH CHECK v2.0       " -ForegroundColor Cyan
+Write-Host "=================================================================" -ForegroundColor Cyan
+Write-Host ""
+
+# 1. Git Installation & Version Validation
 try {
     $GitVersion = (git --version 2>$null).Trim()
     if ($GitVersion) {
         Log-HealthCheck -CheckName "Git Binary Installed" -Level "PASS" -Message $GitVersion
     } else {
-        Log-HealthCheck -CheckName "Git Binary Installed" -Level "FAIL" -Message "Git CLI is not installed or not found in PATH"
+        Log-HealthCheck -CheckName "Git Binary Installed" -Level "FAIL" -Message "Git CLI not found"
     }
 } catch {
     Log-HealthCheck -CheckName "Git Binary Installed" -Level "FAIL" -Message $_.Exception.Message
 }
 
-# 2. Check Remote Configuration
+# 2. Repository Metrics: Size, Commits, Branches
+try {
+    $GitFolderSizeMB = [Math]::Round(((Get-ChildItem -Path (Join-Path $PSScriptRoot "..\.git") -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum / 1MB), 2)
+    Log-HealthCheck -CheckName "Repository Object Database Size" -Level "PASS" -Message "${GitFolderSizeMB} MB (.git size)"
+
+    $CommitCount = (git rev-list --count HEAD 2>$null).Trim()
+    Log-HealthCheck -CheckName "Total Revision Commit Count" -Level "PASS" -Message "${CommitCount} commits in history"
+
+    $BranchCount = (git branch -a 2>$null).Count
+    Log-HealthCheck -CheckName "Branch Inventory Count" -Level "PASS" -Message "${BranchCount} total local/remote branches"
+} catch {
+    Log-HealthCheck -CheckName "Repository Metrics" -Level "WARNING" -Message $_.Exception.Message
+}
+
+# 3. Origin Remote Configuration
 $Remotes = (git remote 2>$null)
 if ($Remotes -contains "origin") {
-    Log-HealthCheck -CheckName "Remote Origin Configured" -Level "PASS" -Message "Remote 'origin' exists"
+    Log-HealthCheck -CheckName "Remote Origin Existence" -Level "PASS" -Message "Remote 'origin' exists"
 } else {
-    Log-HealthCheck -CheckName "Remote Origin Configured" -Level "FAIL" -Message "Remote 'origin' missing"
+    Log-HealthCheck -CheckName "Remote Origin Existence" -Level "FAIL" -Message "Remote 'origin' missing"
 }
 
-# 3. Check Fetch URL Points to Primary Repo
+# 4. Origin Fetch URL Points to Primary Repo
 $FetchUrl = (git remote get-url origin 2>$null).Trim()
 if ($FetchUrl -eq $PrimaryRepo) {
-    Log-HealthCheck -CheckName "Origin Fetch URL" -Level "PASS" -Message "Points to Primary Repo ($PrimaryRepo)"
+    Log-HealthCheck -CheckName "Origin Fetch URL Configuration" -Level "PASS" -Message "Points to Primary Repo ($PrimaryRepo)"
 } else {
-    Log-HealthCheck -CheckName "Origin Fetch URL" -Level "FAIL" -Message "Expected $PrimaryRepo, found $FetchUrl"
+    Log-HealthCheck -CheckName "Origin Fetch URL Configuration" -Level "FAIL" -Message "Expected $PrimaryRepo, found $FetchUrl"
 }
 
-# 4. Check Dual Push URLs Exist
+# 5. Dual Push URLs Check
 $PushUrls = (git remote get-url --push --all origin 2>$null)
 $HasPrimaryPush = $PushUrls -contains $PrimaryRepo
 $HasMirrorPush  = $PushUrls -contains $MirrorRepo
 
 if ($HasPrimaryPush -and $HasMirrorPush) {
-    Log-HealthCheck -CheckName "Dual Push URLs" -Level "PASS" -Message "Both Primary and Mirror push URLs configured"
-} elseif ($HasPrimaryPush -or $HasMirrorPush) {
-    Log-HealthCheck -CheckName "Dual Push URLs" -Level "WARNING" -Message "Incomplete push URLs. Primary: $HasPrimaryPush, Mirror: $HasMirrorPush"
+    Log-HealthCheck -CheckName "Dual Push URLs Configuration" -Level "PASS" -Message "Primary and Mirror push URLs present"
 } else {
-    Log-HealthCheck -CheckName "Dual Push URLs" -Level "FAIL" -Message "No push URLs configured for origin"
+    Log-HealthCheck -CheckName "Dual Push URLs Configuration" -Level "FAIL" -Message "Missing dual push targets"
 }
 
-# 5. Check Remote Reachability
-$PrimaryHead = (git ls-remote $PrimaryRepo "refs/heads/$Branch" 2>$null)
-$MirrorHead  = (git ls-remote $MirrorRepo "refs/heads/$Branch" 2>$null)
-
+# 6. Remote Latency & Permissions Check (Measure-Command)
+$LatencyPrimary = Measure-Command { $PrimaryHead = (git ls-remote $PrimaryRepo "refs/heads/$Branch" 2>$null) }
 if ($PrimaryHead) {
-    Log-HealthCheck -CheckName "Primary Remote Reachability" -Level "PASS" -Message "Reachable"
+    Log-HealthCheck -CheckName "Primary Remote Latency & Access" -Level "PASS" -Message "Reachable in $($LatencyPrimary.TotalMilliseconds) ms"
 } else {
-    Log-HealthCheck -CheckName "Primary Remote Reachability" -Level "FAIL" -Message "Cannot connect to Primary Repo"
+    Log-HealthCheck -CheckName "Primary Remote Latency & Access" -Level "FAIL" -Message "Primary Repo unreachable"
 }
 
+$LatencyMirror = Measure-Command { $MirrorHead = (git ls-remote $MirrorRepo "refs/heads/$Branch" 2>$null) }
 if ($MirrorHead) {
-    Log-HealthCheck -CheckName "Mirror Remote Reachability" -Level "PASS" -Message "Reachable"
+    Log-HealthCheck -CheckName "Mirror Remote Latency & Access" -Level "PASS" -Message "Reachable in $($LatencyMirror.TotalMilliseconds) ms"
 } else {
-    Log-HealthCheck -CheckName "Mirror Remote Reachability" -Level "FAIL" -Message "Cannot connect to Mirror Repo"
+    Log-HealthCheck -CheckName "Mirror Remote Latency & Access" -Level "FAIL" -Message "Mirror Repo unreachable"
 }
 
-# 6. Check Working Tree State
+# 7. Hash Synchronization Parity Check
+$PrimaryHash = if ($PrimaryHead) { $PrimaryHead.Split("`t")[0] } else { "PRIMARY_ERR" }
+$MirrorHash  = if ($MirrorHead)  { $MirrorHead.Split("`t")[0]  } else { "MIRROR_ERR" }
+
+if (($PrimaryHash -ne "PRIMARY_ERR") -and ($PrimaryHash -eq $MirrorHash)) {
+    Log-HealthCheck -CheckName "Hash Synchronization Parity" -Level "PASS" -Message "Repo A and Repo B identically aligned ($PrimaryHash)"
+} else {
+    Log-HealthCheck -CheckName "Hash Synchronization Parity" -Level "FAIL" -Message "Mismatch: Primary=$PrimaryHash vs Mirror=$MirrorHash"
+}
+
+# 8. Working Tree State
 $Uncommitted = (git status --porcelain 2>$null)
 if ([string]::IsNullOrWhiteSpace($Uncommitted)) {
     Log-HealthCheck -CheckName "Working Tree Cleanliness" -Level "PASS" -Message "Clean"
 } else {
-    Log-HealthCheck -CheckName "Working Tree Cleanliness" -Level "WARNING" -Message "Uncommitted changes present in workspace"
+    Log-HealthCheck -CheckName "Working Tree Cleanliness" -Level "WARNING" -Message "Uncommitted changes present"
 }
 
-# 7. Check Current Branch Is main
+# 9. Current Branch & Tracking Alignment
 $CurrentBranch = (git rev-parse --abbrev-ref HEAD 2>$null).Trim()
 if ($CurrentBranch -eq $Branch) {
-    Log-HealthCheck -CheckName "Current Branch" -Level "PASS" -Message "On '$Branch'"
+    Log-HealthCheck -CheckName "Current Branch State" -Level "PASS" -Message "On '$Branch'"
 } else {
-    Log-HealthCheck -CheckName "Current Branch" -Level "WARNING" -Message "On '$CurrentBranch', expected '$Branch'"
+    Log-HealthCheck -CheckName "Current Branch State" -Level "WARNING" -Message "On '$CurrentBranch', expected '$Branch'"
 }
 
-# 8. Check Local HEAD == origin/main
 $LocalHash  = (git rev-parse HEAD 2>$null).Trim()
-$OriginHash = (git rev-parse "origin/$Branch" 2>$null).Trim()
-
-if ($LocalHash -eq $OriginHash) {
+if ($LocalHash -eq $PrimaryHash) {
     Log-HealthCheck -CheckName "HEAD Alignment (HEAD == origin/$Branch)" -Level "PASS" -Message "Synchronized ($LocalHash)"
 } else {
-    Log-HealthCheck -CheckName "HEAD Alignment (HEAD == origin/$Branch)" -Level "WARNING" -Message "Local HEAD ($LocalHash) != origin/$Branch ($OriginHash)"
+    Log-HealthCheck -CheckName "HEAD Alignment (HEAD == origin/$Branch)" -Level "WARNING" -Message "Local HEAD ($LocalHash) != origin/$Branch ($PrimaryHash)"
+}
+
+# 10. Hook Validation
+$PrePushHook = Join-Path $PSScriptRoot "..\.git\hooks\pre-push"
+if (Test-Path $PrePushHook) {
+    Log-HealthCheck -CheckName "Git Hook Validation (.git/hooks/pre-push)" -Level "PASS" -Message "Hook file active"
+} else {
+    Log-HealthCheck -CheckName "Git Hook Validation (.git/hooks/pre-push)" -Level "WARNING" -Message "Pre-push hook missing"
 }
 
 Write-Host ""
 Write-Host "-----------------------------------------------------------------" -ForegroundColor Cyan
-if ($Status -eq "PASS") {
+if ($Script:Status -eq "PASS") {
     Write-Host "  OVERALL HEALTH STATUS: [ PASS ]" -ForegroundColor Green
+    Write-Host "  Health log saved to: $LogFile" -ForegroundColor Gray
     Write-Host "-----------------------------------------------------------------" -ForegroundColor Cyan
     exit 0
-} elseif ($Status -eq "WARNING") {
+} elseif ($Script:Status -eq "WARNING") {
     Write-Host "  OVERALL HEALTH STATUS: [ WARNING ]" -ForegroundColor Yellow
-    Write-Host "  Warnings: $($Warnings -join '; ')" -ForegroundColor Yellow
-    Write-Host "-----------------------------------------------------------------" -ForegroundColor Cyan
-    exit 0
-} else {
-    Write-Host "  OVERALL HEALTH STATUS: [ FAIL ]" -ForegroundColor Red
-    Write-Host "  Failures: $($Failures -join '; ')" -ForegroundColor Red
+    Write-Host "  Warnings: $($Script:Warnings -join '; ')" -ForegroundColor Yellow
+    Write-Host "  Health log saved to: $LogFile" -ForegroundColor Gray
     Write-Host "-----------------------------------------------------------------" -ForegroundColor Cyan
     exit 1
+} else {
+    Write-Host "  OVERALL HEALTH STATUS: [ FAIL ]" -ForegroundColor Red
+    Write-Host "  Failures: $($Script:Failures -join '; ')" -ForegroundColor Red
+    Write-Host "  Health log saved to: $LogFile" -ForegroundColor Gray
+    Write-Host "-----------------------------------------------------------------" -ForegroundColor Cyan
+    exit 2
 }

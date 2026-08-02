@@ -40,6 +40,7 @@ router.get('/projection/me', async (req, res, next) => {
   }
 });
 router.get('/uploads', growthController.getUploadHistory);
+router.get('/documents', growthController.getUploadHistory);
 router.get('/uploads/:processingId', growthController.getProcessingStatus);
 router.post('/documents', upload.single('file'), growthController.handleUpload);
 router.get('/documents/:id/file', growthController.streamDocumentFile);

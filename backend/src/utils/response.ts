@@ -34,6 +34,13 @@ export const sendError = (
   message: string,
   error?: any
 ) => {
+  if (res && typeof res.setHeader === 'function' && !res.headersSent) {
+    const reqOrigin = res.req?.headers?.origin;
+    if (reqOrigin) {
+      res.setHeader('Access-Control-Allow-Origin', reqOrigin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+  }
   return res.status(statusCode).json({
     success: false,
     statusCode,

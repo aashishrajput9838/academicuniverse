@@ -21,6 +21,7 @@ export interface GrowthUploadHistoryItem {
   confidenceScore: number | null;
   parserStrategy: string | null;
   errorMessage: string | null;
+  fileHash?: string | null;
 }
 
 export interface GrowthUploadHistory {
@@ -164,7 +165,6 @@ export class GrowthUploadService {
   }): Promise<GrowthProcessingStatus | null> {
     const upload = await UaipUpload.findOne({
       processingId: params.processingId,
-      userId: params.userId,
       organizationId: params.organizationId,
       status: { $ne: 'DELETED' },
     }).lean();

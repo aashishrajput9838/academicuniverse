@@ -21,6 +21,7 @@ backend/dist/
 backend/output.txt
 backend/output_utf8.txt
 backend/testGmailSync.ts
+logs/
 
 # Service account keys and sensitive JSON files
 .env

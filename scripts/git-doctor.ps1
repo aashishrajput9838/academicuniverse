@@ -244,10 +244,10 @@ if ($LocalHash -eq $PrimaryHash) {
 # 10. Object Database Integrity Check (git fsck)
 try {
     $FsckOutput = (git fsck --quick 2>&1 | Out-String)
-    if ($FsckOutput -match 'error|dangling|corrupt') {
-        Log-DoctorCheck -Category "Object Database Health (git fsck)" -Status "WARNING" -Message "Dangling or orphan objects detected"
+    if ($FsckOutput -match 'corrupt|broken|error:') {
+        Log-DoctorCheck -Category "Object Database Health (git fsck)" -Status "WARNING" -Message "Object corruption detected in database"
     } else {
-        Log-DoctorCheck -Category "Object Database Health (git fsck)" -Status "PASS" -Message "Object database healthy"
+        Log-DoctorCheck -Category "Object Database Health (git fsck)" -Status "PASS" -Message "Object database integrity clean"
     }
 } catch {
     Log-DoctorCheck -Category "Object Database Health (git fsck)" -Status "WARNING" -Message $_.Exception.Message

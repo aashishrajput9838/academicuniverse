@@ -67,7 +67,7 @@ export function ModuleVisibilityProvider({ children }: { children: ReactNode }) 
 
   const fetchVisibility = useCallback(async () => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('backendToken') : null;
+      const token = typeof window !== 'undefined' ? (localStorage.getItem('authToken') || localStorage.getItem('backendToken')) : null;
       const response = await fetch(`${API_BASE_URL}/api/module-visibility`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         cache: 'no-store',

@@ -10,7 +10,7 @@ const getAuthHeaders = (): HeadersInit => {
 
     if (typeof window === 'undefined') return headers;
 
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken') || localStorage.getItem('backendToken');
     if (token) {
         headers.Authorization = `Bearer ${token}`;
     }

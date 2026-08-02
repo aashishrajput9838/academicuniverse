@@ -73,9 +73,10 @@ export class EzoneController {
             const profile = await this.ezoneService.getProfile(userId, organizationId);
 
             if (!profile) {
-                logger.warn(`[TRACE-GET-PROFILE] No profile found for userId: ${userId}`);
-                res.status(404).json({ 
-                    success: false, 
+                logger.info(`[TRACE-GET-PROFILE] No profile connected yet for userId: ${userId}`);
+                res.status(200).json({ 
+                    success: true, 
+                    data: null,
                     message: 'Connect your Ezone account to load academic data.' 
                 });
                 return;

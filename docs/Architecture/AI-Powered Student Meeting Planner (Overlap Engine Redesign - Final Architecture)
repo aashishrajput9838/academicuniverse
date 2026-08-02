@@ -1,0 +1,88 @@
+# AI-Powered Student Meeting Planner (Overlap Engine Redesign - Final Architecture)
+
+Redesign and upgrade the Overlap Engine from legacy manual section/file uploads into a fully automatic AI-powered **Student Meeting Planner** integrated directly with synchronized E-Zone academic schedules.
+
+---
+
+## Architectural Principles & Strict Revisions
+
+1. **Derived Tenant Isolation (`organizationId`)**:
+   - The backend MUST derive `organizationId` directly from the authenticated Firebase JWT / Session (`req.user` / `req.firebaseUser` / `User` collection query).
+   - `organizationId` parameter from client request body/query will be strictly ignored or rejected.
+2. **Indexed Multi-Tier Search**:
+   - Search order: Exact `systemId` match $\rightarrow$ Prefix Name match $\rightarrow$ Partial Name match.
+   - Restricts search results to active users (`isActive: true`) within the derived tenant, excluding the current logged-in user.
+3. **Offline & Autonomous Data Source**:
+   - Operates purely on synchronized `EzoneAcademicProfile` / `AcademicSchedule` records in MongoDB.
+   - Never calls external portals (E-Zone) during overlap execution, ensuring zero runtime dependence on external portal availability.
+4. **Schedule Sync Status & Selection Safeguards**:
+   - Student cards display Sync Status badges: `✅ Synced`, `⚠ Never Synced`, `🔄 Syncing`, `❌ Sync Failed`.
+   - Students without a synced schedule cannot be selected; UI displays a helpful explanation.
+5. **Backend Structured Recommendation Payload**:
+   - API returns structured response: `{ bestRecommendation: {...}, otherRecommendations: [...] }`.
+   - All scoring, duration calculations, and ranking logic reside on the backend.
+6. **Scalable N-Way Engine Design**:
+   - Engine method `calculateOverlap(studentIds: string[], organizationId: string)` supports arbitrary $N$ participants. UI enforces max 5 selection for the student view.
+
+---
+
+## Proposed Changes
+
+### Backend Components
+
+#### 1. Decoupled & Scalable Overlap Service (`backend/src/services/overlapService.ts`)
+- **Student Search**:
+  - `searchStudents(query: string, currentUserId: string, authUser: any)`:
+    - Derives `organizationId` from authenticated user's DB profile.
+    - Performs indexed multi-tier search across `EzoneAcademicProfile` and `User`.
+    - Returns structured list: `{ id, userId, studentName, systemId, department, semester, school, program, syncStatus, isSelectable, avatarUrl }`.
+- **N-Way Schedule Intersection & Ranking Engine**:
+  - `calculateStudentOverlap(studentIds: string[], currentUserId: string, authUser: any)`:
+    - Derives `organizationId` from authenticated user.
+    - Fetches synchronized `EzoneAcademicProfile` for current user + selected `studentIds`.
+    - Validates active status and non-empty schedule for every participant.
+    - Converts timetables into standard weekly time slots (09:00 - 17:00, 50-min slots + breaks).
+    - Calculates exact $N$-way intersection of free time windows across all participants.
+    - **Smart Scoring Model (0–100)**:
+      - Duration Weight (longer uninterrupted blocks)
+      - Lunch Slot Alignment (12:00 – 14:00)
+      - Afternoon Preference (13:00 – 16:00)
+      - Pre/Post Class Gap Buffer
+      - Participant Availability Ratio
+    - Formats output: `{ bestRecommendation, otherRecommendations, totalParticipants, unselectableReason }`.
+
+#### 2. Overlap Controller & Tenant-Guarded Routes
+- `backend/src/controllers/overlapController.ts`:
+  - `searchStudentsHandler`: `GET /api/overlap-engine/search-students?q=...`
+  - `findStudentOverlapHandler`: `POST /api/overlap-engine/find` receiving `{ studentIds: string[] }`.
+- `backend/src/routes/overlapRoutes.ts`:
+  - Enforces `authenticateFirebaseUser` middleware.
+  - Exposes `GET /search-students` and `POST /find`.
+
+---
+
+### Frontend Components
+
+#### 3. API Client (`utils/api/overlapAPI.ts`)
+- `searchStudents(query: string)`: Calls `/api/overlap-engine/search-students?q=...` with Bearer auth token.
+- `findStudentOverlap(studentIds: string[])`: Calls `/api/overlap-engine/find` with `{ studentIds }`.
+
+#### 4. Frontend UI (`app/dashboard/student/overlap/page.tsx`)
+- **Left Panel ("Find Student")**:
+  - Debounced search input (300ms).
+  - Live search result cards with sync status badges (`✅ Synced`, `⚠ Never Synced`, etc.).
+  - Selected students list with removable chips (max 5).
+  - *"Find Common Free Time"* button disabled if no valid synced student selected.
+- **Right Panel ("Meeting Recommendations")**:
+  - **Best Recommendation Card**: Star rating (★★★★★), Day, Time, Duration, Meeting Score, AI Reason explanation.
+  - **Other Available Slots**: Cards showing day, time, duration, and score.
+  - **Empty States**: Clear messaging for initial state, zero-overlap state, and un-synced student explanations.
+
+---
+
+## Verification Plan
+
+### Automated Tests & Quality Checks
+- Run `npx tsc --noEmit` to verify 0 TypeScript errors.
+- Run `npx eslint app/ lib/ components/ backend/` to verify 0 ESLint warnings/errors.
+- Run `npm run build` to verify Next.js production build succeeds.

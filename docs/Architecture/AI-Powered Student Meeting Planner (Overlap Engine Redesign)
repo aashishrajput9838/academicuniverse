@@ -1,0 +1,96 @@
+# AI-Powered Student Meeting Planner (Overlap Engine Redesign)
+
+Redesign and upgrade the Overlap Engine from legacy manual section/file uploads into a fully automatic AI-powered **Student Meeting Planner** integrated directly with synchronized E-Zone academic schedules.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **Legacy Upload Removal**: Manual timetable upload modals, section selectors, drag-and-drop file parsers, and PDF/Excel handling in the Overlap Engine will be completely removed.
+> - **Direct Database Integration**: All student schedules will be automatically queried from the synchronized `EzoneAcademicProfile` database (E-Zone Sync) and `AcademicSchedule` collections.
+> - **Multi-Tenant Security**: Student searches and schedule calculations are strictly isolated by `organizationId`. Users can only search and calculate overlaps with students in their own organization.
+
+---
+
+## Proposed Changes
+
+### Backend Components
+
+#### 1. Data Models & Interface Extensions
+- Utilize existing `EzoneAcademicProfile`, `User`, `AcademicSchedule`, and `Person` models.
+- Build helper routines to map raw schedule items into standard 5-day time slots (e.g. 09:00 - 16:40 or standard period slots).
+
+#### 2. Overlap Service & Scoring Engine (`backend/src/services/overlapService.ts`)
+- **Student Search**:
+  - Implement `searchStudents(query: string, organizationId: string, currentUserId: string)`:
+    - Queries `EzoneAcademicProfile` joined with `User` or `Person` matching `studentName` or `systemId` via regex/case-insensitive search.
+    - Enforces `organizationId` matching, `isActive: true`, and `_id != currentUserId`.
+    - Returns student search cards payload: `{ id, userId, studentName, systemId, department, semester, school, program, isSynced, avatarUrl }`.
+- **Automatic Timetable Fetching & Intersection**:
+  - Implement `calculateStudentOverlap(studentIds: string[], currentUserId: string, organizationId: string)`:
+    - Fetches `EzoneAcademicProfile` timetables for the logged-in student AND up to 5 selected target students.
+    - Converts weekly timetable slots into continuous free time intervals across Monday – Friday (and Saturday if present).
+    - Computes N-way interval intersection across all participant schedules.
+- **Smart Ranking & Scoring Model (0–100)**:
+  - Evaluates each common free time slot against ranking criteria:
+    1. **Duration Bonus**: Longer uninterrupted windows score higher.
+    2. **Lunch Alignment**: Slots overlapping 12:00–14:00 get a lunch sync bonus.
+    3. **Afternoon Preference**: 13:00–16:00 slots prioritized for group study.
+    4. **Continuous Class Gap**: Slots with clean pre/post gaps receive higher scores.
+    5. **Participant Count**: Full availability vs partial availability (if subset options allowed).
+  - Emits `Best Recommendation` with star rating (★★★★★) and explanation reason, plus sorted `Other Available Slots`.
+
+#### 3. Overlap Controllers & API Routes
+- Update `backend/src/controllers/overlapController.ts`:
+  - `searchStudents`: Handler for `GET /api/overlap-engine/search-students?q=...&organizationId=...`
+  - `calculateStudentOverlap`: Handler for `POST /api/overlap-engine/find` receiving `{ studentIds: string[], organizationId: string }`.
+- Update `backend/src/routes/overlapRoutes.ts`:
+  - `GET /search-students` $\rightarrow$ `searchStudents`
+  - `POST /find` $\rightarrow$ `calculateStudentOverlap`
+  - Maintain backward compatibility for `/sections` if referenced elsewhere, while upgrading the primary engine endpoints.
+
+---
+
+### Frontend Components
+
+#### 4. API Client (`utils/api/overlapAPI.ts`)
+- Add `searchStudents(query: string, organizationId: string)` endpoint caller.
+- Add `findStudentOverlap(studentIds: string[], organizationId: string)` endpoint caller.
+
+#### 5. Overlap Engine Page UI (`app/dashboard/student/overlap/page.tsx`)
+- **Header**: Refine title to *"Find Common Free Time"* / *"AI Student Meeting Planner"*.
+- **Left Panel ("Find Student")**:
+  - Search bar with 300ms debouncing (`useDebounce`).
+  - Search results list showing student avatar, name, system ID, department, semester/year, and E-Zone sync verification badge.
+  - "Selected Students" panel displaying chips (max 5) with easy removal `x` buttons.
+  - Gradient **"Find Common Free Time"** button (enabled when $\ge 1$ student selected).
+- **Right Panel ("Meeting Recommendations")**:
+  - **Best Recommendation Hero Card**:
+    - Star Rating (★★★★★)
+    - Day, Start Time, End Time, Duration
+    - Score badge (e.g. `Score 98`)
+    - AI Explanation Reason (e.g., *"Longest uninterrupted common slot in the afternoon"*).
+  - **Other Available Slots**:
+    - List of secondary free slots sorted by Meeting Score.
+    - Copy meeting details button.
+  - **Empty & Error States**:
+    - Initial state: *"Search and select students to discover shared free time."*
+    - Zero overlap state: *"No common free slot exists between selected students."* with a *"Suggest Alternative Day"* action.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Run `npm run build` to verify frontend compilation.
+- Run `npm run lint` / `npx tsc --noEmit` to verify type safety and zero ESLint errors.
+- Run unit/integration tests for backend overlap calculation.
+
+### Manual Verification
+- Log in as a student in the browser.
+- Open `/dashboard/student/overlap`.
+- Type a student name or system ID in the search bar.
+- Select 1 to 5 students and verify chips in "Selected Students".
+- Click "Find Common Free Time" and verify AI-ranked meeting recommendations and score calculations.
+- Confirm organization isolation (cannot find or view students outside the user's organization).

@@ -1,0 +1,120 @@
+# Revised Implementation Plan: Production-Grade `FormulaEngine` Redesign
+
+## Executive Summary
+This revised implementation plan outlines the production-grade architectural redesign of the `FormulaEngine` mathematical equation pipeline for Academic Universe publications (specifically Paper 2 Version 1.0).
+
+In compliance with architectural directives:
+- **Zero Re-invention**: We do **NOT** build a custom LaTeX parser or AST compiler from scratch.
+- **External Converter Pipeline**: We delegate LaTeX parsing and mathematical representation mapping to mature, battle-tested scientific libraries (`latex2mathml` + canonical MathML-to-OMML transformation engine).
+- **Orchestration & Quality Control**: Our codebase is exclusively responsible for **extraction, preprocessing, normalization, OMML validation, document injection, post-processing, regression testing, and build failure enforcement**.
+
+---
+
+## Revised Dependency Architecture
+
+```mermaid
+graph TD
+    A["Raw Markdown Document"] --> B["Formula Engine Extractor"]
+    B --> C["LaTeX Preprocessor & Normalizer"]
+    C --> D["External LaTeX Parser (latex2mathml)"]
+    D --> E["MathML Representation"]
+    E --> F["MathML-to-OMML Transformation Pipeline"]
+    F --> G["Native Microsoft Office Math Nodes (<m:oMath> / <m:oMathPara>)"]
+    G --> H["OpenXML Document Injector"]
+    H --> I["Generated DOCX Manuscript"]
+    I --> J["Strict Validation Layer (validator.py)"]
+    J -- "Forbidden LaTeX / U+FFFD Found" --> K["BUILD ABORT / EXPORT TERMINATED"]
+    J -- "Zero Defects / Valid OMML" --> L["Export PDF via Word Engine"]
+    L --> M["PDF Quality & Parity Audit"]
+```
+
+---
+
+## Pipeline Responsibilities & Component Breakdown
+
+### 1. `formula_engine/extractor.py` (Formula Extraction & Preprocessing)
+- Scans Markdown for inline math (`$ ... $`) and display equations (`$$ ... $$`).
+- Preprocesses and normalizes LaTeX syntax (normalizing whitespace, handling custom macros, protecting special mathematical symbols).
+
+### 2. `formula_engine/converter.py` (External Converter Pipeline)
+- Delegated LaTeX Parsing: Invokes `latex2mathml` to convert normalized LaTeX expressions into MathML XML.
+- Delegated OMML Transformation: Transforms MathML into canonical Microsoft Office Math Markup Language (OMML) OpenXML nodes (`<m:oMath>` and `<m:oMathPara>`).
+- Preserves native Cambria Math font styling across fractions, summations, integrals, radicals, matrices, piecewise cases, sub/superscripts, and Greek symbols.
+
+### 3. `formula_engine/validator.py` (Validation & Build Gatekeeper)
+- `validate_docx_xml(docx_path)`: Unzips the generated `.docx`, extracts `word/document.xml`, and performs a deep scan for forbidden raw LaTeX commands (`\frac`, `\sum`, `\lambda`, `\epsilon`, `\text{`, `\rightarrow`, `\alpha`, `\beta`, `\gamma`, `\Delta`, `\%`, `\_`, `\^`, `_{`, `^{`) and corrupted Unicode replacement characters (`U+FFFD`, `□`, `??`).
+- **STRICT BUILD ABORT**: If ANY forbidden token or replacement character is detected inside `<w:t>` elements, the validator raises `ValidationError` and immediately halts export.
+- `validate_omml_structure(docx_path)`: Verifies every equation is a valid `<m:oMath>` or `<m:oMathPara>` element.
+- `validate_pdf(pdf_path)`: Inspects PDF binary/text for rendering parity.
+
+### 4. `formula_engine/tests/test_formula_engine.py` (Automated Regression Test Suite)
+- Test suite executing 100+ equations testing:
+  - Simple & nested fractions
+  - Summations, integrals, products, limits
+  - Matrices (bmatrix, pmatrix, matrix)
+  - Piecewise cases
+  - Greek alphabet ($\alpha, \beta, \gamma, \delta, \epsilon, \lambda, \mu, \sigma, \Delta, \Sigma$)
+  - Accents ($\bar{x}, \hat{x}, \vec{x}$)
+  - Subscripts & superscripts
+  - Inline math & display math
+  - Equations inside table cells and figure captions
+  - Equation right-aligned numbering tags `(1)`–`(5)`.
+
+### 5. `formula_engine/publisher.py` (IEEE Document Generator)
+- End-to-end publisher orchestrating document assembly for `paper2_academic_universe_growth_intelligence.md` into `Academic_Universe_Paper2_v1.0_IEEE_Final_OMML.docx` and `.pdf`.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **External Library Pipeline**: Uses `latex2mathml` + OMML transformation engine for 100% compliant LaTeX parsing and OMML conversion without custom parser code.
+
+> [!CAUTION]
+> **Automated Failure Enforcer**: The build export pipeline will automatically fail and terminate if a single raw LaTeX command string (`\frac`, `\sum`, `\lambda`, `\epsilon`, etc.) or replacement character (`U+FFFD`) is found anywhere in the generated OpenXML document tree.
+
+---
+
+## Proposed File Structure
+
+#### [NEW] [formula_engine/__init__.py](file:///c:/github/academicuniverse.com/academicuniverse/formula_engine/__init__.py)
+Package initialization file.
+
+#### [NEW] [formula_engine/extractor.py](file:///c:/github/academicuniverse.com/academicuniverse/formula_engine/extractor.py)
+Formula extraction and LaTeX syntax normalizer.
+
+#### [NEW] [formula_engine/converter.py](file:///c:/github/academicuniverse.com/academicuniverse/formula_engine/converter.py)
+External LaTeX-to-OMML converter pipeline (using `latex2mathml` + MathML-to-OMML transformer).
+
+#### [NEW] [formula_engine/validator.py](file:///c:/github/academicuniverse.com/academicuniverse/formula_engine/validator.py)
+XML and PDF Validation Layer scanning `word/document.xml` for forbidden LaTeX tokens, `U+FFFD` replacement characters, and validating OMML node integrity.
+
+#### [NEW] [formula_engine/publisher.py](file:///c:/github/academicuniverse.com/academicuniverse/formula_engine/publisher.py)
+IEEE Manuscript compilation engine using `FormulaEngine` orchestrator.
+
+#### [NEW] [formula_engine/tests/test_formula_engine.py](file:///c:/github/academicuniverse.com/academicuniverse/formula_engine/tests/test_formula_engine.py)
+Automated regression test suite covering 100+ equations.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+1. Run regression test suite:
+   ```bash
+   python -m unittest formula_engine/tests/test_formula_engine.py
+   ```
+2. Execute end-to-end publisher and validator:
+   ```bash
+   python -m formula_engine.publisher
+   ```
+3. Run OpenXML scanner check:
+   ```bash
+   python -c "from formula_engine.validator import DocumentValidator; DocumentValidator('Academic_Universe_Paper2_v1.0_IEEE_Final_OMML.docx').validate_all()"
+   ```
+
+### Manual Verification
+1. Open generated `Academic_Universe_Paper2_v1.0_IEEE_Final_OMML.docx` in Microsoft Word / WPS Office.
+2. Verify clicking on any equation activates **Equation Tools** (Office Math OMML).
+3. Confirm right-aligned equation numbers `(1)`–`(5)`.
+4. Inspect PDF export `Academic_Universe_Paper2_v1.0_IEEE_Final_OMML.pdf` for visual parity and zero rendering defects.

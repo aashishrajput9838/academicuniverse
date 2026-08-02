@@ -1,23 +1,36 @@
-import { MongoClient, GridFSBucket, ObjectId } from 'mongodb'
-import { StorageProvider } from './StorageProvider'
-import { randomUUID as uuidv4 } from 'crypto'
+import mongoose from 'mongoose';
+import { StorageProvider } from './StorageProvider';
+import { randomUUID as uuidv4 } from 'crypto';
 
-// Simple singleton MongoDB connection manager.
-type MongoClientInstance = Awaited<ReturnType<typeof MongoClient.connect>>
+let clientPromise: Promise<any> | null = null;
 
-let clientPromise: Promise<MongoClientInstance> | null = null
-export async function getMongoClient(): Promise<MongoClientInstance> {
-  if (!clientPromise) {
-    const uri = process.env.MONGODB_URI
-    if (!uri) {
-      throw new Error('MONGODB_URI environment variable is not set')
-    }
-    clientPromise = MongoClient.connect(uri)
+export async function getMongoClient(): Promise<any> {
+  if (mongoose.connection.readyState === 1 && mongoose.connection.getClient()) {
+    return mongoose.connection.getClient();
   }
-  return clientPromise
+
+  if (!clientPromise) {
+    const uri = process.env.MONGODB_URI;
+    if (!uri) {
+      throw new Error('MONGODB_URI environment variable is not set');
+    }
+    const { MongoClient } = require('mongodb');
+    clientPromise = MongoClient.connect(uri).catch((err: any) => {
+      clientPromise = null;
+      throw err;
+    });
+  }
+  return clientPromise;
 }
 
 export class GridFSProvider implements StorageProvider {
+  private async getBucket(): Promise<any> {
+    const client = await getMongoClient();
+    const db = client.db();
+    const mongoDriver = mongoose.mongo;
+    return new mongoDriver.GridFSBucket(db as any, { bucketName: 'uaipFiles' });
+  }
+
   async store(
     file: Buffer,
     filename: string,
@@ -25,9 +38,7 @@ export class GridFSProvider implements StorageProvider {
     userId: string,
     organizationId: string
   ): Promise<{ fileId: string }> {
-    const client = await getMongoClient()
-    const db = client.db()
-    const bucket = new GridFSBucket(db, { bucketName: 'uaipFiles' })
+    const bucket = await this.getBucket();
 
     const uploadStream = bucket.openUploadStream(filename, {
       metadata: {
@@ -38,38 +49,36 @@ export class GridFSProvider implements StorageProvider {
         size: file.length,
         processingId: uuidv4(),
       },
-    })
+    });
 
     await new Promise<void>((resolve, reject) => {
-      uploadStream.on('error', (err: any) => reject(err))
-      uploadStream.on('finish', () => resolve())
-      uploadStream.end(file)
-    })
+      uploadStream.on('error', (err: any) => reject(err));
+      uploadStream.on('finish', () => resolve());
+      uploadStream.end(file);
+    });
 
     // The file's ObjectId is available via uploadStream.id
-    const fileId = uploadStream.id.toString()
-    return { fileId }
+    const fileId = uploadStream.id.toString();
+    return { fileId };
   }
 
   async delete(fileId: string): Promise<void> {
-    const client = await getMongoClient()
-    const db = client.db()
-    const bucket = new GridFSBucket(db, { bucketName: 'uaipFiles' })
-    const _id = new ObjectId(fileId)
-    await bucket.delete(_id)
+    const bucket = await this.getBucket();
+    const ObjectId = mongoose.mongo.ObjectId;
+    const _id = new ObjectId(fileId);
+    await bucket.delete(_id);
   }
 
   async getFile(fileId: string): Promise<Buffer> {
-    const client = await getMongoClient()
-    const db = client.db()
-    const bucket = new GridFSBucket(db, { bucketName: 'uaipFiles' })
-    const _id = new ObjectId(fileId)
-    const downloadStream = bucket.openDownloadStream(_id)
-    const chunks: Buffer[] = []
+    const bucket = await this.getBucket();
+    const ObjectId = mongoose.mongo.ObjectId;
+    const _id = new ObjectId(fileId);
+    const downloadStream = bucket.openDownloadStream(_id);
+    const chunks: Buffer[] = [];
     return new Promise<Buffer>((resolve, reject) => {
-      downloadStream.on('data', (chunk: Buffer) => chunks.push(chunk))
-      downloadStream.on('error', (err: any) => reject(err))
-      downloadStream.on('end', () => resolve(Buffer.concat(chunks)))
-    })
+      downloadStream.on('data', (chunk: Buffer) => chunks.push(chunk));
+      downloadStream.on('error', (err: any) => reject(err));
+      downloadStream.on('end', () => resolve(Buffer.concat(chunks)));
+    });
   }
 }

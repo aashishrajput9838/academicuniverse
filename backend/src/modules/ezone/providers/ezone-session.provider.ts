@@ -19,8 +19,8 @@ export class EzoneSessionProvider {
     private constructor() {
         logger.info('EzoneSessionProvider initialized - Session Map cleared.');
         
-        // Background task to clean up old sessions every 5 minutes (TTL 15 mins)
-        const cleanupTimer = setInterval(() => this.cleanupExpiredSessions(), 5 * 60 * 1000);
+        // Background task to clean up old sessions every 1 minute (TTL 3 mins)
+        const cleanupTimer = setInterval(() => this.cleanupExpiredSessions(), 1 * 60 * 1000);
         cleanupTimer.unref?.();
     }
 
@@ -96,7 +96,13 @@ export class EzoneSessionProvider {
         } catch (error: any) {
             logger.error(`Trigger OTP failed for session ${sessionId}: ${error.message}`);
             await ezoneLogger.logSyncStep(userId, organizationId, sessionId, 'error', `Portal connection error: ${error.message}`, { category: 'AUTHENTICATION', status: 'failed' }, firebaseUid);
-            await this.cleanupSession(sessionId);
+            
+            // Guarantee browser closure if launch succeeded before session registration
+            if (browser && !this.sessions.has(sessionId)) {
+                await browser.close().catch(() => {});
+            } else {
+                await this.cleanupSession(sessionId);
+            }
             throw error;
         }
     }
@@ -196,7 +202,7 @@ export class EzoneSessionProvider {
      */
     private async cleanupExpiredSessions(): Promise<void> {
         const now = new Date();
-        const TTL = 15 * 60 * 1000; // 15 minutes
+        const TTL = 3 * 60 * 1000; // 3 minutes
 
         for (const [id, session] of this.sessions.entries()) {
             const age = now.getTime() - session.createdAt.getTime();

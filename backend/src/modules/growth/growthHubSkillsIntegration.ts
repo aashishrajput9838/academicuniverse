@@ -37,7 +37,13 @@ export class GrowthHubSkillsIntegration {
     logger.info('Growth Hub Skills Integration stopped');
   }
 
+  private static initialized = false;
+
   private initializeSubscriptions(): void {
+    if (GrowthHubSkillsIntegration.initialized) {
+      return;
+    }
+
     eventBus.subscribe(UaipEvent.SkillUpdated, async (payload: any) => {
       await this.handleSkillUpdated(payload);
     });
@@ -46,6 +52,7 @@ export class GrowthHubSkillsIntegration {
       await this.handleSkillProfileRebuilt(payload);
     });
 
+    GrowthHubSkillsIntegration.initialized = true;
     logger.info('Growth Hub Skills Integration subscribed to SkillUpdated and SkillProfileRebuilt events');
   }
 

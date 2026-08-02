@@ -42,16 +42,6 @@ export class SchedulerService {
       }
     });
 
-    // Also run once when the service starts
-    setTimeout(async () => {
-      try {
-        await this.updateAllUsersGitHubAnalytics();
-        await this.syncAllUsersGmailEvents();
-      } catch (error) {
-        logger.error('Initial scheduled tasks failed:', error);
-      }
-    }, 5000); // Run first update after 5 seconds
-
     // Schedule Gmail events updates every 6 hours
     cron.schedule('0 */6 * * *', async () => {
       try {
@@ -77,10 +67,10 @@ export class SchedulerService {
         return;
       }
 
-      // Find all users who have GitHub access tokens
+      // Find all users who have GitHub access tokens (using lean + projection)
       const users = await User.find({
         'githubAccessToken.encryptedToken': { $exists: true, $ne: null }
-      });
+      }).select('_id firebaseUid email').lean().exec();
 
       logger.info(`Found ${users.length} users with connected GitHub accounts`);
 
@@ -121,13 +111,13 @@ export class SchedulerService {
         return;
       }
 
-      // Find all users who have Gmail access tokens
+      // Find all users who have Gmail access tokens (using lean + projection)
       const users = await User.find({
         $or: [
           { 'gmailTokens.accessToken': { $exists: true, $ne: '' } },
           { 'gmailTokens.encryptedToken': { $exists: true, $ne: null } },
         ]
-      });
+      }).select('_id firebaseUid email').lean().exec();
 
       logger.info(`Found ${users.length} users with connected Gmail accounts`);
 

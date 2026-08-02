@@ -30,8 +30,8 @@ export class GrowthController {
   };
 
   public handleUpload = async (req: Request, res: Response, next: NextFunction) => {
+    const file = req.file;
     try {
-      const file = req.file;
       if (!file) {
         return res.status(400).json({ status: 'error', message: 'No file provided' });
       }
@@ -60,6 +60,10 @@ export class GrowthController {
       return sendResponse(res, 202, { processingId }, 'Document upload accepted');
     } catch (err) {
       next(err);
+    } finally {
+      if (file && file.buffer) {
+        (file as any).buffer = null;
+      }
     }
   };
 

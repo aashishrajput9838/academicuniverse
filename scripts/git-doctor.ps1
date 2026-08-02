@@ -243,7 +243,7 @@ if ($LocalHash -eq $PrimaryHash) {
 
 # 10. Object Database Integrity Check (git fsck)
 try {
-    $FsckOutput = (git fsck --quick 2>&1 | Out-String)
+    $FsckOutput = (git fsck --connectivity-only 2>&1 | Out-String)
     if ($FsckOutput -match 'corrupt|broken|error:') {
         Log-DoctorCheck -Category "Object Database Health (git fsck)" -Status "WARNING" -Message "Object corruption detected in database"
     } else {

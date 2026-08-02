@@ -1,0 +1,49 @@
+#!/bin/sh
+# Pre-Push Git Hook for Academic Universe Dual Repository Synchronization
+# Enforces configuration rules and remote availability before allowing git push.
+
+echo "================================================================="
+echo "       PRE-PUSH DUAL REPOSITORY VALIDATION CHECK                "
+echo "================================================================="
+
+PRIMARY_REPO="https://github.com/aashishrajput9838/academicuniverse.git"
+MIRROR_REPO="https://github.com/aashishrajput98381/academicuniverse.git"
+
+# 1. Verify Current Branch
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$CURRENT_BRANCH" != "main" ]; then
+  echo "[REJECTED] Pushes are only allowed from the 'main' branch (Current: $CURRENT_BRANCH)"
+  exit 1
+fi
+
+# 2. Verify Dual Push URLs
+PUSH_URLS=$(git remote get-url --push --all origin)
+
+HAS_PRIMARY=false
+HAS_MIRROR=false
+
+for url in $PUSH_URLS; do
+  if [ "$url" = "$PRIMARY_REPO" ]; then
+    HAS_PRIMARY=true
+  fi
+  if [ "$url" = "$MIRROR_REPO" ]; then
+    HAS_MIRROR=true
+  fi
+done
+
+if [ "$HAS_PRIMARY" = "false" ]; then
+  echo "[REJECTED] Missing Primary Push URL: $PRIMARY_REPO"
+  echo "Run: git remote set-url --add --push origin $PRIMARY_REPO"
+  exit 1
+fi
+
+if [ "$HAS_MIRROR" = "false" ]; then
+  echo "[REJECTED] Missing Mirror Push URL: $MIRROR_REPO"
+  echo "Run: git remote set-url --add --push origin $MIRROR_REPO"
+  exit 1
+fi
+
+echo "[SUCCESS] Dual push URLs verified: Primary ($PRIMARY_REPO) & Mirror ($MIRROR_REPO)"
+echo "[SUCCESS] Branch '$CURRENT_BRANCH' verified. Proceeding with push."
+echo "================================================================="
+exit 0

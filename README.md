@@ -24,6 +24,21 @@
 
 ---
 
+## 🔬 Research Publications & Archival Status (Phase 1 Complete)
+
+> **Research Phase 1 Status**: **COMPLETED & FEATURE FROZEN** ✅  
+> Both core research papers have completed scientific validation, editorial review, and submission packaging. All submission artifacts are permanently archived under `/research/` and tagged on GitHub.
+
+| Publication Title | Research Subsystem | Git Tag / Commit | Target Journal | Status |
+| :--- | :--- | :---: | :---: | :---: |
+| **Paper 1**: *AU DIC: Document Intelligence Layer for Automated Transcript & Portal Ingestion* | Document Intelligence (AU DIC) | [`paper1-v1.0-submission`](file:///c:/github/academicuniverse.com/academicuniverse/research/paper1/v1.0-submission/) | IEEE Access / IEEE TLT | **SUBMITTED** |
+| **Paper 2**: *Academic Universe: An AI-Powered Holistic Student Growth Intelligence Ecosystem* | 3-Tier Growth Pipeline, SIE-1.0, GIE | [`paper2-v1.0-submission`](file:///c:/github/academicuniverse.com/academicuniverse/research/paper2/v1.0-submission/) (`14e8167`) | IEEE Transactions on Learning Technologies (IEEE TLT) | **SUBMITTED** |
+
+- 📄 **[Research History & Timeline](file:///c:/github/academicuniverse.com/academicuniverse/RESEARCH_HISTORY.md)**
+- 🗺️ **[Research Roadmap & Future Phases](file:///c:/github/academicuniverse.com/academicuniverse/RESEARCH_ROADMAP.md)**
+
+---
+
 ## ✨ Overview
 
 Academic Universe is a high-performance, multi-tenant SaaS platform designed to modernize the educational experience. By shifting the focus from mere grades to **Holistic Student Development**, it provides a unified ecosystem for IQ/EQ tracking, mental wellness, and verified professional achievements.

@@ -1,6 +1,6 @@
 import { Logger } from '../utils/logger';
 import { NotFoundError, ValidationError } from '../utils/errors';
-import EzoneAcademicProfile from '../models/EzoneAcademicProfile';
+import { EzoneAcademicProfile } from '../models/EzoneAcademicProfile';
 import User from '../models/User';
 import mongoose from 'mongoose';
 

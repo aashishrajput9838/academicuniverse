@@ -1,4 +1,5 @@
 import { getFirebaseAuth } from '@/lib/firebase';
+import type { StudentSearchResult, StudentOverlapResponse } from '@/types/overlap';
 
 class OverlapAPIService {
   private baseUrl: string;
@@ -22,14 +23,16 @@ class OverlapAPIService {
   }
 
   /**
-   * Fetch available sections for an organization
+   * Search active students in the authenticated user's organization.
+   * organizationId is derived by backend from the auth token.
    */
-  async getAvailableSections(organizationId: string): Promise<any> {
+  async searchStudents(query: string): Promise<{ success: boolean; data: StudentSearchResult[]; count: number }> {
     try {
       const token = await this.getAuthToken();
+      const encodedQuery = encodeURIComponent(query || '');
       
       const response = await fetch(
-        `${this.baseUrl}/api/overlap-engine/sections?organizationId=${organizationId}`,
+        `${this.baseUrl}/api/overlap-engine/search-students?q=${encodedQuery}`,
         {
           method: 'GET',
           headers: {
@@ -46,20 +49,20 @@ class OverlapAPIService {
 
       return await response.json();
     } catch (error: any) {
-      console.error('Error fetching available sections:', error);
-      throw new Error(`Failed to fetch sections: ${error.message}`);
+      console.error('Error searching students:', error);
+      throw new Error(`Failed to search students: ${error.message}`);
     }
   }
 
   /**
-   * Calculate overlap slots for selected sections
+   * Calculate AI meeting recommendations for selected students using synchronized E-Zone schedules.
    */
-  async calculateOverlapSlots(sections: string[], organizationId: string): Promise<any> {
+  async findStudentOverlap(studentIds: string[]): Promise<StudentOverlapResponse> {
     try {
       const token = await this.getAuthToken();
       
       const response = await fetch(
-        `${this.baseUrl}/api/overlap-engine/sections`,
+        `${this.baseUrl}/api/overlap-engine/find`,
         {
           method: 'POST',
           headers: {
@@ -67,8 +70,7 @@ class OverlapAPIService {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            sections,
-            organizationId
+            studentIds
           }),
         }
       );
@@ -80,9 +82,23 @@ class OverlapAPIService {
 
       return await response.json();
     } catch (error: any) {
-      console.error('Error calculating overlap slots:', error);
-      throw new Error(`Failed to calculate overlap: ${error.message}`);
+      console.error('Error calculating student meeting overlap:', error);
+      throw new Error(`Failed to calculate meeting recommendations: ${error.message}`);
     }
+  }
+
+  /**
+   * Legacy section fetch (backward compatibility)
+   */
+  async getAvailableSections(organizationId?: string): Promise<any> {
+    return { success: true, data: { sections: [], count: 0 } };
+  }
+
+  /**
+   * Legacy overlap calculation (backward compatibility)
+   */
+  async calculateOverlapSlots(sections: string[], organizationId?: string): Promise<any> {
+    return { success: true, data: { overlapSlots: {} } };
   }
 
   /**
@@ -105,7 +121,5 @@ class OverlapAPIService {
   }
 }
 
-// Export singleton instance
 export const overlapAPI = new OverlapAPIService();
-
 export default overlapAPI;

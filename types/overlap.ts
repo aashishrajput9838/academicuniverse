@@ -1,3 +1,43 @@
+export interface StudentSearchResult {
+  id: string;
+  userId: string;
+  studentName: string;
+  systemId: string;
+  department: string;
+  semester: string;
+  program: string;
+  school: string;
+  syncStatus: 'SYNCED' | 'NEVER_SYNCED' | 'SYNCING' | 'SYNC_FAILED';
+  isSelectable: boolean;
+  unselectableReason?: string;
+  avatarUrl?: string;
+}
+
+export interface RecommendationSlot {
+  day: string;
+  start: string;
+  end: string;
+  durationMinutes: number;
+  score: number;
+  reason: string;
+  participantCount: number;
+  collaborationTag?: string;
+}
+
+export interface StudentOverlapData {
+  bestRecommendation: RecommendationSlot | null;
+  otherRecommendations: RecommendationSlot[];
+  totalParticipants: number;
+  participantNames: string[];
+  message?: string;
+}
+
+export interface StudentOverlapResponse {
+  success: boolean;
+  message?: string;
+  data: StudentOverlapData;
+}
+
 export interface Section {
   _id: string;
   sectionName: string;
@@ -14,26 +54,4 @@ export interface TimeRange {
 
 export interface OverlapResult {
   [day: string]: TimeRange[];
-}
-
-export interface OverlapResponse {
-  success: boolean;
-  message: string;
-  data: {
-    sections: string[];
-    organizationId: string;
-    overlapSlots: OverlapResult;
-    totalDays: number;
-    timestamp: string;
-  };
-}
-
-export interface SectionsResponse {
-  success: boolean;
-  message: string;
-  data: {
-    sections: Section[];
-    organizationId: string;
-    count: number;
-  };
 }

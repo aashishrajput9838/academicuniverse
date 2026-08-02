@@ -81,6 +81,7 @@ export const connectGithub = async (req: AuthenticatedRequest, res: Response) =>
       return sendResponse(res, 200, { connected: true, username: ghUsername }, 'GitHub connected successfully');
     }
 
+    logger.info(`[OAUTH_STAGE 1/8] OAuth started for user: ${firebaseUid.slice(0, 4)}***${firebaseUid.slice(-4)}`);
     const state = jwt.sign({ firebaseUid, purpose: 'github_oauth' }, JWT_SECRET, { expiresIn: '15m' });
     req.session.github_oauth_state = state;
     req.session.firebase_uid = firebaseUid;
@@ -118,12 +119,15 @@ export const connectGithub = async (req: AuthenticatedRequest, res: Response) =>
 export const githubOAuthCallback = async (req: Request, res: Response) => {
   try {
     const { code, state } = req.query;
+    logger.info(`[OAUTH_STAGE 2/8] Callback received with code length: ${typeof code === 'string' ? code.length : 0}`);
 
     if (!code || typeof code !== 'string') {
+      logger.warn('[OAUTH_ERROR] Callback missing code parameter');
       return sendError(res, 400, 'Authorization code is required');
     }
 
     if (!state || typeof state !== 'string') {
+      logger.warn('[OAUTH_ERROR] Callback missing state parameter');
       return sendError(res, 400, 'State parameter is required for CSRF protection');
     }
 
@@ -141,15 +145,22 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
     }
 
     if (!firebaseUid) {
+      logger.warn('[OAUTH_ERROR] State verification failed or expired');
       return sendError(res, 400, 'Invalid state parameter or expired session');
     }
+
+    const maskedUid = `${firebaseUid.slice(0, 4)}***${firebaseUid.slice(-4)}`;
+    logger.info(`[OAUTH_STAGE 3/8] User identified: ${maskedUid}`);
 
     // Exchange the authorization code for an access token
     const githubOAuthService = getGithubOAuthService();
     const accessToken = await githubOAuthService.exchangeCodeForToken(code, state);
+    const maskedToken = `${accessToken.slice(0, 4)}***${accessToken.slice(-4)}`;
+    logger.info(`[OAUTH_STAGE 4/8] GitHub token received: ${maskedToken}`);
 
     // Fetch GitHub username
     const githubUsername = await githubOAuthService.getGithubUsername(accessToken);
+    logger.info(`[OAUTH_STAGE 5/8] GitHub username retrieved: ${githubUsername}`);
 
     // Store the access token and username in the user's profile
     await githubOAuthService.storeAccessToken(firebaseUid, accessToken);
@@ -159,14 +170,21 @@ export const githubOAuthCallback = async (req: Request, res: Response) => {
     if (user) {
       user.githubUsername = githubUsername;
       await user.save();
+      logger.info(`[OAUTH_STAGE 6/8] Database updated for user: ${maskedUid}`);
+    } else {
+      logger.warn(`[OAUTH_WARN] User record not found for database update: ${maskedUid}`);
     }
 
     // Sync GitHub data & skills immediately
     try {
-      await analyticsService.syncGithubData(firebaseUid);
+      logger.info(`[OAUTH_STAGE 7/8] Triggering repository sync & skill extraction for user: ${maskedUid}`);
+      const syncResult = await analyticsService.syncGithubData(firebaseUid);
+      logger.info(`[OAUTH_STAGE 7.1/8] Sync completed: repos=${syncResult.repositoriesFetched}, skills=${syncResult.skillsCreated}`);
     } catch (syncErr: any) {
-      logger.warn('GitHub OAuth post-connect sync warning:', syncErr.message);
+      logger.warn('[OAUTH_WARN] GitHub OAuth post-connect sync warning:', syncErr.message);
     }
+
+    logger.info(`[OAUTH_STAGE 8/8] Response returned to client for user: ${maskedUid}`);
 
     // Clear the session data
     delete req.session.github_oauth_state;

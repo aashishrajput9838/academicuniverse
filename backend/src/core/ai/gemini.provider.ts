@@ -552,11 +552,18 @@ export class GeminiAIProvider implements IAIProvider {
       candidate += opener === '[' ? ']' : '}';
     }
 
-    // TEMP: Throw instead of silently repairing to expose raw malformed JSON
-    if (candidate !== originalCandidate) {
-      throw new Error(`TEMPORARY: repairTruncatedJson would have modified JSON. Raw length=${rawText.length}, repaired length=${candidate.length}. Stack remaining: ${JSON.stringify(stack)}. Original preview: ${originalCandidate.slice(0, 500)}`);
+    // Clean trailing commas before closing brackets or braces
+    const cleaned = candidate.replace(/,\s*([}\]])/g, '$1');
+
+    if (cleaned !== originalCandidate) {
+      logger.info('Gemini JSON auto-repair applied', {
+        rawLength: rawText.length,
+        originalCandidateLength: originalCandidate.length,
+        repairedLength: cleaned.length,
+        unclosedStructuresPopped: stack.length,
+      });
     }
 
-    return candidate.replace(/,\s*([}\]])/g, '$1');
+    return cleaned;
   }
 }

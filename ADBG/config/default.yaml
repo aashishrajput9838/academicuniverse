@@ -1,0 +1,94 @@
+# ----------------------------------------------------------
+# ADBG Default Configuration
+# ----------------------------------------------------------
+# This file defines the default parameters for dataset generation.
+# Override by passing --config <path> to the CLI or by supplying
+# individual CLI arguments (which take precedence over this file).
+# ----------------------------------------------------------
+
+generation:
+  seed: 42
+  count: 100
+  output_dir: ./output
+  formats:
+    - pdf
+    - png
+    - jpeg
+
+# ----------------------------------------------------------
+# Document Type Distribution
+# ----------------------------------------------------------
+# Weights are relative — they will be normalized to sum to 1.0.
+# To generate only certificates, set marksheet and student_id to 0.
+
+documents:
+  types:
+    - certificate
+    - marksheet
+    - student_id
+  distribution:
+    certificate: 0.33
+    marksheet: 0.34
+    student_id: 0.33
+
+# ----------------------------------------------------------
+# Quality Profile Distribution
+# ----------------------------------------------------------
+# Controls how many documents get each quality simulation.
+# Weights are relative and will be normalized.
+
+quality_profiles:
+  clean_pdf: 0.40
+  scanner_copy: 0.25
+  mobile_camera: 0.20
+  rotated: 0.15
+
+# ----------------------------------------------------------
+# Degradation Engine Parameters
+# ----------------------------------------------------------
+# These configure the bounds for each degradation operator.
+# The actual values are sampled randomly within these bounds
+# for each document (deterministically, based on seed).
+
+degradation:
+  perspective:
+    max_angle: 5.0           # Maximum perspective tilt (degrees)
+
+  motion_blur:
+    max_kernel: 7            # Maximum motion blur kernel size (pixels)
+
+  gaussian_blur:
+    max_sigma: 2.0           # Maximum Gaussian blur sigma
+
+  noise:
+    max_sigma: 15            # Maximum Gaussian noise standard deviation
+
+  jpeg_compression:
+    min_quality: 40          # Minimum JPEG quality (lower = more artifacts)
+
+  brightness:
+    range: [0.7, 1.3]       # Brightness multiplier range
+
+  shadow:
+    enabled: true            # Enable shadow overlay simulation
+    max_opacity: 0.4         # Maximum shadow darkness
+
+  lens_distortion:
+    max_k1: 0.3              # Maximum barrel distortion coefficient
+
+  rotation:
+    max_degrees: 5.0         # Maximum rotation angle (degrees)
+
+  color_shift:
+    max_delta: 15            # Maximum color channel shift (0-255 scale)
+
+# ----------------------------------------------------------
+# Watermark
+# ----------------------------------------------------------
+# All synthetic documents include a mandatory research watermark
+# to clearly distinguish them from real academic documents.
+
+watermark:
+  text: "SYNTHETIC RESEARCH DATASET"
+  opacity: 0.15
+  rotation: 35

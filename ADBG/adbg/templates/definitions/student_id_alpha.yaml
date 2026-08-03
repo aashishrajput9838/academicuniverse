@@ -1,0 +1,160 @@
+# ----------------------------------------------------------
+# ADBG Student ID Card Alpha Template
+# ----------------------------------------------------------
+
+metadata:
+  template_id: student_id_alpha
+  template_version: 1.0.0
+  author: Academic Universe Research Team
+  description: Academic identity card template.
+  document_type: student_id
+  supported_universities:
+    - university_alpha
+    - university_beta
+    - university_gamma
+    - university_delta
+
+page:
+  size: A4
+  orientation: portrait
+  margins:
+    top: 36
+    right: 36
+    bottom: 36
+    left: 36
+
+watermark:
+  text: "STUDENT ID SPECIMEN"
+  color: "#f1f5f9"
+  font_size: 28
+  rotation: 30
+
+disclaimer:
+  text: "SYNTHETIC STUDENT ID CARD SPECIMEN — FOR RESEARCH ONLY"
+  color: "#94a3b8"
+  font_size: 8
+  y: 20
+
+elements:
+  # ID Card Outer Border
+  - type: rect
+    x: 120
+    y: 200
+    width: 355
+    height: 220
+    fill: "#ffffff"
+    stroke: "#1a2e5a"
+    stroke_width: 2
+
+  # Header Bar
+  - type: rect
+    x: 120
+    y: 200
+    width: 355
+    height: 45
+    fill: "#1a2e5a"
+    stroke: "#1a2e5a"
+
+  - type: text
+    text: "{university.name}"
+    x: 297
+    y: 220
+    font: Helvetica-Bold
+    font_size: 11
+    color: "#ffffff"
+    align: center
+
+  - type: text
+    text: "STUDENT IDENTITY CARD"
+    x: 297
+    y: 235
+    font: Helvetica
+    font_size: 8
+    color: "#93c5fd"
+    align: center
+
+  # Photo Placeholder Box
+  - type: rect
+    x: 140
+    y: 260
+    width: 80
+    height: 100
+    fill: "#e2e8f0"
+    stroke: "#cbd5e1"
+    stroke_width: 1
+
+  - type: text
+    text: "[ PHOTO ]"
+    x: 180
+    y: 315
+    font: Helvetica
+    font_size: 9
+    color: "#64748b"
+    align: center
+
+  # Info Fields
+  - type: text
+    text: "{student.student_name}"
+    x: 235
+    y: 275
+    font: Helvetica-Bold
+    font_size: 12
+    color: "#0f172a"
+
+  - type: text
+    text: "Roll No: {student.roll_number}"
+    x: 235
+    y: 295
+    font: Helvetica
+    font_size: 9
+    color: "#334155"
+
+  - type: text
+    text: "Branch: {student.branch_name}"
+    x: 235
+    y: 310
+    font: Helvetica
+    font_size: 9
+    color: "#334155"
+
+  - type: text
+    text: "Batch: {student.batch_years}"
+    x: 235
+    y: 325
+    font: Helvetica
+    font_size: 9
+    color: "#334155"
+
+  - type: text
+    text: "Blood Group: {student.blood_group}"
+    x: 235
+    y: 340
+    font: Helvetica
+    font_size: 9
+    color: "#dc2626"
+
+  - type: text
+    text: "Valid Till: {issue_date}"
+    x: 235
+    y: 355
+    font: Helvetica
+    font_size: 9
+    color: "#334155"
+
+  # Bottom Bar
+  - type: line
+    x1: 120
+    y1: 390
+    x2: 475
+    y2: 390
+    color: "#cbd5e1"
+    width: 1
+
+  - type: text
+    text: "Emergency Phone: {student.phone}"
+    x: 297
+    y: 405
+    font: Helvetica
+    font_size: 8
+    color: "#64748b"
+    align: center

@@ -1,0 +1,2 @@
+[console_scripts]
+adbg = adbg.cli.main:cli

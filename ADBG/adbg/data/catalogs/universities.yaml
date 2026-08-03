@@ -1,0 +1,198 @@
+# ----------------------------------------------------------
+# ADBG University Catalog
+# ----------------------------------------------------------
+# Each university defines its complete academic configuration.
+# To add a new university, append an entry to this file.
+# No Python code changes required.
+# ----------------------------------------------------------
+
+universities:
+
+  - id: university_alpha
+    name: "Vivekananda Technical University"
+    short_code: "VTU"
+    address:
+      line1: "VTU Campus, Dwarka Sector 14"
+      city: "New Delhi"
+      state: "Delhi"
+      pin: "110078"
+      country: "India"
+      note: "Fictional Institution — For Research Purposes Only"
+    tagline: "Excellence in Engineering and Research"
+    colors:
+      primary: "#1a2e5a"
+      secondary: "#3b82f6"
+      text: "#333333"
+      accent: "#e63946"
+    fonts:
+      heading: "Helvetica-Bold"
+      body: "Helvetica"
+      monospace: "Courier"
+    grading_scheme:
+      type: "grade_point"
+      scale: 10.0
+      pass_marks: 40
+      bands:
+        - { min_marks: 90, grade: "O",  grade_point: 10.0 }
+        - { min_marks: 80, grade: "A+", grade_point: 9.0 }
+        - { min_marks: 70, grade: "A",  grade_point: 8.0 }
+        - { min_marks: 60, grade: "B+", grade_point: 7.0 }
+        - { min_marks: 50, grade: "B",  grade_point: 6.0 }
+        - { min_marks: 40, grade: "C",  grade_point: 5.0 }
+        - { min_marks: 0,  grade: "F",  grade_point: 0.0 }
+    roll_number_pattern: "{year}{branch_code}{sequence:06d}"
+    enrollment_pattern: "EN{year}{sequence:05d}"
+    semester_naming: "Semester {number}"
+    branches:
+      - { code: "CSE",   name: "Computer Science and Engineering" }
+      - { code: "ECE",   name: "Electronics and Communication Engineering" }
+      - { code: "ME",    name: "Mechanical Engineering" }
+      - { code: "CE",    name: "Civil Engineering" }
+      - { code: "EE",    name: "Electrical Engineering" }
+      - { code: "IT",    name: "Information Technology" }
+      - { code: "AI_DS", name: "Artificial Intelligence and Data Science" }
+    supported_templates:
+      - marksheet_alpha
+      - certificate_alpha
+      - student_id_alpha
+
+  - id: university_beta
+    name: "Sri Ramanujan Institute of Technology"
+    short_code: "SRIT"
+    address:
+      line1: "SRIT Main Campus, Electronic City Phase 2"
+      city: "Bengaluru"
+      state: "Karnataka"
+      pin: "560100"
+      country: "India"
+      note: "Fictional Institution — For Research Purposes Only"
+    tagline: "Innovation, Research, Technology"
+    colors:
+      primary: "#0d5e3f"
+      secondary: "#10b981"
+      text: "#2d3748"
+      accent: "#f59e0b"
+    fonts:
+      heading: "Helvetica-Bold"
+      body: "Helvetica"
+      monospace: "Courier"
+    grading_scheme:
+      type: "grade_point"
+      scale: 10.0
+      pass_marks: 35
+      bands:
+        - { min_marks: 91, grade: "S",  grade_point: 10.0 }
+        - { min_marks: 81, grade: "A",  grade_point: 9.0 }
+        - { min_marks: 71, grade: "B",  grade_point: 8.0 }
+        - { min_marks: 61, grade: "C",  grade_point: 7.0 }
+        - { min_marks: 51, grade: "D",  grade_point: 6.0 }
+        - { min_marks: 35, grade: "E",  grade_point: 5.0 }
+        - { min_marks: 0,  grade: "F",  grade_point: 0.0 }
+    roll_number_pattern: "{year_short}BT{branch_code}{sequence:04d}"
+    enrollment_pattern: "SRIT{year}{sequence:05d}"
+    semester_naming: "Semester {number}"
+    branches:
+      - { code: "CSE",  name: "Computer Science and Engineering" }
+      - { code: "ECE",  name: "Electronics and Communication Engineering" }
+      - { code: "ME",   name: "Mechanical Engineering" }
+      - { code: "EE",   name: "Electrical Engineering" }
+      - { code: "AI",   name: "Artificial Intelligence" }
+    supported_templates:
+      - marksheet_alpha
+      - marksheet_beta
+      - certificate_alpha
+      - student_id_alpha
+
+  - id: university_gamma
+    name: "National Institute of Engineering and Sciences"
+    short_code: "NIES"
+    address:
+      line1: "NIES Campus, Kharadi IT Park Road"
+      city: "Pune"
+      state: "Maharashtra"
+      pin: "411014"
+      country: "India"
+      note: "Fictional Institution — For Research Purposes Only"
+    tagline: "Knowledge, Integrity, Innovation"
+    colors:
+      primary: "#8b0000"
+      secondary: "#ef4444"
+      text: "#1a1a2e"
+      accent: "#fbbf24"
+    fonts:
+      heading: "Times-Bold"
+      body: "Times-Roman"
+      monospace: "Courier"
+    grading_scheme:
+      type: "grade_point"
+      scale: 10.0
+      pass_marks: 40
+      bands:
+        - { min_marks: 90, grade: "O",  grade_point: 10.0 }
+        - { min_marks: 80, grade: "A+", grade_point: 9.0 }
+        - { min_marks: 70, grade: "A",  grade_point: 8.0 }
+        - { min_marks: 60, grade: "B+", grade_point: 7.0 }
+        - { min_marks: 50, grade: "B",  grade_point: 6.0 }
+        - { min_marks: 40, grade: "C",  grade_point: 5.0 }
+        - { min_marks: 0,  grade: "F",  grade_point: 0.0 }
+    roll_number_pattern: "NIES{year_short}{branch_code}{sequence:04d}"
+    enrollment_pattern: "EN{year}NIES{sequence:04d}"
+    semester_naming: "Sem-{number}"
+    branches:
+      - { code: "CSE",  name: "Computer Science and Engineering" }
+      - { code: "ECE",  name: "Electronics and Communication Engineering" }
+      - { code: "ME",   name: "Mechanical Engineering" }
+      - { code: "CE",   name: "Civil Engineering" }
+      - { code: "BBA",  name: "Business Administration" }
+    supported_templates:
+      - marksheet_alpha
+      - certificate_alpha
+      - student_id_alpha
+
+  - id: university_delta
+    name: "Indira Gandhi College of Engineering"
+    short_code: "IGCE"
+    address:
+      line1: "IGCE Main Building, Andheri East"
+      city: "Mumbai"
+      state: "Maharashtra"
+      pin: "400069"
+      country: "India"
+      note: "Fictional Institution — For Research Purposes Only"
+    tagline: "Empowering Minds, Shaping Future"
+    colors:
+      primary: "#4b0082"
+      secondary: "#8b5cf6"
+      text: "#2d2d2d"
+      accent: "#22c55e"
+    fonts:
+      heading: "Helvetica-Bold"
+      body: "Helvetica"
+      monospace: "Courier"
+    grading_scheme:
+      type: "grade_point"
+      scale: 10.0
+      pass_marks: 40
+      bands:
+        - { min_marks: 90, grade: "O",  grade_point: 10.0 }
+        - { min_marks: 80, grade: "A+", grade_point: 9.0 }
+        - { min_marks: 70, grade: "A",  grade_point: 8.0 }
+        - { min_marks: 60, grade: "B+", grade_point: 7.0 }
+        - { min_marks: 50, grade: "B",  grade_point: 6.0 }
+        - { min_marks: 40, grade: "C",  grade_point: 5.0 }
+        - { min_marks: 0,  grade: "F",  grade_point: 0.0 }
+    roll_number_pattern: "{year}{branch_code}{sequence:06d}"
+    enrollment_pattern: "IGCE{year}{sequence:05d}"
+    semester_naming: "Semester {number}"
+    branches:
+      - { code: "CSE",   name: "Computer Science and Engineering" }
+      - { code: "ECE",   name: "Electronics and Communication Engineering" }
+      - { code: "ME",    name: "Mechanical Engineering" }
+      - { code: "CE",    name: "Civil Engineering" }
+      - { code: "EE",    name: "Electrical Engineering" }
+      - { code: "IT",    name: "Information Technology" }
+    supported_templates:
+      - marksheet_alpha
+      - marksheet_beta
+      - certificate_alpha
+      - student_id_alpha

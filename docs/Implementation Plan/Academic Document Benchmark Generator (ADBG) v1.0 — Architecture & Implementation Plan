@@ -1,0 +1,768 @@
+# Academic Document Benchmark Generator (ADBG) v1.0 — Architecture & Implementation Plan
+
+## Problem Statement & Background
+
+The Academic Universe project currently has a **TypeScript-based synthetic generator** inside `benchmarks/synthetic-generator/` that is tightly coupled to the AU benchmark evaluation framework (Node.js, `pdf-lib`, TypeScript types). It generates PDFs with rudimentary quality overlays (opacity rectangles, rotation restricted to 90-degree multiples), but lacks:
+
+- **True computer-vision-grade degradation** (perspective distortion, motion blur, lens distortion, realistic shadow simulation, noise injection, JPEG artifact simulation)
+- **Multi-format output** (only PDF + PNG via optional `pdf-to-img`)
+- **Independence** — cannot be used outside the AU monorepo
+- **Python ecosystem compatibility** — the broader Document AI research community overwhelmingly uses Python (OpenCV, Pillow, NumPy)
+- **Configurable template system** with YAML-driven templates (no-code extensibility)
+- **Comprehensive dataset statistics** and scientific reproducibility guarantees
+
+ADBG will be a **standalone Python project** within the AU workspace that can later be extracted into its own GitHub repository and published alongside a Scopus/IEEE paper.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Project Location**: ADBG will live at `c:\github\academicuniverse.com\academicuniverse\adbg\` — a top-level directory separate from the existing `benchmarks/` TypeScript framework. This keeps both systems operational during the transition. Do you agree with this placement, or would you prefer a completely separate repository (e.g., `c:\github\adbg\`)?
+
+> [!IMPORTANT]
+> **Relationship to Existing Generator**: The existing TypeScript `benchmarks/synthetic-generator/` will remain untouched. ADBG is a clean-room reimplementation in Python. The existing generator can continue to serve AU DIC benchmarking while ADBG matures. Do you agree with this parallel approach?
+
+> [!WARNING]
+> **Python Version**: Your system reports Python 3.14.6. The spec says Python 3.12+. We will target `>=3.12` in `pyproject.toml` to ensure broad compatibility. ADBG will use standard library features available since 3.12.
+
+---
+
+## Open Questions
+
+> [!IMPORTANT]
+> **Template Visual Fidelity**: The existing TypeScript generators produce simplified PDF layouts using `pdf-lib` (colored rectangles, text positioning). For ADBG, we have two approaches:
+> 1. **ReportLab Platypus** — Programmatic layout with flowables, frames, and page templates. More Pythonic, better table support, but still code-driven.
+> 2. **HTML/CSS to PDF** via `weasyprint` — Jinja2 HTML templates rendered to PDF. Maximum visual fidelity, easiest for non-developers to customize. Adds a `weasyprint` dependency.
+>
+> **Recommendation**: Start with ReportLab (as specified in your tech stack), with the architecture designed to support a `weasyprint` renderer as a future plugin. Does this approach work for you?
+
+> [!IMPORTANT]
+> **Faker vs. Custom Fabricator**: The spec lists `Faker` in the tech stack. The existing TypeScript system uses a custom `DataFabricator` with India-specific academic data (branches, courses, names). Should we:
+> 1. Use `Faker` with `faker.providers` for Indian locale (`fa_IN`) + custom academic providers?
+> 2. Port the existing `DataFabricator` logic to Python with `Faker` as a supplementary source?
+>
+> **Recommendation**: Option 2 — a custom `AcademicDataFabricator` that uses `Faker(locale='en_IN')` internally for names/addresses but has its own domain-specific logic for courses, grades, branches, roll numbers.
+
+---
+
+## Architecture Overview
+
+```mermaid
+graph TB
+    subgraph CLI["CLI Layer"]
+        CLI_ENTRY["generate.py<br/>(Click CLI)"]
+        CLI_CONFIG["config.yaml<br/>(User Config)"]
+    end
+
+    subgraph CORE["Core Engine"]
+        SEED["SeedManager<br/>(Deterministic RNG)"]
+        REGISTRY["PluginRegistry<br/>(Document Type Registry)"]
+        PIPELINE["GenerationPipeline<br/>(Orchestrator)"]
+    end
+
+    subgraph GENERATORS["Document Generators - Plugins"]
+        GEN_CERT["CertificateGenerator"]
+        GEN_MS["MarksheetGenerator"]
+        GEN_ID["StudentIDGenerator"]
+        GEN_FUTURE["Future Plugins..."]
+    end
+
+    subgraph TEMPLATES["Template Engine"]
+        TMPL_LOADER["TemplateLoader<br/>(YAML + Assets)"]
+        TMPL_RENDERER["TemplateRenderer<br/>(ReportLab)"]
+    end
+
+    subgraph DATA["Data Fabrication"]
+        FAB["AcademicDataFabricator"]
+        FAKER["Faker en_IN"]
+    end
+
+    subgraph DEGRADATION["CV Degradation Engine"]
+        DEG_ENGINE["DegradationEngine"]
+        DEG_PERSP["PerspectiveDistortion"]
+        DEG_BLUR["MotionBlur and GaussianBlur"]
+        DEG_NOISE["GaussianNoise"]
+        DEG_JPEG["JPEGCompression"]
+        DEG_SHADOW["ShadowSimulation"]
+        DEG_LENS["LensDistortion"]
+        DEG_ROT["Rotation and Skew"]
+        DEG_BRIGHT["BrightnessVariation"]
+        DEG_COLOR["ColorShift"]
+    end
+
+    subgraph OUTPUT["Output Layer"]
+        GT["GroundTruthBuilder"]
+        META["MetadataBuilder"]
+        MANIFEST["ManifestBuilder"]
+        STATS["StatisticsEngine"]
+        EXPORT["Exporter<br/>(PDF, PNG, JPEG)"]
+    end
+
+    CLI_ENTRY --> PIPELINE
+    CLI_CONFIG --> PIPELINE
+    PIPELINE --> SEED
+    PIPELINE --> REGISTRY
+    REGISTRY --> GEN_CERT
+    REGISTRY --> GEN_MS
+    REGISTRY --> GEN_ID
+    REGISTRY --> GEN_FUTURE
+    GEN_CERT --> TMPL_LOADER
+    GEN_MS --> TMPL_LOADER
+    GEN_ID --> TMPL_LOADER
+    TMPL_LOADER --> TMPL_RENDERER
+    GEN_CERT --> FAB
+    GEN_MS --> FAB
+    GEN_ID --> FAB
+    FAB --> FAKER
+    PIPELINE --> DEG_ENGINE
+    DEG_ENGINE --> DEG_PERSP
+    DEG_ENGINE --> DEG_BLUR
+    DEG_ENGINE --> DEG_NOISE
+    DEG_ENGINE --> DEG_JPEG
+    DEG_ENGINE --> DEG_SHADOW
+    DEG_ENGINE --> DEG_LENS
+    DEG_ENGINE --> DEG_ROT
+    DEG_ENGINE --> DEG_BRIGHT
+    DEG_ENGINE --> DEG_COLOR
+    PIPELINE --> GT
+    PIPELINE --> META
+    PIPELINE --> MANIFEST
+    PIPELINE --> STATS
+    PIPELINE --> EXPORT
+```
+
+---
+
+## Proposed Changes
+
+### Project Root and Configuration
+
+#### [NEW] [adbg/](file:///c:/github/academicuniverse.com/academicuniverse/adbg/)
+Top-level project directory. Will contain all ADBG source code, tests, templates, configuration, and documentation.
+
+#### [NEW] [pyproject.toml](file:///c:/github/academicuniverse.com/academicuniverse/adbg/pyproject.toml)
+Modern Python packaging configuration (PEP 621). Dependencies:
+```toml
+[project]
+name = "adbg"
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "reportlab>=4.0",
+    "Pillow>=10.0",
+    "opencv-python-headless>=4.8",
+    "numpy>=1.26",
+    "Faker>=28.0",
+    "PyYAML>=6.0",
+    "click>=8.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-cov", "ruff", "mypy"]
+
+[project.scripts]
+adbg = "adbg.cli.main:cli"
+```
+
+#### [NEW] [config/default.yaml](file:///c:/github/academicuniverse.com/academicuniverse/adbg/config/default.yaml)
+Default generation configuration:
+```yaml
+generation:
+  seed: 42
+  count: 100
+  output_dir: ./output
+  formats: [pdf, png, jpeg]
+
+documents:
+  types: [certificate, marksheet, student_id]
+  distribution:
+    certificate: 0.33
+    marksheet: 0.34
+    student_id: 0.33
+
+quality_profiles:
+  clean_pdf: 0.40
+  scanner_copy: 0.25
+  mobile_camera: 0.20
+  rotated: 0.15
+
+degradation:
+  perspective:
+    max_angle: 5.0
+  motion_blur:
+    max_kernel: 7
+  gaussian_blur:
+    max_sigma: 2.0
+  noise:
+    max_sigma: 15
+  jpeg_compression:
+    min_quality: 40
+  brightness:
+    range: [0.7, 1.3]
+  shadow:
+    enabled: true
+  lens_distortion:
+    max_k1: 0.3
+  rotation:
+    max_degrees: 5.0
+  color_shift:
+    max_delta: 15
+```
+
+---
+
+### Directory Structure
+
+```
+adbg/
+├── pyproject.toml
+├── README.md
+├── LICENSE
+├── generate.py                    <- Convenience entry point
+├── config/
+│   └── default.yaml               <- Default configuration
+├── adbg/
+│   ├── __init__.py
+│   ├── cli/
+│   │   ├── __init__.py
+│   │   └── main.py                <- Click CLI (generate, validate, stats)
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── seed_manager.py        <- Deterministic RNG with child seeds
+│   │   ├── plugin_registry.py     <- Auto-discovery plugin registry
+│   │   ├── pipeline.py            <- Generation orchestrator
+│   │   └── interfaces.py          <- Abstract base classes (ABCs)
+│   ├── generators/
+│   │   ├── __init__.py
+│   │   ├── certificate.py         <- CertificateGenerator plugin
+│   │   ├── marksheet.py           <- MarksheetGenerator plugin
+│   │   └── student_id.py          <- StudentIDGenerator plugin
+│   ├── templates/
+│   │   ├── __init__.py
+│   │   ├── loader.py              <- YAML template loader
+│   │   ├── renderer.py            <- ReportLab PDF renderer
+│   │   └── definitions/
+│   │       ├── university_alpha.yaml
+│   │       ├── university_beta.yaml
+│   │       ├── university_gamma.yaml
+│   │       └── university_delta.yaml
+│   ├── data/
+│   │   ├── __init__.py
+│   │   └── fabricator.py          <- Academic data fabricator (Faker + custom)
+│   ├── degradations/
+│   │   ├── __init__.py
+│   │   ├── engine.py              <- DegradationEngine (composable pipeline)
+│   │   ├── perspective.py         <- Perspective warp (OpenCV)
+│   │   ├── blur.py                <- Motion blur + Gaussian blur
+│   │   ├── noise.py               <- Gaussian noise injection
+│   │   ├── compression.py         <- JPEG compression artifacts
+│   │   ├── shadow.py              <- Realistic shadow overlay
+│   │   ├── lens.py                <- Barrel/pincushion lens distortion
+│   │   ├── geometric.py           <- Rotation + skew
+│   │   ├── brightness.py          <- Brightness/contrast variation
+│   │   └── color.py               <- Color shift simulation
+│   ├── groundtruth/
+│   │   ├── __init__.py
+│   │   └── builder.py             <- Ground truth JSON builder
+│   ├── metadata/
+│   │   ├── __init__.py
+│   │   └── builder.py             <- Per-sample metadata builder
+│   ├── manifest/
+│   │   ├── __init__.py
+│   │   └── builder.py             <- Dataset manifest builder
+│   ├── statistics/
+│   │   ├── __init__.py
+│   │   └── engine.py              <- Dataset statistics computation
+│   └── utils/
+│       ├── __init__.py
+│       ├── hashing.py             <- SHA-256 checksums
+│       └── logging.py             <- Structured logging
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py                <- Shared fixtures (seed, tmp_path)
+│   ├── test_seed_manager.py
+│   ├── test_fabricator.py
+│   ├── test_pipeline.py
+│   ├── test_degradations.py
+│   ├── test_groundtruth.py
+│   ├── test_manifest.py
+│   └── test_determinism.py        <- Verifies seed reproducibility
+└── docs/
+    ├── architecture.md
+    ├── extending.md               <- How to add new document types
+    └── degradation_engine.md
+```
+
+---
+
+### Core Engine
+
+#### [NEW] [interfaces.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/core/interfaces.py)
+Abstract base classes defining the contracts for the entire system:
+
+```python
+# Key interfaces (pseudocode):
+
+class DocumentGenerator(ABC):
+    """Plugin interface for document type generators."""
+    @abstractmethod
+    def document_type(self) -> str: ...
+    
+    @abstractmethod
+    def generate(self, data: DocumentData, template: TemplateDefinition,
+                 seed: SeedManager) -> GeneratedDocument: ...
+
+class DegradationOperator(ABC):
+    """Plugin interface for individual degradation operations."""
+    @abstractmethod
+    def name(self) -> str: ...
+    
+    @abstractmethod
+    def apply(self, image: np.ndarray, params: dict,
+              rng: np.random.Generator) -> tuple[np.ndarray, dict]: ...
+
+class TemplateDefinition(ABC):
+    """Interface for university template definitions."""
+    @abstractmethod
+    def template_id(self) -> str: ...
+    
+    @abstractmethod
+    def render_layout(self, canvas, data: DocumentData) -> None: ...
+```
+
+**Design Decisions:**
+- All interfaces return immutable data; side effects are isolated to the pipeline orchestrator
+- `DegradationOperator.apply()` returns both the degraded image AND the exact parameters used (for ground truth logging)
+- Generators receive a `SeedManager` child seed, ensuring per-document determinism
+
+#### [NEW] [seed_manager.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/core/seed_manager.py)
+Wraps `numpy.random.Generator` with `SeedSequence` for deterministic, splittable RNG:
+
+```python
+class SeedManager:
+    def __init__(self, seed: int):
+        self._seed_seq = np.random.SeedSequence(seed)
+        self._rng = np.random.default_rng(self._seed_seq)
+    
+    def child(self) -> 'SeedManager':
+        """Create a deterministic child RNG (for per-document isolation)."""
+        child_seq = self._seed_seq.spawn(1)[0]
+        return SeedManager._from_seq(child_seq)
+    
+    def random_float(self) -> float: ...
+    def random_int(self, low, high) -> int: ...
+    def pick(self, items: list) -> Any: ...
+    def pick_weighted(self, items: list, weights: list) -> Any: ...
+```
+
+**Why NumPy over `random`**: NumPy's `SeedSequence.spawn()` gives us independent, provably non-overlapping child streams — critical for per-document determinism without sequential coupling.
+
+#### [NEW] [plugin_registry.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/core/plugin_registry.py)
+Auto-discovery registry using `__init_subclass__` or explicit registration:
+
+```python
+class PluginRegistry:
+    _generators: dict[str, type[DocumentGenerator]] = {}
+    _degradations: dict[str, type[DegradationOperator]] = {}
+    
+    @classmethod
+    def register_generator(cls, gen_class: type[DocumentGenerator]):
+        cls._generators[gen_class.document_type()] = gen_class
+    
+    @classmethod
+    def get_generator(cls, doc_type: str) -> DocumentGenerator: ...
+    
+    @classmethod
+    def available_types(cls) -> list[str]: ...
+```
+
+Adding a new document type requires:
+1. Create `adbg/generators/my_new_type.py`
+2. Implement `DocumentGenerator` ABC
+3. Call `PluginRegistry.register_generator(MyNewGenerator)` at module level
+4. Import the module (auto-imported via `generators/__init__.py`)
+
+**No framework core modification required.**
+
+#### [NEW] [pipeline.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/core/pipeline.py)
+The central orchestrator:
+
+```python
+class GenerationPipeline:
+    def run(self, config: GenerationConfig) -> DatasetResult:
+        """
+        1. Initialize SeedManager from config.seed
+        2. For each document (1..config.count):
+           a. Spawn child seed
+           b. Select document type (weighted random)
+           c. Select template (weighted random)
+           d. Select quality profile (weighted random)
+           e. Fabricate data via AcademicDataFabricator
+           f. Render clean PDF via generator plugin
+           g. Convert PDF to image (Pillow)
+           h. Apply degradation pipeline (if profile != CLEAN_PDF)
+           i. Export PDF + PNG + JPEG
+           j. Build ground truth JSON
+           k. Build per-sample metadata
+        3. Build manifest.json
+        4. Compute dataset statistics
+        5. Return DatasetResult
+        """
+```
+
+---
+
+### CV Degradation Engine
+
+This is the most technically novel component — the core differentiator from the existing TypeScript system.
+
+#### [NEW] [engine.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/degradations/engine.py)
+Composable degradation pipeline:
+
+```python
+class DegradationEngine:
+    def __init__(self, operators: list[DegradationOperator]):
+        self._operators = operators
+    
+    def apply_profile(self, image: np.ndarray, profile: QualityProfile,
+                      rng: np.random.Generator) -> DegradationResult:
+        """Apply a sequence of degradations defined by the quality profile."""
+        applied_params = {}
+        result = image.copy()
+        
+        for op in profile.get_operators():
+            if rng.random() < op.probability:
+                result, params = op.apply(result, profile.get_params(op.name), rng)
+                applied_params[op.name] = params
+        
+        return DegradationResult(image=result, parameters=applied_params)
+```
+
+#### Quality Profile to Degradation Mapping
+
+| Profile | Degradations Applied |
+|:---|:---|
+| `clean_pdf` | None (original render) |
+| `scanner_copy` | Gaussian blur (sigma=0.5-1.0), Grayscale, Slight rotation (plus/minus 0.5 degrees), Low noise (sigma=3-5), Brightness reduction (0.90-0.95) |
+| `mobile_camera` | Perspective warp (2-5 degrees), Motion blur (k=3-5), JPEG compression (Q=60-80), Brightness variation (0.8-1.2), Shadow overlay, Slight color shift, Noise (sigma=8-15) |
+| `rotated` | Rotation (2-5 degrees), Slight noise (sigma=3-8), Optional JPEG compression |
+
+Each degradation is an independent `DegradationOperator` plugin with documented parameters.
+
+#### Individual Degradation Operators (10 files)
+
+Each operator implements:
+- Deterministic behavior given an RNG
+- Parameter bounds from config
+- Returns exact applied parameters for reproducibility
+
+| File | Technique | Implementation |
+|:---|:---|:---|
+| `perspective.py` | 4-point perspective warp | `cv2.getPerspectiveTransform` + `cv2.warpPerspective` |
+| `blur.py` | Motion blur + Gaussian blur | Directional kernel convolution + `cv2.GaussianBlur` |
+| `noise.py` | Additive Gaussian noise | `rng.normal()` + pixel-wise addition |
+| `compression.py` | JPEG artifact simulation | `cv2.imencode('.jpg', quality=Q)` then decode round-trip |
+| `shadow.py` | Gradient shadow overlay | Bezier-curve gradient mask then alpha blend |
+| `lens.py` | Barrel/pincushion distortion | `cv2.undistort` with synthetic k1, k2 coefficients |
+| `geometric.py` | Rotation + affine skew | `cv2.getRotationMatrix2D` + `cv2.warpAffine` |
+| `brightness.py` | Brightness/contrast | Linear alpha*x + beta transform |
+| `color.py` | Color temperature/tint shift | HSV channel perturbation |
+
+---
+
+### Template Engine
+
+#### [NEW] [definitions/university_alpha.yaml](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/templates/definitions/university_alpha.yaml)
+Example YAML template (no-code extensibility):
+
+```yaml
+template_id: university_alpha
+name: "Vivekananda Technical University"
+short_code: "VTU"
+location: "New Delhi, India (Fictional)"
+tagline: "Excellence in Engineering and Research"
+
+colors:
+  primary: "#1a2e5a"
+  secondary: "#3b82f6"
+  text: "#333333"
+  accent: "#e63946"
+
+fonts:
+  heading: Helvetica-Bold
+  body: Helvetica
+  monospace: Courier
+
+layout:
+  page_size: A4
+  margins: { top: 72, right: 54, bottom: 72, left: 54 }
+  header:
+    style: ruled_bar
+    height: 60
+  footer:
+    include_disclaimer: true
+    disclaimer_text: "SYNTHETIC DATASET - For Research Purposes Only"
+
+watermark:
+  text: "SYNTHETIC RESEARCH DATASET"
+  opacity: 0.15
+  rotation: 35
+```
+
+New templates can be added by dropping a YAML file into `templates/definitions/` — **zero Python code changes required**.
+
+---
+
+### Document Generators (Plugins)
+
+#### [NEW] [certificate.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/generators/certificate.py)
+Generates landscape A4 certificates (degree, workshop, internship, hackathon) using ReportLab. Renders:
+- Decorative double border
+- University header from template
+- Certificate title, recipient name, course/program
+- Roll number, CGPA
+- Signature blocks, QR placeholder
+- Research watermark
+
+#### [NEW] [marksheet.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/generators/marksheet.py)
+Generates portrait A4 semester marksheets. Renders:
+- University header bar from template
+- Student information block (name, roll, enrollment, branch, semester)
+- Course marks table (code, title, credits, grade, marks)
+- SGPA/CGPA summary box
+- Signature block, QR placeholder
+
+#### [NEW] [student_id.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/generators/student_id.py)
+Generates student ID cards (credit-card sized, centered on A4). Renders:
+- Card border with university colors
+- Header bar with institution name
+- Photo placeholder box
+- Student details (name, roll, branch, batch, blood group, emergency contact)
+- Footer bar with return instructions
+
+---
+
+### Data Fabrication
+
+#### [NEW] [fabricator.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/data/fabricator.py)
+Port of the existing TypeScript `DataFabricator` with enhancements:
+- Uses `Faker(locale='en_IN')` for names, addresses, phone numbers
+- Custom Indian academic domain data: 7 engineering branches, 40+ course codes, grade mapping (O/A+/A/B+/B/C)
+- Deterministic via `SeedManager` — all `Faker` calls use the seeded RNG
+- Generates: `StudentProfile`, `SemesterRecord`, `CourseMark`
+- Coherent data: GPA computed correctly from individual course marks and credits
+
+---
+
+### Output Layer
+
+#### [NEW] [groundtruth/builder.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/groundtruth/builder.py)
+Builds exact ground truth JSON for each document:
+```json
+{
+  "documentId": "ADBG_MS_001",
+  "documentType": "marksheet",
+  "studentName": "Aarav Sharma",
+  "rollNumber": "2022345678",
+  "enrollmentNumber": "EN202234567",
+  "collegeName": "Vivekananda Technical University",
+  "course": "Bachelor of Technology (B.Tech)",
+  "branch": "Computer Science and Engineering",
+  "semester": "Semester 1",
+  "sgpa": 8.45,
+  "cgpa": 8.32,
+  "subjects": ["..."],
+  "issueDate": "2024-03-15",
+  "templateId": "university_alpha",
+  "qualityProfile": "scanner_copy"
+}
+```
+
+#### [NEW] [metadata/builder.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/metadata/builder.py)
+Per-sample metadata:
+```json
+{
+  "documentId": "ADBG_MS_001",
+  "category": "marksheet",
+  "template": "university_alpha",
+  "qualityProfile": "scanner_copy",
+  "seed": 12345,
+  "renderTimestamp": "2026-08-03T18:30:00Z",
+  "degradationParameters": {
+    "gaussian_blur": {"sigma": 0.8},
+    "rotation": {"degrees": 0.3},
+    "noise": {"sigma": 4.2}
+  },
+  "groundTruthPath": "ground-truth/ADBG_MS_001.json",
+  "pdfPath": "documents/ADBG_MS_001.pdf",
+  "pngPath": "documents/ADBG_MS_001.png",
+  "jpegPath": "documents/ADBG_MS_001.jpg",
+  "checksumSha256": "a1b2c3..."
+}
+```
+
+#### [NEW] [manifest/builder.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/manifest/builder.py)
+Generates `manifest.json` describing the complete dataset:
+```json
+{
+  "manifestVersion": "1.0.0",
+  "generatorVersion": "1.0.0",
+  "generationSeed": 42,
+  "generatedTimestamp": "2026-08-03T18:30:00Z",
+  "totalDocuments": 500,
+  "formats": ["pdf", "png", "jpeg"],
+  "documents": ["..."]
+}
+```
+
+#### [NEW] [statistics/engine.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/statistics/engine.py)
+Computes and writes `statistics.json`:
+- Document counts by type, template, quality profile
+- File size distributions (min, max, mean, median, std)
+- Generation timing
+- SHA-256 manifest hash for integrity verification
+
+---
+
+### CLI
+
+#### [NEW] [cli/main.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/adbg/cli/main.py)
+Click-based CLI:
+
+```bash
+# Generate 500 documents with seed 42
+python generate.py --documents 500 --output ./dataset --seed 42
+
+# Generate with custom config
+python generate.py --config config/custom.yaml
+
+# Only certificates, mobile camera quality
+python generate.py --documents 100 --types certificate --quality mobile_camera
+
+# Show dataset statistics
+python generate.py stats --dataset ./dataset
+
+# Validate dataset integrity
+python generate.py validate --dataset ./dataset
+```
+
+---
+
+### Testing Strategy
+
+#### [NEW] [tests/test_determinism.py](file:///c:/github/academicuniverse.com/academicuniverse/adbg/tests/test_determinism.py)
+**Critical test**: Generates 10 documents with seed=42 twice and asserts byte-identical output:
+```python
+def test_deterministic_generation():
+    result1 = pipeline.run(config(seed=42, count=10))
+    result2 = pipeline.run(config(seed=42, count=10))
+    
+    for doc_id in result1.document_ids:
+        assert result1.checksum(doc_id) == result2.checksum(doc_id)
+        assert result1.ground_truth(doc_id) == result2.ground_truth(doc_id)
+```
+
+Additional tests:
+- `test_seed_manager.py` — RNG determinism, child isolation, distribution uniformity
+- `test_fabricator.py` — Data coherence (GPA matches marks, valid phone numbers, etc.)
+- `test_pipeline.py` — End-to-end small dataset generation, output file structure validation
+- `test_degradations.py` — Each operator produces valid images, parameter logging correctness
+- `test_groundtruth.py` — Ground truth JSON schema validation, field completeness
+- `test_manifest.py` — Manifest integrity, SHA-256 verification
+
+---
+
+## Implementation Phases
+
+### Phase 1: Foundation (Core + Interfaces + Seed + Config)
+- `pyproject.toml`, project structure, `__init__.py` files
+- `core/interfaces.py` — All ABCs
+- `core/seed_manager.py` — Deterministic RNG
+- `core/plugin_registry.py` — Plugin auto-registration
+- `config/default.yaml` — Default configuration
+- `utils/hashing.py`, `utils/logging.py`
+
+### Phase 2: Data + Templates
+- `data/fabricator.py` — Academic data fabrication
+- `templates/loader.py` — YAML template loader
+- `templates/renderer.py` — ReportLab PDF renderer
+- 4 university template YAML definitions
+
+### Phase 3: Document Generators
+- `generators/certificate.py`
+- `generators/marksheet.py`
+- `generators/student_id.py`
+- Integration with template engine
+
+### Phase 4: CV Degradation Engine
+- `degradations/engine.py` — Composable pipeline
+- All 10 degradation operators
+- Quality profile to degradation mapping
+
+### Phase 5: Output Layer + Pipeline Integration
+- `groundtruth/builder.py`
+- `metadata/builder.py`
+- `manifest/builder.py`
+- `statistics/engine.py`
+- `core/pipeline.py` — Full orchestrator
+- `cli/main.py` — CLI entry point
+
+### Phase 6: Testing + Documentation
+- All test files
+- `docs/architecture.md`, `docs/extending.md`, `docs/degradation_engine.md`
+- `README.md`
+- `generate.py` convenience entry point
+
+---
+
+## Verification Plan
+
+### Automated Tests
+```bash
+cd adbg
+pip install -e ".[dev]"
+pytest tests/ -v --tb=short
+```
+
+Key assertions:
+- **Determinism**: Same seed produces byte-identical outputs (critical)
+- **Completeness**: Every document has matching ground truth JSON, metadata JSON, PDF, PNG, JPEG
+- **Schema Validity**: All JSON outputs conform to documented schemas
+- **Degradation Safety**: No degradation operator produces invalid images (all-black, NaN pixels, wrong dimensions)
+- **File Integrity**: SHA-256 checksums in manifest match actual files
+
+### Manual Verification
+- Visual inspection of 10 sample documents across all 3 types x 4 quality profiles = 12 combinations
+- Verify ground truth JSON fields match visible text in rendered documents
+- Confirm CLI works end-to-end: `python generate.py --documents 50 --seed 42 --output ./test_dataset`
+- Confirm dataset statistics are accurate
+
+---
+
+## Risk Analysis
+
+| Risk | Mitigation |
+|:---|:---|
+| ReportLab font embedding inconsistency across OS | Use only standard PDF fonts initially; document font requirements |
+| OpenCV version incompatibility | Pin `opencv-python-headless>=4.8,<5.0` |
+| Degradation non-determinism from float precision | Use `np.float64` throughout; test with `np.allclose` |
+| JPEG encoding non-determinism across platforms | Use OpenCV JPEG encoder with explicit quality parameter; document known platform variance |
+| Template YAML schema drift | Validate templates against a JSON Schema at load time |
+| Large dataset memory pressure | Process documents sequentially; never hold full dataset in memory |
+
+---
+
+## Key Design Decisions Summary
+
+| Decision | Choice | Rationale |
+|:---|:---|:---|
+| Language | Python 3.12+ | Aligns with Document AI research ecosystem |
+| PDF Rendering | ReportLab | Specified in tech stack; mature, no system deps |
+| Degradation Engine | OpenCV + NumPy | Industry standard for CV operations |
+| RNG | NumPy `SeedSequence` | Provably independent child streams |
+| Template Format | YAML | No-code extensibility for non-developers |
+| Configuration | YAML | Human-readable, supports complex nested structures |
+| CLI Framework | Click | Clean, composable, well-documented |
+| Plugin Pattern | ABC + Registry | Adding document types requires zero core changes |
+| Project Isolation | Standalone `adbg/` directory | Can be extracted to independent repository |

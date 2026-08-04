@@ -333,6 +333,62 @@ Without normalization (Pass A), standard string comparison yields an artificial 
 
 Routing field extractions through the `CanonicalNormalizer` (Pass B) recovers true extraction performance, boosting the Field F1 score to **95.49%** (a **+45.49% absolute improvement**) while reducing mean CER by **90.42%** (from 38.13% down to 3.65%). Date and Roll Number normalizers contributed the largest share of corrections (27.48% each), demonstrating that domain-specific normalization is essential for unbiased evaluation of academic credential document processing engines.
 
+### 7.6 Statistical Significance Analysis ($p < 0.0001$)
+To verify whether the observed metric improvements resulting from canonical normalization are statistically significant, we evaluated hypothesis tests across all 5,760 paired field observations ($N = 5,760$).
+
+**Table 5: Statistical Hypothesis Testing Summary ($\alpha = 0.001$)**
+
+| Statistical Test | Tested Metric | Null Hypothesis ($H_0$) | Test Statistic | Exact $p$-value | Decision | Significance Level |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
+| **McNemar Test** | Binary Field Match Rate | $\text{Acc}_{\text{Pass A}} = \text{Acc}_{\text{Pass B}}$ | $\chi^2 = 2618.00$ | $< 1.0 \times 10^{-15}$ | **Reject $H_0$** | **$p < 0.0001$ (Statistically Significant)** |
+| **Wilcoxon Signed-Rank** | Per-Sample F1 Score | $\text{Median}(\Delta \text{F1}) = 0$ | $W = 64980.0$ | $1.55 \times 10^{-67}$ | **Reject $H_0$** | **$p < 0.0001$ (Statistically Significant)** |
+| **Wilcoxon Signed-Rank** | Per-Sample CER Reduction | $\text{Median}(\Delta \text{CER}) = 0$ | $W = 64980.0$ | $4.68 \times 10^{-61}$ | **Reject $H_0$** | **$p < 0.0001$ (Statistically Significant)** |
+| **Paired Student's t-Test** | Sample Mean F1 Score | $\mu_{\text{Pass A}} = \mu_{\text{Pass B}}$ | $t = 307.87$ | $< 1.0 \times 10^{-15}$ | **Reject $H_0$** | **$p < 0.0001$ (Statistically Significant)** |
+| **Paired Student's t-Test** | Sample Mean CER | $\mu_{\text{Pass A}} = \mu_{\text{Pass B}}$ | $t = 262.36$ | $< 1.0 \times 10^{-15}$ | **Reject $H_0$** | **$p < 0.0001$ (Statistically Significant)** |
+
+McNemar's test over the $2 \times 2$ contingency matrix ($a=2,880, b=0, c=2,620, d=260$) yielded $\chi^2 = 2618.00$ ($p < 0.0001$), confirming that canonical normalization provides an overwhelmingly statistically significant improvement in field match accuracy.
+
+### 7.7 Non-Parametric 95% Bootstrap Confidence Intervals
+To establish rigorous confidence bounds, non-parametric empirical bootstrap resampling ($B = 1,000$ iterations) was performed over the 5,760 field observations.
+
+**Table 6: Empirical Benchmark Metrics with 95% Bootstrap Confidence Intervals**
+
+| Evaluation Pass | Benchmark Metric | Empirical Mean | 95% Bootstrap CI [Lower, Upper] | CI Bound Range ($\Delta$) |
+| :--- | :--- | :---: | :---: | :---: |
+| **Pass A (Without Normalization)** | **Field F1 Score** | **50.00%** | [48.72%, 51.28%] | 2.57% |
+| | **Character Error Rate (CER)** | **38.13%** | [36.92%, 39.36%] | 2.44% |
+| | **Word Error Rate (WER)** | **285.31%** | [276.26%, 294.89%] | 18.62% |
+| --- | --- | --- | --- | --- |
+| **Pass B (With Normalization)** | **Field F1 Score** | **95.49%** | [94.93%, 96.01%] | 1.08% |
+| | **Character Error Rate (CER)** | **3.65%** | [3.23%, 4.10%] | 0.87% |
+| | **Word Error Rate (WER)** | **27.01%** | [23.86%, 30.26%] | 6.40% |
+| --- | --- | --- | --- | --- |
+| **Net Empirical Change** | **F1 Score Boost** | **+45.49%** | [+44.29%, +46.82%] | 2.53% |
+| | **CER Reduction** | **-34.48%** | [-35.65%, -33.25%] | 2.40% |
+| | **WER Reduction** | **-258.30%** | [-267.73%, -249.11%] | 18.62% |
+
+The 95% confidence intervals for Pass A ([48.72%, 51.28%]) and Pass B ([94.93%, 96.01%]) are completely non-overlapping, providing strong statistical evidence of distinct performance distributions.
+
+### 7.8 Error Taxonomy Distribution Shift Analysis
+Evaluating the error taxonomy across 5,760 paired field extractions before and after canonical normalization demonstrates how error categories shift between passes.
+
+**Table 7: Nine-Class OCR Error Taxonomy Distribution Before and After Normalization**
+
+| Error Category Class | Diagnostic Failure Description | Pass A (Without Normalization) | Pass B (With Normalization) | Absolute Shift | Category Shift (%) |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **`EXACT_MATCH`** | Character-perfect field match | 2,880 (50.00%) | **5,500 (95.49%)** | **+2,620** | **+90.97%** |
+| **`FORMAT_ERROR`** | Match achieved after canonicalization | 2,620 (45.49%) | **0 (0.00%)** | **-2,620** | **-100.00%** |
+| **`NORMALIZATION_ERROR`** | Canonical values remain unequal | 260 (4.51%) | **260 (4.51%)** | **0** | **0.00%** |
+| **`OCR_ERROR`** | Physical optical scanner noise | 0 (0.00%) | 0 (0.00%) | 0 | 0.00% |
+| **`FIELD_MISSING`** | Target entity key omitted | 0 (0.00%) | 0 (0.00%) | 0 | 0.00% |
+| **`HALLUCINATION`** | Content absent from document | 0 (0.00%) | 0 (0.00%) | 0 | 0.00% |
+| **`CATEGORY_ERROR`** | Category misclassification | 0 (0.00%) | 0 (0.00%) | 0 | 0.00% |
+| **`PARTIAL_MATCH`** | Partial substring overlap | 0 (0.00%) | 0 (0.00%) | 0 | 0.00% |
+| **`LOW_CONFIDENCE`** | Score below confidence cutoff | 0 (0.00%) | 0 (0.00%) | 0 | 0.00% |
+| **Total Evaluations** | Complete Benchmark Suite | **5,760 (100%)** | **5,760 (100%)** | **0** | **100.00%** |
+
+All 2,620 `FORMAT_ERROR` items in Pass A were converted to `EXACT_MATCH` in Pass B. Crucially, the 260 `NORMALIZATION_ERROR` items remained 100% constant, proving that `CanonicalNormalizer` resolves formatting variations without masking genuine extraction failures.
+
 ---
 
 ## 8. Discussion, Threats to Validity & Limitations

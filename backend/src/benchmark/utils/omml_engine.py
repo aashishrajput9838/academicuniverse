@@ -31,7 +31,9 @@ def mml_to_omml_element(node):
         else:
             r_pr = '<w:rPr><w:rFonts w:ascii="Cambria Math" w:hAnsi="Cambria Math"/></w:rPr>'
 
-        return f'<m:r>{r_pr}<m:t>{val}</m:t></m:r>'
+        import html
+        val_safe = html.escape(val)
+        return f'<m:r>{r_pr}<m:t>{val_safe}</m:t></m:r>'
 
     # Fraction: <mfrac> -> <m:f>
     elif tag == "mfrac":
@@ -99,8 +101,10 @@ def convert_latex_to_omml_xml(latex_str, is_display=False):
         root = ET.fromstring(mml_str)
         inner_omml = mml_to_omml_element(root)
     except Exception as e:
-        # Fallback for plain symbols
-        inner_omml = f'<m:r><w:rPr><w:rFonts w:ascii="Cambria Math" w:hAnsi="Cambria Math"/></w:rPr><m:t>{latex_clean}</m:t></m:r>'
+        # Fallback for plain symbols (HTML escape <, >, & to ensure valid XML)
+        import html
+        safe_text = html.escape(latex_clean)
+        inner_omml = f'<m:r><w:rPr><w:rFonts w:ascii="Cambria Math" w:hAnsi="Cambria Math"/></w:rPr><m:t>{safe_text}</m:t></m:r>'
 
     if is_display:
         return f'<m:oMathPara {nsdecls("m")} {nsdecls("w")}><m:oMath>{inner_omml}</m:oMath></m:oMathPara>'

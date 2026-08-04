@@ -57,21 +57,21 @@ The remainder of this paper is organized as follows. Section 2 surveys related w
 ## 2. Related Work
 
 ### 2.1 Information Extraction & Neural Document AI Architectures
-Modern Document AI architectures integrate visual features, textual content, and spatial layout coordinates. Multimodal models such as **LayoutLMv3** (Huang et al., 2022) utilize unified text and image masking to capture spatial correlations across complex form fields. Similarly, end-to-end vision encoder-decoder models such as **Donut** (Kim et al., 2022) eliminate explicit OCR dependencies by mapping document images directly to structured JSON trees. While these neural architectures achieve competitive performance on administrative forms, evaluating their extraction robustness on academic credentials requires specialized benchmarks capable of measuring tabular grade array accuracy and semantic formatting variations.
+Modern Document AI architectures integrate visual features, textual content, and spatial layout coordinates. Multimodal models such as **LayoutLMv3** (Huang et al., 2022) utilize unified text and image masking to capture spatial correlations across complex form fields. Similarly, end-to-end vision encoder-decoder models such as **Donut** (Kim et al., 2022) and sequence-to-sequence OCR transformers such as **TrOCR** (Li et al., 2023) eliminate explicit OCR dependencies by mapping document images directly to structured text representations. 
 
-### 2.2 Public Document Intelligence Benchmarks
-Several public datasets exist for document analysis research:
-- **Receipts & Invoices**: **SROIE** (Huang et al., 2019) and **CORD** (Park et al., 2019) provide key-value annotations for commercial receipt parsing.
-- **Form Understanding**: **FUNSD** (Jaume et al., 2019) provides word-level and entity-level relationship annotations for administrative forms.
-- **Document Visual Question Answering**: **DocVQA** (Mathew et al., 2021) evaluates visual question answering across industry documents.
-- **Document Classification**: **RVL-CDIP** (Harley et al., 2015) provides single-page scanned document categories across 16 administrative classes.
+While these neural architectures demonstrate strong capabilities on general administrative documents, evaluating their extraction accuracy on academic credentials presents distinct challenges. Standard evaluation protocols for neural models typically rely on raw string matching or unnormalized character error rates, which fail to separate genuine recognition failures from benign formatting variations (such as ISO date styling or institutional shorthand). Consequently, measuring neural extraction performance on academic credentials requires specialized benchmarks capable of evaluating tabular grade arrays and applying domain-specific canonical normalization.
 
-However, these datasets do not focus on academic credentials, which combine dense tabular course arrays (subject codes, credits, grades) with formal institutional metadata. Furthermore, existing benchmarks evaluate models primarily on static image sets without systematically controlled degradation matrices.
+### 2.2 Public Document Intelligence Benchmarks & Domain Limitations
+Several public datasets have significantly advanced document analysis research, but each exhibits specific scope limitations when applied to academic credential intelligence:
+- **Commercial Receipts & Invoices**: **SROIE** (Huang et al., 2019) and **CORD** (Park et al., 2019) provide key-value annotations for commercial receipt parsing. While valuable for single-line field extraction (e.g., merchant name, transaction total), these datasets focus on simple point-of-sale layouts and lack the multi-column course grids, credit hour structures, and semester GPA calculations characteristic of academic marksheets and transcripts.
+- **Scanned Form Understanding**: **FUNSD** (Jaume et al., 2019) provides word-level and entity-level relationship annotations for scanned administrative forms. However, FUNSD is limited to static image noise artifacts and does not provide multi-profile optical degradation matrices (such as controlled camera tilt, perspective skew, or resolution loss) or semantic evaluation normalization.
+- **Document Visual Question Answering**: **DocVQA** (Mathew et al., 2021) evaluates visual question answering across diverse industry documents. While DocVQA tests free-form natural language comprehension, it does not evaluate structured JSON key-value schema extraction or tabular grade array parsing.
+- **Document Classification**: **RVL-CDIP** (Harley et al., 2015) provides a large-scale collection of scanned business documents across 16 broad categories. However, RVL-CDIP is designed strictly for high-level document image classification and lacks fine-grained key-value field annotations or structural evaluation metrics.
 
-### 2.3 Synthetic Document Generation & Benchmark Comparison
-To overcome data access barriers imposed by student privacy regulations, synthetic data generation frameworks render synthetic text onto natural images or form templates. ADBG v1.0 extends synthetic document generation principles to academic credentials by integrating Typst vector PDF compilation with 14 physical optical degradation operators, producing synthetic document specimens with multi-profile optical distortions.
+### 2.3 Synthetic Document Generation & Comparative Analysis
+To overcome data access barriers imposed by student privacy regulations (such as FERPA and GDPR), synthetic data generation frameworks render synthetic text onto natural background images or form templates. ADBG v1.0 extends synthetic document generation principles to higher education credentials by integrating Typst vector PDF compilation with 14 physical optical degradation operators, producing synthetic document specimens with multi-profile optical distortions.
 
-Table 0 presents a comparative feature matrix contrasting ADBG v1.0 with existing public document analysis benchmarks.
+Table 0 presents an objective comparative feature matrix contrasting ADBG v1.0 with existing public document analysis benchmarks.
 
 **Table 0: Comparative Feature Matrix of Document Intelligence Benchmarks**
 
@@ -83,6 +83,9 @@ Table 0 presents a comparative feature matrix contrasting ADBG v1.0 with existin
 | **DocVQA** (Mathew et al., 2021) | Mixed Documents | No (Scanned) | Partial | No | No |
 | **RVL-CDIP** (Harley et al., 2015)| General Business | No (Scanned) | No | No | No |
 | **ADBG v1.0 / AU DIC (Ours)** | Academic Credentials | **Yes (100% Synthetic)** | **Yes (Semester Arrays)** | **Yes (4 Profiles)** | **Yes (6 Stages)** |
+
+### 2.4 Summary of Research Gap & Methodological Motivation
+Despite these advances in Document AI models and datasets, existing evaluation frameworks primarily target receipts, forms, invoices, or general document classification tasks. Within the specific domain of academic credential document intelligence, four critical methodological gaps remain insufficiently addressed: (1) the absence of publicly available, reproducible academic credential datasets due to statutory student record restrictions; (2) the lack of standardized, controlled optical degradation benchmarking matrices; (3) the absence of a domain-specific semantic canonical normalization layer to isolate true extraction failures from benign string variations; and (4) the lack of a structured diagnostic OCR error taxonomy. These observations directly motivate the integrated benchmarking methodology presented in this work.
 
 ---
 

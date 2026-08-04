@@ -6,17 +6,14 @@ const nextConfig = {
   },
   outputFileTracingExcludes: {
     '*': [
-      './docs/paper/**',
-      './docs/reports/**',
-      './backend/node_modules/**',
-      './backend/inspection/**',
-      './backend/scratch/**',
-      './backend/ezone-diagnostic-*/**',
-      './backend/exports_ui_real/**',
-      './backend/__tests__/**',
-      './backend/samples/**',
-      './backend/mocks/**',
-      './backend/src/benchmark/utils/__pycache__/**',
+      './docs/**',
+      './backend/**',
+      './benchmarks/**',
+    ],
+    '/api/**/*': [
+      './docs/**',
+      './backend/**',
+      './benchmarks/**',
     ],
   },
   serverExternalPackages: [
@@ -32,8 +29,11 @@ const nextConfig = {
     "pdf-parse",
     "pdfjs-dist",
     "pdf-lib",
+    "pdf-to-img",
     "mammoth",
     "gridfs-stream",
+    "playwright",
+    "playwright-core",
   ],
   images: {
     remotePatterns: [

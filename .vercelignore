@@ -1,0 +1,17 @@
+# Vercel Deployment Ignore File
+# Prevents uploading heavy non-frontend directories to Vercel build context
+
+docs/paper/
+docs/reports/
+backend/node_modules/
+backend/dist/
+backend/inspection/
+backend/scratch/
+backend/ezone-diagnostic-*/
+backend/exports_ui_real/
+backend/__tests__/
+backend/samples/
+backend/mocks/
+backend/src/benchmark/utils/__pycache__/
+*.docx
+*.pdf

@@ -123,6 +123,48 @@ graph LR
     end
 ```
 
+Figure 2 summarizes the complete methodological workflow adopted in this study, beginning with deterministic synthetic document generation and concluding with statistical evaluation and publication-ready artifact generation.
+
+```mermaid
+flowchart TD
+    subgraph Phase1["Phase I: Synthetic Benchmark Generation"]
+        A1["Research Configuration"] --> A2["Deterministic Seed Initialization"]
+        A2 --> A3["ADBG Synthetic Document Generation"]
+        A3 --> A4["Typst Vector PDF Compilation"]
+        A3 --> A5["Ground Truth JSON Assembly"]
+        A4 --> A6["High-Resolution Rasterization"]
+        A6 --> A7["Controlled Degradation Matrix\n(clean | scanner_copy | mobile_camera | rotated_90)"]
+        A5 --> A8["AU_DIC_Benchmark_v1.0 Suite"]
+        A7 --> A8
+    end
+
+    subgraph Phase2["Phase II: Read-Only Evaluation Subsystem"]
+        A8 --> B1["Benchmark Runner Engine Initialization"]
+        B1 --> B2["Live Vision-Language / OCR Model Inference\n(Groq Llama 3.1 8B Instant / allowMockFallback: false)"]
+        B2 --> B3["Raw Prediction Extraction"]
+        B3 --> B4["Six-Stage Semantic Canonical Normalization\n(CanonicalNormalizer)"]
+        B4 --> B5["Field-Level Candidate Comparison"]
+        B5 --> B6["Nine-Class Structured OCR Error Taxonomy\n(ErrorTaxonomist)"]
+    end
+
+    subgraph Phase3["Phase III: Quantitative & Statistical Analysis"]
+        B6 --> C1["Metric Computation\n(Category Accuracy, Precision, Recall, F1, CER, WER, Joint EM)"]
+        C1 --> C2["Statistical Hypothesis Significance Testing\n(McNemar's χ², Wilcoxon Signed-Rank, Paired t-Test)"]
+        C1 --> C3["Non-Parametric 95% Bootstrap Confidence Intervals\n(1,000 Iterations)"]
+        C1 --> C4["Two-Pass Normalization Ablation Study\n(Pass A Unnormalized vs Pass B Normalized)"]
+    end
+
+    subgraph Phase4["Phase IV: Publication Artifact Generation"]
+        C2 --> D1["Benchmark Reports & Payloads\n(metrics.json, predictions.json, comparisons.json)"]
+        C3 --> D1
+        C4 --> D1
+        D1 --> D2["IEEE Publication Figures & LaTeX Tables"]
+        D2 --> D3["Final Submission Package & Reproducibility Certification"]
+    end
+```
+
+**Figure 2: End-to-End Methodological Workflow of the Proposed AU DIC Benchmark Evaluation Framework.**
+
 ### 3.2 ADBG Synthetic Benchmark Generation
 #### 3.2.1 Seed-Deterministic Profile Generation
 ADBG v1.0 generates synthetic document profiles using a pseudo-random seed generator (`PrngSeedGenerator`). Seed initialization ensures that identical seed parameters produce identical document text, field layout coordinates, and visual degradation artifacts across runs:

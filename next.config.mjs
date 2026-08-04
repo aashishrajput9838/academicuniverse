@@ -4,6 +4,21 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  outputFileTracingExcludes: {
+    '*': [
+      './docs/paper/**',
+      './docs/reports/**',
+      './backend/node_modules/**',
+      './backend/inspection/**',
+      './backend/scratch/**',
+      './backend/ezone-diagnostic-*/**',
+      './backend/exports_ui_real/**',
+      './backend/__tests__/**',
+      './backend/samples/**',
+      './backend/mocks/**',
+      './backend/src/benchmark/utils/__pycache__/**',
+    ],
+  },
   serverExternalPackages: [
     "mongodb",
     "mongoose",

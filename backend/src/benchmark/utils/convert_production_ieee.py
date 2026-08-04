@@ -11,6 +11,7 @@ import shutil
 import win32com.client
 import subprocess
 import time
+from omml_engine import append_display_omml, append_inline_omml, convert_latex_to_omml_xml
 
 def set_cell_background(cell, fill_color):
     tcPr = cell._tc.get_or_add_tcPr()
@@ -22,100 +23,10 @@ def set_cell_margins(cell, top=100, bottom=100, left=140, right=140):
     tcMar = parse_xml(f'<w:tcMar {nsdecls("w")}><w:top w:w="{top}" w:type="dxa"/><w:bottom w:w="{bottom}" w:type="dxa"/><w:left w:w="{left}" w:type="dxa"/><w:right w:w="{right}" w:type="dxa"/></w:tcMar>')
     tcPr.append(tcMar)
 
-def clean_latex_math(text):
-    text = text.replace('`', '')
-    text = re.sub(r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1 / \2)', text)
-    text = re.sub(r'\\frac\{([^}]+)\}', r'(\1)', text)
-    text = re.sub(r'\\text\{([^}]+)\}', r'\1', text)
-    text = re.sub(r'\\mathbf\{([^}]+)\}', r'\1', text)
-    text = re.sub(r'\\mathcal\{([^}]+)\}', r'\1', text)
-    text = re.sub(r'\\mathbb\{([^}]+)\}', r'\1', text)
-    text = re.sub(r'\\sum_\{([^}]+)\}\^\{([^}]+)\}', r'Sum(\1 to \2)', text)
-    text = re.sub(r'\\sum_\{([^}]+)\}', r'Sum(\1)', text)
-    text = re.sub(r'\\quad', r' ', text)
-    text = re.sub(r'\\cdot', r' * ', text)
-    text = re.sub(r'\\circ', r' o ', text)
-    text = re.sub(r'\\rightarrow', r' -> ', text)
-    text = re.sub(r'\\in', r' in ', text)
-    text = re.sub(r'\\times', r' x ', text)
-    text = re.sub(r'\\hat\{([^}]+)\}', r'\1_hat', text)
-    return text
-
-def latex_to_omml_linear(latex_str):
-    """Converts LaTeX display math string to Word UnicodeMath linear format."""
-    s = latex_str.strip()
-    s = s.replace(r'\text{DocumentSpecimen}', 'DocumentSpecimen')
-    s = s.replace(r'\text{Seed}', 'Seed')
-    s = s.replace(r'\text{Category}', 'Category')
-    s = s.replace(r'\text{Profile}', 'Profile')
-    s = s.replace(r'\text{degraded}', 'degraded')
-    s = s.replace(r'\text{rotation}', 'rotation')
-    s = s.replace(r'\text{contrast}', 'contrast')
-    s = s.replace(r'\text{gaussian}', 'gaussian')
-    s = s.replace(r'\text{blur}', 'blur')
-    s = s.replace(r'\text{clean}', 'clean')
-    s = s.replace(r'\text{Category Accuracy}', 'Category Accuracy')
-    s = s.replace(r'\text{ErrorCategory}', 'ErrorCategory')
-    s = s.replace(r'\text{CER}', 'CER')
-    s = s.replace(r'\text{WER}', 'WER')
-    s = s.replace(r'\text{char}', 'char')
-    s = s.replace(r'\text{word}', 'word')
-    s = s.replace(r'\text{GT}', 'GT')
-    s = s.replace(r'\text{True Positive Fields}', 'True Positive Fields')
-    s = s.replace(r'\text{False Positive Fields}', 'False Positive Fields')
-    s = s.replace(r'\text{False Negative Fields}', 'False Negative Fields')
-    s = s.replace(r'\mathbb{I}', '𝟙')
-    s = s.replace(r'\mathcal{G}', 'G')
-    s = s.replace(r'\mathbf{I}', 'I')
-    s = s.replace(r'\mathcal{D}', 'D')
-    s = s.replace(r'\hat{C}_i', 'Ĉ_i')
-    s = s.replace(r'\hat{C}', 'Ĉ')
-    s = s.replace(r'\circ', '∘')
-    s = s.replace(r'\in', '∈')
-    s = s.replace(r'\cdot', '·')
-    s = s.replace(r'\quad', '  ')
-    
-    # Fractions: \frac{num}{den} -> (num)/(den)
-    s = re.sub(r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1) / (\2)', s)
-    
-    # Summation: \sum_{i=1}^N -> \sum_(i=1)^N
-    s = re.sub(r'\\sum_\{([^}]+)\}\^\{([^}]+)\}', r'\\sum_(\1)^\2', s)
-    
-    # Clean remaining LaTeX text wrappers
-    s = re.sub(r'\\text\{([^}]+)\}', r'\1', s)
-    s = re.sub(r'\\([a-zA-Z]+)', r'\1', s)
-    s = s.replace('{', '').replace('}', '')
-    return s
-
-def add_omml_equation_paragraph(doc, latex_str):
-    """Appends a native Microsoft Word OMML equation paragraph (<m:oMathPara>)."""
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(8)
-    p.paragraph_format.space_after = Pt(8)
-    
-    linear_text = latex_to_omml_linear(latex_str)
-    
-    omml_xml = parse_xml(
-        f'<m:oMathPara {nsdecls("m")} {nsdecls("w")}>'
-        f'<m:oMath>'
-        f'<m:r>'
-        f'<m:rPr><m:sty m:val="p"/></m:rPr>'
-        f'<w:rPr>'
-        f'<w:rFonts w:ascii="Cambria Math" w:hAnsi="Cambria Math"/>'
-        f'<w:color w:val="003366"/>'
-        f'</w:rPr>'
-        f'<m:t>{linear_text}</m:t>'
-        f'</m:r>'
-        f'</m:oMath>'
-        f'</m:oMathPara>'
-    )
-    p._p.append(omml_xml)
-    return p
-
 def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
     subprocess.run(["taskkill", "/f", "/im", "WINWORD.EXE"], capture_output=True)
     time.sleep(2)
+    
     doc = Document()
     
     for section in doc.sections:
@@ -154,22 +65,35 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
             if not token:
                 continue
             if token.startswith('**') and token.endswith('**'):
-                val = clean_latex_math(token[2:-2])
-                r = paragraph.add_run(val)
-                r.bold = True
+                inner_text = token[2:-2]
+                if '$' in inner_text:
+                    sub_tokens = re.split(r'(\$.*?\$)', inner_text)
+                    for sub in sub_tokens:
+                        if sub.startswith('$') and sub.endswith('$'):
+                            append_inline_omml(paragraph, sub[1:-1].strip())
+                        elif sub:
+                            r = paragraph.add_run(sub)
+                            r.bold = True
+                else:
+                    r = paragraph.add_run(inner_text)
+                    r.bold = True
             elif token.startswith('*') and token.endswith('*'):
-                val = clean_latex_math(token[1:-1])
-                r = paragraph.add_run(val)
-                r.italic = True
+                inner_text = token[1:-1]
+                if '$' in inner_text:
+                    sub_tokens = re.split(r'(\$.*?\$)', inner_text)
+                    for sub in sub_tokens:
+                        if sub.startswith('$') and sub.endswith('$'):
+                            append_inline_omml(paragraph, sub[1:-1].strip())
+                        elif sub:
+                            r = paragraph.add_run(sub)
+                            r.italic = True
+                else:
+                    r = paragraph.add_run(inner_text)
+                    r.italic = True
             elif token.startswith('$') and token.endswith('$'):
-                val = clean_latex_math(token[1:-1])
-                r = paragraph.add_run(val)
-                r.font.name = 'Cambria Math'
-                r.italic = True
-                r.font.color.rgb = RGBColor(0, 51, 102)
+                append_inline_omml(paragraph, token[1:-1].strip())
             else:
-                val = clean_latex_math(token)
-                paragraph.add_run(val)
+                paragraph.add_run(token)
 
     while i < len(lines):
         line = lines[i].rstrip('\r\n')
@@ -300,7 +224,7 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             p.paragraph_format.space_before = Pt(14)
             p.paragraph_format.space_after = Pt(8)
-            r = p.add_run(clean_latex_math(line[2:].strip()))
+            r = p.add_run(line[2:].strip())
             r.font.name = 'Times New Roman'
             r.font.size = Pt(20)
             r.bold = True
@@ -310,7 +234,7 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
             p.paragraph_format.space_before = Pt(14)
             p.paragraph_format.space_after = Pt(6)
             p.paragraph_format.keep_with_next = True
-            r = p.add_run(clean_latex_math(line[3:].strip()))
+            r = p.add_run(line[3:].strip())
             r.font.name = 'Times New Roman'
             r.font.size = Pt(13)
             r.bold = True
@@ -320,7 +244,7 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
             p.paragraph_format.space_before = Pt(10)
             p.paragraph_format.space_after = Pt(4)
             p.paragraph_format.keep_with_next = True
-            r = p.add_run(clean_latex_math(line[4:].strip()))
+            r = p.add_run(line[4:].strip())
             r.font.name = 'Times New Roman'
             r.font.size = Pt(11.5)
             r.bold = True
@@ -330,7 +254,7 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
             p.paragraph_format.space_before = Pt(8)
             p.paragraph_format.space_after = Pt(2)
             p.paragraph_format.keep_with_next = True
-            r = p.add_run(clean_latex_math(line[5:].strip()))
+            r = p.add_run(line[5:].strip())
             r.font.name = 'Times New Roman'
             r.font.size = Pt(10.5)
             r.bold = True
@@ -393,7 +317,9 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
                     run.font.name = 'Times New Roman'
                     run.font.size = Pt(10)
         elif line.strip().startswith('$$') and line.strip().endswith('$$'):
-            add_omml_equation_paragraph(doc, line.strip()[2:-2].strip())
+            # AST Display OMML Conversion!
+            display_tex = line.strip()[2:-2].strip()
+            append_display_omml(doc, display_tex)
         elif line.startswith('**Table ') or line.startswith('**Fig. ') or line.startswith('**Figure '):
             p = doc.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -426,9 +352,9 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
         shutil.copyfile(temp_docx, docx_path)
     except Exception as e:
         print(f"Note: Saved to {temp_docx} ({e})")
-    print(f"Production IEEE Docx generated with OMML objects: {temp_docx}")
+    print(f"Production IEEE Docx generated with AST OMML objects: {temp_docx}")
     
-    # Automatically run Word COM BuildUp on all OMML objects
+    # Run Word COM 2D BuildUp for maximum visual compatibility
     try:
         subprocess.run(["taskkill", "/f", "/im", "WINWORD.EXE"], capture_output=True)
         time.sleep(2)
@@ -436,7 +362,7 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
         word.Visible = False
         word.DisplayAlerts = 0
         com_doc = word.Documents.Open(os.path.abspath(temp_docx))
-        print(f"Executing OMML 2D BuildUp on {com_doc.OMaths.Count} equation objects...")
+        print(f"Executing 2D OMML BuildUp on {com_doc.OMaths.Count} AST OMML equation objects...")
         for o_idx in range(1, com_doc.OMaths.Count + 1):
             try:
                 com_doc.OMaths(o_idx).BuildUp()
@@ -448,36 +374,16 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
             word.Quit()
         except:
             pass
-        print(f"Automated OMML BuildUp completed successfully!")
+        print(f"AST OMML BuildUp completed successfully!")
     except Exception as e_com:
         print(f"OMML BuildUp COM note: {e_com}")
         
     return temp_docx
 
-def convert_docx_to_pdf_safe(docx_path, pdf_path):
-    word = win32com.client.Dispatch("Word.Application")
-    word.Visible = False
-    try:
-        abs_docx = os.path.abspath(docx_path)
-        abs_pdf = os.path.abspath(pdf_path)
-        doc = word.Documents.Open(abs_docx)
-        doc.SaveAs(abs_pdf, FileFormat=17)
-        doc.Close(False)
-        print(f"Production IEEE PDF generated: {pdf_path}")
-    except Exception as e:
-        print(f"PDF generation note: {e}")
-    finally:
-        try:
-            word.Quit()
-        except:
-            pass
-
 if __name__ == "__main__":
     md_file = r"C:\Users\elitebook840g89319\.gemini\antigravity-ide\brain\bb9b3069-0e60-4209-b2b8-d0321ac491db\Paper_V3.md"
-    docx_file = r"c:\github\academicuniverse.com\academicuniverse\docs\paper\Paper_V3_IEEE.docx"
-    pdf_file = r"c:\github\academicuniverse.com\academicuniverse\docs\paper\Paper_V3_IEEE.pdf"
+    docx_file = r"c:\github\academicuniverse.com\academicuniverse\docs\paper\Paper_V3_IEEE_Final.docx"
     fig1 = r"c:\github\academicuniverse.com\academicuniverse\docs\paper\figure1_system_architecture.png"
     fig2 = r"c:\github\academicuniverse.com\academicuniverse\docs\paper\figure2_option_b_pipeline.png"
 
     generated_docx = create_production_ieee_docx(md_file, docx_file, fig1, fig2)
-    convert_docx_to_pdf_safe(generated_docx, pdf_file)

@@ -366,19 +366,15 @@ Without canonical normalization, 2,620 false-negative field mismatches occurred 
 | **Total Corrected Mismatches** | All Normalizer Rules Combined | **2,620** | **100.00%** |
 
 #### 5.5.3 Publication Figures
-The empirical ablation metrics and rule-wise contributions are visualized in Figures 3, 4, 5, and 6.
+The empirical ablation metrics and rule-wise contributions are visualized in Figures 4, 5, 6, and 7.
 
-![Figure 3: Accuracy Improvement Across Normalization Layer](C:/Users/elitebook840g89319/.gemini/antigravity-ide/brain/bb9b3069-0e60-4209-b2b8-d0321ac491db/figure_normalization_ablation.png)
-*Fig. 3: Accuracy metric comparison (Precision, Recall, F1) with and without semantic canonical normalization.*
+**Fig. 4. Accuracy Improvement after Semantic Canonical Normalization.**
 
-![Figure 4: Error Rate Reduction Across Normalization Layer](C:/Users/elitebook840g89319/.gemini/antigravity-ide/brain/bb9b3069-0e60-4209-b2b8-d0321ac491db/figure_metric_improvement.png)
-*Fig. 4: Character Error Rate (CER) and Word Error Rate (WER) reduction resulting from canonical normalization.*
+**Fig. 5. Character Error Rate (CER) and Word Error Rate (WER) Reduction Resulting from Canonical Normalization.**
 
-![Figure 5: Normalization Rule Contribution Breakdown](C:/Users/elitebook840g89319/.gemini/antigravity-ide/brain/bb9b3069-0e60-4209-b2b8-d0321ac491db/figure_rule_contribution.png)
-*Fig. 5: Total false-negative field mismatches resolved by each individual domain normalizer rule.*
+**Fig. 6. Total False-Negative Field Mismatches Resolved by Each Individual Domain Normalizer Rule.**
 
-![Figure 6: Field-Wise Accuracy Improvement](C:/Users/elitebook840g89319/.gemini/antigravity-ide/brain/bb9b3069-0e60-4209-b2b8-d0321ac491db/figure_field_improvement.png)
-*Fig. 6: Field-by-field accuracy improvement comparing raw string matching against canonical normalization.*
+**Fig. 7. Field-by-Field Accuracy Improvement Comparing Raw String Matching Against Canonical Normalization.**
 
 #### 5.5.4 Critical Discussion & Scientific Validation
 The ablation results empirically validate the core hypothesis: **evaluating raw text strings severely distorts extraction performance metrics**. 

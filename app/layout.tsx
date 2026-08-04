@@ -7,8 +7,16 @@ import { AuthProvider } from '../lib/AuthContext';
 import { Toaster } from '../components/ui/toaster';
 import { ModuleVisibilityProvider } from '../lib/moduleVisibility';
 
-const _geist = Geist({ subsets: ['latin'] })
-const _geistMono = Geist_Mono({ subsets: ['latin'] })
+const geist = Geist({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-geist-sans',
+})
+const geistMono = Geist_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-geist-mono',
+})
 
 export const metadata: Metadata = {
   title: 'Academic Universe',
@@ -22,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
       <body className="font-sans antialiased">
         <AuthProvider>
           <FirebaseInit />

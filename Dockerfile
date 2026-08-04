@@ -29,22 +29,31 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy package files
-COPY backend/package*.json ./
+# Copy package files for backend
+COPY backend/package*.json ./backend/
+
+WORKDIR /app/backend
 
 # Set Playwright browser path BEFORE npm install so the postinstall
 # script (npx playwright install --with-deps chromium) runs here in the
 # build phase — NOT at container startup.
 ENV PLAYWRIGHT_BROWSERS_PATH=/app/pw-browsers
 
-# Install dependencies (postinstall runs playwright install here)
+# Install backend dependencies (postinstall runs playwright install here)
 RUN npm install --no-audit --no-fund
 
 # Install Playwright browsers explicitly (belt + suspenders)
 RUN npx playwright install chromium
 
-# Copy source
-COPY backend/ .
+WORKDIR /app
+
+# Copy shared packages required by backend TypeScript compilation
+COPY packages/ ./packages/
+
+# Copy backend source
+COPY backend/ ./backend/
+
+WORKDIR /app/backend
 
 # Build TypeScript → dist/
 RUN npm run build
@@ -54,8 +63,8 @@ RUN npm prune --omit=dev
 
 # Runtime env
 ENV NODE_ENV=production
-# PORT is injected by Render at runtime — do NOT hardcode it here
+# PORT is injected by Render/Railway at runtime — do NOT hardcode it here
 EXPOSE 10000
 
 # Use node directly (avoids npm which re-runs lifecycle scripts on start)
-CMD ["node", "dist/src/index.js"]
+CMD ["node", "dist/backend/src/index.js"]

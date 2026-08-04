@@ -2,11 +2,11 @@
   "name": "academic-universe-backend",
   "version": "1.0.0",
   "description": "SaaS backend for Academic Universe - Multi-tenant RBAC system",
-  "main": "dist/src/index.js",
+  "main": "dist/backend/src/index.js",
   "scripts": {
     "dev": "cross-env NODE_ENV=development ts-node -r tsconfig-paths/register src/index.ts",
     "build": "tsc",
-    "start": "node dist/src/index.js",
+    "start": "node dist/backend/src/index.js",
     "postinstall": "npx playwright install --with-deps chromium",
     "seed": "cross-env NODE_ENV=development ts-node -r tsconfig-paths/register scripts/seed.ts",
     "populate-overlap": "ts-node -r tsconfig-paths/register scripts/populateOverlapData.ts",

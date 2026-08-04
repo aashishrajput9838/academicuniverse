@@ -97,12 +97,13 @@ Table 0 presents an objective, comprehensive comparative matrix contrasting ADBG
 | **ADBG v1.0 / AU DIC (Ours)** | **2026** | **Academic Credentials** | **Yes (100% Synthetic)** | **Yes (Semester Arrays)** | **Yes (4 Profiles)** | **Yes (6 Stages)** | **Yes (Certificates/Mark-sheets)** |
 
 ### 2.4 Summary of Research Gap & Methodological Motivation
-Despite recent advances in 2025–2026 multimodal Document AI architectures and benchmark datasets, several critical challenges remain insufficiently addressed for academic credential document intelligence: (1) the absence of publicly available, reproducible academic credential datasets due to statutory student record restrictions; (2) the lack of standardized, controlled optical degradation benchmarking matrices; (3) the absence of a domain-specific semantic canonical normalization layer to isolate true extraction failures from benign representation differences; and (4) the lack of a structured diagnostic OCR error taxonomy. These observations directly motivate the integrated benchmarking methodology presented in this work.
+Despite recent advances in 2025–2026 multimodal Document AI architectures and benchmark datasets, several critical challenges remain insufficiently addressed for academic credential document intelligence: (1) the absence of publicly available, reproducible academic credential datasets due to statutory student record restrictions; (2) the lack of standardized, controlled optical degradation benchmarking matrices; (3) the absence of a domain-specific semantic canonical normalization layer to isolate true extraction failures from benign representation differences; and (4) the lack of a structured diagnostic OCR error taxonomy. These observations directly motivate the integrated benchmarking methodology presented
 
 ---
 
-## 3. System Architecture Overview
+## 3. Proposed Methodology
 
+### 3.1 Overall Framework Architecture
 The system architecture consists of two decoupled components: the **ADBG Subsystem** (synthetic document generator) and the **AU DIC Benchmark Subsystem** (read-only evaluation framework).
 
 ```mermaid
@@ -122,21 +123,18 @@ graph LR
     end
 ```
 
----
-
-## 4. ADBG Synthetic Data Generation Methodology
-
-### 4.1 Seed-Deterministic Profile Generation
+### 3.2 ADBG Synthetic Benchmark Generation
+#### 3.2.1 Seed-Deterministic Profile Generation
 ADBG v1.0 generates synthetic document profiles using a pseudo-random seed generator (`PrngSeedGenerator`). Seed initialization ensures that identical seed parameters produce identical document text, field layout coordinates, and visual degradation artifacts across runs:
 $$\text{DocumentSpecimen} = \mathcal{G}(\text{Seed}, \text{Category}, \text{Profile})$$
 
-### 4.2 Template Compilation Engine
+#### 3.2.2 Template Compilation Engine
 The generator utilizes a Typst vector compilation backend (`TypstCompilerAdapter`) to render high-resolution academic documents. Three primary document categories are supported:
 1. **Academic Certificates**: Degree awards, honor certificates, and course completion diplomas.
 2. **Academic Marksheets**: Semester grade reports featuring multi-column subject arrays (Course Code, Subject Name, Credits, Grade Point, Letter Grade, SGPA/CGPA).
 3. **Student ID Cards**: Institutional identity cards containing student photographs, enrollment numbers, program titles, and issuing authority signatures.
 
-### 4.3 Optical Degradation Pipeline
+#### 3.2.3 Optical Degradation Pipeline
 To simulate physical document scanner aging, mobile camera capture distortion, and orientation misalignment, ADBG v1.0 applies a sequence of 14 physical optical transformation operators:
 
 $$\mathbf{I}_{\text{degraded}} = \mathcal{D}_{\text{rotation}} \circ \mathcal{D}_{\text{contrast}} \circ \mathcal{D}_{\text{gaussian}} \circ \mathcal{D}_{\text{blur}}(\mathbf{I}_{\text{clean}})$$
@@ -147,14 +145,10 @@ Four standard quality profiles are instantiated in `AU_DIC_Benchmark_v1.0`:
 - **`mobile_camera`**: Simulated handheld camera capture with non-uniform lighting, perspective skew, and radial lens distortion.
 - **`rotated_90`**: Image specimens rotated 90 degrees clockwise to evaluate orientation detection.
 
----
-
-## 5. AU DIC Evaluation Subsystem & Semantic Normalization Layer
-
-### 5.1 Decoupled Read-Only Execution Engine
+### 3.3 AU DIC Evaluation Framework Subsystem
 The benchmark runner (`BenchmarkRunner`) operates strictly in read-only mode (`isReadOnly: true`). It ingests document image specimens and ground-truth JSON files from `AU_DIC_Benchmark_v1.0`, invokes document analysis prediction adapters, and computes evaluation metrics in memory without executing write operations on production databases.
 
-### 5.2 Six-Stage Semantic Canonical Normalization Layer
+### 3.4 Six-Stage Semantic Canonical Normalization Layer
 Raw text extracted by OCR models often contains superficial formatting variations (e.g., date formatting, whitespace padding, numerical precision differences) that cause standard string equality metrics to return false negative errors. To isolate genuine recognition failures, the framework routes predicted and expected string values through a six-stage semantic normalizer (`CanonicalNormalizer`):
 
 1. **Stage 1: Case & Whitespace Normalization**: Converts characters to lower-case, trims leading/trailing whitespace, and collapses multiple internal space characters into single spaces.
@@ -164,12 +158,12 @@ Raw text extracted by OCR models often contains superficial formatting variation
 5. **Stage 5: Institutional Alias Mapping**: Maps common university name abbreviations (e.g., `MIT` $\rightarrow$ `Massachusetts Institute of Technology`) using an institutional lexicon directory.
 6. **Stage 6: Canonical Honorific Removal**: Removes standard honorific prefixes (`Mr.`, `Ms.`, `Dr.`, `Prof.`) prior to candidate name comparison.
 
-### 5.3 Nine-Class Structured OCR Error Taxonomy
+### 3.5 Nine-Class Structured OCR Error Taxonomy
 When an extracted field value deviates from ground truth after canonical normalization, the evaluation engine categorizes the failure into one of nine structured error classes:
 
 $$\text{ErrorCategory} \in \{\text{OCR\_ERROR}, \text{FIELD\_MISSING}, \text{HALLUCINATION}, \text{FORMAT\_ERROR}, \text{NORMALIZATION\_ERROR}, \text{PARTIAL\_MATCH}, \text{LOW\_CONFIDENCE}, \text{CATEGORY\_ERROR}, \text{EXACT\_MATCH}\}$$
 
-#### 5.3.1 Scientific Definition and Justification of NORMALIZATION_ERROR
+#### 3.5.1 Scientific Definition and Justification of NORMALIZATION_ERROR
 A potential ambiguity in field comparison is distinguishing superficial representation differences from true recognition errors. Specifically, an external reviewer may ask: *"If candidate values still differ after normalization, why is a separate error category necessary instead of treating the mismatch as a generic field failure?"*
 
 To eliminate this ambiguity, the AU DIC evaluation engine assigns `NORMALIZATION_ERROR` **only when ALL of the following five conditions are satisfied**:
@@ -181,7 +175,7 @@ To eliminate this ambiguity, the AU DIC evaluation engine assigns `NORMALIZATION
 
 The purpose of `NORMALIZATION_ERROR` is to prevent semantic mismatches from being incorrectly attributed to superficial formatting variations. By evaluating only canonical representations, the benchmark distinguishes genuine information extraction failures from benign representation differences.
 
-#### 5.3.2 Canonical Comparison Workflow & Non-Overlapping Taxonomy Boundaries
+#### 3.5.2 Canonical Comparison Workflow & Non-Overlapping Taxonomy Boundaries
 To ensure taxonomic independence, each error class maintains a strict, non-overlapping responsibility:
 - **`EXACT_MATCH`**: Raw predicted string identically matches raw ground truth string prior to normalization.
 - **`FORMAT_ERROR`**: Raw strings differ, but match identically *after* canonical normalization (confirming a benign formatting discrepancy).
@@ -203,13 +197,16 @@ Table 0.1 illustrates candidate field evaluations across the canonical normaliza
 
 ---
 
-## 6. Experimental Setup, Protocol & Metrics
+## 4. Experimental Setup
 
-### 6.1 Dataset Composition (`AU_DIC_Benchmark_v1.0`)
+### 4.1 Dataset Composition (`AU_DIC_Benchmark_v1.0`)
 The evaluation dataset consists of 360 image specimens (3 document categories $\times$ 30 unique document instances $\times$ 4 quality profiles). Each sample contains corresponding PDF, PNG, Ground Truth JSON, and Metadata JSON files.
 
-### 6.2 Evaluation Metrics
-The framework evaluates system and model performance across two distinct sub-tasks: (a) **Document Category Classification** and (b) **Key-Value Entity Field Extraction**. The computed quantitative metrics are defined as follows:
+### 4.2 Evaluation Protocol
+The framework evaluates system and model performance across two distinct sub-tasks: (a) **Document Category Classification** and (b) **Key-Value Entity Field Extraction**. In benchmark runs, specimen images and ground truth JSON files are ingested headlessly, invoking prediction adapters (`AuDicPredictionAdapter`) to compute field-level extraction accuracy metrics without executing write operations on production data stores.
+
+### 4.3 Evaluation Metrics
+The computed quantitative metrics are defined as follows:
 
 1. **Category Classification Accuracy**: The proportion of specimens where the predicted document category ($\hat{C}_i$) matches the ground truth category ($C_i$):
    $$\text{Category Accuracy} = \frac{\sum_{i=1}^N \mathbb{I}(\hat{C}_i = C_i)}{N}$$
@@ -230,15 +227,15 @@ The framework evaluates system and model performance across two distinct sub-tas
 
 ---
 
-## 7. Results & Validation
+## 5. Results & Empirical Validation
 
-### 7.1 Distinction Between Framework Validation, Benchmark Validation, and Model Performance
+### 5.1 Distinction Between Framework Validation, Benchmark Validation, and Model Performance
 To ensure complete scientific integrity, we explicitly distinguish between three evaluation dimensions:
 1. **Framework Architectural Validation (Verified)**: Confirms system non-destructiveness (0 database writes), execution throughput (242.59 samples/sec), mean processing latency (4.12 ms/sample), and fault-tolerant checkpointing.
 2. **Benchmark Integrity Validation (Verified)**: Confirms zero ground truth leakage and verifies that comparators correctly detect character typos, missing fields, and category mismatches in controlled tests (`validationAudit.test.ts`).
 3. **Model Extraction Performance (Model Evaluation)**: Measures extraction performance metrics (Precision, Recall, F1, CER, WER) across live neural models.
 
-### 7.2 Framework Execution & System Verification Metrics
+### 5.2 Framework Execution & System Verification Metrics
 Table 1 summarizes the framework system verification metrics evaluated across the 360 benchmark specimens (`AU_DIC_Benchmark_v1.0`).
 
 **Table 1: Framework Execution Verification Metrics Across Quality Profiles on AU DIC Benchmark v1.0**
@@ -253,17 +250,17 @@ Table 1 summarizes the framework system verification metrics evaluated across th
 
 *\*Denotes framework system verification metrics (dry-run baseline reference).*
 
-### 7.3 System Throughput & Execution Latency
+### 5.3 System Throughput & Execution Latency
 - **Total Samples Evaluated**: 360
 - **Successful / Failed Ratio**: 360 / 0
 - **Total System Verification Execution Time**: 1.48 seconds
 - **System Verification Throughput**: 242.59 samples/sec
 - **Mean System Processing Latency**: 4.12 ms/sample ($\sigma = 0.45\text{ ms}$)
 
-### 7.4 Empirical Live Neural Model Evaluation Results
+### 5.4 Empirical Live Neural Model Evaluation Results
 To evaluate live neural document analysis performance without mock fallbacks (`allowMockFallback: false`), the benchmark runner executed full inference across all 360 specimens using `Groq Cloud Llama 3.1 8B Instant` (`run_1785796639905`). Every prediction recorded complete provenance metadata (`isMock: false`, `modelName: llama-3.1-8b-instant`, `requestId`).
 
-#### 7.4.1 Inference Pipeline Disambiguation (Option B)
+#### 5.4.1 Inference Pipeline Disambiguation (Option B)
 To ensure complete clarity regarding input modality, the evaluated live baseline operates under **Option B**:
 
 ```mermaid
@@ -293,13 +290,13 @@ Because the live neural inference baseline evaluates text representations ingest
 2. **Document Category Classification Task (66.67% Category Accuracy)**: The empirical evaluation uncovered a prompt-level schema constraint failure mode. Academic Certificates (120/120) and Marksheets (120/120) achieved 100% classification accuracy. However, because `STUDENT_ID` was omitted from the prompt's `ALLOWED_CATEGORIES` list, the model strictly mapped Student ID cards (120/120) to `CERTIFICATE` (119/120) and `MARKSHEET` (1/120).
 3. **Joint Record Exact Match Rate (0.00% Joint EM)**: Because Joint Record Exact Match Rate evaluates joint success across both sub-tasks (requiring 100% Field Extraction AND correct Category Classification), the misclassification of Student ID cards resulted in 0.00% overall Joint Record Exact Match score, despite 100% field extraction accuracy across all specimens.
 
-### 7.5 Empirical Ablation Study of Semantic Canonical Normalization
+### 5.5 Empirical Ablation Study of Semantic Canonical Normalization
 To empirically measure the scientific contribution of the Six-Stage Semantic Canonical Normalization Layer (`CanonicalNormalizer`), we executed a two-pass benchmark evaluation across all 360 specimens (`5,760` total field comparisons). To guarantee that metric variations originate solely from the normalization layer, inference predictions were executed exactly once and reused across both passes.
 
 - **Pass A (Without Normalization)**: Prediction field values were evaluated against ground truth strings directly without applying formatting, alias, or syntax normalization rules.
 - **Pass B (With Normalization)**: Prediction field values and ground truth strings were routed through the complete six-stage `CanonicalNormalizer` pipeline.
 
-#### 7.5.1 Quantitative Ablation Metrics
+#### 5.5.1 Quantitative Ablation Metrics
 Table 3 summarizes the empirical metrics measured during the two-pass ablation study.
 
 **Table 3: Empirical Metric Impact of Semantic Canonical Normalization (360 Specimens / 5,760 Fields)**
@@ -311,7 +308,7 @@ Table 3 summarizes the empirical metrics measured during the two-pass ablation s
 | **Net Absolute Improvement** | **+45.49%** | **+45.49%** | **+45.49%** | **-34.48%** | **-258.30%** |
 | **Relative Metric Change** | **+90.97%** | **+90.97%** | **+90.97%** | **-90.42%** | **-90.53%** |
 
-#### 7.5.2 Rule-Wise Contribution & Mismatch Correction Breakdown
+#### 5.5.2 Rule-Wise Contribution & Mismatch Correction Breakdown
 Without canonical normalization, 2,620 false-negative field mismatches occurred due to superficial representation differences. Table 4 quantifies the exact contribution of each domain normalizer rule in resolving these discrepancies.
 
 **Table 4: Mismatch Correction Contribution by Normalizer Rule**
@@ -326,7 +323,7 @@ Without canonical normalization, 2,620 false-negative field mismatches occurred 
 | **University Alias Normalizer** | Acronyms (`VTU`) $\rightarrow$ Canonical full university names | 100 | 3.82% |
 | **Total Corrected Mismatches** | All Normalizer Rules Combined | **2,620** | **100.00%** |
 
-#### 7.5.3 Publication Figures
+#### 5.5.3 Publication Figures
 The empirical ablation metrics and rule-wise contributions are visualized in Figures 3, 4, 5, and 6.
 
 ![Figure 3: Accuracy Improvement Across Normalization Layer](C:/Users/elitebook840g89319/.gemini/antigravity-ide/brain/bb9b3069-0e60-4209-b2b8-d0321ac491db/figure_normalization_ablation.png)
@@ -341,14 +338,14 @@ The empirical ablation metrics and rule-wise contributions are visualized in Fig
 ![Figure 6: Field-Wise Accuracy Improvement](C:/Users/elitebook840g89319/.gemini/antigravity-ide/brain/bb9b3069-0e60-4209-b2b8-d0321ac491db/figure_field_improvement.png)
 *Fig. 6: Field-by-field accuracy improvement comparing raw string matching against canonical normalization.*
 
-#### 7.5.4 Critical Discussion & Scientific Validation
+#### 5.5.4 Critical Discussion & Scientific Validation
 The ablation results empirically validate the core hypothesis: **evaluating raw text strings severely distorts extraction performance metrics**. 
 
 Without normalization (Pass A), standard string comparison yields an artificial F1 score of **50.00%** and a Character Error Rate of **38.13%**, incorrectly penalizing models for benign representation differences such as date styling (`14 Jul 2025` vs `2025-07-14`), identifier hyphens (`2021-IT-000150` vs `2021IT000150`), and institutional shorthand (`VTU` vs `Vivekananda Technical University`).
 
 Routing field extractions through the `CanonicalNormalizer` (Pass B) recovers true extraction performance, boosting the Field F1 score to **95.49%** (a **+45.49% absolute improvement**) while reducing mean CER by **90.42%** (from 38.13% down to 3.65%). Date and Roll Number normalizers contributed the largest share of corrections (27.48% each), demonstrating that domain-specific normalization is essential for unbiased evaluation of academic credential document processing engines.
 
-### 7.6 Statistical Significance Analysis ($p < 0.0001$)
+### 5.6 Statistical Significance Analysis ($p < 0.0001$)
 To verify whether the observed metric improvements resulting from canonical normalization are statistically significant, we evaluated hypothesis tests across all 5,760 paired field observations ($N = 5,760$).
 
 **Table 5: Statistical Hypothesis Testing Summary ($\alpha = 0.001$)**
@@ -363,7 +360,7 @@ To verify whether the observed metric improvements resulting from canonical norm
 
 McNemar's test over the $2 \times 2$ contingency matrix ($a=2,880, b=0, c=2,620, d=260$) yielded $\chi^2 = 2618.00$ ($p < 0.0001$), confirming that canonical normalization provides an overwhelmingly statistically significant improvement in field match accuracy.
 
-### 7.7 Non-Parametric 95% Bootstrap Confidence Intervals
+### 5.7 Non-Parametric 95% Bootstrap Confidence Intervals
 To establish rigorous confidence bounds, non-parametric empirical bootstrap resampling ($B = 1,000$ iterations) was performed over the 5,760 field observations.
 
 **Table 6: Empirical Benchmark Metrics with 95% Bootstrap Confidence Intervals**
@@ -384,7 +381,7 @@ To establish rigorous confidence bounds, non-parametric empirical bootstrap resa
 
 The 95% confidence intervals for Pass A ([48.72%, 51.28%]) and Pass B ([94.93%, 96.01%]) are completely non-overlapping, providing strong statistical evidence of distinct performance distributions.
 
-### 7.8 Error Taxonomy Distribution Shift Analysis
+### 5.8 Error Taxonomy Distribution Shift Analysis
 Evaluating the error taxonomy across 5,760 paired field extractions before and after canonical normalization demonstrates how error categories shift between passes.
 
 **Table 7: Nine-Class OCR Error Taxonomy Distribution Before and After Normalization**
@@ -406,55 +403,40 @@ All 2,620 `FORMAT_ERROR` items in Pass A were converted to `EXACT_MATCH` in Pass
 
 ---
 
-## 8. Discussion, Threats to Validity & Limitations
+## 6. Discussion & Threats to Validity
 
-### 8.1 Scientific Contributions and Methodological Novelty
-To contextualize the scientific novelty of this work, we analyze each of the five primary methodological contributions relative to existing document intelligence literature:
+### 6.1 Scientific Contributions and Methodological Novelty
+To contextualize the scientific novelty of this work, we analyze each of the primary methodological contributions relative to existing document intelligence literature:
 
-1. **Contribution 1: Synthetic Academic Credential Benchmark Methodology**
-   - *Limitations of Existing Work*: Public benchmarks such as SROIE (Huang et al., 2019), CORD (Park et al., 2019), and FUNSD (Jaume et al., 2019) utilize scanned business receipts or forms. In higher education administration, privacy regulations (FERPA in the United States, GDPR in the European Union) strictly prohibit public dissemination of authentic student degree certificates, marksheets, and transcripts.
-   - *Addressed Gap*: Provides a reproducible synthetic evaluation methodology capable of generating credential specimens paired with complete ground-truth JSON trees without requiring real student records or personal data.
-   - *Impact on Future Research*: Establishes a compliance-safe foundation for benchmarking proprietary LLMs and open-weight Vision-Language Models on sensitive institutional administrative documents.
+1. **Synthetic Academic Credential Benchmark Methodology**: Public benchmarks (SROIE, CORD, FUNSD) utilize scanned receipts or forms. In higher education administration, privacy regulations (FERPA, GDPR) prohibit public sharing of authentic student records. ADBG v1.0 provides a synthetic benchmark methodology that generates realistic credentials without requiring real student records.
+2. **Six-Stage Semantic Canonical Normalization Layer**: Standard string comparison metrics evaluate raw text strings, causing benign formatting variations to register as recognition failures. `CanonicalNormalizer` isolates genuine character recognition errors from formatting discrepancies across six standardized normalization stages.
+3. **Nine-Class Structured OCR Error Taxonomy**: Traditional benchmarks summarize performance using scalar error rates (CER, WER). The proposed error taxonomy classifies extraction discrepancies into nine diagnostic categories, enabling targeted model debugging.
+4. **Controlled Quality-Profile Degradation Matrix**: Evaluates model performance decay across four standardized physical optical capture profiles (`clean`, `scanner_copy`, `mobile_camera`, `rotated_90`).
+5. **Seed-Deterministic Synthetic Generation Protocol**: Employs pseudo-random seed initialization ensuring pixel-exact specimen fabrication and reproducible ground-truth JSON annotations across independent research teams.
 
-2. **Contribution 2: Six-Stage Semantic Canonical Normalization Layer**
-   - *Limitations of Existing Work*: Standard string comparison metrics (Levenshtein Edit Distance, Exact Match) evaluate raw text strings, causing benign formatting variations (e.g., `04/08/2026` vs `August 4, 2026` or `MIT` vs `Massachusetts Institute of Technology`) to register as recognition failures.
-   - *Addressed Gap*: Isolates genuine character recognition errors from benign formatting discrepancies by routing ground-truth and predicted values through a deterministic, six-stage canonical normalizer (`CanonicalNormalizer`).
-   - *Impact on Future Research*: Prevents superficial formatting artifacts from distorting model evaluation scores, providing fair comparative accuracy metrics across diverse LLM prompting styles.
-
-3. **Contribution 3: Nine-Class Structured OCR Error Taxonomy**
-   - *Limitations of Existing Work*: Traditional document analysis benchmarks summarize system performance using scalar error rates (CER, WER), which aggregate disparate failure modes into single scalar values without providing diagnostic insight.
-   - *Addressed Gap*: Classifies extraction discrepancies into nine mutually exclusive diagnostic categories (`OCR_ERROR`, `FIELD_MISSING`, `HALLUCINATION`, `FORMAT_ERROR`, `NORMALIZATION_ERROR`, `PARTIAL_MATCH`, `LOW_CONFIDENCE`, `CATEGORY_ERROR`, `EXACT_MATCH`).
-   - *Impact on Future Research*: Enables neural model architects to pinpoint specific failure mechanisms (e.g., prompt instruction omissions vs optical degradation failures), facilitating targeted model fine-tuning.
-
-4. **Contribution 4: Controlled Quality-Profile Degradation Matrix**
-   - *Limitations of Existing Work*: Existing document datasets evaluate models primarily on pristine or statically noisy image collections, failing to quantify performance decay across physical optical capture channels.
-   - *Addressed Gap*: Establishes a systematic evaluation matrix measuring extraction decay across four standardized physical optical profiles (`clean`, `scanner_copy`, `mobile_camera`, `rotated_90`).
-   - *Impact on Future Research*: Quantifies neural model robustness against scanner aging, camera lens distortion, and orientation misalignment in production administrative workflows.
-
-5. **Contribution 5: Seed-Deterministic Synthetic Dataset Generation Protocol**
-   - *Limitations of Existing Work*: Stochastic synthetic data generators introduce random variations across execution runs, making exact cross-study experimental replication difficult.
-   - *Addressed Gap*: Employs a seed-deterministic rendering pipeline (`PrngSeedGenerator` + `TypstCompilerAdapter`) ensuring pixel-exact specimen fabrication and reproducible ground-truth JSON annotations across independent research groups.
-   - *Impact on Future Research*: Guarantees exact experimental reproducibility for benchmark evaluation protocols across different computing environments.
-
-### 8.2 Discussion of Empirical Findings
+### 6.2 Discussion of Empirical Findings
 1. **Utility of Semantic Canonical Normalization**: Canonical normalization prevents superficial formatting differences (e.g., date styling) from distorting model accuracy scores.
 2. **Safe Read-Only Execution**: Performing evaluations headlessly without database mutations allows benchmarks to be run safely in production environments.
 
-### 8.3 Threats to Validity
+### 6.3 Threats to Validity
 - **Internal Validity**: Verified by confirming that `AuDicPredictionAdapter` reads specimen images/text without accessing ground truth JSON dictionaries, eliminating ground truth leakage.
 - **External Validity**: Synthetic templates generated by ADBG v1.0 may not capture every regional design variation or physical paper aging artifact found in historical registrar archives.
 - **Construct Validity**: Metric definitions follow standard ICDAR and IEEE document analysis definitions.
 
-### 8.4 Detailed Limitations Analysis
+---
+
+## 7. Limitations Analysis
+
+### 7.1 Methodological Limitations
 1. **Synthetic Document Constraints**: Synthetic credentials generated by ADBG v1.0 lack authentic physical paper aging artifacts such as ink bleed, water damage, or physical stamp embossing.
 2. **Language Scope**: ADBG v1.0 is currently restricted to English (`en_IN`). Multi-lingual documents containing Indic scripts (Hindi, Tamil, Devanagari) are reserved for future releases.
 
-#### 8.4.1 Methodological Clarification on Synthetic Data vs. Privacy-Preserving Computation
+#### 7.1.1 Methodological Clarification on Synthetic Data vs. Privacy-Preserving Computation
 This work should not be interpreted as proposing a privacy-preserving machine learning technique (such as differential privacy, federated learning, homomorphic encryption, or secure multi-party computation). Instead, it introduces a synthetic-data-based benchmarking methodology that removes the dependency on real academic records during benchmark construction and evaluation. By generating fully synthetic document specimens from fictional entities, the framework avoids legal and ethical constraints associated with handling real student records.
 
 ---
 
-## 9. Future Work
+## 8. Future Work
 
 Future research directions include:
 1. **ADBG v2.0 Multi-Lingual Expansion**: Extending data fabricators to support Indic scripts (Hindi, Tamil, Devanagari) and bilingual degree templates.
@@ -462,7 +444,7 @@ Future research directions include:
 
 ---
 
-## 10. Conclusion
+## 9. Conclusion
 
 In this paper, we presented a reproducible evaluation methodology and synthetic benchmarking suite for academic document intelligence systems (**ADBG v1.0** and **AU DIC Framework v1.0**). The methodology integrates a seed-deterministic synthetic data generator, a six-stage semantic canonical normalization layer, a nine-class structured OCR error taxonomy, and a four-profile optical degradation matrix. Empirical evaluation over 360 benchmark specimens using Groq Cloud Llama 3.1 8B Instant demonstrated a 100.00% Field Extraction F1 score and uncovered a prompt-level schema constraint failure mode in zero-shot document category classification.
 

@@ -346,7 +346,7 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
 
         i += 1
 
-    temp_docx = docx_path.replace(".docx", "_Lit_Build.docx")
+    temp_docx = docx_path.replace(".docx", "_Lit2026_Build.docx")
     doc.save(temp_docx)
     try:
         shutil.copyfile(temp_docx, docx_path)

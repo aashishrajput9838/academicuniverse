@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ezoneApi } from '@/lib/api/ezone';
 import { useAuth } from '@/lib/AuthContext';
-import { normalizeDate } from '@/lib/utils/dateNormalizer';
+import { normalizeDate } from '@shared-utils/date';
 import LiveSyncLogs from '@/components/ezone/LiveSyncLogs';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';

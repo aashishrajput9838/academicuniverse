@@ -23,7 +23,7 @@ import {
   Loader2,
   Info
 } from 'lucide-react';
-import type { StudentSearchResult, StudentOverlapData, RecommendationSlot } from '@/types/overlap';
+import type { StudentSearchResult, StudentOverlapData, RecommendationSlot } from '@shared-types/overlap';
 
 export default function OverlapEnginePage() {
   const { user, backendUser } = useAuth();

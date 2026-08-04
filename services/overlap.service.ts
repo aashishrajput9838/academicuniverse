@@ -1,5 +1,5 @@
 import { overlapAPI } from '@/utils/api/overlapAPI';
-import { SectionsResponse, OverlapResponse } from '@/types/overlap';
+import { SectionsResponse, OverlapResponse } from '@shared-types/overlap';
 
 export class OverlapService {
   async getAvailableSections(organizationId: string): Promise<SectionsResponse> {

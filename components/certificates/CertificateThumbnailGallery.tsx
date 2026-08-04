@@ -16,7 +16,7 @@ import {
   Calendar,
   Layers,
 } from 'lucide-react';
-import { getIssuerBrand } from '@/utils/issuerLogos';
+import { getIssuerBrand } from '@shared-utils/issuerLogos';
 import { CertificatePreviewModal, CertificatePreviewData } from './CertificatePreviewModal';
 
 export interface CertificateItem {

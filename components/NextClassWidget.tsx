@@ -3,7 +3,7 @@ import { NextClassInfo } from '@/lib/utils/timetable';
 import { TimetableCard } from '@/components/TimetableCard';
 import { EmptySchedule } from '@/components/EmptySchedule';
 import { formatTimeRemaining } from '@/lib/utils/timetable';
-import { formatDateForDisplay } from '@/lib/utils/dateNormalizer';
+import { formatDateForDisplay } from '@shared-utils/date';
 
 interface NextClassWidgetProps {
   nextClass: NextClassInfo | null;

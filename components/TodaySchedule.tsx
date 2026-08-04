@@ -2,7 +2,7 @@ import React from 'react';
 import { ScheduleEvent } from '@/lib/utils/timetable';
 import { TimetableCard } from '@/components/TimetableCard';
 import { EmptySchedule } from '@/components/EmptySchedule';
-import { formatDateForDisplay } from '@/lib/utils/dateNormalizer';
+import { formatDateForDisplay } from '@shared-utils/date';
 
 interface TodayScheduleProps {
   events: ScheduleEvent[];

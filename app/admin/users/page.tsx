@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/AuthContext'
 import { useRouter } from 'next/navigation'
-import { normalizeDate } from '@/lib/utils/dateNormalizer'
+import { normalizeDate } from '@shared-utils/date'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'

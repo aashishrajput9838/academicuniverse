@@ -101,6 +101,11 @@
     "typescript": "5.7.3",
     "typescript-eslint": "^8.64.0"
   },
+  "workspaces": [
+    "apps/frontend",
+    "apps/backend",
+    "packages/*"
+  ],
   "pnpm": {
     "overrides": {
       "@types/react": "19.2.7",

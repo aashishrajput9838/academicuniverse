@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '@/utils/api';
 import { useToast } from '@/hooks/use-toast';
-import { ResearchPaperData } from '@/app/dashboard/student/research/page';
+import { ResearchPaperData } from '@shared-types/research';
 import { Loader2, FileText, Clock, ChevronRight } from 'lucide-react';
 
 interface ResearchHistoryProps {

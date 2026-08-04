@@ -1,5 +1,5 @@
 import { apiRequest } from '@/utils/api';
-import { AnalysisData } from '@/types/soft-skills';
+import { AnalysisData } from '@shared-types/soft-skills';
 
 export class SoftSkillsService {
   /**

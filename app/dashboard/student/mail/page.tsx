@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { apiRequest } from '@/utils/api';
-import { normalizeDate } from '@/lib/utils/dateNormalizer';
+import { normalizeDate } from '@shared-utils/date';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

@@ -21,7 +21,15 @@
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"],
-      "@storage/*": ["../storage/*"]
+      "@storage/*": ["../storage/*"],
+      "@shared-types/*": ["../packages/shared-types/src/*"],
+      "@shared-types": ["../packages/shared-types/src/index.ts"],
+      "@academicuniverse/shared-types/*": ["../packages/shared-types/src/*"],
+      "@academicuniverse/shared-types": ["../packages/shared-types/src/index.ts"],
+      "@shared-utils/*": ["../packages/shared-utils/src/*"],
+      "@shared-utils": ["../packages/shared-utils/src/index.ts"],
+      "@academicuniverse/shared-utils/*": ["../packages/shared-utils/src/*"],
+      "@academicuniverse/shared-utils": ["../packages/shared-utils/src/index.ts"]
     },
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },

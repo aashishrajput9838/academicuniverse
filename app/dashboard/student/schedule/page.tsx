@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useModuleRefresh } from '@/hooks/useModuleRefresh';
-import { formatDateForDisplay, normalizeDate } from '@/lib/utils/dateNormalizer';
+import { formatDateForDisplay, normalizeDate } from '@shared-utils/date';
 import { ScheduleDay, getTodayEvents, getNextEvent } from '@/lib/utils/timetable';
 import { WeeklyTimetable } from '@/components/WeeklyTimetable';
 import { TodaySchedule } from '@/components/TodaySchedule';

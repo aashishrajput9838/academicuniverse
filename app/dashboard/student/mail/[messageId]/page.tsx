@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { apiRequest } from '@/utils/api';
-import { normalizeDate } from '@/lib/utils/dateNormalizer';
+import { normalizeDate } from '@shared-utils/date';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 

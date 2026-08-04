@@ -10,15 +10,7 @@ import ContentWriter from '@/components/ResearchWing/ContentWriter';
 import FinalizePaper from '@/components/ResearchWing/FinalizePaper';
 import FinalExport from '@/components/ResearchWing/FinalExport';
 import ResearchHistory from '@/components/ResearchWing/ResearchHistory';
-
-export interface ResearchPaperData {
-    id?: string;
-    topic: string;
-    outline: any[];
-    content: Record<string, string>;
-    abstract: string;
-    citations: any;
-}
+import { ResearchPaperData } from '@shared-types/research';
 
 const STEPS = [
     { id: 'topic', title: '1. Topic Generation' },

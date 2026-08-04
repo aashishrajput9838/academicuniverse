@@ -14,7 +14,7 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
-import { getIssuerBrand } from '@/utils/issuerLogos';
+import { getIssuerBrand } from '@shared-utils/issuerLogos';
 
 export interface CertificatePreviewData {
   title: string;

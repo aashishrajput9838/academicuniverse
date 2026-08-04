@@ -1,5 +1,5 @@
 import { getFirebaseAuth } from '@/lib/firebase';
-import type { StudentSearchResult, StudentOverlapResponse } from '@/types/overlap';
+import type { StudentSearchResult, StudentOverlapResponse } from '@shared-types/overlap';
 
 class OverlapAPIService {
   private baseUrl: string;

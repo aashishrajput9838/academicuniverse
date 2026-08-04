@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ResearchPaperData } from '@/app/dashboard/student/research/page';
+import { ResearchPaperData } from '@shared-types/research';
 import { FileText, Download, FileType2, Loader2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { Document, Packer, Paragraph, HeadingLevel } from 'docx';

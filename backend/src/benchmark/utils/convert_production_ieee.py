@@ -9,6 +9,8 @@ import re
 import os
 import shutil
 import win32com.client
+import subprocess
+import time
 
 def set_cell_background(cell, fill_color):
     tcPr = cell._tc.get_or_add_tcPr()
@@ -39,7 +41,81 @@ def clean_latex_math(text):
     text = re.sub(r'\\hat\{([^}]+)\}', r'\1_hat', text)
     return text
 
+def latex_to_omml_linear(latex_str):
+    """Converts LaTeX display math string to Word UnicodeMath linear format."""
+    s = latex_str.strip()
+    s = s.replace(r'\text{DocumentSpecimen}', 'DocumentSpecimen')
+    s = s.replace(r'\text{Seed}', 'Seed')
+    s = s.replace(r'\text{Category}', 'Category')
+    s = s.replace(r'\text{Profile}', 'Profile')
+    s = s.replace(r'\text{degraded}', 'degraded')
+    s = s.replace(r'\text{rotation}', 'rotation')
+    s = s.replace(r'\text{contrast}', 'contrast')
+    s = s.replace(r'\text{gaussian}', 'gaussian')
+    s = s.replace(r'\text{blur}', 'blur')
+    s = s.replace(r'\text{clean}', 'clean')
+    s = s.replace(r'\text{Category Accuracy}', 'Category Accuracy')
+    s = s.replace(r'\text{ErrorCategory}', 'ErrorCategory')
+    s = s.replace(r'\text{CER}', 'CER')
+    s = s.replace(r'\text{WER}', 'WER')
+    s = s.replace(r'\text{char}', 'char')
+    s = s.replace(r'\text{word}', 'word')
+    s = s.replace(r'\text{GT}', 'GT')
+    s = s.replace(r'\text{True Positive Fields}', 'True Positive Fields')
+    s = s.replace(r'\text{False Positive Fields}', 'False Positive Fields')
+    s = s.replace(r'\text{False Negative Fields}', 'False Negative Fields')
+    s = s.replace(r'\mathbb{I}', '𝟙')
+    s = s.replace(r'\mathcal{G}', 'G')
+    s = s.replace(r'\mathbf{I}', 'I')
+    s = s.replace(r'\mathcal{D}', 'D')
+    s = s.replace(r'\hat{C}_i', 'Ĉ_i')
+    s = s.replace(r'\hat{C}', 'Ĉ')
+    s = s.replace(r'\circ', '∘')
+    s = s.replace(r'\in', '∈')
+    s = s.replace(r'\cdot', '·')
+    s = s.replace(r'\quad', '  ')
+    
+    # Fractions: \frac{num}{den} -> (num)/(den)
+    s = re.sub(r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1) / (\2)', s)
+    
+    # Summation: \sum_{i=1}^N -> \sum_(i=1)^N
+    s = re.sub(r'\\sum_\{([^}]+)\}\^\{([^}]+)\}', r'\\sum_(\1)^\2', s)
+    
+    # Clean remaining LaTeX text wrappers
+    s = re.sub(r'\\text\{([^}]+)\}', r'\1', s)
+    s = re.sub(r'\\([a-zA-Z]+)', r'\1', s)
+    s = s.replace('{', '').replace('}', '')
+    return s
+
+def add_omml_equation_paragraph(doc, latex_str):
+    """Appends a native Microsoft Word OMML equation paragraph (<m:oMathPara>)."""
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(8)
+    p.paragraph_format.space_after = Pt(8)
+    
+    linear_text = latex_to_omml_linear(latex_str)
+    
+    omml_xml = parse_xml(
+        f'<m:oMathPara {nsdecls("m")} {nsdecls("w")}>'
+        f'<m:oMath>'
+        f'<m:r>'
+        f'<m:rPr><m:sty m:val="p"/></m:rPr>'
+        f'<w:rPr>'
+        f'<w:rFonts w:ascii="Cambria Math" w:hAnsi="Cambria Math"/>'
+        f'<w:color w:val="003366"/>'
+        f'</w:rPr>'
+        f'<m:t>{linear_text}</m:t>'
+        f'</m:r>'
+        f'</m:oMath>'
+        f'</m:oMathPara>'
+    )
+    p._p.append(omml_xml)
+    return p
+
 def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
+    subprocess.run(["taskkill", "/f", "/im", "WINWORD.EXE"], capture_output=True)
+    time.sleep(2)
     doc = Document()
     
     for section in doc.sections:
@@ -316,17 +392,8 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
                 if run != r_num:
                     run.font.name = 'Times New Roman'
                     run.font.size = Pt(10)
-        elif line.startswith('$$') and line.endswith('$$'):
-            p = doc.add_paragraph()
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            p.paragraph_format.space_before = Pt(6)
-            p.paragraph_format.space_after = Pt(6)
-            math_val = clean_latex_math(line[2:-2].strip())
-            r = p.add_run(math_val)
-            r.font.name = 'Cambria Math'
-            r.font.size = Pt(11)
-            r.italic = True
-            r.font.color.rgb = RGBColor(0, 51, 102)
+        elif line.strip().startswith('$$') and line.strip().endswith('$$'):
+            add_omml_equation_paragraph(doc, line.strip()[2:-2].strip())
         elif line.startswith('**Table ') or line.startswith('**Fig. ') or line.startswith('**Figure '):
             p = doc.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -353,13 +420,38 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
 
         i += 1
 
-    temp_docx = docx_path.replace(".docx", "_v2.docx")
+    temp_docx = docx_path.replace(".docx", "_Build.docx")
     doc.save(temp_docx)
     try:
         shutil.copyfile(temp_docx, docx_path)
     except Exception as e:
         print(f"Note: Saved to {temp_docx} ({e})")
-    print(f"Production IEEE Docx generated: {temp_docx}")
+    print(f"Production IEEE Docx generated with OMML objects: {temp_docx}")
+    
+    # Automatically run Word COM BuildUp on all OMML objects
+    try:
+        subprocess.run(["taskkill", "/f", "/im", "WINWORD.EXE"], capture_output=True)
+        time.sleep(2)
+        word = win32com.client.Dispatch("Word.Application")
+        word.Visible = False
+        word.DisplayAlerts = 0
+        com_doc = word.Documents.Open(os.path.abspath(temp_docx))
+        print(f"Executing OMML 2D BuildUp on {com_doc.OMaths.Count} equation objects...")
+        for o_idx in range(1, com_doc.OMaths.Count + 1):
+            try:
+                com_doc.OMaths(o_idx).BuildUp()
+            except Exception as e_bu:
+                pass
+        com_doc.Save()
+        com_doc.Close(False)
+        try:
+            word.Quit()
+        except:
+            pass
+        print(f"Automated OMML BuildUp completed successfully!")
+    except Exception as e_com:
+        print(f"OMML BuildUp COM note: {e_com}")
+        
     return temp_docx
 
 def convert_docx_to_pdf_safe(docx_path, pdf_path):

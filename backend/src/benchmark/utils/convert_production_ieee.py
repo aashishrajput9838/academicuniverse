@@ -2,9 +2,9 @@ import docx
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
-from docx.oxml import parse_xml, OxmlElement
-from docx.oxml.ns import nsdecls, qn
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.oxml import parse_xml
+from docx.oxml.ns import nsdecls
 import re
 import os
 import win32com.client
@@ -20,7 +20,8 @@ def set_cell_margins(cell, top=100, bottom=100, left=140, right=140):
     tcPr.append(tcMar)
 
 def clean_latex_math(text):
-    # Strip raw LaTeX commands for clean Word rendering
+    # Strip raw LaTeX commands and backticks for clean Word rendering
+    text = text.replace('`', '')
     text = re.sub(r'\\text\{([^}]+)\}', r'\1', text)
     text = re.sub(r'\\mathbf\{([^}]+)\}', r'\1', text)
     text = re.sub(r'\\mathcal\{([^}]+)\}', r'\1', text)
@@ -45,11 +46,11 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
         section.left_margin = Inches(1)
         section.right_margin = Inches(1)
         
-        # IEEE Footer: Page Numbering
+        # IEEE Access Branding Footer (Replaced TPAMI branding)
         footer = section.footer
         f_p = footer.paragraphs[0]
         f_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        f_run = f_p.add_run("IEEE TRANSACTIONS ON PATTERN ANALYSIS AND MACHINE INTELLIGENCE | Page ")
+        f_run = f_p.add_run("IEEE ACCESS | Volume 14, 2026 | Page ")
         f_run.font.name = "Times New Roman"
         f_run.font.size = Pt(9)
         f_run.font.color.rgb = RGBColor(100, 100, 100)
@@ -65,10 +66,12 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
     code_lines = []
     in_mermaid = False
     mermaid_lines = []
+    current_list_num = 0
 
     def format_inline_markdown(paragraph, text):
-        # Clean latex and strip markdown symbols
-        tokens = re.split(r'(\*\*.*?\*\*|\*.*?\*|`.*?`|\$.*?\$)', text)
+        # Strip all backticks completely
+        text_no_backtick = text.replace('`', '')
+        tokens = re.split(r'(\*\*.*?\*\*|\*.*?\*|\$.*?\$)', text_no_backtick)
         for token in tokens:
             if not token:
                 continue
@@ -80,12 +83,6 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
                 val = clean_latex_math(token[1:-1])
                 r = paragraph.add_run(val)
                 r.italic = True
-            elif token.startswith('`') and token.endswith('`'):
-                val = token[1:-1]
-                r = paragraph.add_run(val)
-                r.font.name = 'Consolas'
-                r.font.size = Pt(9.5)
-                r.font.color.rgb = RGBColor(160, 30, 30)
             elif token.startswith('$') and token.endswith('$'):
                 val = clean_latex_math(token[1:-1])
                 r = paragraph.add_run(val)
@@ -103,8 +100,6 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
         if line.startswith('```'):
             if in_code_block or in_mermaid:
                 if in_mermaid:
-                    # Embed rendered figure image instead of mermaid code!
-                    # Check which figure was inside mermaid
                     mermaid_str = "\n".join(mermaid_lines)
                     p_img = doc.add_paragraph()
                     p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -159,6 +154,10 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
             i += 1
             continue
 
+        # Reset list counter on new heading
+        if line.startswith('#'):
+            current_list_num = 0
+
         # Tables
         if '|' in line and ('---' in line or (i + 1 < len(lines) and '|' in lines[i+1])):
             table_lines = [line]
@@ -181,7 +180,6 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
                 table = doc.add_table(rows=num_rows, cols=num_cols)
                 table.alignment = WD_TABLE_ALIGNMENT.CENTER
                 
-                # IEEE Single Top/Bottom/Header Border Styling
                 tblPr = table._tbl.tblPr
                 borders = parse_xml(f'<w:tblBorders {nsdecls("w")}><w:top w:val="single" w:sz="12" w:space="0" w:color="003366"/><w:bottom w:val="single" w:sz="12" w:space="0" w:color="003366"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="E0E0E0"/><w:insideV w:val="none"/><w:left w:val="none"/><w:right w:val="none"/></w:tblBorders>')
                 tblPr.append(borders)
@@ -281,16 +279,26 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
             for run in p.runs:
                 run.font.name = 'Times New Roman'
                 run.font.size = Pt(10)
-        # Numbered list items
+        # Numbered list items with Clean 1-N Sequence Resetting
         elif re.match(r'^\d+\.\s', line):
-            p = doc.add_paragraph(style='List Number')
+            current_list_num += 1
+            p = doc.add_paragraph()
+            p.paragraph_format.left_indent = Inches(0.25)
             p.paragraph_format.space_before = Pt(1)
             p.paragraph_format.space_after = Pt(2)
             content = re.sub(r'^\d+\.\s', '', line)
+            
+            # IEEE Numbering format
+            r_num = p.add_run(f"{current_list_num}. ")
+            r_num.font.name = 'Times New Roman'
+            r_num.font.size = Pt(10)
+            r_num.bold = True
+            
             format_inline_markdown(p, content)
             for run in p.runs:
-                run.font.name = 'Times New Roman'
-                run.font.size = Pt(10)
+                if run != r_num:
+                    run.font.name = 'Times New Roman'
+                    run.font.size = Pt(10)
         # Display Math
         elif line.startswith('$$') and line.endswith('$$'):
             p = doc.add_paragraph()
@@ -303,14 +311,42 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
             r.font.size = Pt(11)
             r.italic = True
             r.font.color.rgb = RGBColor(0, 51, 102)
-        # Horizontal Rule
-        elif line.strip() in ['---', '***', '___']:
+        # IEEE Numbered References Section
+        elif line.startswith('## References'):
             p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(6)
+            p.paragraph_format.space_before = Pt(16)
             p.paragraph_format.space_after = Pt(6)
-            r = p.add_run('_________________________________________________________________________________')
-            r.font.color.rgb = RGBColor(210, 210, 210)
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p.paragraph_format.keep_with_next = True
+            r = p.add_run("References")
+            r.font.name = 'Times New Roman'
+            r.font.size = Pt(13)
+            r.bold = True
+            r.font.color.rgb = RGBColor(0, 51, 102)
+            
+            # Format subsequent references as IEEE Numbered Citations [1], [2], ...
+            i += 1
+            ref_idx = 1
+            while i < len(lines) and lines[i].strip().startswith('- '):
+                ref_line = lines[i].strip()[2:]
+                ref_p = doc.add_paragraph()
+                ref_p.paragraph_format.left_indent = Inches(0.3)
+                ref_p.paragraph_format.first_line_indent = Inches(-0.3)
+                ref_p.paragraph_format.space_before = Pt(2)
+                ref_p.paragraph_format.space_after = Pt(3)
+                
+                r_ref_num = ref_p.add_run(f"[{ref_idx}] ")
+                r_ref_num.font.name = 'Times New Roman'
+                r_ref_num.font.size = Pt(9.5)
+                r_ref_num.bold = True
+                
+                format_inline_markdown(ref_p, ref_line)
+                for run in ref_p.runs:
+                    if run != r_ref_num:
+                        run.font.name = 'Times New Roman'
+                        run.font.size = Pt(9.5)
+                ref_idx += 1
+                i += 1
+            continue
         # Table captions / Bold Table titles
         elif line.startswith('**Table ') or line.startswith('**Fig. ') or line.startswith('**Figure '):
             p = doc.add_paragraph()

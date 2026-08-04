@@ -1,11 +1,11 @@
 digraph G {
-    graph [rankdir=TB, nodesep=0.4, ranksep=0.5, fontname="Times-Roman", fontsize=11, compound=true];
-    node [shape=box, style="rounded,filled", fillcolor="#F8F9FA", color="#003366", penwidth=1.5, fontname="Times-Roman", fontsize=10];
-    edge [color="#003366", penwidth=1.2, arrowsize=0.8];
+    graph [rankdir=TB, nodesep=0.5, ranksep=0.6, fontname="Times-Roman", fontsize=11, compound=true];
+    node [shape=box, style="rounded,filled", fillcolor="#F8F9FA", color="#003366", penwidth=1.5, fontname="Times-Roman", fontsize=10.5];
+    edge [color="#003366", penwidth=1.5, arrowsize=0.9];
 
     // Start / End nodes
-    start [label="START", shape=oval, fillcolor="#003366", fontcolor="#FFFFFF", style=filled, width=1.5, height=0.5];
-    end [label="END", shape=oval, fillcolor="#003366", fontcolor="#FFFFFF", style=filled, width=1.5, height=0.5];
+    start [label="START", shape=oval, fillcolor="#003366", fontcolor="#FFFFFF", style=filled, width=1.6, height=0.6];
+    end [label="END", shape=oval, fillcolor="#003366", fontcolor="#FFFFFF", style=filled, width=1.6, height=0.6];
 
     // Main Workflow Nodes
     config [label="Research Configuration"];
@@ -30,13 +30,13 @@ digraph G {
     conclusions [label="Research Conclusions & Reproducibility Certification"];
 
     // Callout / Annotation Boxes
-    norm_callout [label="Canonical Normalization Stages:\n• ISO Date Standardizer (YYYY-MM-DD)\n• Identifier Hyphen & Space Stripper\n• Honorific & Whitespace Normalizer\n• Case Standardization (UPPER/lower)\n• Degree & University Alias Mapper\n• Two-Decimal Numeric Standardizer", shape=box, style="dashed,filled", fillcolor="#FEFCBF", color="#D69E2E", fontname="Courier", fontsize=8.5];
+    norm_callout [label="Canonical Normalization Stages:\n• ISO Date Standardizer (YYYY-MM-DD)\n• Identifier Hyphen & Space Stripper\n• Honorific & Whitespace Normalizer\n• Case Standardization (UPPER/lower)\n• Degree & University Alias Mapper\n• Two-Decimal Numeric Standardizer", shape=box, style="dashed,filled", fillcolor="#FEFCBF", color="#D69E2E", fontname="Courier", fontsize=9];
     
-    metric_callout [label="Computed Quantitative Metrics:\n• Category Classification Accuracy (%)\n• Field Extraction Precision (P)\n• Field Extraction Recall (R)\n• Field Extraction F1 Score (F1)\n• Character Error Rate (CER %)\n• Word Error Rate (WER %)\n• Joint Record Exact Match (EM)", shape=box, style="dashed,filled", fillcolor="#EBF8FF", color="#3182CE", fontname="Courier", fontsize=8.5];
+    metric_callout [label="Computed Quantitative Metrics:\n• Category Classification Accuracy (%)\n• Field Extraction Precision (P)\n• Field Extraction Recall (R)\n• Field Extraction F1 Score (F1)\n• Character Error Rate (CER %)\n• Word Error Rate (WER %)\n• Joint Record Exact Match (EM)", shape=box, style="dashed,filled", fillcolor="#EBF8FF", color="#3182CE", fontname="Courier", fontsize=9];
     
-    stats_callout [label="Statistical Hypothesis Tests:\n• McNemar's χ² Test (p < 0.0001)\n• Wilcoxon Signed-Rank Test\n• Paired Student's t-Test\n• Non-Parametric 95% Bootstrap CIs\n• Two-Pass Pass A vs. Pass B Ablation", shape=box, style="dashed,filled", fillcolor="#F0FFF4", color="#38A169", fontname="Courier", fontsize=8.5];
+    stats_callout [label="Statistical Hypothesis Tests:\n• McNemar's χ² Test (p < 0.0001)\n• Wilcoxon Signed-Rank Test\n• Paired Student's t-Test\n• Non-Parametric 95% Bootstrap CIs\n• Two-Pass Pass A vs. Pass B Ablation", shape=box, style="dashed,filled", fillcolor="#F0FFF4", color="#38A169", fontname="Courier", fontsize=9];
 
-    artifact_callout [label="Generated Publication Artifacts:\n• metrics.json (Global Payload)\n• predictions.json (Live Inference Logs)\n• comparisons.json (Field Diagnostics)\n• 300/600 DPI High-Res Figures\n• Formatted IEEE LaTeX Tables", shape=box, style="dashed,filled", fillcolor="#FAF5FF", color="#805AD5", fontname="Courier", fontsize=8.5];
+    artifact_callout [label="Generated Publication Artifacts:\n• metrics.json (Global Payload)\n• predictions.json (Live Inference Logs)\n• comparisons.json (Field Diagnostics)\n• 300/600 DPI High-Res Figures\n• Formatted IEEE LaTeX Tables", shape=box, style="dashed,filled", fillcolor="#FAF5FF", color="#805AD5", fontname="Courier", fontsize=9];
 
     // Sequential Flow Connections
     start -> config -> seed -> adbg;

@@ -163,8 +163,6 @@ flowchart TD
     end
 ```
 
-**Figure 2: End-to-End Methodological Workflow of the Proposed AU DIC Benchmark Evaluation Framework.**
-
 ### 3.2 ADBG Synthetic Benchmark Generation
 #### 3.2.1 Seed-Deterministic Profile Generation
 ADBG v1.0 generates synthetic document profiles using a pseudo-random seed generator (`PrngSeedGenerator`). Seed initialization ensures that identical seed parameters produce identical document text, field layout coordinates, and visual degradation artifacts across runs:

@@ -42,8 +42,15 @@ The primary contributions of this work are summarized as follows:
 4. **Nine-Class Structured OCR Error Taxonomy**: An automated error categorization module that classifies field extraction failures into distinct diagnostic categories (`OCR_ERROR`, `FIELD_MISSING`, `HALLUCINATION`, `FORMAT_ERROR`, etc.).
 5. **Quality Profile Robustness Framework**: A systematic evaluation matrix measuring extraction decay across four standardized optical profiles (`clean`, `scanner_copy`, `mobile_camera`, `rotated_90`).
 
-### 1.4 Paper Organization
-The remainder of this paper is organized as follows. Section 2 surveys related work. Section 3 details the system architecture. Section 4 presents the ADBG synthetic data generation methodology. Section 5 describes the AU DIC evaluation framework and normalizers. Section 6 specifies the experimental protocol and metrics. Section 7 presents empirical validation results. Section 8 discusses findings, limitations, and threats to validity. Section 9 outlines future research directions, Section 10 concludes the paper, and Appendices A and B provide reproducibility specifications and technical answers to reviewer inquiries.
+### 1.4 Scientific Novelty Statement
+To the best of our knowledge, within the scope of academic credential benchmarking, we propose the first privacy-preserving, reproducible benchmarking methodology for academic credential document intelligence that combines deterministic synthetic data generation, semantic canonical normalization, a structured OCR error taxonomy, and a controlled quality-profile evaluation matrix.
+
+The primary scientific contribution of this work lies not merely in software implementation or tool engineering, but in establishing a unified evaluation methodology for Document Intelligence Systems (DIS) operating on privacy-restricted administrative records. Previous benchmark contributions in document analysis (e.g., SROIE, CORD, FUNSD, DocVQA) evaluate neural models on static, authentic document collections. However, in the academic credential domain, regulatory constraints (FERPA, GDPR) prohibit public distribution of real student records, while superficial string representation variations distort extraction evaluation.
+
+By integrating five interdependent methodological components—seed-deterministic synthetic rendering, multi-profile optical degradation, decoupled read-only execution, multi-stage semantic canonicalization, and a structured diagnostic error taxonomy—into a single benchmark protocol, this work establishes a standardized, reproducible foundation to evaluate OCR engines, Large Language Models (LLMs), and Vision-Language Models (VLMs) under controlled experimental conditions.
+
+### 1.5 Paper Organization
+The remainder of this paper is organized as follows. Section 2 surveys related work. Section 3 details the system architecture. Section 4 presents the ADBG synthetic data generation methodology. Section 5 describes the AU DIC evaluation framework and normalizers. Section 6 specifies the experimental protocol and metrics. Section 7 presents empirical validation results. Section 8 discusses scientific contributions, methodological novelty, threats to validity, and limitations. Section 9 outlines future research directions, Section 10 concludes the paper, and Appendices A and B provide reproducibility specifications and technical answers to reviewer inquiries.
 
 ---
 
@@ -275,16 +282,44 @@ Because the live neural inference baseline evaluates text representations ingest
 
 ## 8. Discussion, Threats to Validity & Limitations
 
-### 8.1 Discussion of Findings
+### 8.1 Scientific Contributions and Methodological Novelty
+To contextualize the scientific novelty of this work, we analyze each of the five primary methodological contributions relative to existing document intelligence literature:
+
+1. **Contribution 1: Privacy-Preserving Academic Benchmark Methodology**
+   - *Limitations of Existing Work*: Public benchmarks such as SROIE (Huang et al., 2019), CORD (Park et al., 2019), and FUNSD (Jaume et al., 2019) utilize scanned business receipts or forms. In higher education administration, privacy regulations (FERPA in the United States, GDPR in the European Union) strictly prohibit public dissemination of authentic student degree certificates, marksheets, and transcripts.
+   - *Addressed Gap*: Provides a privacy-safe, reproducible evaluation methodology capable of generating credential specimens paired with complete ground-truth JSON trees without exposing authentic student personally identifiable information (PII).
+   - *Impact on Future Research*: Establishes a compliance-safe foundation for benchmarking proprietary LLMs and open-weight Vision-Language Models on sensitive institutional administrative documents.
+
+2. **Contribution 2: Six-Stage Semantic Canonical Normalization Layer**
+   - *Limitations of Existing Work*: Standard string comparison metrics (Levenshtein Edit Distance, Exact Match) evaluate raw text strings, causing benign formatting variations (e.g., `04/08/2026` vs `August 4, 2026` or `MIT` vs `Massachusetts Institute of Technology`) to register as recognition failures.
+   - *Addressed Gap*: Isolates genuine character recognition errors from benign formatting discrepancies by routing ground-truth and predicted values through a deterministic, six-stage canonical normalizer (`CanonicalNormalizer`).
+   - *Impact on Future Research*: Prevents superficial formatting artifacts from distorting model evaluation scores, providing fair comparative accuracy metrics across diverse LLM prompting styles.
+
+3. **Contribution 3: Nine-Class Structured OCR Error Taxonomy**
+   - *Limitations of Existing Work*: Traditional document analysis benchmarks summarize system performance using scalar error rates (CER, WER), which aggregate disparate failure modes into single scalar values without providing diagnostic insight.
+   - *Addressed Gap*: Classifies extraction discrepancies into nine mutually exclusive diagnostic categories (`OCR_ERROR`, `FIELD_MISSING`, `HALLUCINATION`, `FORMAT_ERROR`, `NORMALIZATION_ERROR`, `PARTIAL_MATCH`, `LOW_CONFIDENCE`, `CATEGORY_ERROR`, `EXACT_MATCH`).
+   - *Impact on Future Research*: Enables neural model architects to pinpoint specific failure mechanisms (e.g., prompt instruction omissions vs optical degradation failures), facilitating targeted model fine-tuning.
+
+4. **Contribution 4: Controlled Quality-Profile Degradation Matrix**
+   - *Limitations of Existing Work*: Existing document datasets evaluate models primarily on pristine or statically noisy image collections, failing to quantify performance decay across physical optical capture channels.
+   - *Addressed Gap*: Establishes a systematic evaluation matrix measuring extraction decay across four standardized physical optical profiles (`clean`, `scanner_copy`, `mobile_camera`, `rotated_90`).
+   - *Impact on Future Research*: Quantifies neural model robustness against scanner aging, camera lens distortion, and orientation misalignment in production administrative workflows.
+
+5. **Contribution 5: Seed-Deterministic Synthetic Dataset Generation Protocol**
+   - *Limitations of Existing Work*: Stochastic synthetic data generators introduce random variations across execution runs, making exact cross-study experimental replication difficult.
+   - *Addressed Gap*: Employs a seed-deterministic rendering pipeline (`PrngSeedGenerator` + `TypstCompilerAdapter`) ensuring pixel-exact specimen fabrication and reproducible ground-truth JSON annotations across independent research groups.
+   - *Impact on Future Research*: Guarantees exact experimental reproducibility for benchmark evaluation protocols across different computing environments.
+
+### 8.2 Discussion of Empirical Findings
 1. **Utility of Semantic Canonical Normalization**: Canonical normalization prevents superficial formatting differences (e.g., date styling) from distorting model accuracy scores.
 2. **Safe Read-Only Execution**: Performing evaluations headlessly without database mutations allows benchmarks to be run safely in production environments.
 
-### 8.2 Threats to Validity
+### 8.3 Threats to Validity
 - **Internal Validity**: Verified by confirming that `AuDicPredictionAdapter` reads specimen images/text without accessing ground truth JSON dictionaries, eliminating ground truth leakage.
 - **External Validity**: Synthetic templates generated by ADBG v1.0 may not capture every regional design variation or physical paper aging artifact found in historical registrar archives.
 - **Construct Validity**: Metric definitions follow standard ICDAR and IEEE document analysis definitions.
 
-### 8.3 Detailed Limitations Analysis
+### 8.4 Detailed Limitations Analysis
 1. **Synthetic Document Constraints**: Synthetic credentials generated by ADBG v1.0 lack authentic physical paper aging artifacts such as ink bleed, water damage, or physical stamp embossing.
 2. **Language Scope**: ADBG v1.0 is currently restricted to English (`en_IN`). Multi-lingual documents containing Indic scripts (Hindi, Tamil, Devanagari) are reserved for future releases.
 
@@ -300,7 +335,9 @@ Future research directions include:
 
 ## 10. Conclusion
 
-In this paper, we presented **ADBG v1.0** and the **AU DIC Benchmark Evaluation Framework v1.0** for evaluating academic document intelligence systems. The framework incorporates a seed-deterministic synthetic data generator, a six-stage semantic canonical normalization layer, and a nine-class structured OCR error taxonomy. Live neural model inference over 360 specimens using Groq Cloud Llama 3.1 8B Instant demonstrated a 100.00% Field Extraction F1 score and uncovered a prompt-constraint failure mode in zero-shot category classification. This work establishes a privacy-safe, reproducible foundation for academic document analysis research.
+In this paper, we presented a reproducible evaluation methodology and synthetic benchmarking suite for academic document intelligence systems (**ADBG v1.0** and **AU DIC Framework v1.0**). The methodology integrates a seed-deterministic synthetic data generator, a six-stage semantic canonical normalization layer, a nine-class structured OCR error taxonomy, and a four-profile optical degradation matrix. Empirical evaluation over 360 benchmark specimens using Groq Cloud Llama 3.1 8B Instant demonstrated a 100.00% Field Extraction F1 score and uncovered a prompt-level schema constraint failure mode in zero-shot document category classification.
+
+Rather than presenting merely a software implementation, this work contributes a standardized, reproducible evaluation methodology for academic credential document analysis. Within the scope of academic document intelligence, this benchmark methodology enables rigorous comparative evaluation of classical OCR engines, proprietary LLMs, and open-weight Vision-Language Models under controlled, privacy-safe experimental conditions.
 
 ---
 

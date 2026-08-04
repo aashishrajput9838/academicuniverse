@@ -1,0 +1,47 @@
+# AU DIC Benchmark Evaluation Framework — Implementation Plan (Sprint 003)
+
+## Overview
+With **Sprint 001** (Framework Subsystem), **Sprint 002** (Field Evaluators & Normalizers), **Confidence Calibration**, and **Error Taxonomy Engine** fully implemented and verified (100% test pass rate), we now move into **Sprint 003: Quality Profile Robustness & Degradation Penalty Evaluation**.
+
+Sprint 003 evaluates AU DIC accuracy decay across physical acquisition degradations:
+- `clean` (Digital vector rendering baseline)
+- `scanner_copy` (Scan blur, contrast drop, binarization noise)
+- `mobile_camera` (Perspective distortion, shadow gradient, lens flare)
+- `rotated_90` (Exact 90° clockwise page rotation)
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Quality Profile Robustness Analysis Policy**:
+> - Evaluates document processing performance decay curves across `clean` $\to$ `scanner_copy` $\to$ `mobile_camera` $\to$ `rotated_90`.
+> - Calculates profile degradation penalties ($\Delta \text{F1}$, $\Delta \text{CER}$, $\Delta \text{Accuracy}$) relative to the digital vector baseline (`clean`).
+
+---
+
+## Proposed Changes — Sprint 003 Components
+
+### [Component 1] Profile Robustness & Degradation Evaluators
+#### [NEW] [ProfileRobustnessEvaluator.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/benchmark/evaluators/ProfileRobustnessEvaluator.ts)
+- Computes degradation decay metrics ($\Delta \text{F1}$, $\Delta \text{CER}$) for each quality profile relative to baseline `clean`.
+
+#### [NEW] [GradeIntegrityEvaluator.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/benchmark/evaluators/GradeIntegrityEvaluator.ts)
+- Evaluates grade point disambiguation integrity under degraded scans (e.g., distinguishing `O` vs `C` under noise).
+
+---
+
+### [Component 2] Unit & Integration Test Suite
+#### [NEW] [sprint003Robustness.test.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/benchmark/__tests__/sprint003Robustness.test.ts)
+- Test suite verifying profile robustness evaluators and degradation penalty calculations.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Run `npx jest --runInBand src/benchmark/__tests__` to verify all benchmark tests (Sprints 001, 002, 003).
+- Run `python -m pytest ADBG/tests/` to verify zero regression in ADBG.
+
+### Manual Verification
+- Run full 360-sample benchmark execution using `BenchmarkRunner` and verify profile breakdown tables in `summary.md`.

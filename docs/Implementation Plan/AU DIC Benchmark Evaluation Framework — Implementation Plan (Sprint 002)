@@ -1,0 +1,53 @@
+# AU DIC Benchmark Evaluation Framework — Implementation Plan (Sprint 002)
+
+## Overview
+With **Sprint 001** and the **Dedicated Normalization Layer** fully implemented and verified (100% test pass rate), we now move into **Sprint 002: Field-Level Extraction Evaluators & Semantic Category Matching**.
+
+Sprint 002 builds deep evaluation logic on top of canonical representations to measure field-specific extraction accuracy (Candidate Name, Roll Number, Issue Date, CGPA, Subject Grades) and generate confusion matrices across document types.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Semantic Evaluation Policy**:
+> - Comparators operate on **Canonical Representations** produced by `CanonicalNormalizer`.
+> - Evaluates semantic correctness (e.g. `VTU` matching `Vivekananda Technical University`, `2021-IT-000150` matching `2021IT000150`, `14/07/2025` matching `2025-07-14`).
+> - Produces detailed field-level error breakdowns in `comparisons.json`.
+
+---
+
+## Proposed Changes — Sprint 002 Components
+
+### [Component 1] Specific Document Type Evaluators
+#### [NEW] [CertificateEvaluator.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/benchmark/evaluators/CertificateEvaluator.ts)
+- Specialized evaluator for Certificate documents evaluating Candidate Name, Issuer, Degree Title, Issue Date, and Credential ID.
+
+#### [NEW] [MarksheetEvaluator.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/benchmark/evaluators/MarksheetEvaluator.ts)
+- Specialized evaluator for Marksheets & Transcripts evaluating Roll Number, Student Name, Institution, GPA/CGPA, Total Credits, and Subject Grade Array.
+
+#### [NEW] [StudentIdEvaluator.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/benchmark/evaluators/StudentIdEvaluator.ts)
+- Specialized evaluator for Student ID Cards evaluating Student Name, Roll Number, Enrollment Number, Degree/Branch, and Validity Date.
+
+---
+
+### [Component 2] Confusion Matrix & Classification Evaluator
+#### [NEW] [ConfusionMatrixEvaluator.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/benchmark/evaluators/ConfusionMatrixEvaluator.ts)
+- Computes complete document category confusion matrix (`CERTIFICATE`, `MARKSHEET`, `IDENTITY_CARD`, `UNKNOWN`) and outputs category precision/recall/F1 breakdowns.
+
+---
+
+### [Component 3] Unit & Integration Test Suite
+#### [NEW] [sprint002Evaluators.test.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/benchmark/__tests__/sprint002Evaluators.test.ts)
+- Comprehensive test suite testing specialized document evaluators and confusion matrix generation.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Run `npx jest --runInBand src/benchmark/__tests__` to verify all Sprint 001 and Sprint 002 tests.
+- Run `python -m pytest ADBG/tests/` to verify zero regression in ADBG.
+
+### Manual Verification
+- Run a 360-sample benchmark execution using `BenchmarkRunner` and verify `summary.md` and `comparisons.json`.

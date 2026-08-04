@@ -1,0 +1,49 @@
+# AU DIC Benchmark Evaluation Framework — Implementation Plan (Sprint 004)
+
+## Overview
+With **Sprint 001** (Framework Foundation), **Sprint 002** (Field Evaluators & Normalizers), and **Sprint 003** (Quality Profile Leaderboard, Field Robustness Matrix, Error Heatmap, and Diagnostics) fully verified (100% test pass rate), we now move into **Sprint 004: Concurrency Orchestration, Full Benchmark Execution, and IEEE LaTeX Report Exporters**.
+
+Sprint 004 equips `BenchmarkRunner` with configurable concurrency batch execution and constructs publication-grade exporter engines.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Full Benchmark Execution Policy**:
+> - Executes read-only evaluation across all **360 dataset image variants** in `AU_DIC_Benchmark_v1.0`.
+> - Generates self-contained run directories under `benchmark_reports/run_<timestamp>/` containing `predictions.json`, `comparisons.json`, `metrics.json`, `execution.log`, and `summary.md`.
+
+---
+
+## Proposed Changes — Sprint 004 Components
+
+### [Component 1] Concurrency & Concurrency Batch Runner
+#### [MODIFY] [BenchmarkRunner.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/benchmark/runner/BenchmarkRunner.ts)
+- Adds parallel worker pool with configurable concurrency limit (default 4 workers) for high-speed evaluation runs.
+
+---
+
+### [Component 2] IEEE LaTeX & Markdown Publication Exporters
+#### [NEW] [LatexTableExporter.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/benchmark/reports/LatexTableExporter.ts)
+- Formats benchmark metrics, quality profile decay, and error taxonomy tables into publication-grade IEEE / Scopus LaTeX tabular environments.
+
+#### [NEW] [CsvExporter.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/benchmark/reports/CsvExporter.ts)
+- Exports per-sample evaluation metrics into `results.csv` for statistical analysis in Python/Pandas.
+
+---
+
+### [Component 3] Unit & Integration Test Suite
+#### [NEW] [sprint004Exporters.test.ts](file:///c:/github/academicuniverse.com/academicuniverse/backend/src/benchmark/__tests__/sprint004Exporters.test.ts)
+- Test suite verifying LaTeX table formatting, CSV exporting, and concurrency batch execution.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Run `npx jest --runInBand src/benchmark/__tests__` to verify all benchmark tests (Sprints 001–004).
+- Run `python -m pytest ADBG/tests/` to verify zero regression in ADBG.
+
+### Manual Verification
+- Execute full 360-sample benchmark run and verify generated self-contained report directory.

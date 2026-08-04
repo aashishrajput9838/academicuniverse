@@ -32,9 +32,12 @@ import resumeHealthRoutes from './resumeHealthRoutes';
 import moduleVisibilityRoutes from './moduleVisibilityRoutes';
 import { moduleGuard } from '../middleware/moduleVisibility.middleware';
 
+import syntheticRoutes from './syntheticRoutes';
+
 const router = express.Router();
 
 router.use('/auth', authRoutes);
+router.use('/synthetic', syntheticRoutes);
 router.use('/marks', marksRoutes);
 router.use('/github', githubRoutes);
 router.use('/profile', profileRoutes);

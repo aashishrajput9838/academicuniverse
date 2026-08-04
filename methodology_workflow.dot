@@ -1,22 +1,18 @@
 digraph G {
-    graph [rankdir=TB, nodesep=1.2, ranksep=1.4, fontname="Times-Roman", fontsize=36, compound=true];
-    node [shape=box, style="rounded,filled", fillcolor="#F8F9FA", color="#003366", penwidth=3.0, fontname="Times-Roman", fontsize=34.5];
-    edge [color="#003366", penwidth=3.0, arrowsize=1.6];
+    graph [rankdir=TB, nodesep=0.5, ranksep=0.6, fontname="Times-Bold", fontsize=22, compound=true];
+    node [shape=box, style="rounded,filled", fillcolor="#F8F9FA", color="#003366", penwidth=2.5, fontname="Times-Bold", fontsize=20];
+    edge [color="#003366", penwidth=2.5, arrowsize=1.2];
 
-    // Start / End nodes
-    start [label="START", shape=oval, fillcolor="#003366", fontcolor="#FFFFFF", style=filled, width=3.8, height=1.5];
-    end [label="END", shape=oval, fillcolor="#003366", fontcolor="#FFFFFF", style=filled, width=3.8, height=1.5];
+    start [label="START", shape=oval, fillcolor="#003366", fontcolor="#FFFFFF", style=filled, width=2.5, height=1.0];
+    end [label="END", shape=oval, fillcolor="#003366", fontcolor="#FFFFFF", style=filled, width=2.5, height=1.0];
 
-    // Main Workflow Nodes
     config [label="Research Configuration"];
     seed [label="Deterministic Seed Initialization\n(PrngSeedGenerator)"];
     adbg [label="ADBG Synthetic Academic Document Generation"];
     typst [label="Typst Vector PDF Compilation"];
-    gt_json [label="Ground Truth JSON Generation & Assembly"];
+    gt_json [label="Ground Truth JSON Assembly"];
     raster [label="Raster Image Conversion (300 DPI PNG)"];
-    
-    degradation [label="Controlled Optical Degradation Matrix\n(clean | scanner_copy | mobile_camera | rotated_90)", shape=diamond, style=filled, fillcolor="#EDF2F7", color="#2B6CB0"];
-    
+    degradation [label="Controlled Degradation Matrix\n(clean | scanner | camera | rotated)", shape=diamond, style=filled, fillcolor="#EDF2F7", color="#2B6CB0"];
     dataset [label="AU_DIC_Benchmark_v1.0 Dataset Assembly\n(N = 360 Specimen Suite)"];
     runner [label="Benchmark Runner Engine Initialization\n(isReadOnly: true, allowMockFallback: false)"];
     inference [label="Live Vision-Language / OCR Model Inference\n(Groq Cloud Llama 3.1 8B Instant)"];
@@ -29,16 +25,11 @@ digraph G {
     artifacts [label="Publication Artifact Generation"];
     conclusions [label="Research Conclusions & Reproducibility Certification"];
 
-    // Callout / Annotation Boxes
-    norm_callout [label="Canonical Normalization Stages:\n• ISO Date Standardizer (YYYY-MM-DD)\n• Identifier Hyphen & Space Stripper\n• Honorific & Whitespace Normalizer\n• Case Standardization (UPPER/lower)\n• Degree & University Alias Mapper\n• Two-Decimal Numeric Standardizer", shape=box, style="dashed,filled", fillcolor="#FEFCBF", color="#D69E2E", fontname="Courier", fontsize=33.2];
-    
-    metric_callout [label="Computed Quantitative Metrics:\n• Category Classification Accuracy (%)\n• Field Extraction Precision (P)\n• Field Extraction Recall (R)\n• Field Extraction F1 Score (F1)\n• Character Error Rate (CER %)\n• Word Error Rate (WER %)\n• Joint Record Exact Match (EM)", shape=box, style="dashed,filled", fillcolor="#EBF8FF", color="#3182CE", fontname="Courier", fontsize=33.2];
-    
-    stats_callout [label="Statistical Hypothesis Tests:\n• McNemar's χ² Test (p < 0.0001)\n• Wilcoxon Signed-Rank Test\n• Paired Student's t-Test\n• Non-Parametric 95% Bootstrap CIs\n• Two-Pass Pass A vs. Pass B Ablation", shape=box, style="dashed,filled", fillcolor="#F0FFF4", color="#38A169", fontname="Courier", fontsize=33.2];
+    norm_callout [label="Canonical Normalization Callout:\n• ISO Date Standardizer (YYYY-MM-DD)\n• Identifier Hyphen & Space Stripper\n• Honorific & Whitespace Normalizer\n• Case Standardization (UPPER/lower)\n• Degree & University Alias Mapper\n• Two-Decimal Numeric Standardizer", shape=box, style="dashed,filled", fillcolor="#FEFCBF", color="#D69E2E", fontname="Courier-Bold", fontsize=18];
+    metric_callout [label="Computed Quantitative Metrics:\n• Category Classification Accuracy (%)\n• Field Extraction Precision (P)\n• Field Extraction Recall (R)\n• Field Extraction F1 Score (F1)\n• Character Error Rate (CER %)\n• Word Error Rate (WER %)\n• Joint Record Exact Match (EM)", shape=box, style="dashed,filled", fillcolor="#EBF8FF", color="#3182CE", fontname="Courier-Bold", fontsize=18];
+    stats_callout [label="Statistical Hypothesis Tests:\n• McNemar's χ² Test (p < 0.0001)\n• Wilcoxon Signed-Rank Test\n• Paired Student's t-Test\n• Non-Parametric 95% Bootstrap CIs\n• Two-Pass Pass A vs. Pass B Ablation", shape=box, style="dashed,filled", fillcolor="#F0FFF4", color="#38A169", fontname="Courier-Bold", fontsize=18];
+    artifact_callout [label="Generated Publication Artifacts:\n• metrics.json (Global Payload)\n• predictions.json (Live Inference Logs)\n• comparisons.json (Field Diagnostics)\n• 300/600 DPI High-Res Figures\n• Formatted IEEE LaTeX Tables", shape=box, style="dashed,filled", fillcolor="#FAF5FF", color="#805AD5", fontname="Courier-Bold", fontsize=18];
 
-    artifact_callout [label="Generated Publication Artifacts:\n• metrics.json (Global Payload)\n• predictions.json (Live Inference Logs)\n• comparisons.json (Field Diagnostics)\n• 300/600 DPI High-Res Figures\n• Formatted IEEE LaTeX Tables", shape=box, style="dashed,filled", fillcolor="#FAF5FF", color="#805AD5", fontname="Courier", fontsize=33.2];
-
-    // Sequential Flow Connections
     start -> config -> seed -> adbg;
     adbg -> typst;
     adbg -> gt_json;
@@ -46,9 +37,8 @@ digraph G {
     gt_json -> dataset;
     degradation -> dataset -> runner -> inference -> prediction -> normalizer -> comparator -> taxonomy -> metrics -> stats -> artifacts -> conclusions -> end;
 
-    // Callout Dotted Connections
-    normalizer -> norm_callout [style=dotted, arrowhead=none, constraint=false];
-    metrics -> metric_callout [style=dotted, arrowhead=none, constraint=false];
-    stats -> stats_callout [style=dotted, arrowhead=none, constraint=false];
-    artifacts -> artifact_callout [style=dotted, arrowhead=none, constraint=false];
+    normalizer -> norm_callout [style=dotted, arrowhead=none];
+    metrics -> metric_callout [style=dotted, arrowhead=none];
+    stats -> stats_callout [style=dotted, arrowhead=none];
+    artifacts -> artifact_callout [style=dotted, arrowhead=none];
 }

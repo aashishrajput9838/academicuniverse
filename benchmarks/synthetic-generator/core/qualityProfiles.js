@@ -1,0 +1,164 @@
+"use strict";
+/**
+ * Academic Universe — Reusable Quality Profiles & PDF Distortion Handler
+ * Defines 9 realistic quality profiles and renders mandatory research disclaimers.
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.QualityProfileManager = exports.QUALITY_PROFILES = void 0;
+const pdf_lib_1 = require("pdf-lib");
+exports.QUALITY_PROFILES = {
+    CLEAN_PDF: {
+        name: 'CLEAN_PDF',
+        description: 'Crisp digital vector PDF directly exported from software',
+        rotationDegrees: 0,
+        opacityOverlay: 0,
+        contrastAdjustment: 1.0,
+        noiseLevel: 0,
+        grayscale: false,
+    },
+    SCANNER_COPY: {
+        name: 'SCANNER_COPY',
+        description: 'Flatbed scanner simulation with slight tilt and grayscale tint',
+        rotationDegrees: 0.8,
+        opacityOverlay: 0.05,
+        contrastAdjustment: 0.95,
+        noiseLevel: 0.02,
+        grayscale: true,
+    },
+    MOBILE_CAMERA: {
+        name: 'MOBILE_CAMERA',
+        description: 'Mobile phone photo simulation with slight perspective distortion',
+        rotationDegrees: 2.2,
+        opacityOverlay: 0.08,
+        contrastAdjustment: 0.90,
+        noiseLevel: 0.04,
+        grayscale: false,
+    },
+    LOW_RESOLUTION: {
+        name: 'LOW_RESOLUTION',
+        description: 'Downsampled document simulation',
+        rotationDegrees: 0,
+        opacityOverlay: 0.10,
+        contrastAdjustment: 0.85,
+        noiseLevel: 0.05,
+        grayscale: false,
+    },
+    BLURRED: {
+        name: 'BLURRED',
+        description: 'Out-of-focus capture simulation',
+        rotationDegrees: 0.5,
+        opacityOverlay: 0.15,
+        contrastAdjustment: 0.80,
+        noiseLevel: 0.06,
+        grayscale: false,
+    },
+    SHADOWED: {
+        name: 'SHADOWED',
+        description: 'Document with environmental shadow gradient overlay',
+        rotationDegrees: -1.2,
+        opacityOverlay: 0.12,
+        contrastAdjustment: 0.88,
+        noiseLevel: 0.03,
+        grayscale: false,
+    },
+    COMPRESSED: {
+        name: 'COMPRESSED',
+        description: 'Aggressive JPEG compression artifact simulation',
+        rotationDegrees: 0,
+        opacityOverlay: 0.07,
+        contrastAdjustment: 0.92,
+        noiseLevel: 0.04,
+        grayscale: false,
+    },
+    ROTATED: {
+        name: 'ROTATED',
+        description: 'Misaligned physical document scan (3 degree rotation)',
+        rotationDegrees: 3.0,
+        opacityOverlay: 0.02,
+        contrastAdjustment: 1.0,
+        noiseLevel: 0.01,
+        grayscale: false,
+    },
+    SKEWED: {
+        name: 'SKEWED',
+        description: 'Skewed page capture (-2.5 degree angle)',
+        rotationDegrees: -2.5,
+        opacityOverlay: 0.04,
+        contrastAdjustment: 0.95,
+        noiseLevel: 0.02,
+        grayscale: false,
+    },
+};
+class QualityProfileManager {
+    /** Pick a quality profile based on configured weight distribution */
+    static selectProfile(rng, distribution) {
+        if (!distribution) {
+            // Default distribution: 50% CLEAN, 25% SCANNER, 15% MOBILE, 10% ROTATED
+            const rand = rng.nextFloat() * 100;
+            if (rand < 50)
+                return exports.QUALITY_PROFILES.CLEAN_PDF;
+            if (rand < 75)
+                return exports.QUALITY_PROFILES.SCANNER_COPY;
+            if (rand < 90)
+                return exports.QUALITY_PROFILES.MOBILE_CAMERA;
+            return exports.QUALITY_PROFILES.ROTATED;
+        }
+        const rand = rng.nextFloat() * 100;
+        let cumulative = 0;
+        for (const [name, pct] of Object.entries(distribution)) {
+            cumulative += pct;
+            if (rand <= cumulative && name in exports.QUALITY_PROFILES) {
+                return exports.QUALITY_PROFILES[name];
+            }
+        }
+        return exports.QUALITY_PROFILES.CLEAN_PDF;
+    }
+    /** Apply quality profile distortions & mandatory research transparency markings */
+    static async applyProfileAndDisclaimers(pdfDoc, page, profile, watermarkText = 'SYNTHETIC RESEARCH DATASET') {
+        const font = await pdfDoc.embedFont(pdf_lib_1.StandardFonts.HelveticaBold);
+        const fontSmall = await pdfDoc.embedFont(pdf_lib_1.StandardFonts.Helvetica);
+        const { width, height } = page.getSize();
+        // 1. Mandatory Diagonal Watermark (Light grey)
+        page.drawText(watermarkText, {
+            x: width * 0.15,
+            y: height * 0.4,
+            size: 32,
+            font,
+            color: (0, pdf_lib_1.rgb)(0.85, 0.85, 0.85),
+            rotate: (0, pdf_lib_1.degrees)(35),
+            opacity: 0.35,
+        });
+        // 2. Mandatory Research Footer Disclaimer
+        page.drawRectangle({
+            x: 0,
+            y: 0,
+            width,
+            height: 22,
+            color: (0, pdf_lib_1.rgb)(0.95, 0.95, 0.95),
+        });
+        page.drawText('SYNTHETIC DATASET — Generated by Academic Universe Research Platform (Fictional Sample For Benchmarking Only)', {
+            x: 20,
+            y: 6,
+            size: 7,
+            font: fontSmall,
+            color: (0, pdf_lib_1.rgb)(0.4, 0.4, 0.4),
+        });
+        // 3. Simulated Overlay Distortion (if profile specifies)
+        if (profile.opacityOverlay > 0) {
+            const overlayColor = profile.grayscale ? (0, pdf_lib_1.rgb)(0.5, 0.5, 0.5) : (0, pdf_lib_1.rgb)(0.2, 0.2, 0.2);
+            page.drawRectangle({
+                x: 0,
+                y: 0,
+                width,
+                height,
+                color: overlayColor,
+                opacity: profile.opacityOverlay,
+            });
+        }
+        // 4. Simulated Rotation (pdf-lib setRotation requires multiples of 90)
+        if (profile.rotationDegrees !== 0 && profile.rotationDegrees % 90 === 0) {
+            page.setRotation((0, pdf_lib_1.degrees)(profile.rotationDegrees));
+        }
+    }
+}
+exports.QualityProfileManager = QualityProfileManager;

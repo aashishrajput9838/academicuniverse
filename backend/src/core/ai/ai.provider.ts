@@ -17,6 +17,7 @@ export interface AIResponse {
     completionTokens: number;
     totalTokens: number;
   };
+  rawResponse?: any;
 }
 
 export interface IAIProvider {

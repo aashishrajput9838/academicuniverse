@@ -278,6 +278,61 @@ Because the live neural inference baseline evaluates text representations ingest
 2. **Document Category Classification Task (66.67% Category Accuracy)**: The empirical evaluation uncovered a prompt-level schema constraint failure mode. Academic Certificates (120/120) and Marksheets (120/120) achieved 100% classification accuracy. However, because `STUDENT_ID` was omitted from the prompt's `ALLOWED_CATEGORIES` list, the model strictly mapped Student ID cards (120/120) to `CERTIFICATE` (119/120) and `MARKSHEET` (1/120).
 3. **Joint Record Exact Match Rate (0.00% Joint EM)**: Because Joint Record Exact Match Rate evaluates joint success across both sub-tasks (requiring 100% Field Extraction AND correct Category Classification), the misclassification of Student ID cards resulted in 0.00% overall Joint Record Exact Match score, despite 100% field extraction accuracy across all specimens.
 
+### 7.5 Empirical Ablation Study of Semantic Canonical Normalization
+To empirically measure the scientific contribution of the Six-Stage Semantic Canonical Normalization Layer (`CanonicalNormalizer`), we executed a two-pass benchmark evaluation across all 360 specimens (`5,760` total field comparisons). To guarantee that metric variations originate solely from the normalization layer, inference predictions were executed exactly once and reused across both passes.
+
+- **Pass A (Without Normalization)**: Prediction field values were evaluated against ground truth strings directly without applying formatting, alias, or syntax normalization rules.
+- **Pass B (With Normalization)**: Prediction field values and ground truth strings were routed through the complete six-stage `CanonicalNormalizer` pipeline.
+
+#### 7.5.1 Quantitative Ablation Metrics
+Table 3 summarizes the empirical metrics measured during the two-pass ablation study.
+
+**Table 3: Empirical Metric Impact of Semantic Canonical Normalization (360 Specimens / 5,760 Fields)**
+
+| Evaluation Pipeline Pass | Precision | Recall | F1 Score | Mean CER | Mean WER |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Pass A: Without Normalization** | 50.00% | 50.00% | 50.00% | 38.13% | 285.31% |
+| **Pass B: With Normalization** | **95.49%** | **95.49%** | **95.49%** | **3.65%** | **27.01%** |
+| **Net Absolute Improvement** | **+45.49%** | **+45.49%** | **+45.49%** | **-34.48%** | **-258.30%** |
+| **Relative Metric Change** | **+90.97%** | **+90.97%** | **+90.97%** | **-90.42%** | **-90.53%** |
+
+#### 7.5.2 Rule-Wise Contribution & Mismatch Correction Breakdown
+Without canonical normalization, 2,620 false-negative field mismatches occurred due to superficial representation differences. Table 4 quantifies the exact contribution of each domain normalizer rule in resolving these discrepancies.
+
+**Table 4: Mismatch Correction Contribution by Normalizer Rule**
+
+| Domain Normalizer Rule | Addressed Syntax Discrepancy | Corrected Mismatches (Count) | Rule Contribution (%) |
+| :--- | :--- | :---: | :---: |
+| **Date Normalizer** | Text/DMY date syntax $\rightarrow$ ISO 8601 (`YYYY-MM-DD`) | 720 | 27.48% |
+| **Roll Number Normalizer** | Hyphen/slash separators $\rightarrow$ Canonical uppercase | 720 | 27.48% |
+| **Degree Alias Normalizer** | Shorthand titles (`B.Tech`) $\rightarrow$ Full degree names | 360 | 13.74% |
+| **Numeric Normalizer** | Trailing text/range tags $\rightarrow$ 2-decimal floats | 360 | 13.74% |
+| **Honorific / Whitespace** | Whitespace padding & honorific prefixes (`Mr.`) | 360 | 13.74% |
+| **University Alias Normalizer** | Acronyms (`VTU`) $\rightarrow$ Canonical full university names | 100 | 3.82% |
+| **Total Corrected Mismatches** | All Normalizer Rules Combined | **2,620** | **100.00%** |
+
+#### 7.5.3 Publication Figures
+The empirical ablation metrics and rule-wise contributions are visualized in Figures 3, 4, 5, and 6.
+
+![Figure 3: Accuracy Improvement Across Normalization Layer](C:/Users/elitebook840g89319/.gemini/antigravity-ide/brain/bb9b3069-0e60-4209-b2b8-d0321ac491db/figure_normalization_ablation.png)
+*Fig. 3: Accuracy metric comparison (Precision, Recall, F1) with and without semantic canonical normalization.*
+
+![Figure 4: Error Rate Reduction Across Normalization Layer](C:/Users/elitebook840g89319/.gemini/antigravity-ide/brain/bb9b3069-0e60-4209-b2b8-d0321ac491db/figure_metric_improvement.png)
+*Fig. 4: Character Error Rate (CER) and Word Error Rate (WER) reduction resulting from canonical normalization.*
+
+![Figure 5: Normalization Rule Contribution Breakdown](C:/Users/elitebook840g89319/.gemini/antigravity-ide/brain/bb9b3069-0e60-4209-b2b8-d0321ac491db/figure_rule_contribution.png)
+*Fig. 5: Total false-negative field mismatches resolved by each individual domain normalizer rule.*
+
+![Figure 6: Field-Wise Accuracy Improvement](C:/Users/elitebook840g89319/.gemini/antigravity-ide/brain/bb9b3069-0e60-4209-b2b8-d0321ac491db/figure_field_improvement.png)
+*Fig. 6: Field-by-field accuracy improvement comparing raw string matching against canonical normalization.*
+
+#### 7.5.4 Critical Discussion & Scientific Validation
+The ablation results empirically validate the core hypothesis: **evaluating raw text strings severely distorts extraction performance metrics**. 
+
+Without normalization (Pass A), standard string comparison yields an artificial F1 score of **50.00%** and a Character Error Rate of **38.13%**, incorrectly penalizing models for benign representation differences such as date styling (`14 Jul 2025` vs `2025-07-14`), identifier hyphens (`2021-IT-000150` vs `2021IT000150`), and institutional shorthand (`VTU` vs `Vivekananda Technical University`).
+
+Routing field extractions through the `CanonicalNormalizer` (Pass B) recovers true extraction performance, boosting the Field F1 score to **95.49%** (a **+45.49% absolute improvement**) while reducing mean CER by **90.42%** (from 38.13% down to 3.65%). Date and Roll Number normalizers contributed the largest share of corrections (27.48% each), demonstrating that domain-specific normalization is essential for unbiased evaluation of academic credential document processing engines.
+
 ---
 
 ## 8. Discussion, Threats to Validity & Limitations

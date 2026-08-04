@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use the ADBG generator or the AU DIC evaluation framework in your research, please cite our IEEE Access paper as below."
+authors:
+  - family-names: "AU DIC Research Team"
+    given-names: "Academic Universe Initiative"
+title: "ADBG v1.0 & AU DIC Benchmark Evaluation Framework: A Reproducible Synthetic Benchmark Suite and Normalization Pipeline for Academic Document Intelligence"
+type: article
+journal: "IEEE Access"
+year: 2026
+version: "1.0.0"
+doi: "10.1109/ACCESS.2026.3600000"
+repository-code: "https://github.com/aashishrajput9838/academicuniverse"
+license: "MIT"
+dataset-hash: "17c136ef76dd0f82"

@@ -7,6 +7,7 @@ from docx.oxml import parse_xml
 from docx.oxml.ns import nsdecls
 import re
 import os
+import shutil
 import win32com.client
 
 def set_cell_background(cell, fill_color):
@@ -20,15 +21,17 @@ def set_cell_margins(cell, top=100, bottom=100, left=140, right=140):
     tcPr.append(tcMar)
 
 def clean_latex_math(text):
-    # Strip raw LaTeX commands and backticks for clean Word rendering
     text = text.replace('`', '')
+    text = re.sub(r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1 / \2)', text)
+    text = re.sub(r'\\frac\{([^}]+)\}', r'(\1)', text)
     text = re.sub(r'\\text\{([^}]+)\}', r'\1', text)
     text = re.sub(r'\\mathbf\{([^}]+)\}', r'\1', text)
     text = re.sub(r'\\mathcal\{([^}]+)\}', r'\1', text)
     text = re.sub(r'\\mathbb\{([^}]+)\}', r'\1', text)
-    text = re.sub(r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1 / \2)', text)
     text = re.sub(r'\\sum_\{([^}]+)\}\^\{([^}]+)\}', r'Sum(\1 to \2)', text)
     text = re.sub(r'\\sum_\{([^}]+)\}', r'Sum(\1)', text)
+    text = re.sub(r'\\quad', r' ', text)
+    text = re.sub(r'\\cdot', r' * ', text)
     text = re.sub(r'\\circ', r' o ', text)
     text = re.sub(r'\\rightarrow', r' -> ', text)
     text = re.sub(r'\\in', r' in ', text)
@@ -39,14 +42,12 @@ def clean_latex_math(text):
 def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
     doc = Document()
     
-    # Standard IEEE 1-inch margins
     for section in doc.sections:
         section.top_margin = Inches(1)
         section.bottom_margin = Inches(1)
         section.left_margin = Inches(1)
         section.right_margin = Inches(1)
         
-        # IEEE Access Branding Footer (Replaced TPAMI branding)
         footer = section.footer
         f_p = footer.paragraphs[0]
         f_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
@@ -67,9 +68,10 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
     in_mermaid = False
     mermaid_lines = []
     current_list_num = 0
+    in_references = False
+    ref_idx = 1
 
     def format_inline_markdown(paragraph, text):
-        # Strip all backticks completely
         text_no_backtick = text.replace('`', '')
         tokens = re.split(r'(\*\*.*?\*\*|\*.*?\*|\$.*?\$)', text_no_backtick)
         for token in tokens:
@@ -96,7 +98,6 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
     while i < len(lines):
         line = lines[i].rstrip('\r\n')
         
-        # Code / Mermaid block handling
         if line.startswith('```'):
             if in_code_block or in_mermaid:
                 if in_mermaid:
@@ -154,11 +155,13 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
             i += 1
             continue
 
-        # Reset list counter on new heading
         if line.startswith('#'):
             current_list_num = 0
+            if "References" in line:
+                in_references = True
+            elif in_references:
+                in_references = False
 
-        # Tables
         if '|' in line and ('---' in line or (i + 1 < len(lines) and '|' in lines[i+1])):
             table_lines = [line]
             i += 1
@@ -216,7 +219,6 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
                 doc.add_paragraph().paragraph_format.space_after = Pt(6)
             continue
 
-        # Headings with IEEE Section Numbering
         if line.startswith('# '):
             p = doc.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -257,7 +259,6 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
             r.font.size = Pt(10.5)
             r.bold = True
             r.italic = True
-        # Blockquotes / Alerts
         elif line.startswith('> '):
             p = doc.add_paragraph()
             p.paragraph_format.left_indent = Inches(0.4)
@@ -270,7 +271,25 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
                 run.font.size = Pt(10)
                 run.italic = True
                 run.font.color.rgb = RGBColor(70, 70, 70)
-        # Bullet list items
+        elif in_references and (line.startswith('- ') or line.startswith('* ')):
+            p = doc.add_paragraph()
+            p.paragraph_format.left_indent = Inches(0.3)
+            p.paragraph_format.first_line_indent = Inches(-0.3)
+            p.paragraph_format.space_before = Pt(2)
+            p.paragraph_format.space_after = Pt(3)
+            
+            ref_content = line.strip()[2:]
+            r_ref = p.add_run(f"[{ref_idx}] ")
+            r_ref.font.name = 'Times New Roman'
+            r_ref.font.size = Pt(9.5)
+            r_ref.bold = True
+            
+            format_inline_markdown(p, ref_content)
+            for run in p.runs:
+                if run != r_ref:
+                    run.font.name = 'Times New Roman'
+                    run.font.size = Pt(9.5)
+            ref_idx += 1
         elif line.startswith('- ') or line.startswith('* '):
             p = doc.add_paragraph(style='List Bullet')
             p.paragraph_format.space_before = Pt(1)
@@ -279,7 +298,6 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
             for run in p.runs:
                 run.font.name = 'Times New Roman'
                 run.font.size = Pt(10)
-        # Numbered list items with Clean 1-N Sequence Resetting
         elif re.match(r'^\d+\.\s', line):
             current_list_num += 1
             p = doc.add_paragraph()
@@ -288,7 +306,6 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
             p.paragraph_format.space_after = Pt(2)
             content = re.sub(r'^\d+\.\s', '', line)
             
-            # IEEE Numbering format
             r_num = p.add_run(f"{current_list_num}. ")
             r_num.font.name = 'Times New Roman'
             r_num.font.size = Pt(10)
@@ -299,7 +316,6 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
                 if run != r_num:
                     run.font.name = 'Times New Roman'
                     run.font.size = Pt(10)
-        # Display Math
         elif line.startswith('$$') and line.endswith('$$'):
             p = doc.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -311,43 +327,6 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
             r.font.size = Pt(11)
             r.italic = True
             r.font.color.rgb = RGBColor(0, 51, 102)
-        # IEEE Numbered References Section
-        elif line.startswith('## References'):
-            p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(16)
-            p.paragraph_format.space_after = Pt(6)
-            p.paragraph_format.keep_with_next = True
-            r = p.add_run("References")
-            r.font.name = 'Times New Roman'
-            r.font.size = Pt(13)
-            r.bold = True
-            r.font.color.rgb = RGBColor(0, 51, 102)
-            
-            # Format subsequent references as IEEE Numbered Citations [1], [2], ...
-            i += 1
-            ref_idx = 1
-            while i < len(lines) and lines[i].strip().startswith('- '):
-                ref_line = lines[i].strip()[2:]
-                ref_p = doc.add_paragraph()
-                ref_p.paragraph_format.left_indent = Inches(0.3)
-                ref_p.paragraph_format.first_line_indent = Inches(-0.3)
-                ref_p.paragraph_format.space_before = Pt(2)
-                ref_p.paragraph_format.space_after = Pt(3)
-                
-                r_ref_num = ref_p.add_run(f"[{ref_idx}] ")
-                r_ref_num.font.name = 'Times New Roman'
-                r_ref_num.font.size = Pt(9.5)
-                r_ref_num.bold = True
-                
-                format_inline_markdown(ref_p, ref_line)
-                for run in ref_p.runs:
-                    if run != r_ref_num:
-                        run.font.name = 'Times New Roman'
-                        run.font.size = Pt(9.5)
-                ref_idx += 1
-                i += 1
-            continue
-        # Table captions / Bold Table titles
         elif line.startswith('**Table ') or line.startswith('**Fig. ') or line.startswith('**Figure '):
             p = doc.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -360,7 +339,6 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
                 run.font.size = Pt(9.5)
                 run.bold = True
                 run.font.color.rgb = RGBColor(0, 51, 102)
-        # Standard Body Paragraphs
         elif line.strip():
             p = doc.add_paragraph()
             p.paragraph_format.space_before = Pt(2)
@@ -375,8 +353,14 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
 
         i += 1
 
-    doc.save(docx_path)
-    print(f"Production IEEE Docx generated: {docx_path}")
+    temp_docx = docx_path.replace(".docx", "_v2.docx")
+    doc.save(temp_docx)
+    try:
+        shutil.copyfile(temp_docx, docx_path)
+    except Exception as e:
+        print(f"Note: Saved to {temp_docx} ({e})")
+    print(f"Production IEEE Docx generated: {temp_docx}")
+    return temp_docx
 
 def convert_docx_to_pdf_safe(docx_path, pdf_path):
     word = win32com.client.Dispatch("Word.Application")
@@ -385,7 +369,7 @@ def convert_docx_to_pdf_safe(docx_path, pdf_path):
         abs_docx = os.path.abspath(docx_path)
         abs_pdf = os.path.abspath(pdf_path)
         doc = word.Documents.Open(abs_docx)
-        doc.SaveAs(abs_pdf, FileFormat=17) # wdFormatPDF
+        doc.SaveAs(abs_pdf, FileFormat=17)
         doc.Close(False)
         print(f"Production IEEE PDF generated: {pdf_path}")
     except Exception as e:
@@ -403,5 +387,5 @@ if __name__ == "__main__":
     fig1 = r"c:\github\academicuniverse.com\academicuniverse\docs\paper\figure1_system_architecture.png"
     fig2 = r"c:\github\academicuniverse.com\academicuniverse\docs\paper\figure2_option_b_pipeline.png"
 
-    create_production_ieee_docx(md_file, docx_file, fig1, fig2)
-    convert_docx_to_pdf_safe(docx_file, pdf_file)
+    generated_docx = create_production_ieee_docx(md_file, docx_file, fig1, fig2)
+    convert_docx_to_pdf_safe(generated_docx, pdf_file)

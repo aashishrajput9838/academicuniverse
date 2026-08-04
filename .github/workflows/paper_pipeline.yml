@@ -1,0 +1,42 @@
+name: Paper Formatting & Publication Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-validate-paper:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest python-docx Pillow win32com; echo "Installed"
+
+      - name: Validate Manuscript Structure & Run Pipeline
+        run: |
+          python -m paper_pipeline.main
+
+      - name: Run Pytest Quality Assurance Tests
+        run: |
+          pytest paper_pipeline/tests/
+
+      - name: Upload Publication Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: Camera-Ready-Publication-Files
+          path: |
+            docs/paper/Paper_V3_IEEE.docx
+            docs/paper/Paper_V3_IEEE.pdf
+            docs/reports/*.md

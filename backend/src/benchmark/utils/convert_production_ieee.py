@@ -119,7 +119,9 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
                             r_cap.bold = True
                             r_cap.font.color.rgb = RGBColor(0, 51, 102)
                     elif "Phase I: Synthetic Benchmark Generation" in mermaid_str or "End-to-End Methodological Workflow" in mermaid_str:
-                        wf_img = r"c:\github\academicuniverse.com\academicuniverse\methodology_workflow_300dpi.png"
+                        wf_img = r"c:\github\academicuniverse.com\academicuniverse\methodology_workflow_600dpi.png"
+                        if not os.path.exists(wf_img):
+                            wf_img = r"c:\github\academicuniverse.com\academicuniverse\methodology_workflow_300dpi.png"
                         if os.path.exists(wf_img):
                             p_img.add_run().add_picture(wf_img, width=Inches(6.5))
                             p_cap = doc.add_paragraph()
@@ -376,7 +378,7 @@ def create_production_ieee_docx(md_path, docx_path, fig1_path, fig2_path):
 
         i += 1
 
-    temp_docx = docx_path.replace(".docx", "_ProductionQA_Build.docx")
+    temp_docx = docx_path.replace(".docx", "_RedesignQA_Build.docx")
     doc.save(temp_docx)
     try:
         shutil.copyfile(temp_docx, docx_path)

@@ -1,0 +1,71 @@
+# Implementation Plan: Expand Paper V4 to 50 2025–2026 IEEE/Scopus References & Comprehensive Literature Table
+
+This plan outlines the systematic workflow to expand the references in `PaperV4.docx` from 37 to **exactly 50 references**, focusing strictly on **2025–2026 IEEE / Scopus / Google Scholar** peer-reviewed publications relevant to Document AI, Vision-Language Models (VLMs), Synthetic Document Generation, Optical Degradation, and Semantic Canonical Normalization.
+
+It also details creating a comparative literature analysis table, downloading paper PDFs/manuscripts into the codebase, and building a bonus easy-to-understand paper summary PDF.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **2025–2026 Strict Publication Constraint**: All 13 newly added references (and as many total references as possible while preserving classic benchmark baselines like SROIE/FUNSD/DocVQA where scientifically required) will be strictly sourced from 2025–2026 IEEE Trans/CVPR/ICDAR/NeurIPS/ACL/Scopus indexed papers.
+
+> [!NOTE]
+> **Paper Download Links**: Direct open-access / arXiv / IEEE Xplore / DOI links will be extracted for all 50 papers and stored in both `PaperV4.docx` and a dedicated codebase directory `docs/reference_papers/`.
+
+---
+
+## Proposed Changes
+
+### Research & Search Phase
+- Perform web searches to identify high-impact 2025–2026 Document AI and Multimodal VLM research papers.
+- Focus area topics:
+  1. Multimodal Document AI & Vision-Language Models (2025–2026)
+  2. Synthetic Document Generation & Privacy-Preserving Benchmarks
+  3. Optical Degradation & Binarization Robustness
+  4. Key-Value Extraction, OCR Error Taxonomy & Canonical Normalization
+  5. Multi-Column Tabular Array Parsing in Documents
+
+---
+
+### Component Changes
+
+---
+
+#### [MODIFY] [PaperV4.docx](file:///c:/github/academicuniverse.com/academicuniverse/docs/paper/PaperV4.docx)
+- Update Section 2 ("Related Work") text with in-text citations for all 50 references (`[1]` to `[50]`).
+- Insert a comprehensive **Literature Comparison Table** (Table 0 / Section 2.4) in `PaperV4.docx` with the following columns:
+  - **Sr. No.**
+  - **Paper Title & Citation**
+  - **Year (2025–2026)**
+  - **What Happened / Method Implemented**
+  - **Technology Used by Them vs. Our AU DIC Implementation**
+  - **Where They Fail / Limitations**
+  - **How AU DIC Resolved It / Rationale**
+  - **Direct Download Link**
+- Expand the `References` section in `PaperV4.docx` to contain exactly 50 IEEE-formatted citations with active download/DOI links.
+
+---
+
+#### [NEW] [docs/reference_papers/](file:///c:/github/academicuniverse.com/academicuniverse/docs/reference_papers/)
+- Create folder `docs/reference_papers/` in codebase.
+- Save open-access PDFs/text representations for all 50 reference research papers.
+
+---
+
+#### [NEW] [docs/reference_papers/LITERATURE_SUMMARY_EASY_LANGUAGE.pdf](file:///c:/github/academicuniverse.com/academicuniverse/docs/reference_papers/LITERATURE_SUMMARY_EASY_LANGUAGE.pdf)
+- Generate a standalone, beautifully formatted PDF containing short, plain-English ("easy language") summaries for all 50 reference papers.
+
+---
+
+## Verification Plan
+
+### Automated Verification
+- Verify `PaperV4.docx` using `win32com.client` Word COM script to confirm exact reference count = 50.
+- Verify XML validity of `PaperV4.docx` and table rendering.
+- Export `PaperV4.pdf` and render PDF pages to verify table and references visually.
+
+### Manual Verification
+- Inspect the generated Literature Table and downloadable links.
+- Confirm all new papers are from 2025–2026 and indexed in Scopus/IEEE/Google Scholar.

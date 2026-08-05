@@ -188,13 +188,20 @@ def main():
                 # Use the actual field-level discrepancies
                 specimens_with_fields += 1
                 for d in discrepancies:
-                    field_name = d.get("fieldKey", d.get("field", "unknown"))
-                    gt_val     = d.get("expectedValue", "")
-                    pred_val   = d.get("actualValue", "")
+                    field_name = d.get("field", d.get("fieldKey", "unknown"))
+                    gt_val     = d.get("expected", d.get("expectedValue", ""))
+                    pred_raw   = d.get("actual", d.get("actualValue", ""))
+                    if isinstance(pred_raw, dict):
+                        pred_val = str(pred_raw.get("value", ""))
+                    elif pred_raw is None:
+                        pred_val = ""
+                    else:
+                        pred_val = str(pred_raw)
+
                     norm_gt    = normalize(gt_val)
                     norm_pred  = normalize(pred_val)
-                    exact      = d.get("matched", False)
-                    norm_match = norm_gt == norm_pred
+                    exact      = (str(gt_val) == pred_val) if gt_val and pred_val else False
+                    norm_match = (norm_gt == norm_pred) if norm_gt and norm_pred else False
                     ed         = levenshtein(norm_gt, norm_pred)
                     c          = cer(gt_val, pred_val)
 

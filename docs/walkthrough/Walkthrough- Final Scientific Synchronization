@@ -1,0 +1,65 @@
+# Walkthrough: Final Scientific Synchronization
+
+## Summary
+
+Completed the **final pre-submission scientific synchronization pass** for the AU DIC Benchmark research paper. Every numerical value in the manuscript is now verified against the actual benchmark artifacts.
+
+---
+
+## Critical Root Cause Found & Fixed
+
+**Bug:** [`generate_field_dataset.py`](file:///c:/github/academicuniverse.com/academicuniverse/research/statistics/generate_field_dataset.py) used incorrect dictionary keys (`expectedValue`/`actualValue` instead of `expected`/`actual`) when parsing `comparisons.json`. Additionally, the `actual` field is sometimes a dict `{"value": "...", "confidence": 100}` that was not being unpacked.
+
+**Impact:** All 24,480 CSV rows had NULL ground truth and NULL predictions, causing:
+- `normalized_match = True` for all rows (empty string == empty string)
+- `cer = 0.0` for all rows  
+- All downstream statistics were computed from garbage data
+
+**Fix:** Corrected key extraction and dict unpacking in `generate_field_dataset.py`, then regenerated all downstream artifacts.
+
+---
+
+## Files Modified
+
+| File | Change |
+|:---|:---|
+| [generate_field_dataset.py](file:///c:/github/academicuniverse.com/academicuniverse/research/statistics/generate_field_dataset.py) | Fixed `expected`/`actual` key extraction + dict unpacking |
+| [paired_field_observations.csv](file:///c:/github/academicuniverse.com/academicuniverse/research/statistics/results/paired_field_observations.csv) | Regenerated: 24,480 rows with real GT/pred values |
+| [statistical_results.json](file:///c:/github/academicuniverse.com/academicuniverse/research/statistics/results/statistical_results.json) | Regenerated: all hypothesis tests from real data |
+| [PaperV4_Final_Submission.docx](file:///c:/github/academicuniverse.com/academicuniverse/docs/paper/PaperV4_Final_Submission.docx) | 34 text corrections across all sections |
+| [PaperV4_Final_Submission.pdf](file:///c:/github/academicuniverse.com/academicuniverse/docs/paper/PaperV4_Final_Submission.pdf) | Exported from corrected DOCX (27 pages) |
+
+---
+
+## Key Metric Corrections
+
+| Metric | Old (Fabricated) | New (Real) |
+|:---:|:---:|:---:|
+| Field F1 | ~100% | **17.19%** |
+| Field CER | 0.0% | **89.27%** |
+| Normalized Match | 100% | **10.84%** |
+| Exact Match | 11.20% | **10.16%** |
+| McNemar χ² | 21,736.00 | **165.01** |
+| Cell a/b/c/d | 2742/21738/0/0 | **2487/167/0/21826** |
+| t-test t | 10.12 | **11.20** |
+| Bootstrap EM CI | [10.81%, 11.60%] | **[9.78%, 10.54%]** |
+
+---
+
+## Verification
+
+- **26/26 automated checks PASSED** (18 MUST_PRESENT + 8 MUST_ABSENT)
+- All stale Option B references purged → Option A
+- All duplicate table captions deduplicated
+- All McNemar derivation formulas updated
+- Category accuracy (100%) correctly preserved (verified in metrics.json)
+
+---
+
+## Deliverables
+
+1. `docs/paper/PaperV4_Final_Submission.docx` — Synchronized manuscript
+2. `docs/paper/PaperV4_Final_Submission.pdf` — Exported PDF (27 pages)
+3. `FINAL_SYNCHRONIZATION_AUDIT.md` — Complete audit trail
+4. `research/statistics/results/statistical_results.json` — Regenerated statistics
+5. `research/statistics/results/paired_field_observations.csv` — Regenerated CSV

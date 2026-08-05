@@ -2,16 +2,16 @@
 
 **Dataset:** `C:\github\academicuniverse.com\academicuniverse\research\statistics\results\paired_field_observations.csv`  
 **N observations:** 24480  
-**Generated:** 2026-08-06T02:21:32.339286  
+**Generated:** 2026-08-06T03:20:49.758496  
 
 ## Tests Performed
 
 | Test | Result |
 |:---|:---|
-| mcnemar | {"chi2": 21736.0, "p_value": 0.0, "a": 2742, "b": 21738, "c": 0, "d": 0} |
-| wilcoxon | {"note": "Only 0 non-zero diffs \u2014 test skipped"} |
-| t_test | {"t": 10.116, "p_value": 0.0, "mean_conf_matched": 17.6685, "mean_conf_mismatched": 11.2862} |
-| bootstrap_ci | {"exact_match_rate": {"obs": 0.112, "ci_lo": 0.1081, "ci_hi": 0.116}, "mean_cer": {"obs": 0.0, "ci_lo": 0.0, "ci_hi": 0.0}, "norm_match_rate": {"obs": 1.0, "ci_lo": 1.0, "ci_hi": 1.0}} |
+| mcnemar | {"chi2": 165.006, "p_value": 0.0, "a": 2487, "b": 167, "c": 0, "d": 21826} |
+| wilcoxon | {"W": 14028.0, "p_value": 0.0, "n_nonzero_diffs": 167} |
+| t_test | {"t": 11.2039, "p_value": 0.0, "mean_conf_matched": 18.6274, "mean_conf_mismatched": 11.2517} |
+| bootstrap_ci | {"exact_match_rate": {"obs": 0.1016, "ci_lo": 0.0978, "ci_hi": 0.1054}, "mean_cer": {"obs": 0.8927, "ci_lo": 0.8883, "ci_hi": 0.8969}, "norm_match_rate": {"obs": 0.1084, "ci_lo": 0.1045, "ci_hi": 0.1124}} |
 
 ## Reproduction Instructions
 

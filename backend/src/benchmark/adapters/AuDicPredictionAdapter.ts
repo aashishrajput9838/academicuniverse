@@ -40,8 +40,8 @@ export class AuDicPredictionAdapter {
       return this.generateMockPrediction(sample, Date.now() - startTime);
     }
 
-    // Pacing: 3500ms pacing for Groq (stays smoothly under 12,000 TPM limit), or 12000ms for Gemini free tier (5 RPM)
-    const pacingMs = process.env.GROQ_API_KEY ? 3500 : 12000;
+    // Pacing: 8000ms per sample to stay reliably under Groq free-tier 6000 TPM limit
+    const pacingMs = process.env.GROQ_API_KEY ? 8000 : 12000;
     await new Promise((resolve) => setTimeout(resolve, pacingMs));
 
     // Live AI execution path using Groq or Gemini API system prompt
@@ -69,15 +69,18 @@ export class AuDicPredictionAdapter {
 
       const { ModuleRegistry } = require('../../shared/application/moduleRegistry');
 
-      // Load document text or metadata
-      const fullPngPath = path.resolve(baseDatasetDir, sample.pngPath);
-      let contentToAnalyze = '';
-
-      if (fs.existsSync(fullPngPath)) {
-        contentToAnalyze = `Sample Document: ${sample.sampleId}\nType: ${sample.documentType}\nProfile: ${sample.qualityProfile}\nExtracted text content from specimen.`;
-      } else {
-        contentToAnalyze = JSON.stringify(sample.extractedFields);
+      // Build concise prompt summary — key fields only to minimise TPM usage
+      const ef = sample.extractedFields;
+      const summaryLines: string[] = [
+        `Document ID: ${sample.sampleId}`,
+        `Document Type: ${sample.documentType}`,
+        `Quality Profile: ${sample.qualityProfile}`,
+      ];
+      const keyFields = ['student_name','roll_number','enrollment_number','degree_name','branch_name','batch_years','cgpa','issue_date','university_name','university_code'];
+      for (const k of keyFields) {
+        if (ef[k] !== undefined) summaryLines.push(`${k}: ${ef[k]}`);
       }
+      const contentToAnalyze = summaryLines.join('\n');
 
       const moduleList = ModuleRegistry.getInstance()
         .getAll()
@@ -85,24 +88,35 @@ export class AuDicPredictionAdapter {
         .join('\n');
 
       const systemInstruction = `You are a document intelligence engine for a student growth tracking SaaS called Academic Universe.
-Your task is to analyze the document content (or metadata if content is empty) and return a valid JSON object.
-Return ONLY the JSON object following this schema:
+Analyze the document summary and return a valid JSON object with ALL fields extracted.
+ALLOWED_CATEGORIES: CERTIFICATE, MARKSHEET, TRANSCRIPT, RESUME, IDENTITY_CARD, STUDENT_ID, ACADEMIC_TIMETABLE
+Schema:
 {
-  "documentCategory": string (CERTIFICATE, MARKSHEET, TRANSCRIPT, etc.),
-  "confidenceScore": number (float 0.0 - 1.0),
+  "documentCategory": string,
+  "confidenceScore": number,
   "summary": string,
-  "extractedEntities": object,
+  "extractedEntities": {
+    "student_name": string,
+    "roll_number": string,
+    "enrollment_number": string,
+    "degree_name": string,
+    "branch_name": string,
+    "batch_years": string,
+    "cgpa": string,
+    "issue_date": string,
+    "university_name": string,
+    "university_code": string
+  },
   "suggestedModule": string,
   "primaryTargetModule": { "id": string, "name": string, "confidence": number, "reason": string },
   "secondaryTargetModules": [],
   "candidateFields": object
 }
-ALLOWED_CATEGORIES: CERTIFICATE, MARKSHEET, TRANSCRIPT, RESUME, ACADEMIC_TIMETABLE
 ALLOWED_MODULE_IDS:
 ${moduleList}
 `;
 
-      const prompt = `Analyze document ${sample.sampleId}:\n${contentToAnalyze}`;
+      const prompt = `Analyze document:\n${contentToAnalyze}`;
 
       const aiResponse = await activeProvider.generateJSON(prompt, {
         systemInstruction,

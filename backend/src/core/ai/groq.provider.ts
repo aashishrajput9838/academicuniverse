@@ -36,7 +36,7 @@ export class GroqAIProvider implements IAIProvider {
     };
 
     let attempt = 0;
-    const maxRetries = 5;
+    const maxRetries = 6;
     while (attempt < maxRetries) {
       try {
         const response = await axios.post(this.apiUrl, requestBody, {
@@ -44,7 +44,7 @@ export class GroqAIProvider implements IAIProvider {
             Authorization: `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
           },
-          timeout: 30000,
+          timeout: 60000,
         });
 
         const content = response.data?.choices?.[0]?.message?.content;
@@ -56,8 +56,9 @@ export class GroqAIProvider implements IAIProvider {
       } catch (err: any) {
         if (err.response?.status === 429 && attempt < maxRetries - 1) {
           attempt++;
-          const retryDelay = 2000 * attempt;
-          logger.warn(`Groq 429 rate limit hit, retrying in ${retryDelay}ms (attempt ${attempt}/${maxRetries})...`);
+          // Groq free tier resets every ~60s — wait enough for the window to clear
+          const retryDelay = 65000 * attempt; // 65s, 130s, 195s, 260s, 325s
+          logger.warn(`Groq 429 rate limit hit, retrying in ${Math.round(retryDelay/1000)}s (attempt ${attempt}/${maxRetries})...`);
           await new Promise((res) => setTimeout(res, retryDelay));
           continue;
         }

@@ -75,9 +75,9 @@ export class FieldLevelEvaluator {
       }
     }
 
-    const precision = totalFields > 0 ? matchedFields / totalFields : 1.0;
-    const recall = totalFields > 0 ? matchedFields / totalFields : 1.0;
-    const f1Score = precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 1.0;
+    const precision = totalFields > 0 ? matchedFields / totalFields : 0.0;
+    const recall = totalFields > 0 ? matchedFields / totalFields : 0.0;
+    const f1Score = precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 0.0;
 
     const meanCer = totalFields > 0 ? totalCerSum / totalFields : 0.0;
     const meanWer = totalFields > 0 ? totalWerSum / totalFields : 0.0;

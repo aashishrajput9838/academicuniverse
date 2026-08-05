@@ -1,0 +1,38 @@
+AU DIC BENCHMARK — STATISTICAL ANALYSIS LOG
+Dataset: C:\github\academicuniverse.com\academicuniverse\research\statistics\results\paired_field_observations.csv
+N observations: 24480
+============================================================
+
+[1] DESCRIPTIVE STATISTICS
+  exact_match rate:       0.1120
+  normalized_match rate:  1.0000
+  mean CER:               0.0000
+  mean edit_distance:     0.0000
+  mean confidence:        12.0010
+  mean latency_ms:        12176.19
+  document_types:         {'marksheet': 16560, 'student_id': 3960, 'certificate': 3960}
+  quality_profiles:       {'clean': 6120, 'mobile_camera': 6120, 'rotated_90': 6120, 'scanner_copy': 6120}
+
+[2] McNEMAR TEST: exact_match vs normalized_match
+  Contingency: a=2742 b=21738 c=0 d=0
+  McNemar chi2 (continuity-corrected) = 21736.0000
+  McNemar p-value = 0.000000
+  Significant (p < 0.05)
+
+[3] WILCOXON SIGNED-RANK: CER (exact vs normalized)
+  Insufficient non-zero differences (0) for Wilcoxon test.
+
+[4] PAIRED T-TEST: confidence vs exact_match
+  t statistic = 10.1160
+  p-value = 0.000000
+  mean confidence (matched) = 17.6685
+  mean confidence (mismatched) = 11.2862
+  Significant (p < 0.05)
+
+[5] BOOTSTRAP CONFIDENCE INTERVALS (B=10,000, seed=42)
+  Exact Match Rate:      0.1120 [95% CI: 0.1081, 0.1160]
+  Mean CER:              0.0000 [95% CI: 0.0000, 0.0000]
+  Normalized Match Rate: 1.0000 [95% CI: 1.0000, 1.0000]
+
+Results saved: C:\github\academicuniverse.com\academicuniverse\research\statistics\results\statistical_results.json
+Raw log saved: C:\github\academicuniverse.com\academicuniverse\research\statistics\results\raw_statistical_output.txt

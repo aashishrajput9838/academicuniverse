@@ -172,7 +172,7 @@ def main():
     plt.close()
     print(f"Saved: {cm_png}")
 
-    print("✅ Paper artifacts generation complete.")
+    print("[SUCCESS] Paper artifacts generation complete.")
 
 
 if __name__ == "__main__":

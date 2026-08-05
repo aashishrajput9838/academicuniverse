@@ -213,7 +213,7 @@ def main():
         f.write("> All tests use `scipy.stats` v≥1.11 and `numpy` v≥1.24.\n")
         f.write("> Bootstrap uses `np.random.default_rng(seed=42)` for reproducibility.\n")
 
-    print(f"\n✅ Statistical analysis complete.")
+    print(f"\n[SUCCESS] Statistical analysis complete.")
     print(f"   Raw log: {RAW_LOG}")
     print(f"   Report:  {REPORT}")
 

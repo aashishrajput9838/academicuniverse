@@ -54,3 +54,6 @@ __pycache__/
 
 # Sensitive scratch directories — never track
 clipboards/
+
+# Generated audit reports
+docs/reports/

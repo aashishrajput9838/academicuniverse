@@ -24,6 +24,7 @@ import reviewRoutes from './reviewRoutes';
 import documentIntelligenceRoutes from './documentIntelligenceRoutes';
 import skillsRoutes from './skillsRoutes';
 import codeArenaRoutes from './codeArenaRoutes';
+import syntheticRoutes from './syntheticRoutes';
 
 import { researchRoutes } from '../modules/research';
 import { ezoneRoutes } from '../modules/ezone';
@@ -61,6 +62,7 @@ router.use('/document-intelligence', documentIntelligenceRoutes);
 router.use('/module-health', moduleHealthRoutes);
 router.use('/resume-health', resumeHealthRoutes);
 router.use('/module-visibility', moduleVisibilityRoutes);
+router.use('/synthetic', syntheticRoutes);
 
 // Module-specific route guards (student-facing modules)
 router.use('/overlap-engine', moduleGuard('overlap-engine'), overlapRoutes);

@@ -1,39 +1,41 @@
 /**
- * Academic Universe — Synthetic Generation API Route
+ * Academic Universe — Synthetic Generation API Route (Thin Proxy)
  * POST /api/synthetic/generate
+ * Delegates dataset generation to the backend service (Railway).
  */
 
 import { NextResponse } from 'next/server';
-import path from 'path';
-import { SyntheticPipeline } from '@/benchmarks/synthetic-generator/pipeline/syntheticPipeline';
+
+function getBackendUrl(): string {
+  const url = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+  return url.replace(/\/+$/, '');
+}
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const count = body.count || 25;
-    const seed = body.seed || 42;
-    const categories = body.categories || [];
-    const templateIds = body.templateIds || [];
+    const backendUrl = getBackendUrl();
 
-    const benchmarkRoot = path.resolve(process.cwd(), 'benchmarks');
-    const pipeline = new SyntheticPipeline(benchmarkRoot);
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
 
-    const result = await pipeline.generateDataset({
-      count: Number(count),
-      seed: Number(seed),
-      categories,
-      templateIds,
+    const authHeader = req.headers.get('authorization');
+    if (authHeader) {
+      headers['authorization'] = authHeader;
+    }
+
+    const response = await fetch(`${backendUrl}/api/synthetic/generate`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
     });
 
-    return NextResponse.json({
-      success: true,
-      totalDocuments: result.totalDocuments,
-      outputDir: result.outputDir,
-      report: result.report,
-    });
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, error: error.message || 'Synthetic generation failed' },
+      { success: false, error: error.message || 'Synthetic generation proxy request failed' },
       { status: 500 }
     );
   }

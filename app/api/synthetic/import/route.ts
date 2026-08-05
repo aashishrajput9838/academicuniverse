@@ -1,30 +1,41 @@
 /**
- * Academic Universe — Synthetic Import API Route
+ * Academic Universe — Synthetic Import API Route (Thin Proxy)
  * POST /api/synthetic/import
- * Explicitly copies generated synthetic documents to benchmarks/dataset/RAW/ and triggers Dataset Manager.
+ * Delegates dataset import to the backend service (Railway).
  */
 
 import { NextResponse } from 'next/server';
-import path from 'path';
-import { SyntheticPipeline } from '@/benchmarks/synthetic-generator/pipeline/syntheticPipeline';
+
+function getBackendUrl(): string {
+  const url = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000';
+  return url.replace(/\/+$/, '');
+}
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const benchmarkRoot = path.resolve(process.cwd(), 'benchmarks');
-    const outputDir = body.outputDir || path.join(benchmarkRoot, 'synthetic-dataset');
+    const backendUrl = getBackendUrl();
 
-    const pipeline = new SyntheticPipeline(benchmarkRoot);
-    const result = pipeline.importToDatasetManager(outputDir);
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
 
-    return NextResponse.json({
-      success: true,
-      importedCount: result.importedCount,
-      message: `Successfully imported ${result.importedCount} synthetic documents into Dataset Manager.`,
+    const authHeader = req.headers.get('authorization');
+    if (authHeader) {
+      headers['authorization'] = authHeader;
+    }
+
+    const response = await fetch(`${backendUrl}/api/synthetic/import`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
     });
+
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, error: error.message || 'Import to Dataset Manager failed' },
+      { success: false, error: error.message || 'Synthetic import proxy request failed' },
       { status: 500 }
     );
   }

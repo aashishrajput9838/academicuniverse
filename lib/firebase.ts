@@ -3,13 +3,12 @@ import { getAuth } from "firebase/auth";
 import { getFirestore, initializeFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB-3AiaySXOhTEaC0NWKr67-LntmXDK45Y",
-  authDomain: "academicuniverse.firebaseapp.com",
-  projectId: "academicuniverse",
-  storageBucket: "academicuniverse.firebasestorage.app",
-  messagingSenderId: "851768640115",
-  appId: "1:851768640115:web:463edefc819a483f7aa006",
-  // measurementId: "G-BGFLH3LMTT", // Disabled to prevent adblocker timeout errors
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
 export const firebaseApp = !getApps().length

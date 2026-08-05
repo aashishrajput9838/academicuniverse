@@ -24,7 +24,11 @@ async function createAdmin() {
         }
 
         const email = 'admin@academicuniverse.com';
-        const password = 'Admin123!';
+        const password = process.env.ADMIN_PASSWORD;
+        if (!password) {
+            console.error('[create-admin] ERROR: ADMIN_PASSWORD env var is required.');
+            process.exit(1);
+        }
 
         let user = await User.findOne({ email });
 

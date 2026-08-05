@@ -16,7 +16,7 @@ declare module 'express-session' {
     }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+import { JWT_SECRET } from '../config/constants';
 
 import { firebaseFirestore } from '../config/firebaseAdmin';
 

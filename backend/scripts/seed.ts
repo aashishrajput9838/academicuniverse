@@ -248,14 +248,14 @@ async function seed() {
       {
         name: 'Super Admin',
         email: 'superadmin@academicuniverse.com',
-        password: 'SuperAdmin123',
+        password: process.env.SEED_SUPER_ADMIN_PASS || (() => { throw new Error('[seed] SEED_SUPER_ADMIN_PASS env var is required'); })(),
         organizationId: organization._id,
         roleId: superAdminRole!._id,
       },
       {
         name: 'Admin User',
         email: 'admin@sharda.com',
-        password: 'Admin123456',
+        password: process.env.SEED_ADMIN_PASS || (() => { throw new Error('[seed] SEED_ADMIN_PASS env var is required'); })(),
         organizationId: organization._id,
         roleId: adminRole!._id,
       },
@@ -301,7 +301,7 @@ async function seed() {
       initialSuperAdmin = await User.create({
         name: 'Aashish Rajput',
         email: initialSuperAdminEmail,
-        password: 'SuperAdmin123',
+        password: process.env.ADMIN_PASSWORD || (() => { throw new Error('[seed] ADMIN_PASSWORD env var is required'); })(),
         organizationId: organization._id,
         roleId: superAdminRole!._id,
       });

@@ -5,11 +5,16 @@ const BASE = process.env.BASE_URL || 'http://localhost:5000';
 type Creds = { email: string; password: string };
 
 const users: { name: string; creds: Creds }[] = [
-  { name: 'super', creds: { email: 'superadmin@academicuniverse.com', password: 'SuperAdmin123' } },
-  { name: 'admin', creds: { email: 'admin@sharda.com', password: 'Admin123456' } },
-  { name: 'faculty', creds: { email: 'jane.smith@sharda.com', password: 'Faculty123' } },
-  { name: 'student', creds: { email: 'john.doe@sharda.com', password: 'Student123' } },
+  { name: 'super', creds: { email: process.env.TEST_SUPER_EMAIL || '', password: process.env.TEST_SUPER_PASS || '' } },
+  { name: 'admin', creds: { email: process.env.TEST_ADMIN_EMAIL || '', password: process.env.TEST_ADMIN_PASS || '' } },
+  { name: 'faculty', creds: { email: process.env.TEST_FACULTY_EMAIL || '', password: process.env.TEST_FACULTY_PASS || '' } },
+  { name: 'student', creds: { email: process.env.TEST_STUDENT_EMAIL || '', password: process.env.TEST_STUDENT_PASS || '' } },
 ];
+
+if (users.some(u => !u.creds.email || !u.creds.password)) {
+  console.error('[rbacTest] ERROR: Set TEST_SUPER_EMAIL/PASS, TEST_ADMIN_EMAIL/PASS, TEST_FACULTY_EMAIL/PASS, TEST_STUDENT_EMAIL/PASS env vars before running this script.');
+  process.exit(1);
+}
 
 const login = async (creds: Creds) => {
   const res = await fetch(`${BASE}/api/auth/login`, {

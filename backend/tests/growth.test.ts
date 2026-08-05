@@ -11,7 +11,9 @@ import githubService from '../src/services/githubService';
 
 jest.setTimeout(120000);
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error('[growth.test] JWT_SECRET env var must be set to run tests');
+
 
 const login = async (email: string, password: string) => {
   const loginRes = await request(app).post('/api/auth/login').send({ provider: 'password', email, password }).expect(200);

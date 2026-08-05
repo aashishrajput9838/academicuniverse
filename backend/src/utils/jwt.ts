@@ -16,8 +16,7 @@ export interface AuthenticatedRequest {
   organizationId?: string;
 }
 
-const JWT_SECRET = (process.env.JWT_SECRET || 'your-secret-key-change-in-production') as string;
-const JWT_EXPIRY = (process.env.JWT_EXPIRY || '7d') as string;
+import { JWT_SECRET, JWT_EXPIRY } from '../config/constants';
 
 /**
  * Generate JWT token with user data and permissions

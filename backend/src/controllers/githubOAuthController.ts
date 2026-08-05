@@ -9,7 +9,7 @@ import { sendResponse, sendError } from '../utils/response';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+import { JWT_SECRET } from '../config/constants';
 
 const findUserByFirebaseOrId = async (identifier: string, email?: string) => {
   if (!identifier) return null;

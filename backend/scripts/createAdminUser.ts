@@ -52,7 +52,11 @@ async function createAdminUser() {
 
     // Create ADMIN user
     const adminEmail = 'admin@academicuniverse.com';
-    const adminPassword = 'Admin123!';
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      console.error('[createAdminUser] ERROR: ADMIN_PASSWORD env var is required.');
+      process.exit(1);
+    }
 
     let adminUser = await User.findOne({ email: adminEmail });
 
@@ -67,7 +71,7 @@ async function createAdminUser() {
       });
       console.log('✓ Created ADMIN user:');
       console.log(`  Email: ${adminEmail}`);
-      console.log(`  Password: ${adminPassword}`);
+      console.log(`  Password: [set via ADMIN_PASSWORD env var]`);
       console.log(`  Role: ADMIN`);
     } else {
       console.log('✓ ADMIN user already exists:');
@@ -78,7 +82,7 @@ async function createAdminUser() {
       if (adminUser.password) {
         adminUser.password = adminPassword;
         await adminUser.save();
-        console.log(`  Password updated to: ${adminPassword}`);
+        console.log(`  Password updated via ADMIN_PASSWORD env var`);
       }
     }
 

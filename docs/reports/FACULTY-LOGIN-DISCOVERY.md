@@ -69,10 +69,10 @@ All passwords: Super/Admin/Faculty/Student123
 **Actual passwords in seed.ts:**
 | Role | Email | Password | Matches Pattern? |
 |------|-------|----------|-----------------|
-| SUPER_ADMIN | `superadmin@academicuniverse.com` | `SuperAdmin123` | ✅ |
-| ADMIN | `admin@sharda.com` | `Admin123456` | ❌ (`Admin123456` vs `Admin123`) |
-| FACULTY | `2023329421.vamsi@fa.sharda.ac.in` | `123456` | ❌ (`123456` vs `Faculty123`) |
-| STUDENT | `john.doe@sharda.com` | `Student123` | ✅ |
+| SUPER_ADMIN | `superadmin@academicuniverse.com` | `[REDACTED]` | ✅ |
+| ADMIN | `admin@sharda.com` | `[REDACTED]` | ❌ |
+| FACULTY | `2023329421.vamsi@fa.sharda.ac.in` | `[REDACTED]` | ❌ |
+| STUDENT | `john.doe@sharda.com` | `[REDACTED]` | ✅ |
 
 **Conclusion:** The README's claimed password pattern does not match reality. Only 2 of 4 accounts follow the pattern.
 

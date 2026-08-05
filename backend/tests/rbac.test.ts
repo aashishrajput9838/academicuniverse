@@ -12,14 +12,18 @@ beforeAll(() => {
 
 describe('RBAC integration tests', () => {
   const users = [
-    { name: 'super', email: 'superadmin@academicuniverse.com', password: 'SuperAdmin123' },
-    { name: 'admin', email: 'admin@sharda.com', password: 'Admin123456' },
-    { name: 'faculty', email: 'jane.smith@sharda.com', password: 'Faculty123' },
-    { name: 'student', email: 'john.doe@sharda.com', password: 'Student123' },
+    { name: 'super', email: process.env.TEST_SUPER_EMAIL || '', password: process.env.TEST_SUPER_PASS || '' },
+    { name: 'admin', email: process.env.TEST_ADMIN_EMAIL || '', password: process.env.TEST_ADMIN_PASS || '' },
+    { name: 'faculty', email: process.env.TEST_FACULTY_EMAIL || '', password: process.env.TEST_FACULTY_PASS || '' },
+    { name: 'student', email: process.env.TEST_STUDENT_EMAIL || '', password: process.env.TEST_STUDENT_PASS || '' },
   ];
 
+  if (users.some(u => !u.email || !u.password)) {
+    throw new Error('[rbac.test] Set TEST_SUPER/ADMIN/FACULTY/STUDENT _EMAIL and _PASS env vars before running tests.');
+  }
+
   it('should allow a student to read only their own marks through /api/marks/me', async () => {
-    const loginRes = await request(app).post('/api/auth/login').send({ email: 'john.doe@sharda.com', password: 'Student123' }).expect(200);
+    const loginRes = await request(app).post('/api/auth/login').send({ email: process.env.TEST_STUDENT_EMAIL, password: process.env.TEST_STUDENT_PASS }).expect(200);
     const token = loginRes.body.data.token;
     const studentId = loginRes.body.data.user.id.toString();
 
@@ -48,11 +52,11 @@ describe('RBAC integration tests', () => {
   });
 
   it('should deny /:studentId to users without VIEW_ALL_MARKS and allow /:studentId to users with VIEW_ALL_MARKS', async () => {
-    const studentLoginRes = await request(app).post('/api/auth/login').send({ email: 'john.doe@sharda.com', password: 'Student123' }).expect(200);
+    const studentLoginRes = await request(app).post('/api/auth/login').send({ email: process.env.TEST_STUDENT_EMAIL, password: process.env.TEST_STUDENT_PASS }).expect(200);
     const studentToken = studentLoginRes.body.data.token;
     const studentId = studentLoginRes.body.data.user.id.toString();
 
-    const adminLoginRes = await request(app).post('/api/auth/login').send({ email: 'admin@sharda.com', password: 'Admin123456' }).expect(200);
+    const adminLoginRes = await request(app).post('/api/auth/login').send({ email: process.env.TEST_ADMIN_EMAIL, password: process.env.TEST_ADMIN_PASS }).expect(200);
     const adminToken = adminLoginRes.body.data.token;
 
     const addRes = await request(app)
@@ -77,7 +81,7 @@ describe('RBAC integration tests', () => {
   });
 
   it('should return a 400 for malformed studentId on /:studentId', async () => {
-    const adminLoginRes = await request(app).post('/api/auth/login').send({ email: 'admin@sharda.com', password: 'Admin123456' }).expect(200);
+    const adminLoginRes = await request(app).post('/api/auth/login').send({ email: process.env.TEST_ADMIN_EMAIL, password: process.env.TEST_ADMIN_PASS }).expect(200);
     const adminToken = adminLoginRes.body.data.token;
 
     const invalidIdRes = await request(app)
@@ -89,7 +93,7 @@ describe('RBAC integration tests', () => {
   });
 
   it('should not expose marks for a target user outside the authenticated organization', async () => {
-    const adminLoginRes = await request(app).post('/api/auth/login').send({ email: 'admin@sharda.com', password: 'Admin123456' }).expect(200);
+    const adminLoginRes = await request(app).post('/api/auth/login').send({ email: process.env.TEST_ADMIN_EMAIL, password: process.env.TEST_ADMIN_PASS }).expect(200);
     const adminToken = adminLoginRes.body.data.token;
 
     const outsideOrgRes = await request(app)

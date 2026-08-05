@@ -139,7 +139,7 @@ curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@sharda.com",
-    "password": "Admin123456"
+    "password": "<your-admin-password>"
   }'
 ```
 

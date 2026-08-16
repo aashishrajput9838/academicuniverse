@@ -3,7 +3,7 @@
  *
  * Read-Only Prediction Adapter for AU DIC Benchmark Evaluation Framework.
  *
- * Calls AU DIC document analysis logic headlessly and returns structured predictions
+ * Calls AU DIC document vision analysis headlessly and returns structured predictions
  * WITHOUT touching MongoDB database collections or production upload tables.
  */
 
@@ -40,60 +40,32 @@ export class AuDicPredictionAdapter {
       return this.generateMockPrediction(sample, Date.now() - startTime);
     }
 
-    // Pacing: 8000ms per sample to stay reliably under Groq free-tier 6000 TPM limit
-    const pacingMs = process.env.GROQ_API_KEY ? 8000 : 12000;
+    // Pacing: 8000ms per sample to stay reliably under Groq / Gemini free-tier limits
+    const pacingMs = process.env.GROQ_API_KEY ? 8000 : 2000;
     await new Promise((resolve) => setTimeout(resolve, pacingMs));
 
-    // Live AI execution path using Groq or Gemini API system prompt
+    // Live Multimodal Vision AI execution path using Gemini API system prompt
     try {
-      let activeProvider: any = null;
-      let activeModelName = 'gemini-1.5-pro';
+      const { GeminiAIProvider } = require('../../core/ai/gemini.provider');
+      const geminiProvider = new GeminiAIProvider();
+      let activeModelName = 'gemini-2.5-flash';
 
-      if (process.env.GROQ_API_KEY) {
-        const { GroqAIProvider } = require('../../core/ai/groq.provider');
-        activeProvider = new GroqAIProvider();
-        activeModelName = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+      // Load document PNG image directly from disk — ZERO Ground Truth text leakage!
+      const fullPngPath = path.resolve(baseDatasetDir, sample.pngPath);
+      let imageBase64: string | null = null;
+      if (fs.existsSync(fullPngPath)) {
+        imageBase64 = fs.readFileSync(fullPngPath).toString('base64');
       } else {
-        const { aiProvider } = require('../../core/ai');
-        activeProvider = aiProvider;
+        throw new Error(`[FATAL VISION BENCHMARK ERROR] Document image not found at: ${fullPngPath}`);
       }
 
-      // Verify AI provider key availability
-      if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-        if (this.options.allowMockFallback !== true) {
-          throw new Error(
-            `[FATAL RESEARCH BENCHMARK ERROR] Sample ${sample.sampleId}: Live inference backend unavailable (GROQ_API_KEY and GEMINI_API_KEY missing). Silent mock fallback disabled.`
-          );
-        }
-      }
-
-      const { ModuleRegistry } = require('../../shared/application/moduleRegistry');
-
-      // Build concise prompt summary — key fields only to minimise TPM usage
-      const ef = sample.extractedFields;
-      const summaryLines: string[] = [
-        `Document ID: ${sample.sampleId}`,
-        `Document Type: ${sample.documentType}`,
-        `Quality Profile: ${sample.qualityProfile}`,
-      ];
-      const keyFields = ['student_name','roll_number','enrollment_number','degree_name','branch_name','batch_years','cgpa','issue_date','university_name','university_code'];
-      for (const k of keyFields) {
-        if (ef[k] !== undefined) summaryLines.push(`${k}: ${ef[k]}`);
-      }
-      const contentToAnalyze = summaryLines.join('\n');
-
-      const moduleList = ModuleRegistry.getInstance()
-        .getAll()
-        .map((m: any) => `- id: "${m.moduleId}", name: "${m.moduleName}"`)
-        .join('\n');
-
-      const systemInstruction = `You are a document intelligence engine for a student growth tracking SaaS called Academic Universe.
-Analyze the document summary and return a valid JSON object with ALL fields extracted.
-ALLOWED_CATEGORIES: CERTIFICATE, MARKSHEET, TRANSCRIPT, RESUME, IDENTITY_CARD, STUDENT_ID, ACADEMIC_TIMETABLE
+      const systemInstruction = `You are an expert document intelligence engine for Academic Universe.
+Analyze the provided document image and return a valid JSON object with ALL extracted key-value fields.
+ALLOWED_CATEGORIES: CERTIFICATE, MARKSHEET, STUDENT_ID
 Schema:
 {
-  "documentCategory": string,
-  "confidenceScore": number,
+  "documentCategory": "CERTIFICATE" | "MARKSHEET" | "STUDENT_ID",
+  "confidenceScore": number (float between 0.0 and 1.0),
   "summary": string,
   "extractedEntities": {
     "student_name": string,
@@ -102,27 +74,117 @@ Schema:
     "degree_name": string,
     "branch_name": string,
     "batch_years": string,
+    "father_name": string,
+    "mother_name": string,
+    "date_of_birth": string,
+    "email": string,
+    "phone": string,
+    "blood_group": string,
+    "university_name": string,
+    "university_code": string,
+    "university_tagline": string,
     "cgpa": string,
     "issue_date": string,
-    "university_name": string,
-    "university_code": string
-  },
-  "suggestedModule": string,
-  "primaryTargetModule": { "id": string, "name": string, "confidence": number, "reason": string },
-  "secondaryTargetModules": [],
-  "candidateFields": object
+    "subjects": [
+      {
+        "code": string,
+        "name": string,
+        "credits": number,
+        "grade": string
+      }
+    ]
+  }
 }
-ALLOWED_MODULE_IDS:
-${moduleList}
+Instructions:
+- Perform optical character recognition and field parsing directly from the document image.
+- Do NOT output nested objects inside extractedEntities; all entity values MUST be plain strings.
+- Leave missing fields as empty string "".
 `;
 
-      const prompt = `Analyze document:\n${contentToAnalyze}`;
+      const prompt = `Analyze this document image (${sample.qualityProfile} profile) and extract all student and academic entities according to schema.`;
+      let aiResponse: any;
+      let lastErr: any;
 
-      const aiResponse = await activeProvider.generateJSON(prompt, {
-        systemInstruction,
-        temperature: 0.2,
-        maxTokens: 8192,
-      });
+      // Load dynamic configuration file if present
+      let configData: any = {};
+      try {
+        const configPath = path.resolve(__dirname, '../../../benchmark_config.json');
+        if (fs.existsSync(configPath)) {
+          configData = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        }
+      } catch (e) {
+        // ignore config load errors
+      }
+
+      const providerOrder: string[] = configData.provider_order || ['ollama', 'gemini', 'openrouter', 'groq'];
+
+      for (const providerKey of providerOrder) {
+        if (aiResponse) break;
+
+        if (providerKey === 'ollama' && imageBase64) {
+          try {
+            const { OllamaAIProvider } = require('../../core/ai/ollama.provider');
+            const ollamaProvider = new OllamaAIProvider();
+            activeModelName = configData.local?.preferred_model || process.env.OLLAMA_VISION_MODEL || 'minicpm-v';
+            aiResponse = await ollamaProvider.generateVisionJSON(prompt, imageBase64, 'image/png', {
+              systemInstruction,
+              model: activeModelName,
+              temperature: 0.1,
+            });
+          } catch (ollamaErr: any) {
+            lastErr = ollamaErr;
+          }
+        } else if (providerKey === 'gemini' && geminiProvider.isAvailable() && imageBase64) {
+          activeModelName = configData.cloud?.gemini_model || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+          try {
+            aiResponse = await geminiProvider.generateVisionJSON(prompt, imageBase64, 'image/png', {
+              systemInstruction,
+              model: activeModelName,
+              temperature: 0.1,
+              maxTokens: 4000,
+            });
+          } catch (geminiErr: any) {
+            lastErr = geminiErr;
+          }
+        } else if (providerKey === 'openrouter' && process.env.OPENROUTER_API_KEY && imageBase64) {
+          const { OpenRouterAIProvider } = require('../../core/ai/openrouter.provider');
+          const openrouterProvider = new OpenRouterAIProvider();
+          activeModelName = configData.cloud?.openrouter_model || process.env.OPENROUTER_MODEL || 'gpt-4o-mini';
+          try {
+            aiResponse = await openrouterProvider.generateVisionJSON(prompt, imageBase64, 'image/png', {
+              systemInstruction,
+              model: activeModelName,
+              temperature: 0.1,
+              maxTokens: 4000,
+            });
+          } catch (openrouterErr: any) {
+            lastErr = openrouterErr;
+          }
+        } else if (providerKey === 'groq' && process.env.GROQ_API_KEY && imageBase64) {
+          const { GroqAIProvider } = require('../../core/ai/groq.provider');
+          const groqProvider = new GroqAIProvider();
+          activeModelName = configData.cloud?.groq_model || process.env.GROQ_VISION_MODEL || 'llama-3.2-11b-vision-preview';
+          try {
+            aiResponse = await groqProvider.generateVisionJSON(prompt, imageBase64, 'image/png', {
+              systemInstruction,
+              model: activeModelName,
+              temperature: 0.1,
+              maxTokens: 4000,
+            });
+          } catch (groqErr: any) {
+            lastErr = groqErr;
+          }
+        }
+      }
+
+      if (!aiResponse) {
+        if (this.options.allowMockFallback !== true) {
+          throw new Error(
+            `[FATAL RESEARCH BENCHMARK ERROR] Sample ${sample.sampleId}: Live Vision inference error: ${lastErr?.message || lastErr || 'Provider error'}. Silent mock fallback disabled.`
+          );
+        }
+        return this.generateMockPrediction(sample, Date.now() - startTime);
+      }
 
       const executionTimeMs = Date.now() - startTime;
 
@@ -134,6 +196,9 @@ ${moduleList}
         }
         return this.generateMockPrediction(sample, executionTimeMs);
       }
+
+      const activeProvider = activeModelName.includes('minicpm') || activeModelName.includes('qwen') || activeModelName.includes('llava') ? 'ollama' : (activeModelName.includes('gpt') ? 'openrouter' : 'gemini');
+      const executionMode = activeProvider === 'ollama' ? 'local' : 'cloud';
 
       return {
         sampleId: sample.sampleId,
@@ -149,6 +214,9 @@ ${moduleList}
         isMock: false,
         modelName: activeModelName,
         modelVersion: '1.0.0-live',
+        provider: activeProvider,
+        executionMode,
+        inferenceLatencyMs: executionTimeMs,
         inferenceTimestamp: new Date().toISOString(),
         requestId: `req_${sample.sampleId}_${Date.now()}`,
       };

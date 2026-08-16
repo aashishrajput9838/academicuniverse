@@ -84,7 +84,6 @@ export class AdbgGroundTruthAdapter {
     // Document-level fields
     if (rawGt.cgpa !== undefined)    extractedFields['cgpa']       = String(rawGt.cgpa);
     if (rawGt.issue_date)            extractedFields['issue_date'] = rawGt.issue_date;
-    if (rawGt.document_type)         extractedFields['document_type'] = rawGt.document_type;
 
     // Semester records → subjects array (for marksheets)
     const semRecords = rawGt.semester_records || [];

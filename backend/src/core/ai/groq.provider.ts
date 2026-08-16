@@ -17,6 +17,63 @@ export class GroqAIProvider implements IAIProvider {
     return 'Groq Cloud AI';
   }
 
+  async generateVisionJSON<T = any>(prompt: string, imageBase64: string, mimeType: string = 'image/png', config: AIConfig = {}): Promise<T> {
+    if (!this.apiKey) {
+      throw new Error('[GroqAIProvider] GROQ_API_KEY is not configured in environment.');
+    }
+
+    const messages: any[] = [];
+    if (config.systemInstruction) {
+      messages.push({ role: 'system', content: config.systemInstruction });
+    }
+    messages.push({
+      role: 'user',
+      content: [
+        { type: 'text', text: prompt },
+        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
+      ],
+    });
+
+    const requestBody = {
+      model: config.model || process.env.GROQ_VISION_MODEL || 'llama-3.2-11b-vision-preview',
+      messages,
+      temperature: config.temperature ?? 0.1,
+      response_format: { type: 'json_object' },
+    };
+
+    let attempt = 0;
+    const maxRetries = 6;
+    while (attempt < maxRetries) {
+      try {
+        const response = await axios.post(this.apiUrl, requestBody, {
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 60000,
+        });
+
+        const content = response.data?.choices?.[0]?.message?.content;
+        if (!content) {
+          throw new Error('Empty response received from Groq Vision API');
+        }
+
+        return JSON.parse(content) as T;
+      } catch (err: any) {
+        if (err.response?.status === 429 && attempt < maxRetries - 1) {
+          attempt++;
+          const retryDelay = 15000 * attempt;
+          logger.warn(`Groq 429 rate limit hit, retrying in ${Math.round(retryDelay/1000)}s...`);
+          await new Promise((res) => setTimeout(res, retryDelay));
+          continue;
+        }
+        logger.error('Groq Vision API Error:', err.response?.data || err.message);
+        throw err;
+      }
+    }
+    throw new Error('[GroqAIProvider] Max retries exceeded.');
+  }
+
   async generateJSON<T = any>(prompt: string, config: AIConfig = {}): Promise<T> {
     if (!this.apiKey) {
       throw new Error('[GroqAIProvider] GROQ_API_KEY is not configured in environment.');

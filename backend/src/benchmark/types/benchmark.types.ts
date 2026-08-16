@@ -65,6 +65,9 @@ export interface BenchmarkPrediction {
   isMock?: boolean;
   modelName?: string;
   modelVersion?: string;
+  provider?: string;
+  executionMode?: 'local' | 'cloud';
+  inferenceLatencyMs?: number;
   inferenceTimestamp?: string;
   requestId?: string;
 }

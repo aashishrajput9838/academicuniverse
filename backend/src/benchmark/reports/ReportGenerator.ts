@@ -67,6 +67,37 @@ export class ReportGenerator {
       'utf-8'
     );
 
+    // 6. Write paired_field_observations.csv
+    const csvLines: string[] = ['sample_id,document_type,quality_profile,field_name,expected_value,predicted_value,matched,cer,wer,error_category'];
+    for (const c of comparisons) {
+      for (const d of (c.discrepancies || [])) {
+        const expStr = String(d.expected ?? '').replace(/"/g, '""');
+        const actStr = String(d.actual ?? '').replace(/"/g, '""');
+        csvLines.push(`"${c.sampleId}","${c.documentType}","${c.qualityProfile}","${d.field}","${expStr}","${actStr}",${d.matched ? 1 : 0},${d.cer ?? 0},${d.wer ?? 0},"${d.errorCategory || 'NONE'}"`);
+      }
+    }
+    fs.writeFileSync(path.join(runDir, 'paired_field_observations.csv'), csvLines.join('\n'), 'utf-8');
+
+    // 7. Write statistical_results.json
+    const statResults = {
+      benchmarkRunId: report.runId,
+      totalSamples: report.totalSamples,
+      overallCategoryAccuracy: report.overallCategoryAccuracy,
+      overallMeanPrecision: report.overallMeanPrecision,
+      overallMeanRecall: report.overallMeanRecall,
+      overallMeanF1: report.overallMeanF1,
+      overallMeanCer: report.overallMeanCer,
+      overallMeanWer: report.overallMeanWer,
+      overallExactMatchRate: report.overallExactMatchRate,
+      confidenceMetrics: report.confidenceMetrics,
+      errorTaxonomySummary: report.errorTaxonomySummary,
+      profileBreakdown: report.profileBreakdown,
+      categoryBreakdown: report.categoryBreakdown,
+      robustnessAnalysis: report.robustnessAnalysis,
+      generatedAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(path.join(runDir, 'statistical_results.json'), JSON.stringify(statResults, null, 2), 'utf-8');
+
     return runDir;
   }
 

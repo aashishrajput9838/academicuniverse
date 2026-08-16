@@ -33,12 +33,25 @@ export class FieldLevelEvaluator {
     let totalCerSum = 0;
     let totalWerSum = 0;
 
+    // Safely extract scalar string predictions and subject arrays without candidateFields object corruption
+    const cleanRawPred: Record<string, any> = { ...prediction.extractedEntities };
+    if (prediction.candidateFields && typeof prediction.candidateFields === 'object') {
+      for (const [k, v] of Object.entries(prediction.candidateFields)) {
+        if (cleanRawPred[k] === undefined) {
+          if (typeof v === 'string') {
+            cleanRawPred[k] = v;
+          } else if (Array.isArray(v)) {
+            cleanRawPred[k] = v;
+          } else if (typeof v === 'object' && v !== null && typeof (v as any).value === 'string') {
+            cleanRawPred[k] = (v as any).value;
+          }
+        }
+      }
+    }
+
     // Apply Canonical Normalization Layer to expected (GT) and actual (Prediction)
     const canonicalGt = CanonicalNormalizer.normalizeFields(groundTruth.extractedFields);
-    const canonicalPred = CanonicalNormalizer.normalizeFields({
-      ...prediction.extractedEntities,
-      ...prediction.candidateFields,
-    });
+    const canonicalPred = CanonicalNormalizer.normalizeFields(cleanRawPred);
 
     // Evaluate scalar fields over canonical representations
     for (const [key, expVal] of Object.entries(canonicalGt)) {
@@ -75,9 +88,25 @@ export class FieldLevelEvaluator {
       }
     }
 
-    const precision = totalFields > 0 ? matchedFields / totalFields : 0.0;
-    const recall = totalFields > 0 ? matchedFields / totalFields : 0.0;
-    const f1Score = precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 0.0;
+    // Count predicted fields with granular subject attribute counting matching GT evaluation
+    let predictedFieldsCount = 0;
+    for (const [k, v] of Object.entries(canonicalPred)) {
+      if (k === 'subjects' && Array.isArray(v)) {
+        for (const subItem of v) {
+          if (subItem && typeof subItem === 'object') {
+            if (subItem.code || subItem.subjectCode || subItem.courseCode) predictedFieldsCount++;
+            if (subItem.grade !== undefined && subItem.grade !== '') predictedFieldsCount++;
+            if (subItem.credits !== undefined && subItem.credits !== '') predictedFieldsCount++;
+          }
+        }
+      } else if (v !== undefined && v !== null && v !== '') {
+        predictedFieldsCount++;
+      }
+    }
+
+    const precision = predictedFieldsCount > 0 ? Math.min(1.0, matchedFields / predictedFieldsCount) : 0.0;
+    const recall = totalFields > 0 ? Math.min(1.0, matchedFields / totalFields) : 0.0;
+    const f1Score = precision + recall > 0 ? Math.min(1.0, (2 * precision * recall) / (precision + recall)) : 0.0;
 
     const meanCer = totalFields > 0 ? totalCerSum / totalFields : 0.0;
     const meanWer = totalFields > 0 ? totalWerSum / totalFields : 0.0;

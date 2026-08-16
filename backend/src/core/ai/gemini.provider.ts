@@ -13,7 +13,7 @@ const logger = new Logger('GeminiAIProvider');
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 500;
 const QUOTA_EXCEEDED_MESSAGE = 'The AI service has reached its temporary usage limit. Please try again in a few moments.';
-const GEMINI_DEFAULT_MODEL = process.env.GEMINI_DEFAULT_MODEL || 'gemini-2.5-flash';
+const GEMINI_DEFAULT_MODEL = process.env.GEMINI_DEFAULT_MODEL || 'gemini-2.0-flash';
 const GEMINI_CACHE_TTL_MS = Number(process.env.GEMINI_CACHE_TTL_MS || 5 * 60 * 1000);
 const GEMINI_CACHE_MAX_ENTRIES = Number(process.env.GEMINI_CACHE_MAX_ENTRIES || 200);
 
@@ -225,6 +225,57 @@ export class GeminiAIProvider implements IAIProvider {
   }
 
   /**
+   * Generate and parse JSON response from multimodal image input
+   */
+  async generateVisionJSON<T>(prompt: string, imageBase64: string, mimeType: string = 'image/png', config?: AIConfig): Promise<T> {
+    if (!this.ai) {
+      throw new Error('Gemini AI provider is not initialized');
+    }
+
+    const model = config?.model || this.defaultModel;
+    const temperature = config?.temperature ?? 0.1;
+    const maxTokens = config?.maxTokens ?? 4000;
+
+    const userParts: any[] = [];
+    if (config?.systemInstruction) {
+      userParts.push({ text: `System Instruction: ${config.systemInstruction}\n\nTask: ${prompt}` });
+    } else {
+      userParts.push({ text: prompt });
+    }
+
+    userParts.push({
+      inlineData: {
+        mimeType,
+        data: imageBase64,
+      },
+    });
+
+    for (let attempt = 1; attempt <= MAX_RETRIES + 1; attempt++) {
+      try {
+        const response = await this.ai.models.generateContent({
+          model,
+          contents: [{ role: 'user', parts: userParts }],
+          config: {
+            temperature,
+            maxOutputTokens: maxTokens,
+          },
+        });
+
+        const rawText = response?.text || '';
+        return this.parseJSON<T>(rawText);
+      } catch (error: any) {
+        if (this.shouldRetry(error) && attempt <= MAX_RETRIES) {
+          const delayMs = Math.min(INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1), 4000);
+          await this.sleep(delayMs);
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error('Gemini vision API failed after retries');
+  }
+
+  /**
    * Generate and parse JSON response
    */
   async generateJSON<T>(prompt: string, config?: AIConfig): Promise<T> {
@@ -240,6 +291,7 @@ export class GeminiAIProvider implements IAIProvider {
       throw error;
     }
   }
+
 
   /**
    * Parse JSON from AI response (handles markdown code blocks and truncated responses)

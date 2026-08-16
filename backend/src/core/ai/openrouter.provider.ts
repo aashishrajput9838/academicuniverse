@@ -123,6 +123,52 @@ export class OpenRouterAIProvider implements IAIProvider {
     throw this.createProviderError('OpenRouter request failed after retry attempts', 'OPENROUTER_REQUEST_FAILED', this.extractStatus(lastError) ?? undefined, lastError ?? undefined);
   }
 
+  async generateVisionJSON<T>(prompt: string, imageBase64: string, mimeType: string = 'image/png', config?: AIConfig): Promise<T> {
+    if (!this.apiKey) {
+      throw this.createProviderError('OpenRouter provider is not configured', 'OPENROUTER_NOT_CONFIGURED', 500);
+    }
+    const model = config?.model || this.model || 'google/gemini-2.5-flash';
+    const jsonInstruction = '\n\nIMPORTANT: Return ONLY a single valid JSON object matching the requested schema. Do not include markdown formatting or explanations.';
+    const systemInst = config?.systemInstruction ? `${config.systemInstruction}${jsonInstruction}` : jsonInstruction;
+
+    const messages: any[] = [];
+    if (systemInst) {
+      messages.push({ role: 'system', content: systemInst });
+    }
+    messages.push({
+      role: 'user',
+      content: [
+        { type: 'text', text: prompt },
+        {
+          type: 'image_url',
+          image_url: {
+            url: `data:${mimeType};base64,${imageBase64}`,
+          },
+        },
+      ],
+    });
+
+    const body = {
+      model,
+      messages,
+      temperature: config?.temperature ?? 0.1,
+      max_tokens: config?.maxTokens ?? 4000,
+    };
+
+    const response = await axios.post(OPENROUTER_API_URL, body, {
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+        Referer: 'https://academicuniverse.com',
+        'X-Title': 'Academic Universe',
+      },
+      timeout: this.timeoutMs,
+    });
+
+    const text = this.extractText(response.data);
+    return this.parseJsonResponse<T>(text);
+  }
+
   async generateJSON<T>(prompt: string, config?: AIConfig): Promise<T> {
     // Encourage the model to return strict JSON output.
     const jsonInstruction = '\n\nIMPORTANT: Return ONLY a single valid JSON object matching the requested schema and nothing else. Do not include any explanation, markdown, or extra text.';

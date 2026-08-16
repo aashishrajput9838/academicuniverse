@@ -19,14 +19,22 @@ export class CategoryEvaluator {
   };
 
   /**
+   * Normalizes category string to canonical format.
+   */
+  public static normalizeCategory(cat: string): string {
+    if (!cat) return 'UNKNOWN';
+    return this.categoryNormalizationMap[cat] || this.categoryNormalizationMap[cat.toLowerCase()] || cat.toUpperCase();
+  }
+
+  /**
    * Evaluates if predicted category matches expected ground truth document category.
    */
   public static evaluateCategoryMatch(
     groundTruth: BenchmarkGroundTruth,
     prediction: BenchmarkPrediction
   ): boolean {
-    const expectedNorm = this.categoryNormalizationMap[groundTruth.documentType] || groundTruth.documentType.toUpperCase();
-    const actualNorm = this.categoryNormalizationMap[prediction.documentCategory] || prediction.documentCategory.toUpperCase();
+    const expectedNorm = this.normalizeCategory(groundTruth.documentType);
+    const actualNorm = this.normalizeCategory(prediction.documentCategory);
 
     return expectedNorm === actualNorm;
   }

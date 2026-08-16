@@ -77,9 +77,9 @@ export class MetricCalculator {
       sumCer += res.metrics.cer;
       sumWer += res.metrics.wer;
 
-      // Tabulate error taxonomy
+      // Tabulate error taxonomy over unmatched discrepancies only
       for (const disc of res.discrepancies) {
-        if (disc.errorCategory && errorTaxonomySummary[disc.errorCategory] !== undefined) {
+        if (!disc.matched && disc.errorCategory && errorTaxonomySummary[disc.errorCategory] !== undefined) {
           errorTaxonomySummary[disc.errorCategory]++;
         }
       }

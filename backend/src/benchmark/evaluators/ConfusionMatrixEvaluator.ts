@@ -4,6 +4,7 @@
  * Computes document classification confusion matrix across categories.
  */
 
+import { CategoryEvaluator } from './CategoryEvaluator';
 import type { SampleComparisonResult, ConfusionMatrixEntry } from '../types/benchmark.types';
 
 export class ConfusionMatrixEvaluator {
@@ -11,8 +12,8 @@ export class ConfusionMatrixEvaluator {
     const counts: Record<string, number> = {};
 
     for (const res of results) {
-      const exp = res.documentType.toUpperCase();
-      const pred = res.predictionSummary.category.toUpperCase();
+      const exp = CategoryEvaluator.normalizeCategory(res.documentType);
+      const pred = CategoryEvaluator.normalizeCategory(res.predictionSummary.category);
       const key = `${exp}__${pred}`;
       counts[key] = (counts[key] || 0) + 1;
     }

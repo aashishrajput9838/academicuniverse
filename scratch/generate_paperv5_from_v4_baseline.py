@@ -35,7 +35,7 @@ doc = docx.Document(v4_docx_path)
 
 # 0. Pipeline Fix: Set Exact New Paper Title
 p_title_orig = doc.paragraphs[0]
-p_title_orig.text = "Smart Academic Document Intelligence System for Automated Academic Document Extraction and Normalization"
+p_title_orig.text = "Smart Academic Document Intelligence System with the Academic Document Benchmark Generator for Automated Academic Document Extraction and Normalization"
 p_title_orig.alignment = WD_ALIGN_PARAGRAPH.CENTER
 p_title_orig.paragraph_format.space_before = Pt(0)
 p_title_orig.paragraph_format.space_after = Pt(12)

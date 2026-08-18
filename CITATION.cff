@@ -3,7 +3,7 @@ message: "If you use the ADBG generator or the AU DIC evaluation framework in yo
 authors:
   - family-names: "AU DIC Research Team"
     given-names: "Academic Universe Initiative"
-title: "Smart Academic Document Intelligence System for Automated Academic Document Extraction and Normalization"
+title: "Smart Academic Document Intelligence System with the Academic Document Benchmark Generator for Automated Academic Document Extraction and Normalization"
 type: article
 journal: "IEEE Access"
 year: 2026

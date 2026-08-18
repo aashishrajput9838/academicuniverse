@@ -1,4 +1,4 @@
-# Smart Academic Document Intelligence System for Automated Academic Document Extraction and Normalization
+# Smart Academic Document Intelligence System with the Academic Document Benchmark Generator for Automated Academic Document Extraction and Normalization
 
 **Authors**: AU DIC Research Team  
 **Target Publication Venue**: IEEE Access / ICDAR 2026  

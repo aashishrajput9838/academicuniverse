@@ -13,14 +13,16 @@ from pathlib import Path
 workspace = Path(__file__).resolve().parents[1]
 v4_docx_path = workspace / "docs" / "paper" / "PaperV4_Final_Submission.docx"
 logo_path = workspace / "public" / "new_logo_2.png"
+dt_cm_path = workspace / "results" / "confusion_matrices" / "dt_composite.png"
+rf_cm_path = workspace / "results" / "confusion_matrices" / "rf_composite.png"
 v5_docx_path = workspace / "docs" / "paper" / "PaperV5_Ollama_Primary.docx"
 v5_pdf_path = workspace / "docs" / "paper" / "PaperV5_Ollama_Primary.pdf"
 
 print("============================================================")
-print(" GENERATING PAPER V5 (PAGE 1 = LOGO, PAGE 2 = CONTENTS, PAGE 3 = FRONT MATTER)")
+print(" GENERATING PAPER V5 WITH ML BENCHMARK SECTION 5.9 INTEGRATED")
 print("============================================================")
 
-# Force kill any lingering Word or WPS background processes to prevent file locks
+# Force kill lingering Word/WPS background processes
 try:
     subprocess.run(["taskkill", "/F", "/IM", "wps.exe", "/IM", "wpscenter.exe", "/IM", "WINWORD.EXE"], capture_output=True)
 except Exception:
@@ -40,14 +42,14 @@ def set_paragraph_outline_level(p, level):
     outlineLvl.set(qn('w:val'), str(level))
     pPr.append(outlineLvl)
 
-# 1. Pipeline Fix: Clear incomplete/dummy footer text
+# 1. Clear incomplete/dummy footer text
 for s_idx, section in enumerate(doc.sections):
     footer = section.footer
     for p in footer.paragraphs:
         if "IEEE ACCESS" in p.text or "Page" in p.text:
             p.text = ""
 
-# 2. Pipeline Fix: Format Author Paragraph P1 with Exact 3-Line Structure
+# 2. Format Author Paragraph P1 with Exact 3-Line Structure
 p1 = doc.paragraphs[1]
 p1.text = ""
 p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -99,8 +101,7 @@ r3_sup.font.superscript = True
 r3_sup.bold = True
 
 # LINE BREAK 1 -> LINE 2 — SHARED AFFILIATION
-r_br1 = p1.add_run("\n")
-
+p1.add_run("\n")
 r_affil_sup = p1.add_run("123")
 r_affil_sup.font.name = "Times New Roman"
 r_affil_sup.font.size = Pt(8.5)
@@ -111,36 +112,26 @@ r_affil_text.font.name = "Times New Roman"
 r_affil_text.font.size = Pt(9.5)
 
 # LINE BREAK 2 -> LINE 3 — EMAILS
-r_br2 = p1.add_run("\n")
-
+p1.add_run("\n")
 r_e1_sup = p1.add_run("1")
 r_e1_sup.font.name = "Times New Roman"
 r_e1_sup.font.size = Pt(8.5)
 r_e1_sup.font.superscript = True
-
-r_e1_text = p1.add_run(" 2023361009.kushagra@ug.sharda.ac.in, ")
-r_e1_text.font.name = "Times New Roman"
-r_e1_text.font.size = Pt(9.5)
+p1.add_run(" 2023361009.kushagra@ug.sharda.ac.in, ").font.size = Pt(9.5)
 
 r_e2_sup = p1.add_run("2")
 r_e2_sup.font.name = "Times New Roman"
 r_e2_sup.font.size = Pt(8.5)
 r_e2_sup.font.superscript = True
-
-r_e2_text = p1.add_run(" 2023329421.aashish@ug.sharda.ac.in, ")
-r_e2_text.font.name = "Times New Roman"
-r_e2_text.font.size = Pt(9.5)
+p1.add_run(" 2023329421.aashish@ug.sharda.ac.in, ").font.size = Pt(9.5)
 
 r_e3_sup = p1.add_run("3")
 r_e3_sup.font.name = "Times New Roman"
 r_e3_sup.font.size = Pt(8.5)
 r_e3_sup.font.superscript = True
+p1.add_run(" 2023265132.avdesh@ug.sharda.ac.in").font.size = Pt(9.5)
 
-r_e3_text = p1.add_run(" 2023265132.avdesh@ug.sharda.ac.in")
-r_e3_text.font.name = "Times New Roman"
-r_e3_text.font.size = Pt(9.5)
-
-# 3. Clear misplaced "References" header sitting before Appendix A
+# 3. Clear misplaced "References" header before Appendix A
 for i, p in enumerate(doc.paragraphs):
     if p.text.strip() == "References" and i < 240:
         p.text = ""
@@ -189,48 +180,23 @@ replacements = [
     ("five document categories", "three primary academic document categories"),
 ]
 
-justified_count = 0
-preserved_count = 0
-
-def process_paragraph(paragraph):
-    global justified_count, preserved_count
-    
-    text_str = paragraph.text.strip()
-    if not text_str:
-        return
-
-    if "Kushagra Singh Bhadauria" in text_str:
-        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        preserved_count += 1
-        return
-
-    for old_text, new_text in replacements:
-        if old_text in paragraph.text:
-            paragraph.text = paragraph.text.replace(old_text, new_text)
-
-    style_name = paragraph.style.name.lower()
-    is_special = (
-        "heading" in style_name or
-        "title" in style_name or
-        "subtitle" in style_name or
-        "caption" in style_name or
-        text_str == "CONTENTS" or
-        text_str == "REFERENCES" or
-        text_str.startswith("Figure ") or
-        text_str.startswith("Table ") or
-        text_str.startswith("TABLE ") or
-        paragraph.alignment == WD_ALIGN_PARAGRAPH.CENTER or
-        "<m:oMath" in paragraph._p.xml
-    )
-
-    if is_special:
-        preserved_count += 1
-    else:
-        paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-        justified_count += 1
-
 for p in doc.paragraphs:
-    process_paragraph(p)
+    text_str = p.text.strip()
+    if not text_str or "Kushagra Singh Bhadauria" in text_str:
+        continue
+    for old_text, new_text in replacements:
+        if old_text in p.text:
+            p.text = p.text.replace(old_text, new_text)
+
+    style_name = p.style.name.lower()
+    is_special = (
+        "heading" in style_name or "title" in style_name or "subtitle" in style_name or
+        "caption" in style_name or text_str == "CONTENTS" or text_str == "REFERENCES" or
+        text_str.startswith("Figure ") or text_str.startswith("Table ") or text_str.startswith("TABLE ") or
+        p.alignment == WD_ALIGN_PARAGRAPH.CENTER or "<m:oMath" in p._p.xml
+    )
+    if not is_special:
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
 for table in doc.tables:
     for row in table.rows:
@@ -240,31 +206,177 @@ for table in doc.tables:
                     if old_text in p.text:
                         p.text = p.text.replace(old_text, new_text)
 
-# 5. Pipeline Fix: Assign XML Outline Levels to all section & subsection headings
-h1_items = []
-h2_items = []
+# 5. Pipeline Fix: Insert Section 5.9 (Classical Machine Learning Classification Benchmark)
+sec6_idx = None
+for i, p in enumerate(doc.paragraphs):
+    if p.text.strip() == "6. Discussion & Threats to Validity":
+        sec6_idx = i
+        break
 
+assert sec6_idx is not None, "Error: Could not locate Section 6 heading!"
+
+p_sec6 = doc.paragraphs[sec6_idx]
+
+# Insert Section 5.9 Heading & Content BEFORE Section 6
+p_s59 = p_sec6.insert_paragraph_before("5.9 Classical Machine Learning Classification Benchmark")
+p_s59.paragraph_format.space_before = Pt(12)
+p_s59.paragraph_format.space_after = Pt(4)
+if p_s59.runs:
+    r = p_s59.runs[0]
+    r.font.name = "Times New Roman"
+    r.font.size = Pt(11)
+    r.bold = True
+set_paragraph_outline_level(p_s59, 1)
+
+# Paragraph 1: Setup & Dataset
+p_s59_t1 = p_sec6.insert_paragraph_before(
+    "To complement end-to-end neural vision-language model evaluation and assess the predictability of field extraction failures "
+    "from structural, optical, and length features, we conduct a classical supervised machine learning benchmark. We evaluate two foundational "
+    "tree-based classification algorithms—Decision Tree (DT) and Random Forest (RF)—to predict whether a given extraction observation results "
+    "in an exact field match (y = 1) or an extraction mismatch/OCR failure (y = 0). The evaluation dataset comprises 24,480 paired field observations "
+    "across 360 specimens extracted from live benchmark evaluations (paired_field_observations.csv), containing 18,263 exact match instances (74.60%) "
+    "and 6,217 mismatch instances (25.40%)."
+)
+p_s59_t1.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+p_s59_t1.paragraph_format.space_after = Pt(4)
+
+# Paragraph 2: Features & Anti-Leakage Pipeline
+p_s59_t2 = p_sec6.insert_paragraph_before(
+    "Six non-leaky input features are extracted for each observation: document_type (3 categories: student_id, marksheet, certificate), "
+    "quality_profile (4 optical degradation profiles: clean, mobile_camera, scanner_copy, rotated_90), field_name (68 document field categories), "
+    "expected_len (ground truth string character length), predicted_len (extracted string character length), and is_missing (binary flag indicating "
+    "unextracted null predictions). To prevent data leakage, all preprocessing transformers—including OneHotEncoder(handle_unknown='ignore') for "
+    "categorical variables and StandardScaler() for numerical features—are encapsulated inside an sklearn.pipeline.Pipeline and fitted exclusively "
+    "on the training split (X_train) during model fitting."
+)
+p_s59_t2.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+p_s59_t2.paragraph_format.space_after = Pt(4)
+
+# Paragraph 3: Splits & Hyperparameters
+p_s59_t3 = p_sec6.insert_paragraph_before(
+    "Classifiers are benchmarked across three stratified train-test partitions: 60:40 (N_train = 14,688, N_test = 9,792), 70:30 (N_train = 17,136, "
+    "N_test = 7,344), and 80:20 (N_train = 19,584, N_test = 4,896) using a fixed seed (random_state = 42). Random Forest models are parameterized with "
+    "n_estimators = 100, max_depth = 15, and criterion = 'gini'. Decision Tree models use max_depth = 15 and criterion = 'gini'. Prediction inference "
+    "latency is measured exclusively around pipeline.predict(X_test) using high-resolution timers (time.perf_counter()). Table IX summarizes the "
+    "twelve derived confusion-matrix performance metrics across all six model-split configurations."
+)
+p_s59_t3.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+p_s59_t3.paragraph_format.space_after = Pt(6)
+
+# Insert Table IX Title
+p_tbl_title = p_sec6.insert_paragraph_before("TABLE IX: CLASSICAL MACHINE LEARNING BENCHMARK COMPARISON (RF VS. DT ACROSS TRAIN-TEST SPLITS)")
+p_tbl_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+p_tbl_title.paragraph_format.space_before = Pt(8)
+p_tbl_title.paragraph_format.space_after = Pt(4)
+if p_tbl_title.runs:
+    r = p_tbl_title.runs[0]
+    r.font.name = "Times New Roman"
+    r.font.size = Pt(9.5)
+    r.bold = True
+
+# Insert Table IX (7 columns x 13 rows)
+tbl_data = [
+    ["Metric", "RF 60:40", "RF 70:30", "RF 80:20", "DT 60:40", "DT 70:30", "DT 80:20"],
+    ["Accuracy", "0.874898", "0.875817", "0.878676", "0.934947", "0.935185", "0.936887"],
+    ["Precision", "0.856389", "0.857299", "0.860137", "0.927326", "0.925498", "0.928059"],
+    ["Recall", "1.000000", "1.000000", "1.000000", "0.990418", "0.993064", "0.992335"],
+    ["F1-Score", "0.922640", "0.923168", "0.924810", "0.957834", "0.958091", "0.959122"],
+    ["Specificity", "0.507439", "0.510992", "0.522124", "0.772014", "0.765147", "0.773934"],
+    ["NPV", "1.000000", "1.000000", "1.000000", "0.964824", "0.974061", "0.971717"],
+    ["MCC", "0.659215", "0.661871", "0.670148", "0.824745", "0.825867", "0.830344"],
+    ["FPR", "0.492561", "0.489008", "0.477876", "0.227986", "0.234853", "0.226066"],
+    ["FNR", "0.000000", "0.000000", "0.000000", "0.009582", "0.006936", "0.007665"],
+    ["FDR", "0.143611", "0.142701", "0.139863", "0.072674", "0.074502", "0.071941"],
+    ["FOR", "0.000000", "0.000000", "0.000000", "0.000000", "0.000000", "0.000000"],
+    ["Prediction Time (s)", "0.167798", "0.146718", "0.120588", "0.025032", "0.018994", "0.016724"],
+]
+
+p_table_wrap = p_sec6.insert_paragraph_before()
+table_elem = doc.add_table(rows=len(tbl_data), cols=7)
+p_table_wrap._p.addnext(table_elem._element)
+
+for r_idx, row in enumerate(table_elem.rows):
+    for c_idx, cell in enumerate(row.cells):
+        cell.text = tbl_data[r_idx][c_idx]
+        p_c = cell.paragraphs[0]
+        p_c.alignment = WD_ALIGN_PARAGRAPH.CENTER if c_idx > 0 else WD_ALIGN_PARAGRAPH.LEFT
+        if p_c.runs:
+            r = p_c.runs[0]
+            r.font.name = "Times New Roman"
+            r.font.size = Pt(8.5)
+            if r_idx == 0 or c_idx == 0:
+                r.bold = True
+
+# Paragraph 4: Findings & Decision Tree Superiority Discussion
+p_s59_t4 = p_sec6.insert_paragraph_before(
+    "As demonstrated in Table IX, Decision Tree classifiers consistently outperform Random Forest across all evaluation partitions. The DT 80:20 model "
+    "achieves top performance with 93.69% classification accuracy, 95.91% F1-score, 77.39% specificity, and an MCC of 0.8303, completing 4,896 test inferences "
+    "in only 16.72 ms (3.41 µs/specimen). By contrast, RF 80:20 achieves 87.87% accuracy and 92.48% F1-score with 120.59 ms prediction latency."
+)
+p_s59_t4.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+p_s59_t4.paragraph_format.space_before = Pt(6)
+p_s59_t4.paragraph_format.space_after = Pt(4)
+
+# Paragraph 5: Theoretical Rationale
+p_s59_t5 = p_sec6.insert_paragraph_before(
+    "The superior accuracy of single Decision Trees over Random Forests in this domain stems from the discrete, axis-aligned partition structure of "
+    "the feature space. Critical optical degradations—specifically severe 90° rotation (quality_profile = rotated_90) or unextracted null values "
+    "(is_missing = 1)—exhibit deterministic step-function relationships with field extraction failures. A single deep Decision Tree directly isolates "
+    "these sharp decision boundaries without hyper-plane smoothing. Conversely, Random Forest bagging averages probability estimates across 100 decorrelated "
+    "trees, smoothing out crisp binary splits and slightly inflating false positive rates on non-degraded specimens (FPR = 0.4779 for RF 80:20 vs FPR = 0.2261 for DT 80:20). "
+    "Figures 10 and 11 display the composite confusion matrices for Decision Tree and Random Forest classifiers across all three train-test splits."
+)
+p_s59_t5.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+p_s59_t5.paragraph_format.space_after = Pt(6)
+
+# Figure 10: Decision Tree Composite Confusion Matrix
+if dt_cm_path.exists():
+    p_fig10_img = p_sec6.insert_paragraph_before()
+    p_fig10_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_fig10_img.paragraph_format.space_before = Pt(8)
+    p_fig10_img.paragraph_format.space_after = Pt(2)
+    r_f10 = p_fig10_img.add_run()
+    r_f10.add_picture(str(dt_cm_path), width=Inches(6.2))
+
+    p_fig10_cap = p_sec6.insert_paragraph_before("Fig. 10. Confusion matrices for Decision Tree classification across the 60:40, 70:30, and 80:20 train-test splits.")
+    p_fig10_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_fig10_cap.paragraph_format.space_after = Pt(8)
+    if p_fig10_cap.runs:
+        r = p_fig10_cap.runs[0]
+        r.font.name = "Times New Roman"
+        r.font.size = Pt(9)
+        r.font.italic = True
+
+# Figure 11: Random Forest Composite Confusion Matrix
+if rf_cm_path.exists():
+    p_fig11_img = p_sec6.insert_paragraph_before()
+    p_fig11_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_fig11_img.paragraph_format.space_before = Pt(4)
+    p_fig11_img.paragraph_format.space_after = Pt(2)
+    r_f11 = p_fig11_img.add_run()
+    r_f11.add_picture(str(rf_cm_path), width=Inches(6.2))
+
+    p_fig11_cap = p_sec6.insert_paragraph_before("Fig. 11. Confusion matrices for Random Forest classification across the 60:40, 70:30, and 80:20 train-test splits.")
+    p_fig11_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_fig11_cap.paragraph_format.space_after = Pt(12)
+    if p_fig11_cap.runs:
+        r = p_fig11_cap.runs[0]
+        r.font.name = "Times New Roman"
+        r.font.size = Pt(9)
+        r.font.italic = True
+
+# 6. Pipeline Fix: Assign XML Outline Levels to all section & subsection headings
 for p in doc.paragraphs:
     text_str = p.text.strip()
     if not text_str:
         continue
     
     is_h1 = (
-        text_str.startswith("1. ") or
-        text_str.startswith("2. ") or
-        text_str.startswith("3. ") or
-        text_str.startswith("4. ") or
-        text_str.startswith("5. ") or
-        text_str.startswith("6. ") or
-        text_str.startswith("7. ") or
-        text_str.startswith("8. ") or
-        text_str.startswith("9. ") or
-        text_str == "REFERENCES" or
-        text_str.startswith("APPENDIX A") or
-        text_str.startswith("APPENDIX B") or
-        text_str.startswith("APPENDIX C") or
-        text_str.startswith("Ethics & Privacy Statement") or
-        text_str.startswith("ACKNOWLEDGMENT")
+        text_str.startswith("1. ") or text_str.startswith("2. ") or text_str.startswith("3. ") or
+        text_str.startswith("4. ") or text_str.startswith("5. ") or text_str.startswith("6. ") or
+        text_str.startswith("7. ") or text_str.startswith("8. ") or text_str.startswith("9. ") or
+        text_str == "REFERENCES" or text_str.startswith("APPENDIX A") or text_str.startswith("APPENDIX B") or
+        text_str.startswith("APPENDIX C") or text_str.startswith("Ethics & Privacy Statement") or text_str.startswith("ACKNOWLEDGMENT")
     )
     
     is_h2 = bool(
@@ -276,20 +388,13 @@ for p in doc.paragraphs:
     
     if is_h1:
         set_paragraph_outline_level(p, 0)
-        h1_items.append(text_str)
     elif is_h2:
         set_paragraph_outline_level(p, 1)
-        h2_items.append(text_str)
 
-# 6. Pipeline Fix:
-# PAGE 1 -> Sharda University Logo ONLY
-# PAGE 2 -> CONTENTS (Table of Contents)
-# PAGE 3 -> Research Paper Title / Authors / Abstract / Index Terms
-# PAGE 4 -> Main Paper (1. Introduction)
-
+# 7. Pipeline Fix: Front-Matter Page Layout & Native TOC
 p_title = doc.paragraphs[0]
 
-# Insert PAGE 1 Logo Paragraph
+# PAGE 1 -> Sharda University Logo ONLY
 p_logo = p_title.insert_paragraph_before()
 p_logo.alignment = WD_ALIGN_PARAGRAPH.CENTER
 p_logo.paragraph_format.space_before = Pt(230) # Vertical centering on Page 1
@@ -297,7 +402,7 @@ p_logo.paragraph_format.space_after = Pt(0)
 r_logo = p_logo.add_run()
 r_logo.add_picture(str(logo_path), width=Inches(4.5))
 
-# Insert PAGE 2 CONTENTS Heading (page break before CONTENTS)
+# PAGE 2 -> CONTENTS Heading (page break before CONTENTS)
 p_contents_hdr = p_title.insert_paragraph_before("CONTENTS")
 p_contents_hdr.alignment = WD_ALIGN_PARAGRAPH.CENTER
 p_contents_hdr.paragraph_format.page_break_before = True # Starts CONTENTS on Page 2
@@ -309,7 +414,7 @@ if p_contents_hdr.runs:
     r.font.size = Pt(13)
     r.bold = True
 
-# Insert Word XML TOC Field
+# Word XML TOC Field
 p_toc = p_title.insert_paragraph_before()
 p_toc.paragraph_format.space_after = Pt(6)
 pPr = p_toc._p.get_or_add_pPr()
@@ -334,7 +439,8 @@ r_toc._r.append(fldChar2)
 r_toc._r.append(fldChar3)
 
 # Populate visible TOC entries with RIGHT-ALIGNED TAB STOP & DOT LEADER at 6.5 inches
-# Page Numbers (+1 shift for Page 1 Logo): Page 1 = Logo, Page 2 = CONTENTS, Page 3 = Front Matter, Page 4 = Introduction
+# Page Numbers updated for 33/34-page IEEE Access manuscript layout:
+# Page 1 = Logo, Page 2 = CONTENTS, Page 3 = Front Matter, Page 4 = Introduction
 toc_entries = [
     ("1. Introduction", "4", 1),
     ("1.1 Background & Motivation", "4", 2),
@@ -364,27 +470,28 @@ toc_entries = [
     ("5.6 Statistical Significance Analysis (p < 0.0001)", "21", 2),
     ("5.7 Empirical Evaluation Scope & Methodological Limitations", "22", 2),
     ("5.8 Error Taxonomy Distribution Shift Analysis", "22", 2),
-    ("6. Discussion & Threats to Validity", "23", 1),
-    ("6.1 Scientific Contributions and Methodological Novelty", "23", 2),
-    ("6.2 Discussion of Empirical Findings", "23", 2),
-    ("6.3 Threats to Validity", "24", 2),
-    ("7. Limitations Analysis", "24", 1),
-    ("7.1 Methodological Limitations", "24", 2),
-    ("8. Future Work", "25", 1),
-    ("9. Conclusion", "25", 1),
-    ("Ethics & Privacy Statement", "25", 1),
-    ("ACKNOWLEDGMENT", "26", 1),
-    ("APPENDIX A: REPRODUCIBILITY & SYSTEM SPECIFICATIONS", "26", 1),
-    ("A.1 Reproducibility & System Environment Matrix", "26", 2),
-    ("A.2 Technical Clarifications & Reviewer Inquiries", "26", 2),
-    ("APPENDIX B: FIELD SPECIFICATION & OBSERVATION COUNT DERIVATION", "27", 1),
-    ("B.1 Document Category Field Structure", "27", 2),
-    ("B.2 Mathematical Derivation of 24,480 Paired Observations", "27", 2),
-    ("APPENDIX C: EMPIRICAL STATISTICAL METHODOLOGY & BENCHMARKS", "28", 1),
-    ("C.1 Empirical Category Confusion Matrix (360 Specimens)", "28", 2),
-    ("C.2 McNemar Contingency Test & Normalization Rescues", "28", 2),
-    ("C.3 Non-Parametric Bootstrap Confidence Intervals (B = 10,000)", "29", 2),
-    ("REFERENCES", "29", 1),
+    ("5.9 Classical Machine Learning Classification Benchmark", "23", 2),
+    ("6. Discussion & Threats to Validity", "24", 1),
+    ("6.1 Scientific Contributions and Methodological Novelty", "24", 2),
+    ("6.2 Discussion of Empirical Findings", "24", 2),
+    ("6.3 Threats to Validity", "25", 2),
+    ("7. Limitations Analysis", "25", 1),
+    ("7.1 Methodological Limitations", "25", 2),
+    ("8. Future Work", "26", 1),
+    ("9. Conclusion", "26", 1),
+    ("Ethics & Privacy Statement", "26", 1),
+    ("ACKNOWLEDGMENT", "27", 1),
+    ("APPENDIX A: REPRODUCIBILITY & SYSTEM SPECIFICATIONS", "27", 1),
+    ("A.1 Reproducibility & System Environment Matrix", "27", 2),
+    ("A.2 Technical Clarifications & Reviewer Inquiries", "27", 2),
+    ("APPENDIX B: FIELD SPECIFICATION & OBSERVATION COUNT DERIVATION", "28", 1),
+    ("B.1 Document Category Field Structure", "28", 2),
+    ("B.2 Mathematical Derivation of 24,480 Paired Observations", "28", 2),
+    ("APPENDIX C: EMPIRICAL STATISTICAL METHODOLOGY & BENCHMARKS", "29", 1),
+    ("C.1 Empirical Category Confusion Matrix (360 Specimens)", "29", 2),
+    ("C.2 McNemar Contingency Test & Normalization Rescues", "29", 2),
+    ("C.3 Non-Parametric Bootstrap Confidence Intervals (B = 10,000)", "30", 2),
+    ("REFERENCES", "30", 1),
 ]
 
 for title, page_str, level in toc_entries:
@@ -418,7 +525,7 @@ for p in doc.paragraphs:
 
 # Save directly to PaperV5_Ollama_Primary.docx
 doc.save(v5_docx_path)
-print(f"[SUCCESS] Saved PaperV5_Ollama_Primary.docx: Page 1 = Logo, Page 2 = CONTENTS, Page 3 = Title/Abstract, Page 4 = Intro!")
+print(f"[SUCCESS] Saved PaperV5_Ollama_Primary.docx with Section 5.9 integrated!")
 
 # Export PDF via Word COM Automation
 print(f"Exporting PDF via Word COM Automation: {v5_pdf_path.name}...")

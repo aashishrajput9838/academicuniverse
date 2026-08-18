@@ -46,10 +46,13 @@ from adbg.utils.pdf import pdf_bytes_to_image
 
 def generate_au_dic_benchmark(
     master_seed_val: int = 42,
-    output_dir: str = "./AU_DIC_Benchmark_v1.0",
+    output_dir: str | Path | None = None,
 ) -> None:
     start_time = time.time()
-    out_dir = Path(output_dir)
+    if output_dir is None:
+        out_dir = Path(__file__).resolve().parents[1] / "AU_DIC_Benchmark_v1.0"
+    else:
+        out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     pdf_dir = out_dir / "pdf"
@@ -299,9 +302,17 @@ def generate_au_dic_benchmark(
     print("==========================================================")
 
     # Run full verification audit
-    from verify_dataset import verify_au_dic_dataset
-    print("\n[RUNNING] Executing Dataset Verification Audit...")
-    verify_au_dic_dataset(str(out_dir))
+    try:
+        from adbg.scripts.verify_dataset import verify_au_dic_dataset
+    except ImportError:
+        try:
+            from verify_dataset import verify_au_dic_dataset
+        except ImportError:
+            verify_au_dic_dataset = None
+
+    if verify_au_dic_dataset:
+        print("\n[RUNNING] Executing Dataset Verification Audit...")
+        verify_au_dic_dataset(str(out_dir))
 
 
 if __name__ == "__main__":

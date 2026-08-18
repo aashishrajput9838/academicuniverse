@@ -40,8 +40,8 @@ export class AuDicPredictionAdapter {
       return this.generateMockPrediction(sample, Date.now() - startTime);
     }
 
-    // Pacing: 8000ms per sample to stay reliably under Groq / Gemini free-tier limits
-    const pacingMs = process.env.GROQ_API_KEY ? 8000 : 2000;
+    // Pacing: 0ms for local Ollama, 8000ms for Groq, 2000ms for Gemini
+    const pacingMs = process.env.OLLAMA_ENABLED === 'true' ? 0 : (process.env.GROQ_API_KEY ? 8000 : 2000);
     await new Promise((resolve) => setTimeout(resolve, pacingMs));
 
     // Live Multimodal Vision AI execution path using Gemini API system prompt
@@ -121,7 +121,7 @@ Instructions:
       for (const providerKey of providerOrder) {
         if (aiResponse) break;
 
-        if (providerKey === 'ollama' && imageBase64) {
+        if (providerKey === 'ollama' && imageBase64 && process.env.OLLAMA_ENABLED === 'true') {
           try {
             const { OllamaAIProvider } = require('../../core/ai/ollama.provider');
             const ollamaProvider = new OllamaAIProvider();

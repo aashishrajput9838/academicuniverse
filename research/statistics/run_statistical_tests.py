@@ -62,15 +62,29 @@ def bootstrap_ci(data: np.ndarray, stat_fn=np.mean, n_boot: int = 10000,
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--csv", type=str, default=None)
+    parser.add_argument("--csv", type=str, default=None, help="Exact path to paired_field_observations.csv")
+    parser.add_argument("--out-dir", type=str, default=None, help="Target directory for statistical output files")
     args = parser.parse_args()
 
-    csv_path = Path(args.csv) if args.csv else RESULTS_DIR / "paired_field_observations.csv"
+    if args.csv:
+        csv_path = Path(args.csv)
+    else:
+        csv_path = RESULTS_DIR / "paired_field_observations.csv"
 
     if not csv_path.exists():
         print(f"ERROR: Dataset not found: {csv_path}")
         print("Run generate_field_dataset.py first to produce real benchmark data.")
         sys.exit(1)
+
+    if args.out_dir:
+        out_dir = Path(args.out_dir)
+    else:
+        out_dir = csv_path.parent
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    raw_log_file = out_dir / "raw_statistical_output.txt"
+    report_file  = out_dir / "STATISTICAL_REPRODUCIBILITY_REPORT.md"
+    json_results_file = out_dir / "statistical_results.json"
 
     df = pd.read_csv(csv_path)
     n_obs = len(df)
@@ -78,9 +92,9 @@ def main():
 
     if n_obs < 30:
         print(f"WARNING: Only {n_obs} observations — insufficient for reliable hypothesis testing.")
-        print("Statistical tests require N ≥ 30. Reporting descriptive statistics only.")
+        print("Statistical tests require N >= 30. Reporting descriptive statistics only.")
 
-    with open(RAW_LOG, "w", encoding="utf-8") as fh:
+    with open(raw_log_file, "w", encoding="utf-8") as fh:
         log(f"AU DIC BENCHMARK — STATISTICAL ANALYSIS LOG", fh)
         log(f"Dataset: {csv_path}", fh)
         log(f"N observations: {n_obs}", fh)
@@ -187,14 +201,13 @@ def main():
             }
 
         # ── Save Results JSON ──────────────────────────────────────────────
-        results_json = RESULTS_DIR / "statistical_results.json"
-        with open(results_json, "w", encoding="utf-8") as f:
+        with open(json_results_file, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2)
-        log(f"\nResults saved: {results_json}", fh)
-        log(f"Raw log saved: {RAW_LOG}", fh)
+        log(f"\nResults saved: {json_results_file}", fh)
+        log(f"Raw log saved: {raw_log_file}", fh)
 
     # ── Write Reproducibility Report ───────────────────────────────────────
-    with open(REPORT, "w", encoding="utf-8") as f:
+    with open(report_file, "w", encoding="utf-8") as f:
         f.write("# Statistical Reproducibility Report\n\n")
         f.write(f"**Dataset:** `{csv_path}`  \n")
         f.write(f"**N observations:** {n_obs}  \n")
@@ -208,9 +221,9 @@ def main():
         f.write("# 1. Generate real benchmark data\n")
         f.write("python run_full_benchmark.py --from-existing\n\n")
         f.write("# 2. Run statistical tests\n")
-        f.write("python research/statistics/run_statistical_tests.py\n")
+        f.write(f"python research/statistics/run_statistical_tests.py --csv {csv_path} --out-dir {out_dir}\n")
         f.write("```\n\n")
-        f.write("> All tests use `scipy.stats` v≥1.11 and `numpy` v≥1.24.\n")
+        f.write("> All tests use `scipy.stats` v>=1.11 and `numpy` v>=1.24.\n")
         f.write("> Bootstrap uses `np.random.default_rng(seed=42)` for reproducibility.\n")
 
     print(f"\n[SUCCESS] Statistical analysis complete.")

@@ -26,8 +26,8 @@ export class GeminiAIProvider implements IAIProvider {
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
     
-    if (!apiKey || apiKey === 'your_gemini_api_key_here') {
-      logger.warn('GEMINI_API_KEY is not set or using placeholder. AI features will be limited.');
+    if (!apiKey || apiKey === 'your_gemini_api_key_here' || apiKey.startsWith('AIzaSyDwtZJbp')) {
+      logger.warn('GEMINI_API_KEY is not set or using expired/invalid placeholder. AI features will be limited.');
       return;
     }
 

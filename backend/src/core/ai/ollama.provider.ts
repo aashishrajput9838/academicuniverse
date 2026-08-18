@@ -26,7 +26,7 @@ export class OllamaAIProvider implements IAIProvider {
   }
 
   isAvailable(): boolean {
-    return Boolean(process.env.OLLAMA_ENABLED === 'true' || process.env.OLLAMA_BASE_URL);
+    return process.env.OLLAMA_ENABLED === 'true';
   }
 
   async generateContent(prompt: string, config: AIConfig = {}): Promise<AIResponse> {

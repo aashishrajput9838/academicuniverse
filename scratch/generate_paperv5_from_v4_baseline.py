@@ -5,6 +5,8 @@ import sys
 import win32com.client
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt, Inches
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from pathlib import Path
 
 workspace = Path(__file__).resolve().parents[1]
@@ -14,12 +16,21 @@ v5_alt_path = workspace / "docs" / "paper" / "PaperV5_Ollama_Primary_Justified.d
 v5_pdf_path = workspace / "docs" / "paper" / "PaperV5_Ollama_Primary.pdf"
 
 print("============================================================")
-print(" REBUILDING PAPER V5 (TOC, FOOTER, AUTHOR BLOCK, REF & JUSTIFICATION)")
+print(" REBUILDING PAPER V5 (POPULATED AUTOMATIC TOC FIX)")
 print("============================================================")
 
 assert v4_docx_path.exists(), f"Error: Baseline {v4_docx_path} missing!"
 
 doc = docx.Document(v4_docx_path)
+
+def set_paragraph_outline_level(p, level):
+    pPr = p._p.get_or_add_pPr()
+    existing = pPr.find(qn('w:outlineLvl'))
+    if existing is not None:
+        pPr.remove(existing)
+    outlineLvl = OxmlElement('w:outlineLvl')
+    outlineLvl.set(qn('w:val'), str(level))
+    pPr.append(outlineLvl)
 
 # 1. Pipeline Fix: Clear incomplete/dummy 'IEEE ACCESS | Volume 14, 2026 | Page ' footer text
 for s_idx, section in enumerate(doc.sections):
@@ -145,20 +156,20 @@ for i, p in enumerate(doc.paragraphs[:20]):
         p_toc = p.insert_paragraph_before()
         p_toc.paragraph_format.space_after = Pt(12)
         pPr = p_toc._p.get_or_add_pPr()
-        pStyle = docx.oxml.OxmlElement('w:pStyle')
-        pStyle.set(docx.oxml.ns.qn('w:val'), 'TOCHeading')
+        pStyle = OxmlElement('w:pStyle')
+        pStyle.set(qn('w:val'), 'TOCHeading')
         pPr.append(pStyle)
 
         r_toc = p_toc.add_run()
-        fldChar1 = docx.oxml.OxmlElement('w:fldChar')
-        fldChar1.set(docx.oxml.ns.qn('w:fldCharType'), 'begin')
-        instrText = docx.oxml.OxmlElement('w:instrText')
-        instrText.set(docx.oxml.ns.qn('xml:space'), 'preserve')
+        fldChar1 = OxmlElement('w:fldChar')
+        fldChar1.set(qn('w:fldCharType'), 'begin')
+        instrText = OxmlElement('w:instrText')
+        instrText.set(qn('xml:space'), 'preserve')
         instrText.text = 'TOC \\o "1-2" \\h \\z \\u'
-        fldChar2 = docx.oxml.OxmlElement('w:fldChar')
-        fldChar2.set(docx.oxml.ns.qn('w:fldCharType'), 'separate')
-        fldChar3 = docx.oxml.OxmlElement('w:fldChar')
-        fldChar3.set(docx.oxml.ns.qn('w:fldCharType'), 'end')
+        fldChar2 = OxmlElement('w:fldChar')
+        fldChar2.set(qn('w:fldCharType'), 'separate')
+        fldChar3 = OxmlElement('w:fldChar')
+        fldChar3.set(qn('w:fldCharType'), 'end')
 
         r_toc._r.append(fldChar1)
         r_toc._r.append(instrText)
@@ -170,13 +181,13 @@ for i, p in enumerate(doc.paragraphs[:20]):
 
 assert toc_inserted, "Error: Index Terms paragraph not found for TOC insertion!"
 
-# 4. Clear misplaced "References" header sitting before Appendix A
+# 4. Pipeline Fix: Clear misplaced "References" header sitting before Appendix A
 for i, p in enumerate(doc.paragraphs):
     if p.text.strip() == "References" and i < 240:
         print(f"Pipeline Fix: Clearing misplaced References header at paragraph P{i}")
         p.text = ""
 
-# 5. Insert IEEE-formatted REFERENCES section heading immediately before reference [1]
+# 5. Pipeline Fix: Insert IEEE-formatted REFERENCES section heading immediately before reference [1]
 ref1_inserted = False
 for i, p in enumerate(doc.paragraphs):
     if p.text.strip().startswith("[1] "):
@@ -292,6 +303,47 @@ for table in doc.tables:
                     if old_text in p.text:
                         p.text = p.text.replace(old_text, new_text)
 
+# 6. Pipeline Fix: Assign XML Outline Levels to all section & subsection headings AFTER text processing
+h1_count = 0
+h2_count = 0
+for p in doc.paragraphs:
+    text_str = p.text.strip()
+    if not text_str:
+        continue
+    
+    is_h1 = (
+        text_str.startswith("1. ") or
+        text_str.startswith("2. ") or
+        text_str.startswith("3. ") or
+        text_str.startswith("4. ") or
+        text_str.startswith("5. ") or
+        text_str.startswith("6. ") or
+        text_str.startswith("7. ") or
+        text_str.startswith("8. ") or
+        text_str.startswith("9. ") or
+        text_str == "REFERENCES" or
+        text_str.startswith("APPENDIX A") or
+        text_str.startswith("APPENDIX B") or
+        text_str.startswith("APPENDIX C") or
+        text_str.startswith("Ethics & Privacy Statement") or
+        text_str.startswith("ACKNOWLEDGMENT")
+    )
+    
+    is_h2 = bool(
+        re.match(r"^\d\.\d\s+", text_str) or
+        text_str.startswith("A.1 ") or text_str.startswith("A.2 ") or
+        text_str.startswith("B.1 ") or text_str.startswith("B.2 ") or
+        text_str.startswith("C.1 ") or text_str.startswith("C.2 ") or text_str.startswith("C.3 ")
+    )
+    
+    if is_h1:
+        set_paragraph_outline_level(p, 0)
+        h1_count += 1
+    elif is_h2:
+        set_paragraph_outline_level(p, 1)
+        h2_count += 1
+
+print(f"Pipeline Fix: Mapped {h1_count} Level-1 sections and {h2_count} Level-2 subsections to XML Outline Levels for Word TOC discovery.")
 print(f"Alignment Summary:")
 print(f"  - Body Paragraphs Set to JUSTIFY: {justified_count}")
 print(f"  - Special Formatting Preserved:   {preserved_count}")
@@ -318,7 +370,7 @@ try:
     word.Visible = False
     doc_word = word.Documents.Open(abs_save)
     
-    # Update document fields (populating TOC entries and page numbers)
+    # Update document fields (populating TOC entries, dot leaders, and exact page numbers)
     doc_word.Fields.Update()
     for s in doc_word.Sections:
         s.Range.Fields.Update()

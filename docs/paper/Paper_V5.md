@@ -1,4 +1,4 @@
-# ADBG v1.0 & AU DIC Benchmark Evaluation Framework: A Reproducible Synthetic Benchmark Suite and Normalization Pipeline for Academic Document Intelligence
+# Smart Academic Document Intelligence System for Automated Academic Document Extraction and Normalization
 
 **Authors**: AU DIC Research Team  
 **Target Publication Venue**: IEEE Access / ICDAR 2026  

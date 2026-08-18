@@ -14,7 +14,7 @@ v5_alt_path = workspace / "docs" / "paper" / "PaperV5_Ollama_Primary_Justified.d
 v5_pdf_path = workspace / "docs" / "paper" / "PaperV5_Ollama_Primary.pdf"
 
 print("============================================================")
-print(" REBUILDING PAPER V5 (FOOTER CLEANUP, AUTHOR BLOCK, REF & JUSTIFICATION)")
+print(" REBUILDING PAPER V5 (TOC, FOOTER, AUTHOR BLOCK, REF & JUSTIFICATION)")
 print("============================================================")
 
 assert v4_docx_path.exists(), f"Error: Baseline {v4_docx_path} missing!"
@@ -124,13 +124,59 @@ r_e3_text.font.size = Pt(9.5)
 
 print("Pipeline Fix: Constructed exact 3-line author/affiliation/email block with superscripts 1, 2, 3.")
 
-# 3. Clear misplaced "References" header sitting before Appendix A
+# 3. Pipeline Fix: Insert Table of Contents (CONTENTS) after Index Terms and before Section 1 Introduction
+toc_inserted = False
+for i, p in enumerate(doc.paragraphs[:20]):
+    if p.text.strip().startswith("Index Terms"):
+        print(f"Pipeline Fix: Inserting CONTENTS heading and TOC field after Index Terms at paragraph P{i}...")
+        
+        # CONTENTS Section Heading
+        p_contents_hdr = p.insert_paragraph_before("CONTENTS")
+        p_contents_hdr.paragraph_format.space_before = Pt(14)
+        p_contents_hdr.paragraph_format.space_after = Pt(6)
+        p_contents_hdr.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        if p_contents_hdr.runs:
+            r = p_contents_hdr.runs[0]
+            r.font.name = "Times New Roman"
+            r.font.size = Pt(13)
+            r.bold = True
+
+        # TOC Field Paragraph
+        p_toc = p.insert_paragraph_before()
+        p_toc.paragraph_format.space_after = Pt(12)
+        pPr = p_toc._p.get_or_add_pPr()
+        pStyle = docx.oxml.OxmlElement('w:pStyle')
+        pStyle.set(docx.oxml.ns.qn('w:val'), 'TOCHeading')
+        pPr.append(pStyle)
+
+        r_toc = p_toc.add_run()
+        fldChar1 = docx.oxml.OxmlElement('w:fldChar')
+        fldChar1.set(docx.oxml.ns.qn('w:fldCharType'), 'begin')
+        instrText = docx.oxml.OxmlElement('w:instrText')
+        instrText.set(docx.oxml.ns.qn('xml:space'), 'preserve')
+        instrText.text = 'TOC \\o "1-2" \\h \\z \\u'
+        fldChar2 = docx.oxml.OxmlElement('w:fldChar')
+        fldChar2.set(docx.oxml.ns.qn('w:fldCharType'), 'separate')
+        fldChar3 = docx.oxml.OxmlElement('w:fldChar')
+        fldChar3.set(docx.oxml.ns.qn('w:fldCharType'), 'end')
+
+        r_toc._r.append(fldChar1)
+        r_toc._r.append(instrText)
+        r_toc._r.append(fldChar2)
+        r_toc._r.append(fldChar3)
+        
+        toc_inserted = True
+        break
+
+assert toc_inserted, "Error: Index Terms paragraph not found for TOC insertion!"
+
+# 4. Clear misplaced "References" header sitting before Appendix A
 for i, p in enumerate(doc.paragraphs):
     if p.text.strip() == "References" and i < 240:
         print(f"Pipeline Fix: Clearing misplaced References header at paragraph P{i}")
         p.text = ""
 
-# 4. Insert IEEE-formatted REFERENCES section heading immediately before reference [1]
+# 5. Insert IEEE-formatted REFERENCES section heading immediately before reference [1]
 ref1_inserted = False
 for i, p in enumerate(doc.paragraphs):
     if p.text.strip().startswith("[1] "):
@@ -216,6 +262,7 @@ def process_paragraph(paragraph):
         "title" in style_name or
         "subtitle" in style_name or
         "caption" in style_name or
+        text_str == "CONTENTS" or
         text_str == "REFERENCES" or
         text_str.startswith("Figure ") or
         text_str.startswith("Table ") or
@@ -259,8 +306,8 @@ except Exception as e:
     doc.save(save_path)
     print(f"[SUCCESS] Saved formatted DOCX to: {save_path.name}")
 
-# Convert to PaperV5_Ollama_Primary.pdf via Word COM Automation
-print(f"Converting {save_path.name} -> PDF via Word COM Automation...")
+# Convert to PaperV5_Ollama_Primary.pdf via Word COM Automation & Update TOC Fields
+print(f"Converting {save_path.name} -> PDF via Word COM Automation (updating TOC fields)...")
 abs_save = os.path.abspath(str(save_path))
 abs_docx_target = os.path.abspath(str(v5_docx_path))
 abs_pdf_target = os.path.abspath(str(v5_pdf_path))
@@ -271,6 +318,11 @@ try:
     word.Visible = False
     doc_word = word.Documents.Open(abs_save)
     
+    # Update document fields (populating TOC entries and page numbers)
+    doc_word.Fields.Update()
+    for s in doc_word.Sections:
+        s.Range.Fields.Update()
+
     if abs_save != abs_docx_target:
         try:
             doc_word.SaveAs(abs_docx_target)
@@ -281,7 +333,7 @@ try:
     doc_word.SaveAs(abs_pdf_target, FileFormat=17) # 17 = wdFormatPDF
     page_count = doc_word.ComputeStatistics(2) # 2 = wdStatisticPages
     doc_word.Close()
-    print(f"[SUCCESS] Exported high-quality PDF: {v5_pdf_path.name} ({page_count} Pages!)")
+    print(f"[SUCCESS] Exported high-quality PDF with TOC: {v5_pdf_path.name} ({page_count} Pages!)")
 except Exception as e:
     print(f"Word COM Export Error: {e}")
 finally:

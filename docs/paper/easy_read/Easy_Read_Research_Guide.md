@@ -8,10 +8,10 @@
 
 ## 🚀 Quick Start: 5 Minute Mein Poori Research Samjho!
 
-Welcome! Agar tum ek college student, developer ya beginner researcher ho aur samajhna chahte ho ki is paper mein actually kya problem solve hui hai aur kya main invention hua hai, to ye 6 points padho:
+Welcome! Agar tum ek college student, developer, ya beginner researcher ho aur samajhna chahte ho ki is 35-page research paper mein actually kya invention hua hai, to ye 6 points padho:
 
 ### 1. Main Problem Kya Hai? (The Big Problem)
-- **Educational Privacy Lock (FERPA & GDPR)**: Real student marksheets, degree certificates aur ID cards mein personal information hoti hai (names, roll numbers, marks). Privacy laws ki wajah se researchers real student records internet par public upload nahi kar sakte AI test karne ke liye.
+- **Educational Privacy Lock (FERPA & GDPR)**: Real student marksheets, degree certificates aur ID cards mein sensitive personal info hoti hai (names, roll numbers, marks). Privacy laws ki wajah se researchers real student records internet par public upload nahi kar sakte AI models test karne ke liye.
 - **Strict Typo Penalties**: Jab AI kisi document ko read karta hai, to minor formatting differences (jaise `MIT` vs `Massachusetts Institute of Technology` ya `Dr. Aarav Agarwal` vs `Aarav Agarwal`) ko traditional exact-match formulas **100% WRONG** mark kar dete hain, chahe AI ne sahi info hi extract kyu na ki ho!
 
 ### 2. Hamara Solution Kya Hai?
@@ -19,16 +19,31 @@ Welcome! Agar tum ek college student, developer ya beginner researcher ho aur sa
 - **AU DIC Benchmark System**: Ek decoupled, zero-PII (Personally Identifiable Information), read-only evaluation framework.
 - **CanonicalNormalizer**: Ek 6-stage semantic normalization engine jo harmless formatting differences ko grade karne se pehle auto-fix kar deta hai.
 
-### 3. System Kaise Kaam Karta Hai?
-1. **Specimen Fabrication**: Fake student credentials vector layout compilation se generate hote hain.
-2. **Optical Degradation**: 14 physical distortion operators (camera blur, tilt, rotation, noise) apply hote hain.
-3. **Model Prediction**: Neural AI Vision models (MiniCPM-V 7.6B, Donut, Florence-2) document read karte hain.
-4. **Canonical Normalization**: AI predictions 6-stage `CanonicalNormalizer` se clean hote hain.
-5. **Evaluation**: Exact match rates, CER, WER compute hote hain aur errors ko 9 error types mein classify kiya jata hai.
+### 3. System Kaise Kaam Karta Hai? (Architecture Overview)
+
+```
++-----------------------------------------------------------------------------------+
+|                            AU DIC SYSTEM PIPELINE                                 |
++-----------------------------------------------------------------------------------+
+|  [ 1. ADBG Generator ] -------> Fabricates Vector PDF & Ground-Truth JSON         |
+|              |                                                                    |
+|              v                                                                    |
+|  [ 2. Distortion Machine ] ----> Applies 14 Optical Degradation Operators         |
+|              |                                                                    |
+|              v                                                                    |
+|  [ 3. Neural AI Engine ] ------> Model Extraction (MiniCPM-V, Donut, Florence-2)  |
+|              |                                                                    |
+|              v                                                                    |
+|  [ 4. CanonicalNormalizer ] ---> 6-Stage Semantic Normalization (Auto-Fix Typos)  |
+|              |                                                                    |
+|              v                                                                    |
+|  [ 5. Evaluator Subsystem ] ---> Metrics (Exact Match, CER, WER, 9 Error Classes)   |
++-----------------------------------------------------------------------------------+
+```
 
 ### 4. Humne Kya Test Kiya?
 - 360 synthetic specimens, 24,480 paired field observations (3 document categories: `student_id`, `marksheet`, `certificate`).
-- Neural Vision-Language Models (MiniCPM-V, Donut, Florence-2, Llama 3.1 8B).
+- Neural Vision-Language Models (MiniCPM-V 7.6B Q4_0, Donut, Florence-2, Llama 3.1 8B).
 - Supervised Machine Learning Classifiers (Decision Tree vs. Random Forest across 60:40, 70:30, 80:20 splits).
 
 ### 5. Sabse Important Empirical Results
@@ -40,19 +55,19 @@ Ye pehla privacy-safe, zero-PII open-science benchmark suite hai jo specifically
 
 ---
 
-## 📖 Section-by-Section Hinglish Student Guide
+## 📖 Section-by-Section Student Guide
 
 ---
 
 ### Section 1: Introduction
 
-#### 📄 WHAT THE PAPER SAYS
-> *"Evaluating neural document intelligence engines on academic credentials is severely bottlenecked by strict privacy regulations—such as FERPA and GDPR... To resolve this challenge, we introduce ADBG v1.0 alongside the AU DIC Benchmark Evaluation Framework v1.0..."*
+#### 1. 📄 WHAT THE PAPER SAYS
+> *"Evaluating neural document intelligence engines on academic credentials (degree certificates, marksheets, transcripts, student identification cards) is severely bottlenecked by strict privacy regulations—such as FERPA and GDPR—that prohibit public dissemination of real student records. To resolve this challenge, we introduce ADBG v1.0 alongside the AU DIC Benchmark Evaluation Framework v1.0..."*
 
-#### 🧠 SIMPLE EXPLANATION (HINGLISH)
+#### 2. 🧠 SIMPLE HINGLISH EXPLANATION
 Jab tum job ya higher studies ke liye apply karte ho, to university ko tumhari marksheet aur degree check karni padti hai. Manually haath se check karne mein dino lag jate hain. Lekin AI se ye kaam seconds mein ho sakta hai! Problem ye hai ki AI banane ke liye real students ki marksheets internet par upload nahi kar sakte privacy laws ki wajah se, aur purane AI checking tools minor space ya dot mistake par bhi AI ko fail kar dete hain.
 
-#### 💡 REAL-LIFE / GEN-Z ANALOGY
+#### 3. 💡 REAL-LIFE / GEN-Z ANALOGY
 > 💡 **Think of it like this:**  
 > Maano tumne apne friend ko text kiya: `"Bhai 7 PM pe milte hain."`  
 > Usne reply kiya: `"Haan bhai, 7:00 PM pe pakka!"`  
@@ -61,71 +76,115 @@ Jab tum job ya higher studies ke liye apply karte ho, to university ko tumhari m
 > `"WRONG! '7 PM' aur '7:00 PM' exact match nahi hain! 0 MARKS!"`  
 > Purane AI evaluation tools bilkul is strict robot ki tarah behave karte the!
 
-#### 🔬 TECHNICAL MEANING
+#### 4. 🔬 TECHNICAL MEANING
 - **FERPA / GDPR**: Government privacy laws jo student personal data protect karti hain.
 - **Exact Match Rate**: Aisa formula jo tabhi 1 mark deta hai jab prediction aur ground truth ka har character 100% same ho.
 
-#### 📊 WHAT OUR EXPERIMENT FOUND
-Hamari research ne prove kiya ki **7.58% errors actually AI ki galti nahi thi**, balki aise hi harmless formatting differences (jaise `7 PM` vs `7:00 PM`) the, jinhe hamare 6-stage normalizer ne rescue kar liya!
+#### 5. 🎯 WHY IT MATTERS
+Agar AI ko sahi tareeqe se evaluate nahi karenge, to hum aise AI models ko reject kar denge jo actually sahi information read kar rahe the, bas formatting alag thi.
+
+#### 6. 📊 PAPER'S ACTUAL RESULT / EVIDENCE
+Paper ne prove kiya ki **7.58% errors actually AI ki galti nahi thi**, balki aise hi harmless formatting differences (jaise `7 PM` vs `7:00 PM`) the, jinhe hamare 6-stage normalizer ne rescue kar liya!
 
 ---
 
 ### Section 2: Related Work
 
-#### 📄 WHAT THE PAPER SAYS
+#### 1. 📄 WHAT THE PAPER SAYS
 > *"Existing Document AI benchmarks—such as SROIE (receipts), CORD (restaurant receipts), and FUNSD (scanned forms)—focus predominantly on commercial forms. Academic credentials exhibit distinct structural properties..."*
 
-#### 🧠 SIMPLE EXPLANATION (HINGLISH)
+#### 2. 🧠 SIMPLE HINGLISH EXPLANATION
 Pehle ke researchers ne AI test karne ke liye grocery receipts (SROIE) aur restaurant bills (CORD) ke datasets banaye the. Par grocery store receipts mein university logos, registrar signatures, roll numbers, ya semester GPA tables nahi hote! Humne pehle aisa benchmark banaya jo specifically university documents par focused hai.
 
-#### 💡 REAL-LIFE / GEN-Z ANALOGY
+#### 3. 💡 REAL-LIFE / GEN-Z ANALOGY
 > 💡 **Think of it like this:**  
 > Grocery receipts par trained AI se university degree certificates padhwana bilkul waisa hai jaise *Tetris* game khel kar practice karna aur expect karna ki tum *Call of Duty* ka world tournament jeet jaoge! Dono bilkul alag environments hain.
 
+#### 4. 🔬 TECHNICAL MEANING
+- **Domain Shift**: Jab ek type ke documents (e.g. shopping bills) par trained AI ko doosre complex domain (e.g. academic transcripts) par use kiya jaye, to uski accuracy drop ho jaati hai.
+
+#### 5. 🎯 WHY IT MATTERS
+Academic documents ke unique structure (tables, seals, signatures, multi-column marks) ke liye specialized benchmark hona zaroori tha.
+
+#### 6. 📊 PAPER'S ACTUAL RESULT / EVIDENCE
+Table I shows that ADBG v1.0 is the first benchmark offering 100% synthetic zero-PII generation with 4 physical optical degradation profiles.
+
 ---
 
-### Section 3: System Architecture
+### Section 3: System Architecture Overview
 
-#### 📄 WHAT THE PAPER SAYS
+#### 1. 📄 WHAT THE PAPER SAYS
 > *"The ADBG v1.0 & AU DIC architecture is structured into three decoupled subsystems: (1) Synthetic Generator Subsystem, (2) Optical Degradation Profile Processor, and (3) Decoupled Benchmark Execution Subsystem..."*
 
-#### 🧠 SIMPLE EXPLANATION (HINGLISH)
+#### 2. 🧠 SIMPLE HINGLISH EXPLANATION
 Hamara system 3 main parts mein kaam karta hai:
 1. **The Specimen Fabricator (ADBG v1.0)**: Fake student records (fake names like *Aarav Agarwal*, fake roll numbers, fake marks) generate karta hai exact ground-truth JSON annotations ke saath.
 2. **The Distortion Machine**: Clean documents par real-world damage add karta hai: camera blur, tilt, lighting shadows, aur 90° rotation.
 3. **The AI Evaluator (AU DIC)**: AI models ko distorted documents deta hai aur uski performance score calculate karta hai bina kisi database ko alter kiye.
 
-#### 💡 REAL-LIFE / GEN-Z ANALOGY
+#### 3. 💡 REAL-LIFE / GEN-Z ANALOGY
 > 💡 **Think of it like this:**  
 > Ye bilkul pilots ke flight simulator jaisa hai. Real $100 million airplane ko crash karne ke bajaye, tum pilot ko ek super-realistic simulator mein test karte ho. ADBG v1.0 document AI ke liye waisa hi simulator hai!
+
+#### 4. 🔬 TECHNICAL MEANING
+- **Decoupled Architecture**: System generator, distortion processor, aur evaluation engine alag-alag modules hain jo ek doosre par rely kiye bina kaam kar sakte hain.
+
+#### 5. 🎯 WHY IT MATTERS
+Isse research team ko 100% reproducibility milti hai bina kisi real data leakage ke.
+
+#### 6. 📊 PAPER'S ACTUAL RESULT / EVIDENCE
+Table III shows framework processing throughput of **242.59 samples/sec** with average latency of **4.12 ms/sample**.
 
 ---
 
 ### Section 4: Methodology & The 6-Stage Normalizer
 
-#### 📄 WHAT THE PAPER SAYS
+#### 1. 📄 WHAT THE PAPER SAYS
 > *"To isolate true extraction failures from benign surface variations, we formulate a six-stage semantic canonical normalizer (CanonicalNormalizer)..."*
 
-#### 🧠 SIMPLE EXPLANATION (HINGLISH)
+#### 2. 🧠 SIMPLE HINGLISH EXPLANATION
 AI ka result grade karne se pehle hamara system har extracted text ko 6 cleaning stages se paas karta hai:
 
-| Stage | Rule Name | Kya Kaam Karta Hai | Simple Example |
-| :---: | :--- | :--- | :--- |
-| **1** | Case Normalization | Saare text ko lowercase kar deta hai | `AARAV` $\rightarrow$ `aarav` |
-| **2** | Whitespace Collapsing | Extra spaces remove karta hai | `Aarav   Agarwal` $\rightarrow$ `Aarav Agarwal` |
-| **3** | Punctuation Removal | Dots aur hyphens hata deta hai | `B.Tech.` $\rightarrow$ `BTech` |
-| **4** | Date Standardizing | Dates ko ISO format mein lata hai | `15/08/2002` $\rightarrow$ `2002-08-15` |
-| **5** | Institution Alias Mapping | Short forms ko full name mein convert karta hai | `MIT` $\rightarrow$ `Massachusetts Inst. of Tech.` |
-| **6** | Honorific Removal | Titles aur honorifics hata deta hai | `Mr. Aarav Agarwal` $\rightarrow$ `Aarav Agarwal` |
+```
++-----------------------------------------------------------------------------------+
+|                     6-STAGE CANONICAL NORMALIZATION PROCESS                       |
++-----------------------------------------------------------------------------------+
+|  RAW AI TEXT: "  Mr. Aarav Agarwal, B.Tech. (MIT) on 15/08/2002  "               |
+|                                                                                   |
+|  [ Stage 1: Lowercase Conversion ] ----> "  mr. aarav agarwal, b.tech. (mit)..." |
+|  [ Stage 2: Whitespace Collapsing ] ---> "mr. aarav agarwal, b.tech. (mit)..."   |
+|  [ Stage 3: Punctuation Removal ] -----> "mr aarav agarwal btech mit..."          |
+|  [ Stage 4: Date Standardizing ] ------> "...2002-08-15"                          |
+|  [ Stage 5: Alias Mapping ] -----------> "...massachusetts inst. of tech."        |
+|  [ Stage 6: Honorific Removal ] -------> "aarav agarwal btech massachusetts..."  |
+|                                                                                   |
+|  CANONICAL FORM: Matches Ground Truth 100%! [MATCH RESCUED ✅]                     |
++-----------------------------------------------------------------------------------+
+```
 
-#### 💡 REAL-LIFE / GEN-Z ANALOGY
+#### 3. 💡 REAL-LIFE / GEN-Z ANALOGY (THE "7 PM" VS "7:00 PM" VS "19:00" EXAMPLE)
 > 💡 **Think of it like this:**  
-> Maano teacher exam mein puchti hai: `"USA ke pehle President kaun the?"`  
-> - Student A likhta hai: `George Washington`  
-> - Student B likhta hai: `george washington`  
-> - Student C likhta hai: `G. Washington`  
-> Ek strict robot B aur C ko 0 marks dega!  
-> Hamara 6-stage normalizer us smart teacher jaisa hai jo teenon ko full marks deta hai kyunki meaning same hai.
+> Maano 3 friends meeting time decide kar rahe hain:  
+> - Friend 1 texts: `"7 PM"`  
+> - Friend 2 texts: `"7:00 PM"`  
+> - Friend 3 texts: `"19:00"`  
+>  
+> **Human Meaning**: Teeno ka matlab bilkul SAME hai (Shaam ke 7 baje).  
+> **System Problem**: Direct string compare karein to 0/3 match hongi!  
+> **Normalization**: Sabhi representations ko ek standard canonical format mein convert karo:  
+> `"7 PM"` $\rightarrow$ `19:00`  
+> `"7:00 PM"` $\rightarrow$ `19:00`  
+> `"19:00"` $\rightarrow$ `19:00`  
+> **Final Result**: `19:00` == `19:00` $\rightarrow$ **MATCH RESCUED! ✅**
+
+#### 4. 🔬 TECHNICAL MEANING
+- **Canonical Normalization**: Different syntactic representations ko ek single canonical equivalence class mein map karna.
+
+#### 5. 🎯 WHY IT MATTERS
+Eliminates artificial evaluation penalties caused by harmless formatting variations.
+
+#### 6. 📊 PAPER'S ACTUAL RESULT / EVIDENCE
+Table V shows canonical normalization rescued **1,853 false negative fields**, dropping mean CER from **89.27% raw down to 11.35% normalized**!
 
 ---
 
@@ -135,7 +194,9 @@ Here we explain every key formula in simple Hinglish:
 
 #### 4.3.1 Category Classification Accuracy
 $$\text{Acc}_{\text{cat}} = \frac{1}{N} \sum_{i=1}^{N} \mathbb{I}(\hat{y}_i = y_i) \quad (1)$$
+- 📄 **What Paper Says**: Accuracy of document type classification across $N$ specimens.
 - 🧠 **Simple Meaning (Hinglish)**: "Total 100 documents mein se AI ne kitne documents ka category type (marksheet, certificate, student ID) sahi pehchana?"
+- 🔬 **Variables**: $N$ = total documents (360), $\hat{y}_i$ = AI's guess, $y_i$ = real category.
 
 #### 4.3.2 Field Extraction Precision, Recall, and F1-Score
 $$\text{Precision} = \frac{TP}{TP + FP}, \quad \text{Recall} = \frac{TP}{TP + FN}, \quad F_1 = \frac{2 \cdot \text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}} \quad (2)$$
@@ -162,10 +223,13 @@ $$L_{\text{proc}} = \frac{T_{\text{total}}}{N}, \quad TH = \frac{N}{T_{\text{tot
 
 ### Section 5: Results & Empirical Validation
 
-#### 📄 WHAT THE PAPER SAYS
+#### 1. 📄 WHAT THE PAPER SAYS
 > *"We evaluate the benchmark suite across 360 specimens (24,480 paired field observations). Semantic canonical normalization improves exact match rates from 74.60% to 82.18%..."*
 
-#### 📊 EXPERIMENTAL RESULTS SUMMARY TABLE
+#### 2. 🧠 SIMPLE HINGLISH EXPLANATION
+Humne live neural vision models (MiniCPM-V, Donut, Florence-2) ko 24,480 paired field observations par benchmark kiya. Results ne dikhaya ki MiniCPM-V 7.6B offline model ne sabse best accuracy di.
+
+#### 3. 📊 EXPERIMENTAL RESULTS SUMMARY TABLE
 
 | Evaluation Metric | Raw Unnormalized Value | Normalized Value | Improvement / Rescue |
 | :--- | :---: | :---: | :---: |
@@ -179,10 +243,13 @@ $$L_{\text{proc}} = \frac{T_{\text{total}}}{N}, \quad TH = \frac{N}{T_{\text{tot
 
 ### Section 5.9: Machine Learning Benchmark (Decision Tree vs. Random Forest)
 
-#### 🧠 SIMPLE EXPLANATION (HINGLISH)
+#### 1. 📄 WHAT THE PAPER SAYS
+> *"We benchmark two foundational tree-based classification algorithms—Decision Tree (DT) and Random Forest (RF)—to predict whether a given extraction observation results in an exact field match (y = 1) or an extraction mismatch (y = 0)..."*
+
+#### 2. 🧠 SIMPLE HINGLISH EXPLANATION
 Humne traditional Machine Learning models ko train kiya ye predict karne ke liye ki document parameters (rotation, string length, field type) dekh kar AI text extraction pass hoga ya fail.
 
-#### 📊 MACHINE LEARNING COMPARISON TABLE
+#### 3. 📊 MACHINE LEARNING COMPARISON TABLE
 
 | Metric | RF 60:40 | RF 70:30 | RF 80:20 | DT 60:40 | DT 70:30 | DT 80:20 |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -192,7 +259,7 @@ Humne traditional Machine Learning models ko train kiya ye predict karne ke liye
 | **F1-Score** | 0.922640 | 0.923168 | 0.924810 | 0.957834 | 0.958091 | **0.959122** |
 | **Prediction Time (s)** | 0.167798 | 0.146718 | 0.120588 | 0.025032 | 0.018994 | **0.016724** |
 
-#### 🔬 WHY DECISION TREE BEAT RANDOM FOREST (HINGLISH)
+#### 4. 🔬 WHY DECISION TREE BEAT RANDOM FOREST (HINGLISH)
 Decision Tree ne Random Forest ko isliye haraya kyunki document optical rotation (`rotated_90`) jaise features sharp, binary "all-or-nothing" failures create karte hain. Ek single deep Decision Tree in sharp binary boundaries ko perfectly isolate kar leta hai. Jabki Random Forest 100 trees ka average leta hai, jisse sharp boundaries smooth ho jaati hain aur clean non-rotated documents par false positive rate badh jata hai ($FPR=0.4779$ for RF vs $0.2261$ for DT).
 
 ---

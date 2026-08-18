@@ -16,7 +16,7 @@ v5_docx_path = workspace / "docs" / "paper" / "PaperV5_Ollama_Primary.docx"
 v5_pdf_path = workspace / "docs" / "paper" / "PaperV5_Ollama_Primary.pdf"
 
 print("============================================================")
-print(" GENERATING PAPER V5 MANUSCRIPT WITH NEW-PAGE TOC & RIGHT TAB STOPS")
+print(" GENERATING PAPER V5 MANUSCRIPT WITH CONTENTS ON PAGE 1")
 print("============================================================")
 
 # Force kill any lingering Word or WPS background processes to prevent file locks
@@ -279,7 +279,7 @@ for p in doc.paragraphs:
         set_paragraph_outline_level(p, 1)
         h2_items.append(text_str)
 
-# 6. Pipeline Fix: Insert PAGE BREAK and CONTENTS Section Heading & TOC AFTER Index Terms and BEFORE 1. Introduction
+# 6. Pipeline Fix: Insert CONTENTS Section Heading & TOC IMMEDIATELY AFTER Index Terms ON PAGE 1
 intro_p = None
 for i, p in enumerate(doc.paragraphs[:25]):
     if p.text.strip() == "1. Introduction":
@@ -288,10 +288,10 @@ for i, p in enumerate(doc.paragraphs[:25]):
 
 assert intro_p is not None, "Error: 1. Introduction paragraph not found!"
 
-# Insert CONTENTS heading WITH PAGE BREAK BEFORE
+# Insert CONTENTS heading IMMEDIATELY ON PAGE 1 (NO PAGE BREAK BEFORE)
 p_contents_hdr = intro_p.insert_paragraph_before("CONTENTS")
 p_contents_hdr.alignment = WD_ALIGN_PARAGRAPH.CENTER
-p_contents_hdr.paragraph_format.page_break_before = True  # Ensure CONTENTS starts on fresh new page!
+p_contents_hdr.paragraph_format.page_break_before = False  # Positioned directly on Page 1 after Index Terms!
 p_contents_hdr.paragraph_format.space_before = Pt(14)
 p_contents_hdr.paragraph_format.space_after = Pt(6)
 if p_contents_hdr.runs:
@@ -326,55 +326,55 @@ r_toc._r.append(fldChar3)
 
 # Populate visible TOC entries with RIGHT-ALIGNED TAB STOP & DOT LEADER at 6.5 inches
 toc_entries = [
-    ("1. Introduction", "2", 1),
-    ("1.1 Background & Motivation", "2", 2),
-    ("1.2 Research Objectives", "2", 2),
-    ("1.3 Main Research Contributions", "2", 2),
-    ("2. Related Work", "4", 1),
-    ("2.1 Vision-Language Models & Document Intelligence", "4", 2),
-    ("2.2 Document Image Classification & Parsing Benchmarks", "4", 2),
-    ("2.3 Information Extraction & Optical Character Recognition", "5", 2),
-    ("2.4 Synthetic Data Generation & Benchmark Suites", "5", 2),
-    ("2.5 Semantic Normalization & Post-Processing", "6", 2),
-    ("2.6 Error Taxonomies & Diagnostic Evaluation", "6", 2),
-    ("3. ADBG v1.0 & AU DIC Benchmark System Architecture", "7", 1),
-    ("3.1 ADBG v1.0 Synthetic Generator Subsystem", "7", 2),
-    ("3.2 Optical Degradation Profile Processor", "7", 2),
-    ("3.3 AU DIC Decoupled Benchmark Execution Subsystem", "8", 2),
-    ("4. Methodology", "8", 1),
-    ("4.1 Six-Stage Semantic Canonical Normalization Subsystem", "8", 2),
-    ("4.2 Nine-Class Structured OCR Error Taxonomy", "11", 2),
-    ("4.3 Mathematical Formulation of Evaluation Metrics", "12", 2),
-    ("5. Results & Empirical Validation", "14", 1),
-    ("5.1 Distinction Between Framework Validation, Benchmark Validation, and Model Performance", "14", 2),
-    ("5.2 Framework Execution & System Verification Metrics", "14", 2),
-    ("5.3 System Throughput & Execution Latency", "15", 2),
-    ("5.4 Empirical Live Neural Model Evaluation Results", "15", 2),
-    ("5.5 Empirical Ablation Study of Semantic Canonical Normalization", "17", 2),
-    ("5.6 Statistical Significance Analysis (p < 0.0001)", "19", 2),
-    ("5.7 Empirical Evaluation Scope & Methodological Limitations", "20", 2),
-    ("5.8 Error Taxonomy Distribution Shift Analysis", "20", 2),
-    ("6. Discussion & Threats to Validity", "21", 1),
-    ("6.1 Scientific Contributions and Methodological Novelty", "21", 2),
-    ("6.2 Discussion of Empirical Findings", "21", 2),
-    ("6.3 Threats to Validity", "22", 2),
-    ("7. Limitations Analysis", "22", 1),
-    ("7.1 Methodological Limitations", "22", 2),
-    ("8. Future Work", "23", 1),
-    ("9. Conclusion", "23", 1),
-    ("Ethics & Privacy Statement", "23", 1),
-    ("ACKNOWLEDGMENT", "24", 1),
-    ("APPENDIX A: REPRODUCIBILITY & SYSTEM SPECIFICATIONS", "24", 1),
-    ("A.1 Reproducibility & System Environment Matrix", "24", 2),
-    ("A.2 Technical Clarifications & Reviewer Inquiries", "24", 2),
-    ("APPENDIX B: FIELD SPECIFICATION & OBSERVATION COUNT DERIVATION", "25", 1),
-    ("B.1 Document Category Field Structure", "25", 2),
-    ("B.2 Mathematical Derivation of 24,480 Paired Observations", "25", 2),
-    ("APPENDIX C: EMPIRICAL STATISTICAL METHODOLOGY & BENCHMARKS", "26", 1),
-    ("C.1 Empirical Category Confusion Matrix (360 Specimens)", "26", 2),
-    ("C.2 McNemar Contingency Test & Normalization Rescues", "26", 2),
-    ("C.3 Non-Parametric Bootstrap Confidence Intervals (B = 10,000)", "27", 2),
-    ("REFERENCES", "27", 1),
+    ("1. Introduction", "1", 1),
+    ("1.1 Background & Motivation", "1", 2),
+    ("1.2 Research Objectives", "1", 2),
+    ("1.3 Main Research Contributions", "1", 2),
+    ("2. Related Work", "3", 1),
+    ("2.1 Vision-Language Models & Document Intelligence", "3", 2),
+    ("2.2 Document Image Classification & Parsing Benchmarks", "3", 2),
+    ("2.3 Information Extraction & Optical Character Recognition", "4", 2),
+    ("2.4 Synthetic Data Generation & Benchmark Suites", "4", 2),
+    ("2.5 Semantic Normalization & Post-Processing", "5", 2),
+    ("2.6 Error Taxonomies & Diagnostic Evaluation", "5", 2),
+    ("3. ADBG v1.0 & AU DIC Benchmark System Architecture", "6", 1),
+    ("3.1 ADBG v1.0 Synthetic Generator Subsystem", "6", 2),
+    ("3.2 Optical Degradation Profile Processor", "6", 2),
+    ("3.3 AU DIC Decoupled Benchmark Execution Subsystem", "7", 2),
+    ("4. Methodology", "7", 1),
+    ("4.1 Six-Stage Semantic Canonical Normalization Subsystem", "7", 2),
+    ("4.2 Nine-Class Structured OCR Error Taxonomy", "10", 2),
+    ("4.3 Mathematical Formulation of Evaluation Metrics", "11", 2),
+    ("5. Results & Empirical Validation", "13", 1),
+    ("5.1 Distinction Between Framework Validation, Benchmark Validation, and Model Performance", "13", 2),
+    ("5.2 Framework Execution & System Verification Metrics", "13", 2),
+    ("5.3 System Throughput & Execution Latency", "14", 2),
+    ("5.4 Empirical Live Neural Model Evaluation Results", "14", 2),
+    ("5.5 Empirical Ablation Study of Semantic Canonical Normalization", "16", 2),
+    ("5.6 Statistical Significance Analysis (p < 0.0001)", "18", 2),
+    ("5.7 Empirical Evaluation Scope & Methodological Limitations", "19", 2),
+    ("5.8 Error Taxonomy Distribution Shift Analysis", "19", 2),
+    ("6. Discussion & Threats to Validity", "20", 1),
+    ("6.1 Scientific Contributions and Methodological Novelty", "20", 2),
+    ("6.2 Discussion of Empirical Findings", "20", 2),
+    ("6.3 Threats to Validity", "21", 2),
+    ("7. Limitations Analysis", "21", 1),
+    ("7.1 Methodological Limitations", "21", 2),
+    ("8. Future Work", "22", 1),
+    ("9. Conclusion", "22", 1),
+    ("Ethics & Privacy Statement", "22", 1),
+    ("ACKNOWLEDGMENT", "23", 1),
+    ("APPENDIX A: REPRODUCIBILITY & SYSTEM SPECIFICATIONS", "23", 1),
+    ("A.1 Reproducibility & System Environment Matrix", "23", 2),
+    ("A.2 Technical Clarifications & Reviewer Inquiries", "23", 2),
+    ("APPENDIX B: FIELD SPECIFICATION & OBSERVATION COUNT DERIVATION", "24", 1),
+    ("B.1 Document Category Field Structure", "24", 2),
+    ("B.2 Mathematical Derivation of 24,480 Paired Observations", "24", 2),
+    ("APPENDIX C: EMPIRICAL STATISTICAL METHODOLOGY & BENCHMARKS", "25", 1),
+    ("C.1 Empirical Category Confusion Matrix (360 Specimens)", "25", 2),
+    ("C.2 McNemar Contingency Test & Normalization Rescues", "25", 2),
+    ("C.3 Non-Parametric Bootstrap Confidence Intervals (B = 10,000)", "26", 2),
+    ("REFERENCES", "26", 1),
 ]
 
 for title, page_str, level in toc_entries:
@@ -395,7 +395,7 @@ for title, page_str, level in toc_entries:
     if level == 1:
         r_title.bold = True
     
-    # Run 2: Tab character + Page number (Word automatically renders dot leader extending to 6.5 in)
+    # Run 2: Tab character (\t) + Right-Aligned Page Number
     r_page = p_entry.add_run(f"\t{page_str}")
     r_page.font.name = "Times New Roman"
     r_page.font.size = Pt(9.5)
@@ -403,7 +403,7 @@ for title, page_str, level in toc_entries:
 
 # Save directly to PaperV5_Ollama_Primary.docx
 doc.save(v5_docx_path)
-print(f"[SUCCESS] Saved PaperV5_Ollama_Primary.docx with PAGE BREAK before CONTENTS & Right Tab Stops at 6.5 inches!")
+print(f"[SUCCESS] Saved PaperV5_Ollama_Primary.docx with CONTENTS ON PAGE 1 & Right Tab Stops at 6.5 inches!")
 
 # Export PDF via Word COM Automation
 print(f"Exporting PDF via Word COM Automation: {v5_pdf_path.name}...")

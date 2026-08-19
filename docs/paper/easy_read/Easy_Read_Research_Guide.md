@@ -1,5 +1,5 @@
 # Easy-Read Research Guide (Hinglish Edition)
-## Smart Academic Document Intelligence System with the Academic Document Benchmark Generator
+## Smart Academic Document Intelligence System: Automated Extraction, Normalization, and Benchmark Generation
 
 > **Authoritative Student Companion Guide in Conversational Hinglish**  
 > *Based on the original research paper by Kushagra Singh Bhadauria, Aashish Rajput, and Avdesh Kumar Sah (Department of Computer Science and Engineering, Sharda University).*

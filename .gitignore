@@ -57,3 +57,13 @@ clipboards/
 
 # Generated audit reports
 docs/reports/
+
+# Generated Synthetic Benchmark Datasets & Specimen Caches (reproducible on demand via ADBG)
+AU_DIC_Benchmark_v1.0/
+ADBG/AU_DIC_Benchmark_v1.0/
+benchmarks/
+research/test_documents/
+research/synthetic_academic_dataset_60000.json
+scratch/test_adbg_quick/
+scratch/test_gen_3/
+

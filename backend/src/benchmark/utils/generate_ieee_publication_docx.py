@@ -211,6 +211,7 @@ def build_ieee_publication_docx():
     normal_style.font.color.rgb = RGBColor(0x1F, 0x29, 0x37)
     normal_style.paragraph_format.line_spacing = 1.15
     normal_style.paragraph_format.space_after = Pt(6)
+    normal_style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
     eq_counter = 0
 

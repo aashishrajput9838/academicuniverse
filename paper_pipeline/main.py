@@ -60,8 +60,27 @@ def run_pipeline(md_path: str, docx_path: str, pdf_path: str):
     logger.info("============================================================")
 
 if __name__ == "__main__":
-    md_file = r"C:\Users\elitebook840g89319\.gemini\antigravity-ide\brain\bb9b3069-0e60-4209-b2b8-d0321ac491db\Paper_V3.md"
-    docx_file = r"c:\github\academicuniverse.com\academicuniverse\docs\paper\Paper_V3_IEEE.docx"
-    pdf_file = r"c:\github\academicuniverse.com\academicuniverse\docs\paper\Paper_V3_IEEE.pdf"
+    from pathlib import Path
+    import glob
+    import re
+    
+    workspace = Path(__file__).resolve().parents[1]
+    paper_dir = workspace / "docs" / "paper"
+    
+    # Auto-discover latest Paper_V*.md
+    md_files = glob.glob(str(paper_dir / "Paper_V*.md"))
+    if md_files:
+        def extract_version(p):
+            m = re.search(r"Paper_V(\d+)\.md", p)
+            return int(m.group(1)) if m else 0
+        latest_md = max(md_files, key=extract_version)
+        v_num = extract_version(latest_md)
+        docx_file = str(paper_dir / f"PaperV{v_num}_Ollama_Primary.docx")
+        pdf_file = str(paper_dir / f"PaperV{v_num}_Ollama_Primary.pdf")
+        md_file = latest_md
+    else:
+        md_file = str(paper_dir / "Paper_V7.md")
+        docx_file = str(paper_dir / "PaperV7_Ollama_Primary.docx")
+        pdf_file = str(paper_dir / "PaperV7_Ollama_Primary.pdf")
 
     run_pipeline(md_file, docx_file, pdf_file)

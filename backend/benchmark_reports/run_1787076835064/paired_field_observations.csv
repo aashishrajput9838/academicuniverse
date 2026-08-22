@@ -1,0 +1,1 @@
+specimen_id,document_type,quality_profile,field_name,ground_truth_value,extracted_value,normalized_gt,normalized_pred,exact_match,normalized_match,cer,edit_distance,confidence,latency_ms

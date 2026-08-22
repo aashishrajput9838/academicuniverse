@@ -1,0 +1,61 @@
+# Benchmark Pipeline Repair & Scientific Reproduction Plan
+
+This document outlines the technical implementation plan to repair `run_full_benchmark.py`, quarantine invalid dry-run artifacts, execute staged benchmark validation (Phases A through D), and perform a fresh, publication-ready benchmark run storing all artifacts in a dedicated run directory (`backend/benchmark_reports/<NEW_RUN_ID>/`).
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **Paper Preservation Directive**: `docs/paper/PaperV4_Final_Submission.docx` and `.pdf` will **NOT** be edited during this stage.
+> - **Artifact Isolation**: All fresh execution outputs (`metrics.json`, `comparisons.json`, `predictions.json`, `paired_field_observations.csv`, `statistical_results.json`, `summary.md`, `execution.log`) will be saved strictly under `backend/benchmark_reports/<NEW_RUN_ID>/`.
+> - **Strict Live Provenance**: Live VLM inference (`strictLiveInference: true`, `failOnProviderError: true`) will be enforced with 0 mock predictions.
+
+## Proposed Changes
+
+### Entry Point & Ground Truth Generation
+
+#### [MODIFY] [`run_full_benchmark.py`](file:///c:/github/academicuniverse/run_full_benchmark.py)
+- Remove hardcoded brain session scratch path (`C:/Users/.../brain/bae1c6d3-6817-4888-9477-7935d97c3f3c/scratch/create_perprofile_gt.py`).
+- Replace with repository-relative call to `ADBG/scripts/create_perprofile_gt.py`.
+- Ensure zero machine-specific absolute paths.
+
+#### [NEW] [`ADBG/scripts/create_perprofile_gt.py`](file:///c:/github/academicuniverse/ADBG/scripts/create_perprofile_gt.py)
+- Create repository-native per-profile ground truth JSON generator script that reads 90 base GTs from `ADBG/AU_DIC_Benchmark_v1.0/` and expands them across the 4 quality profiles (`clean`, `scanner_copy`, `mobile_camera`, `rotated_90`) into `ADBG/AU_DIC_Benchmark_v1.0/groundtruth/`.
+
+---
+
+### Staged Benchmark Execution & Verification
+
+#### [NEW] Dedicated Benchmark Directory: `backend/benchmark_reports/run_canonical_v4_verify/`
+- All run outputs will be written exclusively to this directory.
+
+#### Execution Stages:
+1. **Phase A (1 document)**: Verify image -> VLM -> structured JSON -> evaluator pipeline.
+2. **Phase B (10 documents)**: Verify Category Accuracy, Precision, Recall, F1, CER, WER, Exact Match metrics.
+3. **Phase C (50 documents)**: Verify model provenance (`isMock: false`, provider/model name, zero mock fallback, memory/latency).
+4. **Phase D (Full 360 Canonical Run)**: Execute full 360-specimen benchmark across all 5 document categories to obtain 24,480 paired field observations.
+
+---
+
+### Post-Run Verification & Reporting
+
+#### Statistical Reproducibility
+- Run `research/statistics/run_statistical_tests.py` targeting strictly the new run directory.
+- Verify McNemar $\chi^2$, Wilcoxon signed-rank test, Bootstrap CIs ($B=10,000$).
+
+#### [NEW] [`docs/paper/PAPER_V4_PRE_PUBLICATION_VERIFICATION.md`](file:///c:/github/academicuniverse/docs/paper/PAPER_V4_PRE_PUBLICATION_VERIFICATION.md)
+- Compile final verification report containing sections A through K as specified in requirements.
+
+---
+
+## Verification Plan
+
+### Automated Verification
+- Run `npx tsc --noEmit` in `backend/` to ensure zero compilation errors.
+- Run Phase A, B, C validation scripts prior to Phase D.
+- Run `python research/statistics/run_statistical_tests.py` on fresh run artifacts.
+
+### Programmatic Integrity Assertions
+- `total_predictions == 360`
+- `mock_predictions == 0`
+- `live_predictions == 360`
+- `observation_count == 24,480`

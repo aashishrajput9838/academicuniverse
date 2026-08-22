@@ -61,14 +61,12 @@ def main():
         print(f"  ✅ {len(flat_gts)} per-profile GT files already exist — skipping generation.")
     else:
         print("  Generating GT JSONs from ADBG with seed=42...")
-        rc = run([sys.executable,
-                  str(Path(__file__).parent / "scratch" / "generate_gt_jsons.py")],
-                 cwd=ROOT / "ADBG")
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(ROOT / "ADBG")
+        rc = run([sys.executable, str(ROOT / "ADBG" / "scripts" / "generate_au_dic_benchmark_v1.py")], cwd=ROOT, env=env)
         if rc != 0:
             print("FAIL: GT generation failed."); sys.exit(1)
-        rc = run([sys.executable,
-                  "C:/Users/elitebook840g89319/.gemini/antigravity-ide/brain/bae1c6d3-6817-4888-9477-7935d97c3f3c/scratch/create_perprofile_gt.py"],
-                 cwd=ROOT / "ADBG")
+        rc = run([sys.executable, str(ROOT / "ADBG" / "scripts" / "create_perprofile_gt.py")], cwd=ROOT, env=env)
         if rc != 0:
             print("FAIL: Per-profile GT creation failed."); sys.exit(1)
 

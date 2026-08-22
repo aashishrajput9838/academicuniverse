@@ -68,6 +68,9 @@ class SampleMetadataBuilder:
     ) -> None:
         """Save sample metadata to JSON file."""
         path = Path(output_path)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+        except FileExistsError:
+            pass
         with path.open("w", encoding="utf-8") as f:
             json.dump(asdict(metadata), f, indent=2, ensure_ascii=False)
